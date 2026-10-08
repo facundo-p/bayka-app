@@ -188,25 +188,25 @@ describe('SyncProgressModal', () => {
       expect(getByText('1 foto descargada correctamente')).toBeTruthy();
     });
 
-    it('cuenta los árboles que quedaron con la especie del server, sumando los grupos (#679)', () => {
+    it('cuenta los conflictos nuevos, sumando los grupos (#795)', () => {
       const { getByText } = renderModal({
         results: [
-          { success: true, groupId: 'g1', nombre: 'Grupo 1', especiesDelServidor: 2 },
-          { success: true, groupId: 'g2', nombre: 'Grupo 2', especiesDelServidor: 1 },
+          { success: true, groupId: 'g1', nombre: 'Grupo 1', conflictos: 2 },
+          { success: true, groupId: 'g2', nombre: 'Grupo 2', conflictos: 1 },
           { ...FALLA_DE_GRUPO, groupId: 'g3' },
         ],
         successCount: 2,
       });
-      expect(getByText('3 árboles quedaron con la especie que se les cambió desde la web u otro celular')).toBeTruthy();
+      expect(getByText('3 datos también cambiaron desde la web u otro celular: quedaron esos y los tuyos esperan que elijas')).toBeTruthy();
     });
 
-    it('en singular para un solo árbol', () => {
+    it('en singular para un solo conflicto', () => {
       const { getByText } = renderModal({
-        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1', especiesDelServidor: 1 }],
+        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1', conflictos: 1 }],
         successCount: 1,
       });
-      const aviso = getByText('1 árbol quedó con la especie que se le cambió desde la web u otro celular');
-      // Neutro: se descartó un cambio del usuario, no es un éxito.
+      const aviso = getByText('1 dato también cambió desde la web u otro celular: quedó ese y el tuyo espera que elijas');
+      // Neutro: lo propio no se perdió ni subió, espera una decisión.
       expect(StyleSheet.flatten(aviso.props.style).color).toBe(colors.textSecondary);
     });
 

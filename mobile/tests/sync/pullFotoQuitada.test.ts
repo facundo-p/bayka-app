@@ -1,5 +1,6 @@
-// Pull con foto quitada desde otro dispositivo (#517): contra better-sqlite3 real,
-// porque lo que se prueba es el CASE del upsert.
+// Pull con foto quitada (#517) o cambiada (#795) desde otro dispositivo, y GPS
+// cambiado en el server: contra better-sqlite3 real, porque lo que se prueba es el
+// CASE del upsert.
 import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import {
   createTestPlantation,
@@ -9,7 +10,7 @@ import {
   createTestSpecies,
 } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
-import { fotosQuitadasEnServer, upsertTreesFromServerTx } from '../../src/services/sync/pullService';
+import { fotosLocalesObsoletas, upsertTreesFromServerTx } from '../../src/services/sync/pullService';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 
@@ -53,11 +54,11 @@ const serverTree = (overrides: Record<string, any>) => ({
 });
 
 /** Inserta la fila local y devuelve el mapa que el pull arma con su única lectura. */
-async function conFotoLocal(fotoSynced: boolean) {
+async function conFotoLocal(fotoSynced: boolean, fotoBase: string | null = null) {
   await db.insert(trees).values(
-    createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP, fotoUrl: FOTO_LOCAL, fotoSynced }),
+    createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP, fotoUrl: FOTO_LOCAL, fotoSynced, fotoBase }),
   );
-  return new Map([['tree-1', { especieId: SP, fotoUrl: FOTO_LOCAL, fotoSynced }]]);
+  return new Map([['tree-1', { fotoUrl: FOTO_LOCAL, fotoSynced, fotoBase }]]);
 }
 
 async function readTree(id: string) {
@@ -70,7 +71,7 @@ describe('pull — foto quitada en el server (#517)', () => {
     const locales = await conFotoLocal(true);
     const remotos = [serverTree({ foto_url: null })];
 
-    const quitadas = fotosQuitadasEnServer(remotos, locales);
+    const quitadas = fotosLocalesObsoletas(remotos, locales);
     await upsertTreesFromServerTx(db as any, remotos);
 
     expect(quitadas).toEqual([FOTO_LOCAL]);
@@ -83,7 +84,7 @@ describe('pull — foto quitada en el server (#517)', () => {
     const locales = await conFotoLocal(false);
     const remotos = [serverTree({ foto_url: null })];
 
-    const quitadas = fotosQuitadasEnServer(remotos, locales);
+    const quitadas = fotosLocalesObsoletas(remotos, locales);
     await upsertTreesFromServerTx(db as any, remotos);
 
     expect(quitadas).toEqual([]);
@@ -96,7 +97,7 @@ describe('pull — foto quitada en el server (#517)', () => {
     const locales = await conFotoLocal(true);
     const remotos = [serverTree({ foto_url: FOTO_SERVER })];
 
-    const quitadas = fotosQuitadasEnServer(remotos, locales);
+    const quitadas = fotosLocalesObsoletas(remotos, locales);
     await upsertTreesFromServerTx(db as any, remotos);
 
     expect(quitadas).toEqual([]);
@@ -113,5 +114,77 @@ describe('pull — foto quitada en el server (#517)', () => {
     const row = await readTree('tree-1');
     expect(row.fotoUrl).toBe(FOTO_SERVER);
     expect(row.fotoSynced).toBe(true);
+  });
+});
+
+describe('pull — foto cambiada en el server (#795)', () => {
+  const FOTO_NUEVA = 'plantations/p1/parcelas/pa1/trees/tree-1-photo2.jpg';
+
+  it('copia local de la foto que el server reemplazó: adopta el path nuevo y devuelve el archivo a borrar', async () => {
+    const locales = await conFotoLocal(true, FOTO_SERVER);
+    const remotos = [serverTree({ foto_url: FOTO_NUEVA })];
+
+    const obsoletas = fotosLocalesObsoletas(remotos, locales);
+    await upsertTreesFromServerTx(db as any, remotos);
+
+    expect(obsoletas).toEqual([FOTO_LOCAL]);
+    expect(await readTree('tree-1')).toMatchObject({ fotoUrl: FOTO_NUEVA, fotoSynced: true, fotoBase: FOTO_NUEVA });
+  });
+
+  it('copia local de la misma foto del server: la conserva', async () => {
+    const locales = await conFotoLocal(true, FOTO_SERVER);
+    const remotos = [serverTree({ foto_url: FOTO_SERVER })];
+
+    expect(fotosLocalesObsoletas(remotos, locales)).toEqual([]);
+    await upsertTreesFromServerTx(db as any, remotos);
+
+    expect(await readTree('tree-1')).toMatchObject({ fotoUrl: FOTO_LOCAL, fotoBase: FOTO_SERVER });
+  });
+
+  // Bajada antes de que el teléfono guardara bases: no hay con qué comparar.
+  it('copia local sin base: la conserva y toma el path del server como base', async () => {
+    const locales = await conFotoLocal(true);
+    const remotos = [serverTree({ foto_url: FOTO_NUEVA })];
+
+    expect(fotosLocalesObsoletas(remotos, locales)).toEqual([]);
+    await upsertTreesFromServerTx(db as any, remotos);
+
+    expect(await readTree('tree-1')).toMatchObject({ fotoUrl: FOTO_LOCAL, fotoBase: FOTO_NUEVA });
+  });
+});
+
+describe('pull — GPS cambiado en el server (#795)', () => {
+  const PUNTO_LOCAL = { latitude: -34.1, longitude: -58.1, gpsAccuracy: 5, gpsCapturedAt: '2026-10-01T10:00:00' };
+  const PUNTO_SERVER = { latitude: -34.2, longitude: -58.2, gps_accuracy: 3, gps_captured_at: '2026-10-02T10:00:00' };
+  const BASE_LOCAL = { latitudeBase: -34.1, longitudeBase: -58.1, gpsCapturedAtBase: '2026-10-01T10:00:00' };
+
+  const conPunto = (extra: Record<string, unknown>) =>
+    db.insert(trees).values(createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP, ...PUNTO_LOCAL, ...extra }));
+
+  it('sin cambio local desde la base: adopta el punto del server y su base', async () => {
+    await conPunto(BASE_LOCAL);
+
+    await upsertTreesFromServerTx(db as any, [serverTree(PUNTO_SERVER)]);
+
+    expect(await readTree('tree-1')).toMatchObject({
+      latitude: -34.2, longitude: -58.2, gpsAccuracy: 3, gpsCapturedAt: '2026-10-02T10:00:00',
+      latitudeBase: -34.2, longitudeBase: -58.2, gpsCapturedAtBase: '2026-10-02T10:00:00',
+    });
+  });
+
+  it('con un punto cambiado acá: lo conserva y actualiza la base', async () => {
+    await conPunto({ latitudeBase: -34.9, longitudeBase: -58.9, gpsCapturedAtBase: '2026-09-01T10:00:00' });
+
+    await upsertTreesFromServerTx(db as any, [serverTree(PUNTO_SERVER)]);
+
+    expect(await readTree('tree-1')).toMatchObject({ latitude: -34.1, latitudeBase: -34.2 });
+  });
+
+  it('sin punto local: adopta el del server', async () => {
+    await db.insert(trees).values(createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP }));
+
+    await upsertTreesFromServerTx(db as any, [serverTree(PUNTO_SERVER)]);
+
+    expect(await readTree('tree-1')).toMatchObject({ latitude: -34.2, latitudeBase: -34.2 });
   });
 });

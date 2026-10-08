@@ -63,12 +63,12 @@ export const PHOTO_PHASE = {
 export type PhotoPhase = (typeof PHOTO_PHASE)[keyof typeof PHOTO_PHASE];
 
 export type SyncGroupResult =
-  /** `especiesDelServidor`: árboles que quedaron con la especie del server porque se cambió en los dos lados (#679). */
-  | { success: true; groupId: string; nombre: string; especiesDelServidor?: number }
+  /** `conflictos`: datos cambiados acá y en el server; quedó el del server y el propio espera una decisión (#795). */
+  | { success: true; groupId: string; nombre: string; conflictos?: number }
   | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
 
-export const arbolesConEspecieDelServidor = (resultados: SyncGroupResult[]): number =>
-  resultados.reduce((total, r) => total + (r.success ? r.especiesDelServidor ?? 0 : 0), 0);
+export const conflictosNuevos = (resultados: SyncGroupResult[]): number =>
+  resultados.reduce((total, r) => total + (r.success ? r.conflictos ?? 0 : 0), 0);
 
 export type SyncParcelaResult =
   | { success: true; parcelaId: string; nombre: string }

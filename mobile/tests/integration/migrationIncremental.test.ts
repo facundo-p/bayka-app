@@ -155,7 +155,7 @@ test('0033 dropea conflict_especie_* y conserva los árboles', () => {
   `);
   const columnasAntes = columnNames(sqlite, 'trees');
 
-  migrate(db, { migrationsFolder: DRIZZLE_DIR });
+  migrarHasta(db, '0033_trees_drop_conflict_especie');
 
   expect(columnNames(sqlite, 'trees')).toEqual(
     columnasAntes.filter((c) => c !== 'conflict_especie_id' && c !== 'conflict_especie_nombre'),
@@ -167,5 +167,40 @@ test('0033 dropea conflict_especie_* y conserva los árboles', () => {
     { id: 't1', group_id: 'g1', especie_id: 'sp1', sub_id: 'P1L1ROB1', especie_base_id: 'sp1' },
     { id: 't2', group_id: 'g2', especie_id: null, sub_id: 'P1L2NN1', especie_base_id: null },
   ]);
+  sqlite.close();
+});
+
+// 0034 (#795): en un grupo ya subido la base es el valor local; la foto, solo si
+// es un path de Storage. En un grupo sin subir no se sabe y queda sin base.
+test('0034 arranca las bases de GPS, foto y grupo con lo local, salvo en un grupo sin subir', () => {
+  const sqlite = new Database(':memory:');
+  const db = drizzle(sqlite);
+  migrarHasta(db, '0033_trees_drop_conflict_especie');
+  sqlite.exec(PADRES_DE_ARBOLES_SQL);
+  sqlite.exec(`
+    INSERT INTO trees (id, group_id, especie_id, posicion, sub_id, usuario_registro, created_at,
+                       foto_url, latitude, longitude, gps_captured_at) VALUES
+      ('t1', 'g1', 'sp1', 1, 'P1L1ROB1', 'u1', '2026-01-01', 'plantations/p1/trees/t1.jpg', -34.1, -58.1, '2026-01-02'),
+      ('t2', 'g1', 'sp1', 2, 'P1L1ROB2', 'u1', '2026-01-01', 'file:///photos/t2.jpg', NULL, NULL, NULL),
+      ('t3', 'g2', 'sp1', 1, 'P1L2ROB1', 'u1', '2026-01-01', 'plantations/p1/trees/t3.jpg', -34.3, -58.3, '2026-01-02');
+  `);
+
+  migrate(db, { migrationsFolder: DRIZZLE_DIR });
+
+  expect(sqlite.prepare(
+    'SELECT id, foto_base, latitude_base, longitude_base, gps_captured_at_base FROM trees ORDER BY id',
+  ).all()).toEqual([
+    { id: 't1', foto_base: 'plantations/p1/trees/t1.jpg', latitude_base: -34.1, longitude_base: -58.1, gps_captured_at_base: '2026-01-02' },
+    { id: 't2', foto_base: null, latitude_base: null, longitude_base: null, gps_captured_at_base: null },
+    { id: 't3', foto_base: null, latitude_base: null, longitude_base: null, gps_captured_at_base: null },
+  ]);
+  const bases = sqlite.prepare('SELECT id, base_del_servidor FROM groups ORDER BY id').all() as { id: string; base_del_servidor: string | null }[];
+  expect(bases.map((g) => [g.id, g.base_del_servidor && JSON.parse(g.base_del_servidor)])).toEqual([
+    ['g1', { nombre: 'Uno', codigo: 'L1', tipo: 'linea', estado: 'activa' }],
+    ['g2', null],
+  ]);
+  expect(columnNames(sqlite, 'conflictos_de_sync')).toEqual(
+    ['entidad_id', 'campo', 'grupo_id', 'plantacion_id', 'mio', 'servidor', 'detectado_en'],
+  );
   sqlite.close();
 });

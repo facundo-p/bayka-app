@@ -6,6 +6,7 @@ import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes, cambiosEspeciesPendientes } from '../database/schema';
+import { archivosDeConflictosDePlantacion, quitarConflictosDePlantacion } from './ConflictosDeSyncRepository';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
@@ -410,7 +411,10 @@ export async function createPlantationWithParcelaLocally(
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
-  const fotos = await getLocalPhotoUrisForPlantation(plantacionId);
+  const fotos = [
+    ...await getLocalPhotoUrisForPlantation(plantacionId),
+    ...await archivosDeConflictosDePlantacion(plantacionId),
+  ];
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
@@ -427,6 +431,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     await tx.delete(cambiosEspeciesPendientes).where(eq(cambiosEspeciesPendientes.plantacionId, plantacionId));
     await borrarAltasDeTecnicosDePlantacion(tx, plantacionId);
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
+    await quitarConflictosDePlantacion(tx, plantacionId);
   });
   // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).
   borrarFotosLocales(fotos);

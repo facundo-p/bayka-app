@@ -7,6 +7,7 @@ import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { notifyDataChanged } from '../database/liveQuery';
 import { borradosPendientes, groups, parcelas, plantations, trees } from '../database/schema';
+import { archivosDeConflictosDePlantacion, quitarConflictosDePlantacion } from './ConflictosDeSyncRepository';
 import { and, eq, inArray, notInArray, or } from 'drizzle-orm';
 import type { MotivoVarado } from '../constants/motivoVarado';
 import { conservaTecnicos, descartarLaSaca } from '../utils/avisoPendientesVarados';
@@ -44,13 +45,13 @@ const parcelaPendiente = (plantacionId: string) =>
 
 const fotoSinSubir = and(sqlIsLocalUri(trees.fotoUrl), eq(trees.fotoSynced, false));
 
-/** Archivos que quedan sin fila: los de los árboles que se borran y las fotos sin subir. */
+/** Archivos que quedan sin fila: los de los árboles que se borran, las fotos sin subir y las de conflictos. */
 async function fotosADescartar(plantacionId: string): Promise<string[]> {
   const deGruposPendientes = and(inArray(trees.groupId, gruposPendientes(plantacionId)), sqlIsLocalUri(trees.fotoUrl));
   const sinSubir = and(inArray(trees.groupId, gruposDeLaPlantacion(plantacionId)), fotoSinSubir);
   const filas = await db.select({ fotoUrl: trees.fotoUrl }).from(trees)
     .where(or(deGruposPendientes, sinSubir));
-  return filas.map((f) => f.fotoUrl).filter(isLocalUri);
+  return [...filas.map((f) => f.fotoUrl).filter(isLocalUri), ...await archivosDeConflictosDePlantacion(plantacionId)];
 }
 
 type FilaDePlantacion = typeof plantations.$inferSelect;
@@ -70,6 +71,8 @@ async function descartarFilasDeCampo(tx: typeof db, plantacionId: string): Promi
   await tx.delete(parcelas).where(and(parcelaPendiente(plantacionId), notInArray(parcelas.id, parcelasConGrupos())));
   await tx.update(parcelas).set({ pendingSync: false, altaPendienteDe: null }).where(parcelaPendiente(plantacionId));
   await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
+  // Un grupo con conflictos está pendiente: se fue con los demás.
+  await quitarConflictosDePlantacion(tx, plantacionId);
 }
 
 async function descartarDePlantacionExistente(fila: FilaDePlantacion): Promise<void> {

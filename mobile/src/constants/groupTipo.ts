@@ -12,6 +12,9 @@ export type GroupTipo = (typeof GROUP_TIPO)[keyof typeof GROUP_TIPO];
 
 export const GROUP_TIPO_DEFAULT: GroupTipo = GROUP_TIPO.LINEA;
 
+export const esGroupTipo = (valor: unknown): valor is GroupTipo =>
+  (Object.values(GROUP_TIPO) as unknown[]).includes(valor);
+
 export const GROUP_TIPO_LABELS: Record<GroupTipo, string> = {
   [GROUP_TIPO.LINEA]: 'Línea',
   [GROUP_TIPO.BOSQUETE]: 'Bosquete',

@@ -10,6 +10,16 @@ let mockUpdateWhere: jest.Mock;
 // db.select() chain is flexible: any .where() resolves to mockSelectResults,
 // which tests reassign per case.
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/database/client', () => {
   return {
     get db() {

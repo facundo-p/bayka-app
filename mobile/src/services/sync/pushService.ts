@@ -2,13 +2,9 @@ import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { trees, parcelas as parcelasTable } from '../../database/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { isLocalUri, isRemoteUri } from '../../utils/photoUri';
+import { isRemoteUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
-import {
-  markGroupSynced,
-  getSyncableGroups,
-  Group,
-} from '../../repositories/GroupRepository';
+import { getSyncableGroups, Group } from '../../repositories/GroupRepository';
 import { subidorActual } from '../../repositories/subidor';
 import {
   getSyncableParcelas,
@@ -16,14 +12,14 @@ import {
   puedeEditarParcelas,
   Parcela,
 } from '../../repositories/ParcelaRepository';
-import { markPhotoSynced } from '../../repositories/TreeRepository';
-import { asentarEspeciesSubidas } from './especiesConservadas';
+import { asentarGrupo } from './asentarGrupo';
+import { basesDelArbol, fotoCambiadaAca, type ArbolDeGrupo } from './basesDeSync';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
   PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
 } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
-import { uploadPhotoToStorage } from './storageUpload';
+import { pathDeFotoEnStorage, uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
 import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
 import { ENTIDADES_DE_FILA, FOTOS_QUITADAS, type EntidadBorrada } from '../../constants/entidadBorrada';
@@ -254,23 +250,6 @@ export function motivosDeRechazo(rechazos: unknown): string {
 
 // ─── Upload a single Group ─────────────────────────────────────────────────
 
-type ArbolDeGrupo = {
-  id: string;
-  groupId: string;
-  especieId: string | null;
-  especieBaseId: string | null;
-  posicion: number;
-  subId: string;
-  fotoUrl: string | null;
-  fotoSynced: boolean;
-  usuarioRegistro: string;
-  createdAt: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  gpsAccuracy?: number | null;
-  gpsCapturedAt?: string | null;
-};
-
 /** Sube a Storage las fotos locales pendientes y devuelve treeId → path. No las marca: eso espera al RPC. */
 async function subirFotosDelGrupo(
   sg: Group,
@@ -279,7 +258,7 @@ async function subirFotosDelGrupo(
 ): Promise<Map<string, string>> {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
-  const pendientes = sgTrees.filter((t) => isLocalUri(t.fotoUrl) && !t.fotoSynced);
+  const pendientes = sgTrees.filter(fotoCambiadaAca);
   // Sin esto el modal queda clavado en "grupo i de n" mientras se suben K fotos: es
   // el tramo más largo del sync de una plantación con fotos.
   const inicio = Date.now();
@@ -290,7 +269,7 @@ async function subirFotosDelGrupo(
   let bytesSubidos = 0;
   await conLimiteDeConcurrencia(pendientes, FOTOS_EN_PARALELO, async (t) => {
     abortarSiCancelado();
-    const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
+    const storagePath = pathDeFotoEnStorage({ treeId: t.id, plantacionId: sg.plantacionId, parcelaId: sg.parcelaId }, t.fotoUrl!);
     const { error, bytes } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
     if (!error) {
       photoMap.set(t.id, storagePath);
@@ -307,6 +286,7 @@ async function subirFotosDelGrupo(
 // server-side; los REST calls directos ya usan groups/group_id.
 // `parcela_codigo`: el código con el que se armaron los SubID. Si ya no es el de la
 // parcela en el server, el server les cambia el prefijo por el vigente (#626).
+// `base`: los datos del grupo que el teléfono vio en el server (#795).
 function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
   return {
     id: sg.id,
@@ -319,13 +299,14 @@ function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
     parcela_codigo: parcelaCodigo,
+    ...(sg.baseDelServidor ? { base: sg.baseDelServidor } : {}),
   };
 }
 
 // sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
 // (RPC generate_tree_ids, #232) y llegan por el pull.
-// `species_base_id`: la especie que este dispositivo vio en el server. Si el server
-// ya tiene otra, conserva la suya (#679).
+// `species_base_id`, `gps_base` y `foto_base`: lo que este dispositivo vio en el
+// server. Si el server ya tiene otra cosa, conserva la suya (#679, #795).
 function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {
   return sgTrees.map((t) => ({
     id: t.id,
@@ -341,15 +322,17 @@ function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>
     longitude: t.longitude ?? null,
     gps_accuracy: t.gpsAccuracy ?? null,
     gps_captured_at: t.gpsCapturedAt ?? null,
+    ...basesDelArbol(t),
   }));
 }
 
 /**
  * Sube fotos a Storage antes del RPC para que foto_url lleve el path de Storage (nunca file://).
+ * Devuelve la respuesta del RPC y los paths subidos.
  *
- * `fotoSynced` se marca recién con el RPC confirmado (#489): si se marcara antes y el
- * RPC fallara, el reintento saltearía la foto y mandaría foto_url null. Resubirla es
- * seguro porque el path es determinístico y la subida usa upsert.
+ * `fotoSynced` se marca recién al asentar el RPC confirmado (#489): si se marcara antes
+ * y el RPC fallara, el reintento saltearía la foto y mandaría foto_url null. Resubirla
+ * es seguro porque el path es determinístico y la subida usa upsert.
  */
 export async function uploadGroup(
   sg: Group,
@@ -357,15 +340,12 @@ export async function uploadGroup(
   parcelaCodigo: string,
   onPhotoProgress?: (progress: PhotoSyncProgress) => void,
 ) {
-  const photoMap = await subirFotosDelGrupo(sg, sgTrees, onPhotoProgress);
-  const respuesta = await supabase.rpc('sync_subgroup', {
+  const fotosSubidas = await subirFotosDelGrupo(sg, sgTrees, onPhotoProgress);
+  const { data, error } = await supabase.rpc('sync_subgroup', {
     p_subgroup: payloadDeGrupo(sg, parcelaCodigo),
-    p_trees: payloadDeArboles(sgTrees, photoMap),
+    p_trees: payloadDeArboles(sgTrees, fotosSubidas),
   });
-  if (!respuesta.error && respuesta.data?.success === true) {
-    for (const treeId of photoMap.keys()) await markPhotoSynced(treeId);
-  }
-  return respuesta;
+  return { data, error, fotosSubidas };
 }
 
 // ─── RPC result classification (groups) ──────────────────────────────────────
@@ -419,20 +399,18 @@ async function codigoDeParcelaLista(parcelaId: string): Promise<string | null> {
 }
 
 /**
- * El server aceptó el grupo: asienta las especies y después baja la marca. Un
- * error acá no deshace la subida ni es un error del grupo: queda pendiente, y la
- * próxima sync lo vuelve a subir y asentar.
+ * El server aceptó el grupo: asienta lo subido y lo que conservó, y baja la marca
+ * si no quedaron conflictos. Un error acá no deshace la subida ni es un error del
+ * grupo: queda pendiente, y la próxima sync lo vuelve a subir y asentar.
  */
 async function asentarGrupoSubido(
   sg: Group,
-  sgTrees: ArbolDeGrupo[],
-  data: unknown,
+  subida: { enviados: ArbolDeGrupo[]; fotosSubidas: Map<string, string>; data: unknown },
   result: Extract<SyncGroupResult, { success: true }>,
 ): Promise<void> {
   try {
-    const avisos = await asentarEspeciesSubidas(sgTrees, data);
-    if (avisos > 0) result.especiesDelServidor = avisos;
-    await markGroupSynced(sg.id);
+    const conflictos = await asentarGrupo(sg, subida.enviados, subida.fotosSubidas, subida.data);
+    if (conflictos > 0) result.conflictos = conflictos;
   } catch (e) {
     relanzarSiEsCancelacion(e);
     syncLog.error(`Error al asentar "${sg.nombre}" (${sg.id}) después del push:`, e);
@@ -468,9 +446,9 @@ export async function uploadSyncableGroups(
 
     const sgTrees = await db.select().from(trees).where(eq(trees.groupId, sg.id));
     try {
-      const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
+      const { data, error, fotosSubidas } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
-      if (result.success) await asentarGrupoSubido(sg, sgTrees, data, result);
+      if (result.success) await asentarGrupoSubido(sg, { enviados: sgTrees, fotosSubidas, data }, result);
       await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {

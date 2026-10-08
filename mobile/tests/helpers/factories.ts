@@ -118,6 +118,14 @@ export type NewTree = {
   globalId: number | null;
   usuarioRegistro: string;
   createdAt: string;
+  fotoBase?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  gpsAccuracy?: number | null;
+  gpsCapturedAt?: string | null;
+  latitudeBase?: number | null;
+  longitudeBase?: number | null;
+  gpsCapturedAtBase?: string | null;
 };
 
 export function createTestTree(overrides?: Partial<NewTree>): NewTree {

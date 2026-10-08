@@ -8,6 +8,7 @@ import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
 import type { MotivoVarado } from '../constants/motivoVarado';
+import type { CampoDeGrupo, CampoEnConflicto } from '../constants/conflictoDeSync';
 import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
 export const species = sqliteTable('species', {
@@ -117,6 +118,9 @@ export const groups = sqliteTable('groups', {
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
+  // Nombre, código, tipo y estado que el servidor tenía la última vez que se vio el
+  // grupo: la base del push (#795). Null = no se sabe, y el push no la manda.
+  baseDelServidor: text('base_del_servidor', { mode: 'json' }).$type<Record<CampoDeGrupo, string>>(),
 }, (t) => ({
   uniqueCode: uniqueIndex('groups_parcela_code_unique').on(t.parcelaId, t.codigo),
   uniqueName: uniqueIndex('groups_parcela_name_unique').on(t.parcelaId, t.nombre),
@@ -145,6 +149,12 @@ export const trees = sqliteTable('trees', {
   longitude: real('longitude'),
   gpsAccuracy: real('gps_accuracy'),
   gpsCapturedAt: text('gps_captured_at'),
+  // Foto y punto GPS que el servidor tenía la última vez que se vio el árbol: la
+  // base del push (#795). `fotoBase` es el path en Storage, null si no tenía foto.
+  fotoBase: text('foto_base'),
+  latitudeBase: real('latitude_base'),
+  longitudeBase: real('longitude_base'),
+  gpsCapturedAtBase: text('gps_captured_at_base'),
 }, (t) => ({
   // La tabla más grande, y todo la consulta por grupo: el pull, las pantallas y
   // la bajada de fotos. SQLite no indexa las FK solo (#449).
@@ -225,6 +235,27 @@ export const borradosPendientes = sqliteTable('borrados_pendientes', {
   borradoEn: text('borrado_en').notNull(),
 }, (t) => ({
   porPlantacion: index('borrados_pendientes_plantacion_idx').on(t.plantacionId),
+}));
+
+/**
+ * Datos que cambiaron en el teléfono y en el servidor desde la última sync (#795).
+ * El árbol o el grupo quedan con el valor del servidor; acá queda el del teléfono
+ * hasta que la persona elige. Una fila por árbol o grupo y campo.
+ */
+export const conflictosDeSync = sqliteTable('conflictos_de_sync', {
+  /** El id del árbol o, en los campos de grupo, del grupo. */
+  entidadId: text('entidad_id').notNull(),
+  campo: text('campo').$type<CampoEnConflicto>().notNull(),
+  grupoId: text('grupo_id').notNull(),
+  plantacionId: text('plantacion_id').notNull(),
+  /** El valor del teléfono. En la foto, el uri del archivo local, que se conserva hasta resolver. */
+  mio: text('mio', { mode: 'json' }).$type<unknown>(),
+  /** El valor del servidor cuando se detectó; el vigente es el del árbol o el grupo. */
+  servidor: text('servidor', { mode: 'json' }).$type<unknown>(),
+  detectadoEn: text('detectado_en').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('conflictos_de_sync_pk').on(t.entidadId, t.campo),
+  porGrupo: index('conflictos_de_sync_grupo_idx').on(t.grupoId),
 }));
 
 export const plantationUsers = sqliteTable('plantation_users', {

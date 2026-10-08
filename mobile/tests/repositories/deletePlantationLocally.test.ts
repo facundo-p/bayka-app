@@ -1,5 +1,15 @@
 // Cascade delete of a plantation and all related data
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
@@ -42,6 +52,7 @@ import { enTransaccion } from '../../src/database/transaccion';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { getLocalPhotoUrisForPlantation } from '../../src/repositories/TreeRepository';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { archivosDeConflictosDePlantacion } from '../../src/repositories/ConflictosDeSyncRepository';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockEnTransaccion = enTransaccion as jest.Mock;
@@ -68,6 +79,7 @@ describe('deletePlantationLocally', () => {
 
     mockEnTransaccion.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mockDb));
     mockFotosLocales.mockResolvedValue(FOTOS);
+    (archivosDeConflictosDePlantacion as jest.Mock).mockResolvedValue([]);
   });
 
   // Sin esto cada plantación eliminada deja sus fotos ocupando espacio para siempre (#484).
