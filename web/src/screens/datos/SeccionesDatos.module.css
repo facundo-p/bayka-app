@@ -45,6 +45,22 @@
   width: var(--ancho-filtro-sm);
 }
 
+/* En el teléfono los filtros viven en la hoja, que los apila a ancho completo.
+   La fila no arma caja propia: sus controles pasan a ser ítems de la hoja. */
+@media (max-width: 600px) {
+  .filtrosCompactos {
+    display: contents;
+  }
+
+  .filtroParcela,
+  .filtroGrupo,
+  .filtroEspecie,
+  .filtroGps,
+  .filtroFoto {
+    width: 100%;
+  }
+}
+
 /* Filtro sin sentido todavía (Grupo sin parcela elegida): se ve apagado, no
    invisible, así queda claro que aparece al elegir parcela. */
 .filtrosCompactos select:disabled {
