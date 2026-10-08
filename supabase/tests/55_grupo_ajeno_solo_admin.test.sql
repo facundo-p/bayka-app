@@ -2,9 +2,10 @@
 -- (072, #768): sync_subgroup recorre la tabla `grupoAjeno` de
 -- contracts/permisos-edicion.json; las policies de trees y Storage y
 -- quitar_fotos_arboles, con un técnico ajeno, el creador y los dos admins.
+-- sincronizar_borrados todavía no aplica la regla (#796).
 begin;
 select plan(
-  27 + jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'grupoAjeno' -> 'casos')
+  29 + jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'grupoAjeno' -> 'casos')
 );
 
 insert into organizations (id, nombre) values
@@ -28,7 +29,8 @@ insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b5500000-0000-0000-0000-000000000010', 'b5500000-0000-0000-0000-0000000000a2', 'tecnico');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
-  ('b5500000-0000-0000-0000-000000000011', 'b5500000-0000-0000-0000-000000000010', 'Norte', 'P1');
+  ('b5500000-0000-0000-0000-000000000011', 'b5500000-0000-0000-0000-000000000010', 'Norte', 'P1'),
+  ('b5500000-0000-0000-0000-000000000018', 'b5500000-0000-0000-0000-000000000010', 'Sur', 'P2');
 
 -- Grupo base de `to`, con un árbol con foto.
 insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador) values
@@ -81,6 +83,7 @@ select is((select count(distinct (rol, creador))::int from casos_55),
 select ok((select bool_or(permitido) and not bool_and(permitido) from casos_55),
   'grupoAjeno: trae casos permitidos y rechazados');
 
+-- Quien sube se declara creador: un aceptado sobre un grupo ajeno no se lo apropia.
 -- Un rechazo cuenta solo si es el del creador, no otro motivo.
 create function pg_temp.sube(c casos_55) returns text language plpgsql as $$
 declare
@@ -92,7 +95,7 @@ begin
       'id', c.grupo, 'plantation_id', 'b5500000-0000-0000-0000-000000000010',
       'parcela_id', 'b5500000-0000-0000-0000-000000000011',
       'nombre', c.codigo || ' editado', 'codigo', c.codigo, 'tipo', 'linea', 'estado', 'finalizada',
-      'usuario_creador', c.creador_id, 'created_at', now(), 'parcela_codigo', 'P1'),
+      'usuario_creador', c.usuario, 'created_at', now(), 'parcela_codigo', 'P1'),
     '[]'::jsonb);
   reset role;
   return case
@@ -116,6 +119,26 @@ select is(
     where c.permitido and g.nombre = c.codigo || ' editado' and g.estado = 'finalizada' and g.usuario_creador = c.creador_id),
   (select count(*)::int from casos_55 where permitido),
   'sync_subgroup aceptado aplica el grupo y no cambia su creador');
+
+create function pg_temp.error_de_sync(p_usuario text, p_grupo jsonb) returns text language plpgsql as $$
+declare
+  v_resultado jsonb;
+begin
+  perform pg_temp.como(p_usuario);
+  v_resultado := sync_subgroup(p_grupo, '[]'::jsonb);
+  reset role;
+  return v_resultado ->> 'error';
+end;
+$$;
+
+-- El grupo base existe en P1: mandarlo en P2 es una referencia ajena, aunque además sea de otro.
+select is(
+  pg_temp.error_de_sync('b5500000-0000-0000-0000-0000000000a1', jsonb_build_object(
+    'id', 'b5500000-0000-0000-0000-000000000012', 'plantation_id', 'b5500000-0000-0000-0000-000000000010',
+    'parcela_id', 'b5500000-0000-0000-0000-000000000018',
+    'nombre', 'Base', 'codigo', 'LB', 'tipo', 'linea', 'estado', 'activa',
+    'usuario_creador', 'b5500000-0000-0000-0000-0000000000a1', 'created_at', now(), 'parcela_codigo', 'P2')),
+  'REFERENCIA_AJENA', 'sync_subgroup: REFERENCIA_AJENA va antes que el chequeo del creador');
 
 -- ── UPDATE de trees ──────────────────────────────────────────────────────────
 
@@ -167,6 +190,14 @@ select lives_ok(
      values ('b5500000-0000-0000-0000-000000000017', 'b5500000-0000-0000-0000-000000000014', 2, 'P1LPNN2',
              'b5500000-0000-0000-0000-0000000000a1') $$,
   'técnico: agrega un árbol a su grupo');
+reset role;
+
+select pg_temp.como('b5500000-0000-0000-0000-0000000000a3');
+select lives_ok(
+  $$ insert into trees (id, group_id, posicion, sub_id, usuario_registro)
+     values ('b5500000-0000-0000-0000-000000000019', 'b5500000-0000-0000-0000-000000000012', 2, 'P1LBNN2',
+             'b5500000-0000-0000-0000-0000000000a3') $$,
+  'admin: agrega un árbol a un grupo ajeno');
 reset role;
 
 -- ── quitar_fotos_arboles ─────────────────────────────────────────────────────

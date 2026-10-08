@@ -338,8 +338,9 @@ En un grupo que ya existe y creó otro usuario solo escriben admin y superadmin
 archivo) lo rechazan. Un técnico escribe solo en sus grupos. En la app, el admin
 edita foto y GPS y resuelve N/N de un grupo ajeno, pero no borra árboles, no
 cambia la especie de uno identificado ni renombra, elimina o reactiva el grupo;
-un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un admin y el técnico editan el mismo
-grupo, gana la última sincronización.
+un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un
+admin y el técnico editan el mismo grupo, gana la última sincronización (#795).
+`sincronizar_borrados` todavía no aplica la regla (#796).
 
 ### Eliminada
 

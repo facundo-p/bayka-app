@@ -48,6 +48,8 @@ CREATE OR REPLACE FUNCTION "public"."arbol_de_foto"("p_name" "text") RETURNS "uu
 $$;
 
 ALTER FUNCTION "public"."arbol_de_foto"("text") OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."arbol_de_foto"("text") FROM PUBLIC, "anon";
+GRANT EXECUTE ON FUNCTION "public"."arbol_de_foto"("text") TO "authenticated", "service_role";
 
 -- Un archivo que no es de un árbol existente no pisa nada ajeno: lo frenan, si
 -- corresponde, la membresía y el estado de la plantación del path.
