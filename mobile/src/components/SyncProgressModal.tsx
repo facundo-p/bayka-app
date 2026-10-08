@@ -1,7 +1,7 @@
 import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
-import { SYNC_STATE, SYNC_ERROR, getErrorMessage, arbolesConEspecieDelServidor } from '../services/SyncService';
+import { SYNC_STATE, SYNC_ERROR, getErrorMessage, conflictosNuevos } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 import BaseModal from './BaseModal';
@@ -301,17 +301,17 @@ function ResultadoPull(p: Props) {
   );
 }
 
-/** Árboles cambiados acá y en el server: gana el server (#679). Neutro: no es un éxito ni una falla. */
-const CONTEO_ESPECIE_DEL_SERVIDOR = {
-  singular: 'árbol quedó con la especie que se le cambió desde la web u otro celular',
-  plural: 'árboles quedaron con la especie que se les cambió desde la web u otro celular',
+/** Datos cambiados acá y en el server: gana el server y el propio queda para decidir (#795). Neutro: no es un éxito ni una falla. */
+const CONTEO_CONFLICTOS = {
+  singular: 'dato también cambió desde la web u otro celular: quedó ese y el tuyo espera que elijas',
+  plural: 'datos también cambiaron desde la web u otro celular: quedaron esos y los tuyos esperan que elijas',
 } as const;
 
 function ConteosDePush({ successCount, photoResult, results }: Pick<Props, 'successCount' | 'photoResult' | 'results'>) {
   return (
     <>
       <Conteo n={successCount} singular="grupo sincronizado" plural="grupos sincronizados" />
-      <Conteo n={arbolesConEspecieDelServidor(results)} {...CONTEO_ESPECIE_DEL_SERVIDOR} aviso />
+      <Conteo n={conflictosNuevos(results)} {...CONTEO_CONFLICTOS} aviso />
       <Conteo n={photoResult?.uploaded} singular="foto subida correctamente" plural="fotos subidas correctamente" />
       <Conteo n={photoResult?.uploadFailed} singular="foto no pudo subirse." plural="fotos no pudieron subirse." falla />
       <Conteo

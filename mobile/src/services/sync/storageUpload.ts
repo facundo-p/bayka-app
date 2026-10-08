@@ -1,6 +1,20 @@
 import { supabase } from '../../supabase/client';
 import { File as ExpoFile } from 'expo-file-system';
 
+type UbicacionDeFoto = { treeId: string; plantacionId: string; parcelaId: string | null };
+
+/**
+ * Path de la foto en Storage, con una versión por foto (075, #795): una subida no
+ * pisa el archivo que el servidor conserva. La versión es el nombre del archivo
+ * local, así que reintentar la misma foto sube al mismo path.
+ */
+export function pathDeFotoEnStorage({ treeId, plantacionId, parcelaId }: UbicacionDeFoto, uriLocal: string): string {
+  const nombre = uriLocal.split('/').pop() ?? '';
+  const version = nombre.replace(/\.[^.]*$/, '').replace(/[^0-9A-Za-z]/g, '');
+  const archivo = version ? `${treeId}-${version}` : treeId;
+  return `plantations/${plantacionId}/parcelas/${parcelaId}/trees/${archivo}.jpg`;
+}
+
 /**
  * Uploads a local photo file to the `tree-photos` Storage bucket. Shared by
  * pushService (group sync) and photoService (standalone photo sync) — both

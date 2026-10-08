@@ -20,6 +20,8 @@ import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { borrarFotosLocales } from '../services/PhotoService';
 import { gruposQueSube, type Subidor } from './subidor';
+import type { DatosDeGrupo } from '../constants/conflictoDeSync';
+import { archivosDeConflictosDeGrupo, quitarConflictosDeGrupo } from './ConflictosDeSyncRepository';
 
 export type GroupEstado = EstadoGrupo;
 export type { GroupTipo };
@@ -36,6 +38,8 @@ export interface Group {
   usuarioCreador: string;
   createdAt: string;
   pendingSync: boolean;
+  /** Lo que el servidor tenía la última vez que se vio el grupo; null si no se sabe (#795). */
+  baseDelServidor: DatosDeGrupo | null;
 }
 
 /** Codigo de parcela del grupo (primer segmento del SubID); toda parcela lo tiene — sin código, lanza en vez de degradar a '' (#59). */
@@ -238,7 +242,7 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
 
   const treeCount = treeResult?.count ?? 0;
   const plantacionId = await plantacionDelGrupo(db, grupoId);
-  const fotos = await fotosLocalesDelGrupo(grupoId);
+  const fotos = [...await fotosLocalesDelGrupo(grupoId), ...await archivosDeConflictosDeGrupo(grupoId)];
 
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.groupId, grupoId));
@@ -248,6 +252,7 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
         id: grupoId, tipo: ENTIDAD_BORRADA.grupo, grupoId: null, plantacionId,
       });
     }
+    await quitarConflictosDeGrupo(tx, grupoId);
   });
   // Recién después del commit: con rollback las filas siguen apuntando a los archivos.
   borrarFotosLocales(fotos);

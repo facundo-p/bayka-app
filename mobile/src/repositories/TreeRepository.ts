@@ -1,7 +1,7 @@
 import { db } from '../database/client';
-import { enTransaccion, enTransaccionPorLotes } from '../database/transaccion';
+import { enTransaccion } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
-import { eq, max, and, isNotNull, sql } from 'drizzle-orm';
+import { eq, max, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -16,6 +16,7 @@ import { codigoParaSubId, especieCodigoParaSubId, esEspecieRecuperada } from '..
 import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
 import { puedeEditarArbolesDe, SIN_PERMISO_SOBRE_ARBOLES } from './edicionDeArboles';
+import { archivosDeConflictosDeArbol, quitarConflictosDeArbol } from './ConflictosDeSyncRepository';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -79,13 +80,15 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
     throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
   }
 
+  const archivosDeConflictos = await archivosDeConflictosDeArbol(maxResult.id);
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.id, maxResult.id));
     await registrarBorrado(tx, {
       id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
     });
+    await quitarConflictosDeArbol(tx, maxResult.id);
   });
-  borrarFotoLocal(maxResult.fotoUrl);
+  borrarFotosDelArbol(maxResult.fotoUrl, archivosDeConflictos);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
@@ -120,7 +123,7 @@ export async function reverseTreeOrder(
  * El árbol listo para pasar a `especieId`, con su SubID nuevo; null si falta el
  * árbol o la especie, o si es una recuperada: sin su código real no hay SubID.
  */
-async function destinoDelCambio(treeId: string, especieId: string) {
+export async function destinoDelCambio(treeId: string, especieId: string) {
   const [sp] = await db.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
     .where(eq(speciesTable.id, especieId));
@@ -153,48 +156,6 @@ export async function cambiarEspecie(treeId: string, especieId: string): Promise
   return { subId: destino.subId };
 }
 
-/** La especie con la que un árbol viajó en el push, y su base de entonces. */
-export type EspecieSubida = { id: string; especieId: string | null; especieBaseId: string | null };
-
-/** El árbol viajó con una especie cambiada en este dispositivo. */
-export const cambiadaAca = (subida: EspecieSubida) => subida.especieId !== subida.especieBaseId;
-
-/**
- * Después de un push confirmado, la especie que se subió pasa a ser la base
- * (#679): la del payload, no la de la fila, que pudo cambiar durante el push.
- */
-export async function confirmarEspeciesSubidas(subidas: EspecieSubida[]): Promise<void> {
-  await enTransaccionPorLotes(subidas.filter(cambiadaAca), async (tx, lote) => {
-    for (const subida of lote) {
-      await tx.update(trees).set({ especieBaseId: subida.especieId }).where(eq(trees.id, subida.id));
-    }
-  });
-}
-
-/** Árbol que el server dejó con otra especie que la que subió este dispositivo. */
-export type EspecieDelServidor = { id: string; especieId: string; especieSubida: string | null };
-
-/**
- * Árboles en los que el server se quedó con su especie (#679): gana la del server.
- * Pasa a ser la especie y la base, con el SubID armado con los códigos locales.
- * Queda como está un árbol que cambió acá durante el push, o cuya especie falta en
- * el catálogo local. Devuelve los ids que la adoptaron.
- */
-export async function adoptarEspeciesDelServidor(arboles: EspecieDelServidor[]): Promise<string[]> {
-  const adoptados: string[] = [];
-  for (const { id, especieId, especieSubida } of arboles) {
-    const destino = await destinoDelCambio(id, especieId);
-    if (!destino) continue;
-    const escritos = await db.update(trees)
-      .set({ especieId, especieBaseId: especieId, subId: destino.subId })
-      .where(and(eq(trees.id, id), sql`${trees.especieId} IS ${especieSubida}`))
-      .returning({ id: trees.id });
-    if (escritos.length > 0) adoptados.push(id);
-  }
-  if (adoptados.length > 0) notifyDataChanged();
-  return adoptados;
-}
-
 export interface TreeGpsPoint {
   latitude: number;
   longitude: number;
@@ -218,6 +179,12 @@ export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promis
  */
 function borrarFotoLocal(fotoUrl: string | null | undefined): void {
   if (fotoUrl) borrarFotosLocales([fotoUrl]);
+}
+
+/** La foto de un árbol borrado y las de sus conflictos (#795). */
+function borrarFotosDelArbol(fotoUrl: string | null | undefined, deConflictos: string[]): void {
+  borrarFotoLocal(fotoUrl);
+  if (deConflictos.length > 0) borrarFotosLocales(deConflictos);
 }
 
 /**
@@ -252,21 +219,26 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   notifyDataChanged();
 }
 
+export interface ArbolConFotoPendiente {
+  id: string;
+  fotoUrl: string;
+  /** El path que el teléfono vio en el server (#795). */
+  fotoBase: string | null;
+  grupoId: string;
+  plantacionId: string;
+  parcelaId: string | null;
+}
+
 /**
  * Árboles con fotos locales sin subir a Storage en la plantación, de los grupos que sube
  * `subidor` (sincronizados o no); filtra a file:// (rutas remotas del pull no se re-suben).
  */
-export async function getTreesWithPendingPhotos(plantacionId: string, subidor: Subidor): Promise<{
-  id: string;
-  fotoUrl: string;
-  grupoId: string;
-  plantacionId: string;
-  parcelaId: string | null;
-}[]> {
+export async function getTreesWithPendingPhotos(plantacionId: string, subidor: Subidor): Promise<ArbolConFotoPendiente[]> {
   const rows = await db
     .select({
       id: trees.id,
       fotoUrl: trees.fotoUrl,
+      fotoBase: trees.fotoBase,
       grupoId: trees.groupId,
       plantacionId: groups.plantacionId,
       parcelaId: groups.parcelaId,
@@ -282,13 +254,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string, subidor: S
         gruposQueSube(subidor),
       )
     );
-  return rows.filter(r => isLocalUri(r.fotoUrl)) as {
-    id: string;
-    fotoUrl: string;
-    grupoId: string;
-    plantacionId: string;
-    parcelaId: string | null;
-  }[];
+  return rows.filter(r => isLocalUri(r.fotoUrl)) as ArbolConFotoPendiente[];
 }
 
 /** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */
@@ -299,13 +265,6 @@ export async function getLocalPhotoUrisForPlantation(plantacionId: string): Prom
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(and(eq(groups.plantacionId, plantacionId), sqlIsLocalUri(trees.fotoUrl)));
   return rows.map((r) => r.fotoUrl).filter(isLocalUri);
-}
-
-/** Marks a tree's photo as synced (uploaded to Supabase Storage). */
-export async function markPhotoSynced(treeId: string): Promise<void> {
-  await db.update(trees)
-    .set({ fotoSynced: true })
-    .where(eq(trees.id, treeId));
 }
 
 /**
@@ -328,6 +287,7 @@ export async function deleteTreeAndRecalculate(
   }
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
   const [arbol] = await db.select({ fotoUrl: trees.fotoUrl }).from(trees).where(eq(trees.id, treeId));
+  const archivosDeConflictos = await archivosDeConflictosDeArbol(treeId);
 
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.id, treeId));
@@ -346,8 +306,9 @@ export async function deleteTreeAndRecalculate(
         .set({ posicion: newPos, subId: newSubId })
         .where(eq(trees.id, tree.id));
     }
+    await quitarConflictosDeArbol(tx, treeId);
   });
-  borrarFotoLocal(arbol?.fotoUrl);
+  borrarFotosDelArbol(arbol?.fotoUrl, archivosDeConflictos);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();

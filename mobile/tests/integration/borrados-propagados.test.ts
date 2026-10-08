@@ -533,6 +533,8 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
     const arbol = await leerArbol('t2');
     expect(arbol.fotoUrl).toBeNull();
     expect(arbol.fotoSynced).toBe(false);
+    // El server la sigue teniendo: con base null, el push la devolvería como conservada.
+    expect(arbol.fotoBase).toBe(FOTO_EN_STORAGE);
   });
 
   it('el push la quita del server y limpia el registro', async () => {

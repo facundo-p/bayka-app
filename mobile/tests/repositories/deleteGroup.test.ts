@@ -1,5 +1,15 @@
 // Borrado de un grupo: filas, registro del borrado y archivos de fotos (#490)
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/database/client', () => ({
   db: {
     select: jest.fn(),
@@ -30,6 +40,7 @@ import { db } from '../../src/database/client';
 import { enTransaccion } from '../../src/database/transaccion';
 import { plantacionDelGrupo } from '../../src/repositories/BorradosRepository';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { archivosDeConflictosDeGrupo } from '../../src/repositories/ConflictosDeSyncRepository';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockEnTransaccion = enTransaccion as jest.Mock;
@@ -50,6 +61,7 @@ describe('deleteGroup', () => {
     mockearSelects([[{ count: 2 }], FOTOS.map((fotoUrl) => ({ fotoUrl }))]);
     (mockDb.delete as jest.Mock).mockReturnValue({ where: jest.fn().mockResolvedValue(undefined) });
     (plantacionDelGrupo as jest.Mock).mockResolvedValue('plant-1');
+    (archivosDeConflictosDeGrupo as jest.Mock).mockResolvedValue([]);
     mockEnTransaccion.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mockDb));
   });
 

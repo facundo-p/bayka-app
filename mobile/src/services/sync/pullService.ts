@@ -33,6 +33,7 @@ import { getAltasPendientes } from '../../repositories/TecnicosDePlantacionRepos
 import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
 import { NO_REINTENTA, anotarPullConAcceso, anotarRechazo, conRegistroDeVarados } from './pendientesVarados';
 import { adoptarRenombres, gruposLocales, planDeRenombres, type GrupoLocal, type RemoteGroup } from './renombresDeGrupos';
+import { datosDeGrupo } from './basesDeSync';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -325,6 +326,7 @@ async function escribirLoteDeGrupos(tx: Tx, lote: RemoteGroup[], locales: Map<st
     usuarioCreador: sg.usuario_creador,
     createdAt: sg.created_at,
     pendingSync: false,
+    baseDelServidor: datosDeGrupo(sg),
   }))).onConflictDoUpdate({
     target: groups.id,
     // Código y nombre de los existentes los escribe `adoptarRenombres`, antes de los lotes.
@@ -332,6 +334,7 @@ async function escribirLoteDeGrupos(tx: Tx, lote: RemoteGroup[], locales: Map<st
       parcelaId: sql`excluded.parcela_id`,
       estado: sql`excluded.estado`,
       tipo: sql`excluded.tipo`,
+      baseDelServidor: sql`excluded.base_del_servidor`,
     },
   });
 }
@@ -527,9 +530,13 @@ async function pullPlantationSpecies(
 
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
+/** La foto que el servidor todavía tiene en un árbol que se baja sin ella: sigue siendo la base. */
+const FOTO_EN_SERVIDOR = 'foto_url_en_servidor';
+
 /** Árbol del server en columnas locales. Las filas de un lote comparten forma: el `set` del upsert es uno solo para todas y se resuelve con `excluded`. */
 function filaDeArbol(t: any) {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
+  const fotoEnServidor = FOTO_EN_SERVIDOR in t ? t[FOTO_EN_SERVIDOR] : t.foto_url;
   return {
     id: t.id,
     // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
@@ -540,6 +547,7 @@ function filaDeArbol(t: any) {
     subId: t.sub_id,
     fotoUrl: hasFotoOnServer ? t.foto_url : null,
     fotoSynced: hasFotoOnServer,
+    fotoBase: isRemoteUri(fotoEnServidor) ? fotoEnServidor : null,
     plantacionId: t.plantacion_id ?? null,
     globalId: t.global_id ?? null,
     usuarioRegistro: t.usuario_registro,
@@ -548,26 +556,33 @@ function filaDeArbol(t: any) {
     longitude: t.longitude ?? null,
     gpsAccuracy: t.gps_accuracy ?? null,
     gpsCapturedAt: t.gps_captured_at ?? null,
+    latitudeBase: t.latitude ?? null,
+    longitudeBase: t.longitude ?? null,
+    gpsCapturedAtBase: t.gps_captured_at ?? null,
   };
 }
 
 /** Lo que el pull necesita saber de cada árbol local antes de escribir. */
-export type ArbolLocal = { fotoUrl: string | null; fotoSynced: boolean };
+export type ArbolLocal = { fotoUrl: string | null; fotoSynced: boolean; fotoBase: string | null };
+
+/** La copia local sigue siendo la foto del server: la misma de la base, o sin base para comparar. */
+const copiaVigente = (local: ArbolLocal, fotoDelServer: string | null): boolean =>
+  isRemoteUri(fotoDelServer) && (local.fotoBase == null || local.fotoBase === fotoDelServer);
 
 /**
- * Fotos locales ya subidas cuyo árbol el server manda ahora sin foto: la
- * quitaron desde otro dispositivo (#517). El upsert limpia la referencia; el
- * archivo se borra después del commit. Una foto pendiente de subir
+ * Copias locales de fotos ya subidas que el server ya no tiene: la quitaron (#517)
+ * o la reemplazaron (#795) desde otro dispositivo. El upsert cambia la referencia;
+ * el archivo se borra después del commit. Una foto pendiente de subir
  * (`fotoSynced = false`) no cuenta: es la copia que el server todavía no tiene.
  */
-export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, ArbolLocal>): string[] {
-  const quitadas: string[] = [];
+export function fotosLocalesObsoletas(remotos: any[], locales: Map<string, ArbolLocal>): string[] {
+  const obsoletas: string[] = [];
   for (const remoto of remotos) {
-    if (isRemoteUri(remoto.foto_url)) continue;
     const local = locales.get(remoto.id);
-    if (local?.fotoSynced && isLocalUri(local.fotoUrl)) quitadas.push(local.fotoUrl);
+    if (!local?.fotoSynced || !isLocalUri(local.fotoUrl)) continue;
+    if (!copiaVigente(local, remoto.foto_url)) obsoletas.push(local.fotoUrl);
   }
-  return quitadas;
+  return obsoletas;
 }
 
 /**
@@ -593,8 +608,14 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
   if (remotos.length === 0) return;
 
   // La foto local se conserva mientras esté pendiente de subir o el server siga
-  // teniendo foto; si ya se subió y el server la quitó, se limpia (#517).
-  const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
+  // teniendo esa misma; si ya se subió y el server la quitó o la cambió, se
+  // limpia (#517, #795).
+  const mismaFotoEnServer = sql`excluded.foto_synced = 1 AND (${trees.fotoBase} IS NULL OR ${trees.fotoBase} = excluded.foto_url)`;
+  const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR ${mismaFotoEnServer})`;
+  // El punto local se conserva solo si cambió acá desde la base; si no, el del server
+  // lo reemplaza. Las 4 columnas se deciden juntas, para no mezclar fixes.
+  const gpsLocal = sql`${trees.latitude} IS NOT NULL AND NOT (${trees.latitude} IS ${trees.latitudeBase}
+    AND ${trees.longitude} IS ${trees.longitudeBase} AND ${trees.gpsCapturedAt} IS ${trees.gpsCapturedAtBase})`;
 
   await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
@@ -605,14 +626,17 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
       // insert multi-fila la condición viaja en los valores, no en el `set`.
       fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`,
+      fotoBase: sql`excluded.foto_base`,
       // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
-      // Punto GPS: el local no-null gana (captura pendiente de push); se adopta el del server solo si no hay punto local. Las 4 columnas se deciden juntas por latitude, para no mezclar fixes.
-      latitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.latitude} ELSE excluded.latitude END`,
-      longitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.longitude} ELSE excluded.longitude END`,
-      gpsAccuracy: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
-      gpsCapturedAt: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsCapturedAt} ELSE excluded.gps_captured_at END`,
+      latitude: sql`CASE WHEN ${gpsLocal} THEN ${trees.latitude} ELSE excluded.latitude END`,
+      longitude: sql`CASE WHEN ${gpsLocal} THEN ${trees.longitude} ELSE excluded.longitude END`,
+      gpsAccuracy: sql`CASE WHEN ${gpsLocal} THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
+      gpsCapturedAt: sql`CASE WHEN ${gpsLocal} THEN ${trees.gpsCapturedAt} ELSE excluded.gps_captured_at END`,
+      latitudeBase: sql`excluded.latitude_base`,
+      longitudeBase: sql`excluded.longitude_base`,
+      gpsCapturedAtBase: sql`excluded.gps_captured_at_base`,
     },
   });
 }
@@ -624,7 +648,7 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
  */
 async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string, ArbolLocal>> {
   const locales = await db
-    .select({ id: trees.id, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
+    .select({ id: trees.id, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced, fotoBase: trees.fotoBase })
     .from(trees)
     .where(inArray(trees.groupId, remoteGroupIds));
   return new Map(locales.map(({ id, ...arbol }) => [id, arbol]));
@@ -660,7 +684,9 @@ function omitirDelPull(
  * (#498).
  */
 function sinFotoQuitada(fotosQuitadas: Set<string>) {
-  return (remoto: any) => (fotosQuitadas.has(remoto.id) ? { ...remoto, foto_url: null } : remoto);
+  return (remoto: any) => (fotosQuitadas.has(remoto.id)
+    ? { ...remoto, foto_url: null, [FOTO_EN_SERVIDOR]: remoto.foto_url }
+    : remoto);
 }
 
 async function pullTrees(
@@ -712,7 +738,7 @@ async function escribirArboles(
   total: number,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  const archivosQuitados = fotosQuitadasEnServer(aEscribir, locales);
+  const archivosQuitados = fotosLocalesObsoletas(aEscribir, locales);
   await enTransaccionPorLotes(aEscribir, async (tx, lote) => {
       await upsertTreesFromServerTx(tx, lote);
     },
@@ -720,7 +746,7 @@ async function escribirArboles(
   );
   // Recién con los lotes commiteados: con rollback la fila seguiría apuntando al archivo.
   if (archivosQuitados.length > 0) {
-    syncLog.info(`Pull trees: ${archivosQuitados.length} fotos quitadas en el server, se borran del dispositivo`);
+    syncLog.info(`Pull trees: ${archivosQuitados.length} fotos quitadas o cambiadas en el server, se borran del dispositivo`);
     borrarFotosLocales(archivosQuitados);
   }
 }
