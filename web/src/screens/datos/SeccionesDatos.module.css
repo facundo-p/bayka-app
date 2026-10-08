@@ -46,17 +46,14 @@
 }
 
 /* En el teléfono los filtros viven en la hoja, que los apila a ancho completo.
-   La fila no arma caja propia: sus controles pasan a ser ítems de la hoja. */
+   La fila no arma caja propia: sus controles pasan a ser ítems de la hoja, y
+   los anchos fijos de arriba, pensados para la fila, se descartan. */
 @media (max-width: 600px) {
   .filtrosCompactos {
     display: contents;
   }
 
-  .filtroParcela,
-  .filtroGrupo,
-  .filtroEspecie,
-  .filtroGps,
-  .filtroFoto {
+  .filtrosCompactos select {
     width: 100%;
   }
 }
