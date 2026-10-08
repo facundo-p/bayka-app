@@ -1,20 +1,28 @@
 import { View, Text, Pressable } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { colors, iconSizes } from '../theme';
 import { ELECCION, type Eleccion } from '../utils/conflictosDeEdicion';
 import type { OpcionDeConflicto, VistaDeConflicto } from '../utils/vistaDeConflicto';
 import FotoDeConflicto from './FotoDeConflicto';
 import { tarjetaDeConflictoStyles as styles } from './TarjetaDeConflicto.styles';
 
-type OpcionProps = { opcion: OpcionDeConflicto; elegida: boolean; deshabilitada?: boolean; onPress: () => void };
+type OpcionProps = {
+  opcion: OpcionDeConflicto;
+  elegida: boolean;
+  /** Por qué no se puede elegir: la opción queda deshabilitada. */
+  motivo?: string | null;
+  onPress: () => void;
+};
 
 function Radio({ elegida }: { elegida: boolean }) {
   return (
-    <View style={[styles.radio, elegida && styles.radioElegido]}>
+    <View testID="radio" style={[styles.radio, elegida && styles.radioElegido]}>
       {elegida && <View style={styles.radioPunto} />}
     </View>
   );
 }
 
-function ContenidoDeOpcion({ opcion, deshabilitada }: Pick<OpcionProps, 'opcion' | 'deshabilitada'>) {
+function ContenidoDeOpcion({ opcion, deshabilitada }: Pick<OpcionProps, 'opcion'> & { deshabilitada: boolean }) {
   return (
     <View style={styles.opcionTexto}>
       <Text style={[styles.origen, deshabilitada && styles.textoDeshabilitado]}>{opcion.origen}</Text>
@@ -27,9 +35,14 @@ function ContenidoDeOpcion({ opcion, deshabilitada }: Pick<OpcionProps, 'opcion'
   );
 }
 
-/** Deshabilitada: lo propio no se puede conservar, se ve tachado y sin radio activo. */
-function Opcion({ opcion, elegida, deshabilitada = false, onPress }: OpcionProps) {
+function etiquetaDe({ opcion, motivo }: Pick<OpcionProps, 'opcion' | 'motivo'>): string {
   const etiqueta = opcion.valor !== '' ? `${opcion.origen}: ${opcion.valor}` : opcion.origen;
+  return motivo ? `${etiqueta}. ${motivo}` : etiqueta;
+}
+
+/** Deshabilitada: lo propio no se puede conservar, se ve tachado y sin radio. */
+function Opcion({ opcion, elegida, motivo, onPress }: OpcionProps) {
+  const deshabilitada = Boolean(motivo);
   return (
     <Pressable
       style={[styles.opcion, elegida && styles.opcionElegida, deshabilitada && styles.opcionDeshabilitada]}
@@ -37,11 +50,32 @@ function Opcion({ opcion, elegida, deshabilitada = false, onPress }: OpcionProps
       disabled={deshabilitada}
       accessibilityRole="radio"
       accessibilityState={{ checked: elegida, disabled: deshabilitada }}
-      accessibilityLabel={etiqueta}
+      accessibilityLabel={etiquetaDe({ opcion, motivo })}
     >
-      <Radio elegida={elegida} />
+      {!deshabilitada && <Radio elegida={elegida} />}
       <ContenidoDeOpcion opcion={opcion} deshabilitada={deshabilitada} />
     </Pressable>
+  );
+}
+
+/** Lo que se pierde al guardar (una foto propia): con ícono, como aviso. */
+function Advertencia({ texto }: { texto: string }) {
+  return (
+    <View style={styles.advertencia} testID="advertencia-de-conflicto">
+      <Ionicons name="warning-outline" size={iconSizes.action} color={colors.conflictoText} />
+      <Text style={styles.advertenciaTexto}>{texto}</Text>
+    </View>
+  );
+}
+
+function Notas({ vista }: { vista: VistaDeConflicto }) {
+  return (
+    <>
+      {vista.nota ? <Text style={styles.nota}>{vista.nota}</Text> : null}
+      {vista.advertencia ? <Advertencia texto={vista.advertencia} /> : null}
+      {vista.motivo ? <Text style={styles.motivo}>{vista.motivo}</Text> : null}
+      {vista.aviso ? <Text style={styles.motivo}>{vista.aviso}</Text> : null}
+    </>
   );
 }
 
@@ -56,7 +90,7 @@ export default function TarjetaDeConflicto({ vista, eleccion, onElegir }: Props)
       <Opcion
         opcion={vista.mio}
         elegida={!sinLoMio && eleccion === ELECCION.mio}
-        deshabilitada={sinLoMio}
+        motivo={vista.motivo}
         onPress={() => onElegir(ELECCION.mio)}
       />
       <Opcion
@@ -64,8 +98,7 @@ export default function TarjetaDeConflicto({ vista, eleccion, onElegir }: Props)
         elegida={sinLoMio || eleccion === ELECCION.web}
         onPress={() => onElegir(ELECCION.web)}
       />
-      {vista.nota ? <Text style={styles.nota}>{vista.nota}</Text> : null}
-      {vista.motivo ? <Text style={styles.motivo}>{vista.motivo}</Text> : null}
+      <Notas vista={vista} />
     </View>
   );
 }

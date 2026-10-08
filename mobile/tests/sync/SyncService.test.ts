@@ -366,7 +366,7 @@ describe('SyncService', () => {
   });
 
   describe('asentar el grupo subido', () => {
-    it('asienta el grupo cuando el RPC devuelve success: true, y cuenta sus conflictos', async () => {
+    it('asienta el grupo cuando el RPC devuelve success: true', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -383,7 +383,7 @@ describe('SyncService', () => {
       const [resultado] = await syncPlantation('plantation-1');
 
       expect(mockAsentarGrupo).toHaveBeenCalledWith(sg, [], new Map(), { success: true });
-      expect(resultado).toMatchObject({ success: true, conflictos: 2 });
+      expect(resultado).toMatchObject({ success: true });
     });
 
     // El server ya lo aceptó: queda pendiente para asentarlo en la próxima sync (#679).

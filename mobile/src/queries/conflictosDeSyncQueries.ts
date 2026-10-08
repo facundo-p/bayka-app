@@ -6,71 +6,38 @@
 import { and, count, eq, inArray } from 'drizzle-orm';
 import { db } from '../database/client';
 import { conflictosDeSync, groups, plantationSpecies, species, trees } from '../database/schema';
-import { conflictosDePlantacion, type ConflictoDeSync } from '../repositories/ConflictosDeSyncRepository';
+import { conflictosDePlantacion } from '../repositories/ConflictosDeSyncRepository';
+import type {
+  ArbolEnConflicto, ConflictoDeSync, ConflictoEnContexto, EspecieEnConflicto, GrupoEnConflicto,
+} from '../types/conflictoDeSync';
 import { CAMPO_EN_CONFLICTO, esCampoDeGrupo } from '../constants/conflictoDeSync';
-
-export interface ArbolEnConflicto {
-  id: string;
-  subId: string;
-  posicion: number;
-  especieId: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  gpsAccuracy: number | null;
-  gpsCapturedAt: string | null;
-  fotoUrl: string | null;
-}
-
-export interface GrupoEnConflicto {
-  id: string;
-  parcelaId: string;
-  codigo: string;
-  nombre: string;
-  tipo: string;
-  estado: string;
-}
-
-export interface EspecieEnConflicto {
-  nombre: string;
-  codigo: string;
-}
-
-/** Un conflicto con lo que hay hoy: `arbol` es null en los de grupo o si el árbol se borró. */
-export interface ConflictoDeSyncEnContexto {
-  conflicto: ConflictoDeSync;
-  arbol: ArbolEnConflicto | null;
-  grupo: GrupoEnConflicto | null;
-  /** En los de especie: la propia y la del servidor, si están en el catálogo. */
-  especies: { mia: EspecieEnConflicto | null; servidor: EspecieEnConflicto | null };
-}
 
 const SIN_ESPECIES = { mia: null, servidor: null } as const;
 
-async function arbolesPorId(ids: string[]): Promise<Map<string, ArbolEnConflicto>> {
+/** Las filas de `ids`, por id. Sin ids no consulta. */
+async function porId<T extends { id: string }>(
+  ids: string[],
+  consulta: (ids: string[]) => Promise<T[]>,
+): Promise<Map<string, T>> {
   if (ids.length === 0) return new Map();
-  const filas = await db.select({
-    id: trees.id, subId: trees.subId, posicion: trees.posicion, especieId: trees.especieId,
-    latitude: trees.latitude, longitude: trees.longitude, gpsAccuracy: trees.gpsAccuracy,
-    gpsCapturedAt: trees.gpsCapturedAt, fotoUrl: trees.fotoUrl,
-  }).from(trees).where(inArray(trees.id, ids));
-  return new Map(filas.map((f) => [f.id, f]));
+  return new Map((await consulta(ids)).map((f) => [f.id, f]));
 }
 
-async function gruposPorId(ids: string[]): Promise<Map<string, GrupoEnConflicto>> {
-  if (ids.length === 0) return new Map();
-  const filas = await db.select({
-    id: groups.id, parcelaId: groups.parcelaId, codigo: groups.codigo,
-    nombre: groups.nombre, tipo: groups.tipo, estado: groups.estado,
-  }).from(groups).where(inArray(groups.id, ids));
-  return new Map(filas.map((f) => [f.id, f]));
-}
+const arbolesConId = (ids: string[]): Promise<ArbolEnConflicto[]> => db.select({
+  id: trees.id, subId: trees.subId, posicion: trees.posicion, especieId: trees.especieId,
+  latitude: trees.latitude, longitude: trees.longitude, gpsAccuracy: trees.gpsAccuracy,
+  gpsCapturedAt: trees.gpsCapturedAt, fotoUrl: trees.fotoUrl,
+}).from(trees).where(inArray(trees.id, ids));
 
-async function especiesPorId(ids: string[]): Promise<Map<string, EspecieEnConflicto>> {
-  if (ids.length === 0) return new Map();
-  const filas = await db.select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
-    .from(species).where(inArray(species.id, ids));
-  return new Map(filas.map(({ id, ...especie }) => [id, especie]));
-}
+const gruposConId = (ids: string[]): Promise<GrupoEnConflicto[]> => db.select({
+  id: groups.id, parcelaId: groups.parcelaId, codigo: groups.codigo,
+  nombre: groups.nombre, tipo: groups.tipo, estado: groups.estado,
+}).from(groups).where(inArray(groups.id, ids));
+
+const especiesConId = (ids: string[]) => db.select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
+  .from(species).where(inArray(species.id, ids));
+
+type EspecieConId = EspecieEnConflicto & { id: string };
 
 const esDeEspecie = (c: ConflictoDeSync) => c.campo === CAMPO_EN_CONFLICTO.especie;
 
@@ -84,10 +51,13 @@ function enContexto(
   c: ConflictoDeSync,
   arboles: Map<string, ArbolEnConflicto>,
   grupos: Map<string, GrupoEnConflicto>,
-  especies: Map<string, EspecieEnConflicto>,
-): ConflictoDeSyncEnContexto {
+  especies: Map<string, EspecieConId>,
+): ConflictoEnContexto {
   const arbol = esCampoDeGrupo(c.campo) ? null : arboles.get(c.entidadId) ?? null;
-  const deEspecie = (id: unknown) => (typeof id === 'string' ? especies.get(id) ?? null : null);
+  const deEspecie = (id: unknown): EspecieEnConflicto | null => {
+    const especie = typeof id === 'string' ? especies.get(id) : undefined;
+    return especie ? { nombre: especie.nombre, codigo: especie.codigo } : null;
+  };
   return {
     conflicto: c,
     arbol,
@@ -97,12 +67,17 @@ function enContexto(
 }
 
 /** Los conflictos de una plantación, por grupo y entidad. */
-export async function conflictosDeSyncEnContexto(plantacionId: string): Promise<ConflictoDeSyncEnContexto[]> {
+export async function conflictosDeSyncEnContexto(plantacionId: string): Promise<ConflictoEnContexto[]> {
   const filas = await conflictosDePlantacion(plantacionId);
-  const arboles = await arbolesPorId(filas.filter((c) => !esCampoDeGrupo(c.campo)).map((c) => c.entidadId));
-  const grupos = await gruposPorId([...new Set(filas.map((c) => c.grupoId))]);
-  const especies = await especiesPorId(idsDeEspecies(filas, arboles));
+  const arboles = await porId(filas.filter((c) => !esCampoDeGrupo(c.campo)).map((c) => c.entidadId), arbolesConId);
+  const grupos = await porId([...new Set(filas.map((c) => c.grupoId))], gruposConId);
+  const especies = await porId(idsDeEspecies(filas, arboles), especiesConId);
   return filas.map((c) => enContexto(c, arboles, grupos, especies));
+}
+
+export async function arbolExiste(treeId: string): Promise<boolean> {
+  const [fila] = await db.select({ n: count() }).from(trees).where(eq(trees.id, treeId));
+  return (fila?.n ?? 0) > 0;
 }
 
 export async function especieEnPlantacion(plantacionId: string, especieId: string): Promise<boolean> {

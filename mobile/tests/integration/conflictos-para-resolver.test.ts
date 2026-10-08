@@ -25,6 +25,8 @@ jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() 
 jest.mock('../../src/services/PhotoService', () => ({ borrarFotosLocales: jest.fn() }));
 
 import { conflictosParaResolver, resolverConflictosDeSync } from '../../src/services/ConflictosParaResolverService';
+import { conservarLaMia } from '../../src/services/ConflictosDeSyncService';
+import { borrarFotosLocales } from '../../src/services/PhotoService';
 import { conflictosDeSyncPorPlantacion, conflictosDeSyncDeGrupo } from '../../src/queries/conflictosDeSyncQueries';
 
 const PLANTACION = 'p-1';
@@ -41,9 +43,10 @@ const grupo = (id: string, nombre: string, codigo: string) => ({
   usuarioCreador: TECNICO, createdAt: CREADO, pendingSync: true,
 });
 
-const conflicto = (entidadId: string, campo: string, mio: unknown) => ({
-  entidadId, campo: campo as never, grupoId: GRUPO, plantacionId: PLANTACION, mio, servidor: null,
-  detectadoEn: '2026-10-08T10:00:00',
+const DETECTADO = '2026-10-08T10:00:00';
+
+const conflicto = (entidadId: string, campo: string, mio: unknown, grupoId = GRUPO) => ({
+  entidadId, campo: campo as never, grupoId, plantacionId: PLANTACION, mio, servidor: null, detectadoEn: DETECTADO,
 });
 
 const motivos = async () =>
@@ -102,6 +105,30 @@ describe('conflictosParaResolver', () => {
     });
   });
 
+  it('código duplicado, especie recuperada, N/N, estado o tipo desconocido, foto quitada y grupo borrado', async () => {
+    await mockTestDb.insert(species).values({ id: 'sp-rec', codigo: 'recuperada:X', nombre: 'Recuperada', nombreCientifico: null, createdAt: CREADO });
+    await mockTestDb.insert(plantationSpecies).values({ id: 'ps-2', plantacionId: PLANTACION, especieId: 'sp-rec', ordenVisual: 1 });
+    await mockTestDb.insert(conflictosDeSync).values([
+      conflicto('t-1', 'especie', 'sp-rec'),
+      conflicto('t-1', 'foto', null),
+      conflicto(GRUPO, 'codigo', 'ls'),
+      conflicto(GRUPO, 'estado', 'sincronizada'),
+      conflicto(GRUPO, 'tipo', 'otro'),
+    ]);
+
+    expect(await motivos()).toEqual({
+      especie: 'conflicto_sin_valor',
+      foto: 'conflicto_sin_valor',
+      codigo: 'codigo_duplicate',
+      estado: 'conflicto_sin_valor',
+      tipo: 'conflicto_sin_valor',
+    });
+
+    await mockTestDb.delete(conflictosDeSync);
+    await mockTestDb.insert(conflictosDeSync).values([conflicto('t-1', 'especie', null), conflicto('g-borrado', 'nombre', 'X', 'g-borrado')]);
+    expect(await motivos()).toEqual({ especie: 'conflicto_sin_valor', nombre: 'conflicto_inexistente' });
+  });
+
   it('un árbol borrado o una plantación finalizada no dejan conservar lo propio', async () => {
     await mockTestDb.insert(conflictosDeSync).values([conflicto('t-borrado', 'foto', 'file:///mia.jpg')]);
     expect(await motivos()).toEqual({ foto: 'conflicto_inexistente' });
@@ -119,20 +146,110 @@ describe('conflictosParaResolver', () => {
   });
 });
 
+type Fila = ReturnType<typeof conflicto>;
+
+const finalizarPlantacion = () => mockTestDb.update(plantations).set({ estado: 'finalizada' }).where(eq(plantations.id, PLANTACION));
+const grupoAjeno = () => mockTestDb.update(groups).set({ usuarioCreador: 'otro-tecnico' }).where(eq(groups.id, GRUPO));
+const sinPreparar = async () => undefined;
+
+/** [caso, se puede conservar, conflicto, preparación] */
+const CASOS: [string, boolean, Fila, () => Promise<unknown>][] = [
+  ['GPS completo', true, conflicto('t-1', 'gps', MI_PUNTO), sinPreparar],
+  ['GPS sin momento', false, conflicto('t-1', 'gps', { ...MI_PUNTO, gpsCapturedAt: null }), sinPreparar],
+  ['especie de la plantación', true, conflicto('t-1', 'especie', PINO), sinPreparar],
+  ['especie fuera de la plantación', false, conflicto('t-1', 'especie', ROBLE), sinPreparar],
+  ['N/N', false, conflicto('t-1', 'especie', null), sinPreparar],
+  ['foto propia', true, conflicto('t-1', 'foto', 'file:///mia.jpg'), sinPreparar],
+  ['foto quitada', false, conflicto('t-1', 'foto', null), sinPreparar],
+  ['código libre', true, conflicto(GRUPO, 'codigo', 'nuevo'), sinPreparar],
+  ['código duplicado', false, conflicto(GRUPO, 'codigo', 'ls'), sinPreparar],
+  ['nombre duplicado', false, conflicto(GRUPO, 'nombre', 'Linea sur'), sinPreparar],
+  ['tipo conocido', true, conflicto(GRUPO, 'tipo', 'bosquete'), sinPreparar],
+  ['tipo desconocido', false, conflicto(GRUPO, 'tipo', 'otro'), sinPreparar],
+  ['estado conocido', true, conflicto(GRUPO, 'estado', 'activa'), sinPreparar],
+  ['estado desconocido', false, conflicto(GRUPO, 'estado', 'sincronizada'), sinPreparar],
+  ['grupo borrado', false, conflicto('g-borrado', 'estado', 'activa', 'g-borrado'), sinPreparar],
+  ['árbol borrado', false, conflicto('t-borrado', 'gps', MI_PUNTO), sinPreparar],
+  ['plantación finalizada', false, conflicto('t-1', 'gps', MI_PUNTO), finalizarPlantacion],
+  ['grupo ajeno', false, conflicto('t-1', 'gps', MI_PUNTO), grupoAjeno],
+];
+
+describe('el motivo anticipa a conservarLaMia', () => {
+  it.each(CASOS)('%s: con motivo falla, sin motivo se aplica', async (_caso, seConserva, fila, preparar) => {
+    await preparar();
+    await mockTestDb.insert(conflictosDeSync).values(fila);
+    const [{ motivo }] = await conflictosParaResolver(PLANTACION);
+
+    const resultado = await conservarLaMia(fila.entidadId, fila.campo);
+
+    expect(motivo === null).toBe(seConserva);
+    expect(resultado.success).toBe(seConserva);
+  });
+});
+
 describe('resolverConflictosDeSync', () => {
-  it('aplica cada elección y cuenta las que no se pudieron', async () => {
+  const sinConflictos = async () => expect(await mockTestDb.select().from(conflictosDeSync)).toEqual([]);
+
+  it('aplica cada elección; uno que ya no está cuenta como resuelto', async () => {
     await mockTestDb.insert(conflictosDeSync).values([conflicto('t-1', 'gps', MI_PUNTO), conflicto(GRUPO, 'tipo', 'bosquete')]);
 
     const fallidas = await resolverConflictosDeSync([
-      { entidadId: 't-1', campo: 'gps', conservar: true },
-      { entidadId: GRUPO, campo: 'tipo', conservar: false },
-      { entidadId: 't-x', campo: 'foto', conservar: false },
+      { entidadId: 't-1', campo: 'gps', detectadoEn: DETECTADO, conservar: true },
+      { entidadId: GRUPO, campo: 'tipo', detectadoEn: DETECTADO, conservar: false },
+      { entidadId: 't-x', campo: 'foto', detectadoEn: DETECTADO, conservar: false },
     ]);
 
-    expect(fallidas).toBe(1);
+    expect(fallidas).toEqual([]);
     const [arbol] = await mockTestDb.select().from(trees).where(eq(trees.id, 't-1'));
     expect(arbol).toMatchObject({ latitude: -34.3, gpsAccuracy: 4 });
-    expect(await mockTestDb.select().from(conflictosDeSync)).toEqual([]);
+    await sinConflictos();
+  });
+
+  it('si el servidor cambió el dato desde que se eligió, no aplica nada y avisa que cambió', async () => {
+    await mockTestDb.insert(conflictosDeSync).values({ ...conflicto('t-1', 'gps', MI_PUNTO), detectadoEn: '2026-10-08T11:00:00' });
+
+    const fallidas = await resolverConflictosDeSync([{ entidadId: 't-1', campo: 'gps', detectadoEn: DETECTADO, conservar: true }]);
+
+    expect(fallidas).toEqual([{ entidadId: 't-1', campo: 'gps', falla: 'cambio' }]);
+    const [arbol] = await mockTestDb.select().from(trees).where(eq(trees.id, 't-1'));
+    expect(arbol.latitude).toBe(-34.31);
+    expect(await mockTestDb.select().from(conflictosDeSync)).toHaveLength(1);
+  });
+
+  it('lo que no se pudo aplicar vuelve como error', async () => {
+    await mockTestDb.insert(conflictosDeSync).values(conflicto(GRUPO, 'nombre', 'Linea sur'));
+
+    const fallidas = await resolverConflictosDeSync([{ entidadId: GRUPO, campo: 'nombre', detectadoEn: DETECTADO, conservar: true }]);
+
+    expect(fallidas).toEqual([{ entidadId: GRUPO, campo: 'nombre', falla: 'error' }]);
+  });
+
+  describe('foto', () => {
+    const DEL_SERVIDOR = 'plantations/p-1/trees/t-1.jpg';
+    const MIA = 'file:///mia.jpg';
+
+    beforeEach(async () => {
+      await mockTestDb.update(trees).set({ fotoUrl: DEL_SERVIDOR, fotoSynced: true }).where(eq(trees.id, 't-1'));
+      await mockTestDb.insert(conflictosDeSync).values(conflicto('t-1', 'foto', MIA));
+      (borrarFotosLocales as jest.Mock).mockClear();
+    });
+
+    it('quedarse con la del servidor borra el archivo propio', async () => {
+      await resolverConflictosDeSync([{ entidadId: 't-1', campo: 'foto', detectadoEn: DETECTADO, conservar: false }]);
+
+      expect(borrarFotosLocales).toHaveBeenCalledWith([MIA]);
+      await sinConflictos();
+    });
+
+    it('conservarla la deja como foto del árbol y no la borra', async () => {
+      await resolverConflictosDeSync([{ entidadId: 't-1', campo: 'foto', detectadoEn: DETECTADO, conservar: true }]);
+
+      const llamadas = (borrarFotosLocales as jest.Mock).mock.calls.flat(2);
+      expect(llamadas).not.toContain(MIA);
+      const [arbol] = await mockTestDb.select().from(trees).where(eq(trees.id, 't-1'));
+      expect(arbol).toMatchObject({ fotoUrl: MIA, fotoSynced: false });
+      await sinConflictos();
+    });
   });
 });
 

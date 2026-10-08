@@ -68,4 +68,11 @@ describe('ResolverCambiosScreen', () => {
     expect(getByText('No hay cambios por resolver.')).toBeTruthy();
     expect(queryByText('Guardar elección')).toBeNull();
   });
+
+  it('mientras guarda no muestra "sin cambios" aunque la lista ya se haya vaciado', () => {
+    mockUseResolverCambios.mockReturnValue({ ...ESTADO, secciones: [], cantidad: 0, guardando: true });
+    const { queryByText } = render(<ResolverCambiosScreen />);
+
+    expect(queryByText('No hay cambios por resolver.')).toBeNull();
+  });
 });

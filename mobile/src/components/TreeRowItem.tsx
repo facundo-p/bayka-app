@@ -1,6 +1,6 @@
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors } from '../theme';
+import { colors, iconSizes } from '../theme';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
 import { isRemoteUri } from '../utils/photoUri';
 import { treeRowItemStyles as styles } from './TreeRowItem.styles';
@@ -46,21 +46,21 @@ export default function TreeRowItem({
       <Text style={styles.code} numberOfLines={1}>{getSpeciesCode(item)}</Text>
       <View style={styles.actions}>
         {conCambiosPorResolver && (
-          <View testID="cambios-por-resolver" style={styles.gpsPin}>
-            <Ionicons name="warning-outline" size={16} color={colors.conflictoText} accessibilityLabel="Cambios por resolver" />
+          <View testID="cambios-por-resolver" style={styles.gpsPin} accessible accessibilityLabel="Cambios por resolver">
+            <Ionicons name="warning-outline" size={iconSizes.fila} color={colors.conflictoText} />
           </View>
         )}
         {item.latitude != null && (
           <View testID="gps-pin" style={styles.gpsPin}>
-            <Ionicons name="location" size={16} color={colors.plantation} />
+            <Ionicons name="location" size={iconSizes.fila} color={colors.plantation} />
           </View>
         )}
         {item.fotoUrl
           ? <Pressable onPress={() => onViewPhoto(item.id, item.fotoUrl!)} hitSlop={8} style={styles.btn}>
               <View>
                 {isRemoteUri(item.fotoUrl)
-                  ? <Ionicons testID="foto-sin-descargar" name="cloud-outline" size={18} color={colors.plantation} accessibilityLabel="Foto sin descargar" />
-                  : <Ionicons name="image" size={18} color={colors.plantation} />}
+                  ? <Ionicons testID="foto-sin-descargar" name="cloud-outline" size={iconSizes.action} color={colors.plantation} accessibilityLabel="Foto sin descargar" />
+                  : <Ionicons name="image" size={iconSizes.action} color={colors.plantation} />}
                 {item.fotoUrl && !item.fotoSynced && (
                   <View style={styles.syncDot} />
                 )}
@@ -68,7 +68,7 @@ export default function TreeRowItem({
             </Pressable>
           : !isReadOnly && onAttachPhoto
             ? <Pressable onPress={() => onAttachPhoto(item.id)} hitSlop={8} style={styles.btn}>
-                <Ionicons name="camera-outline" size={18} color={colors.textMuted} />
+                <Ionicons name="camera-outline" size={iconSizes.action} color={colors.textMuted} />
               </Pressable>
             : null}
         {!isReadOnly && onDeleteTree && (
@@ -76,10 +76,10 @@ export default function TreeRowItem({
             hitSlop={8} style={styles.btn} disabled={isDeleting}>
             {isDeleting
               ? <ActivityIndicator size="small" color={colors.danger} />
-              : <Ionicons name="trash-outline" size={18} color={colors.danger} />}
+              : <Ionicons name="trash-outline" size={iconSizes.action} color={colors.danger} />}
           </Pressable>
         )}
-        {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textLight} />}
+        {onPress && <Ionicons name="chevron-forward" size={iconSizes.fila} color={colors.textLight} />}
       </View>
     </>
   );

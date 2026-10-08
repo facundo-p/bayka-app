@@ -88,6 +88,17 @@ export const tarjetaDeConflictoStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
   },
+  advertencia: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  advertenciaTexto: {
+    flex: 1,
+    fontSize: fontSize.md,
+    fontFamily: fonts.regular,
+    color: colors.conflictoText,
+  },
   motivo: {
     fontSize: fontSize.md,
     fontFamily: fonts.regular,

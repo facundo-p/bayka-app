@@ -50,3 +50,12 @@ export const ERROR_DE_CONFLICTO = {
 } as const;
 
 export type ErrorDeConflicto = (typeof ERROR_DE_CONFLICTO)[keyof typeof ERROR_DE_CONFLICTO];
+
+/** Por qué no se aplicó una elección al guardar "Resolver cambios" (#804). */
+export const FALLA_AL_RESOLVER = {
+  /** El servidor volvió a cambiar el dato: lo elegido era sobre otra versión. */
+  cambio: 'cambio',
+  error: 'error',
+} as const;
+
+export type FallaAlResolver = (typeof FALLA_AL_RESOLVER)[keyof typeof FALLA_AL_RESOLVER];

@@ -2,23 +2,26 @@
  * Reglas puras de los conflictos de sincronización (#795): si lo propio se puede
  * volver a aplicar y qué opción arranca marcada.
  */
-import {
-  CAMPO_EN_CONFLICTO, esCampoDeGrupo, type CampoEnConflicto, type ErrorDeConflicto, type PuntoGps,
-} from '../constants/conflictoDeSync';
-import type { ErrorDeDuplicado, ErrorDeEdicion } from '../constants/errorDeEdicion';
+import { CAMPO_EN_CONFLICTO, esCampoDeGrupo, type CampoEnConflicto, type PuntoGps } from '../constants/conflictoDeSync';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { esGroupTipo } from '../constants/groupTipo';
+import type {
+  ConflictoDeSync, ConflictoEnContexto, ConflictoParaResolver, EleccionDeConflicto, MotivoSinConservar,
+} from '../types/conflictoDeSync';
 import { ELECCION, type Eleccion, type PlantacionConCambios } from './conflictosDeEdicion';
 
-/** Por qué no se puede conservar lo del teléfono. */
-export type MotivoSinConservar = ErrorDeConflicto | ErrorDeEdicion | ErrorDeDuplicado;
+type ConCoordenadas = PuntoGps & { latitude: number; longitude: number };
+type PuntoCompleto = ConCoordenadas & { gpsCapturedAt: string };
 
-type PuntoCompleto = PuntoGps & { latitude: number; longitude: number; gpsCapturedAt: string };
-
-/** Un punto con latitud, longitud y momento de captura: lo que hace falta para reaplicarlo. */
-export function puntoCompleto(valor: unknown): valor is PuntoCompleto {
+/** Un punto con latitud y longitud: lo que hace falta para mostrarlo. */
+export function tieneCoordenadas(valor: unknown): valor is ConCoordenadas {
   const p = valor as Partial<PuntoGps> | null;
-  return p?.latitude != null && p.longitude != null && p.gpsCapturedAt != null;
+  return p?.latitude != null && p.longitude != null;
+}
+
+/** Con el momento de captura, además: lo que hace falta para reaplicarlo. */
+export function puntoCompleto(valor: unknown): valor is PuntoCompleto {
+  return tieneCoordenadas(valor) && valor.gpsCapturedAt != null;
 }
 
 const esTextoConValor = (valor: unknown): valor is string => typeof valor === 'string' && valor !== '';
@@ -26,7 +29,7 @@ const esTextoConValor = (valor: unknown): valor is string => typeof valor === 's
 const esEstadoReaplicable = (valor: unknown) =>
   valor === ESTADO_GRUPO.activa || valor === ESTADO_GRUPO.finalizada;
 
-/** Si el valor propio tiene la forma que necesita su campo. La especie se valida aparte, contra la plantación. */
+/** Si el valor propio tiene la forma que necesita su campo. Que la especie esté en la plantación se valida aparte. */
 export function valorReaplicable(campo: CampoEnConflicto, mio: unknown): boolean {
   switch (campo) {
     case CAMPO_EN_CONFLICTO.gps: return puntoCompleto(mio);
@@ -37,13 +40,18 @@ export function valorReaplicable(campo: CampoEnConflicto, mio: unknown): boolean
 }
 
 /** El árbol o el grupo del conflicto sigue en el teléfono. */
-export function entidadPresente(c: { conflicto: { campo: CampoEnConflicto }; arbol: unknown; grupo: unknown }): boolean {
+export function entidadPresente(c: ConflictoEnContexto): boolean {
   return esCampoDeGrupo(c.conflicto.campo) ? c.grupo != null : c.arbol != null;
 }
 
+/** Identifica el dato en conflicto, sin importar la versión. */
+export function idDeConflicto(c: Pick<ConflictoDeSync, 'entidadId' | 'campo'>): string {
+  return `${c.entidadId}:${c.campo}`;
+}
+
 /** Identifica una versión del conflicto: si el servidor vuelve a cambiar el dato, la fila se reemplaza y la elección vuelve a empezar. */
-export function claveDeConflicto(c: { entidadId: string; campo: CampoEnConflicto; detectadoEn: string }): string {
-  return `${c.entidadId}:${c.campo}:${c.detectadoEn}`;
+export function claveDeConflicto(c: Pick<ConflictoDeSync, 'entidadId' | 'campo' | 'detectadoEn'>): string {
+  return `${idDeConflicto(c)}:${c.detectadoEn}`;
 }
 
 /** Arranca marcado lo del teléfono, salvo que no se pueda conservar. */
@@ -55,16 +63,15 @@ export function eleccionDeConflicto(
   return elegida ?? ELECCION.mio;
 }
 
-type ConflictoElegible = {
-  conflicto: { entidadId: string; campo: CampoEnConflicto; detectadoEn: string };
-  motivo: MotivoSinConservar | null;
-};
-
 /** Qué se aplica al guardar: conservar lo propio o quedarse con lo del servidor, por conflicto. */
-export function eleccionesAGuardar(conflictos: ConflictoElegible[], elegidas: Record<string, Eleccion>) {
+export function eleccionesAGuardar(
+  conflictos: ConflictoParaResolver[],
+  elegidas: Record<string, Eleccion>,
+): EleccionDeConflicto[] {
   return conflictos.map(({ conflicto, motivo }) => ({
     entidadId: conflicto.entidadId,
     campo: conflicto.campo,
+    detectadoEn: conflicto.detectadoEn,
     conservar: eleccionDeConflicto(elegidas[claveDeConflicto(conflicto)], motivo) === ELECCION.mio,
   }));
 }

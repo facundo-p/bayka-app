@@ -1,4 +1,5 @@
-import { textoDeDistancia, textoDeMotivo, vistaDeConflictoDeSync, type ConflictoAMostrar } from '../../src/utils/vistaDeConflictoDeSync';
+import { textoDeDistancia, textoDeMotivo, vistaDeConflictoDeSync } from '../../src/utils/vistaDeConflictoDeSync';
+import type { ConflictoParaResolver } from '../../src/types/conflictoDeSync';
 import { conflictosDelGrupo, seccionesDeConflictos, textoDeAvisoDeGrupo } from '../../src/utils/seccionesDeConflictos';
 
 const ARBOL = {
@@ -7,7 +8,7 @@ const ARBOL = {
 };
 const GRUPO = { id: 'g1', parcelaId: 'x1', codigo: 'G12', nombre: 'Línea norte', tipo: 'linea', estado: 'finalizada' };
 
-function conflicto(campo: string, mio: unknown, extra: Partial<ConflictoAMostrar> = {}): ConflictoAMostrar {
+function conflicto(campo: string, mio: unknown, extra: Partial<ConflictoParaResolver> = {}): ConflictoParaResolver {
   return {
     conflicto: {
       entidadId: campo === 'nombre' || campo === 'tipo' ? 'g1' : 't1', campo: campo as never, grupoId: 'g1',
@@ -45,12 +46,34 @@ describe('vistaDeConflictoDeSync', () => {
     expect(vista.otro.valor).toBe('N/N');
   });
 
-  it('foto: las dos miniaturas y el aviso de que la propia se borra si queda la del servidor', () => {
+  it('foto: las dos miniaturas y la advertencia de que la propia se borra si queda la del servidor', () => {
     const vista = vistaDeConflictoDeSync(conflicto('foto', 'file:///mia.jpg'), false);
 
-    expect(vista.mio.foto).toEqual({ treeId: 't1', uri: 'file:///mia.jpg', enLinea: false });
-    expect(vista.otro.foto).toEqual({ treeId: 't1', uri: ARBOL.fotoUrl, enLinea: false });
-    expect(vista.nota).toBe('Si queda la del servidor, la foto sacada en este teléfono se borra.');
+    expect(vista.mio.foto).toEqual({ treeId: 't1', uri: 'file:///mia.jpg', enLinea: false, descripcion: 'Foto sacada en este teléfono' });
+    expect(vista.otro.foto).toEqual({ treeId: 't1', uri: ARBOL.fotoUrl, enLinea: false, descripcion: 'Foto del servidor' });
+    expect(vista.advertencia).toBe('Si queda la del servidor, la foto sacada en este teléfono se borra.');
+  });
+
+  it('foto propia que no se puede conservar: la advertencia dice que al guardar se borra', () => {
+    const vista = vistaDeConflictoDeSync(conflicto('foto', 'file:///mia.jpg', { motivo: 'plantacion_no_editable' }), true);
+
+    expect(vista.advertencia).toBe('Al guardar se borra la foto sacada en este teléfono.');
+  });
+
+  it('foto que se había quitado acá: sin foto propia, sin advertencia y con el motivo claro', () => {
+    const vista = vistaDeConflictoDeSync(conflicto('foto', null, { motivo: 'conflicto_sin_valor' }), true);
+
+    expect(vista.mio.valor).toBe('Sin foto');
+    expect(vista.advertencia).toBeNull();
+    expect(vista.motivo).toBe('Habías quitado la foto en este teléfono; eso no se puede volver a aplicar desde acá.');
+  });
+
+  it('un guardado que no se aplicó: "cambió de nuevo" siempre; un error, solo si no hay motivo a la vista', () => {
+    expect(vistaDeConflictoDeSync(conflicto('gps', null), true, 'cambio').aviso).toMatch(/^Cambió de nuevo/);
+    expect(vistaDeConflictoDeSync(conflicto('gps', null), true, 'error').aviso)
+      .toBe('No se pudo guardar esta elección. Probá de nuevo.');
+    expect(vistaDeConflictoDeSync(conflicto('gps', null, { motivo: 'sin_permiso' }), true, 'error').aviso).toBeNull();
+    expect(vistaDeConflictoDeSync(conflicto('gps', null), true).aviso).toBeNull();
   });
 
   it('dato del grupo: valor contra valor, con la etiqueta del tipo', () => {
@@ -82,6 +105,14 @@ describe('textos', () => {
     expect(textoDeMotivo('plantacion_no_editable', { campo: 'gps', mio: null }))
       .toBe('La plantación está finalizada. Para conservar la tuya, pedí que la reabran.');
     expect(textoDeMotivo('conflicto_sin_valor', { campo: 'especie', mio: 'sp' })).toBe('Tu especie ya no está en la plantación.');
+    expect(textoDeMotivo('conflicto_sin_valor', { campo: 'especie', mio: null }))
+      .toBe('Dejaste el árbol sin especie; eso no se puede volver a aplicar.');
+  });
+
+  it('duplicado: el texto del campo que choca', () => {
+    expect(textoDeMotivo('codigo_duplicate', { campo: 'codigo', mio: 'g7' })).toMatch(/^Ya hay otro grupo con el código «G7»/);
+    expect(textoDeMotivo('nombre_duplicate', { campo: 'nombre', mio: 'Sur' })).toMatch(/^Ya hay otro grupo «Sur»/);
+    expect(textoDeMotivo('both_duplicate', { campo: 'codigo', mio: 'g7' })).toMatch(/código «G7»/);
   });
 
   it('distancia en metros o en km', () => {
@@ -91,6 +122,29 @@ describe('textos', () => {
 });
 
 describe('secciones', () => {
+  it('varios grupos: por código de grupo, sin importar el id ni el orden de llegada', () => {
+    const grupoB = { ...GRUPO, id: 'a-primero', codigo: 'B2' };
+    const deB = (c: ConflictoParaResolver): ConflictoParaResolver =>
+      ({ ...c, grupo: grupoB, conflicto: { ...c.conflicto, grupoId: grupoB.id, entidadId: `${c.conflicto.entidadId}-b` } });
+    const secciones = seccionesDeConflictos([
+      deB(conflicto('gps', null)),
+      conflicto('gps', null),
+      deB(conflicto('nombre', 'Otra')),
+    ]);
+
+    expect(secciones.map((s) => [s.titulo, s.sub])).toEqual([
+      ['Grupo B2', 'Línea norte'],
+      ['Árbol L1PT3', 'Grupo B2'],
+      ['Árbol L1PT3', 'Grupo G12'],
+    ]);
+  });
+
+  it('dentro de un árbol, los campos en orden fijo', () => {
+    const [seccion] = seccionesDeConflictos([conflicto('foto', 'file:///a.jpg'), conflicto('especie', 'sp'), conflicto('gps', null)]);
+
+    expect(seccion.conflictos.map((c) => c.conflicto.campo)).toEqual(['especie', 'gps', 'foto']);
+  });
+
   it('una por grupo y por árbol: los datos del grupo primero y los árboles por posición', () => {
     const otro = { ...ARBOL, id: 't0', subId: 'L1PT1', posicion: 1 };
     const secciones = seccionesDeConflictos([

@@ -189,7 +189,7 @@ describe('SyncProgressModal', () => {
     it('suma los conflictos de sincronización al aviso de la plantación y "Resolver" la abre (#804)', () => {
       const onResolverCambios = jest.fn();
       const { getByText, getAllByText } = renderModal({
-        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1', conflictos: 2 }],
+        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1' }],
         successCount: 1,
         onResolverCambios,
         plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],

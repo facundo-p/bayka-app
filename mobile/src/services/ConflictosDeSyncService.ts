@@ -18,11 +18,12 @@ import {
 import { puedeEditarArbolesDe } from '../repositories/edicionDeArboles';
 import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
 import { getGroupById } from '../queries/plantationDetailQueries';
+import { arbolExiste, especieEnPlantacion } from '../queries/conflictosDeSyncQueries';
 import { borrarFotosLocales } from './PhotoService';
 import {
   CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto,
 } from '../constants/conflictoDeSync';
-import { puntoCompleto } from '../utils/conflictosDeSync';
+import { puntoCompleto, valorReaplicable } from '../utils/conflictosDeSync';
 import { ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion } from '../constants/errorDeEdicion';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { esGroupTipo } from '../constants/groupTipo';
@@ -34,8 +35,11 @@ export type ResultadoDeConflicto =
 const OK: ResultadoDeConflicto = { success: true };
 const falla = (error: ErrorDeConflicto | ErrorDeEdicion): ResultadoDeConflicto => ({ success: false, error });
 
+/** Como al cargarla: tiene que ser una de las especies de la plantación. */
 async function especieMia(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
-  if (typeof c.mio !== 'string') return falla(ERROR_DE_CONFLICTO.sinValor);
+  if (typeof c.mio !== 'string' || !(await especieEnPlantacion(c.plantacionId, c.mio))) {
+    return falla(ERROR_DE_CONFLICTO.sinValor);
+  }
   return (await cambiarEspecie(c.entidadId, c.mio)) ? OK : falla(ERROR_DE_CONFLICTO.sinValor);
 }
 
@@ -54,6 +58,7 @@ async function fotoMia(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
 
 /** Los árboles que se pueden editar acá; el grupo, como lo edita su pantalla. */
 async function aplicarLoMioDelArbol(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
+  if (!(await arbolExiste(c.entidadId))) return falla(ERROR_DE_CONFLICTO.inexistente);
   if (!(await puedeEditarArbolesDe(c.grupoId))) return falla(ERROR_DE_EDICION.sinPermiso);
   if (c.campo === CAMPO_EN_CONFLICTO.especie) return especieMia(c);
   if (c.campo === CAMPO_EN_CONFLICTO.gps) return gpsMio(c);
@@ -61,6 +66,8 @@ async function aplicarLoMioDelArbol(c: ConflictoDeSync): Promise<ResultadoDeConf
 }
 
 async function estadoMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
+  const [grupo] = await getGroupById(c.entidadId);
+  if (!grupo) return falla(ERROR_DE_CONFLICTO.inexistente);
   if (!(await plantacionEditablePorId(c.plantacionId))) return falla(ERROR_DE_EDICION.plantacionNoEditable);
   if (c.mio === ESTADO_GRUPO.finalizada) await finalizeGroup(c.entidadId);
   else if (c.mio === ESTADO_GRUPO.activa) await reactivateGroup(c.entidadId);
@@ -77,7 +84,9 @@ async function datoMioDelGrupo(c: ConflictoDeSync): Promise<UpdateGroupResult | 
   return updateGroup(c.entidadId, { ...campos, tipo: campos.tipo });
 }
 
-function aplicarLoMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
+/** Lo que no tiene la forma de su campo se rechaza antes de tocar nada. */
+async function aplicarLoMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
+  if (!valorReaplicable(c.campo, c.mio)) return falla(ERROR_DE_CONFLICTO.sinValor);
   switch (c.campo) {
     case CAMPO_EN_CONFLICTO.especie:
     case CAMPO_EN_CONFLICTO.gps:

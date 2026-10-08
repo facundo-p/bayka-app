@@ -6,6 +6,8 @@ export interface FotoDeOpcion {
   uri: string;
   /** Sin conexión, una foto que no está en el teléfono no se puede bajar. */
   enLinea: boolean;
+  /** Para lectores de pantalla. */
+  descripcion: string;
 }
 
 export interface OpcionDeConflicto {
@@ -20,6 +22,10 @@ export interface VistaDeConflicto {
   mio: OpcionDeConflicto;
   otro: OpcionDeConflicto;
   nota?: string | null;
+  /** Lo que se pierde al guardar: se muestra como advertencia. */
+  advertencia?: string | null;
   /** Por qué no se puede conservar lo propio: esa opción queda deshabilitada. */
   motivo?: string | null;
+  /** El último guardado no se aplicó: cambió de nuevo o falló. */
+  aviso?: string | null;
 }

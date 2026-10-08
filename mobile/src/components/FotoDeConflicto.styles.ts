@@ -11,7 +11,7 @@ export const fotoDeConflictoStyles = StyleSheet.create({
     borderRadius: borderRadius.md,
     backgroundColor: colors.background,
   },
-  sinConexion: {
+  marcador: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
@@ -20,14 +20,10 @@ export const fotoDeConflictoStyles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: colors.borderMuted,
   },
-  sinConexionTexto: {
+  marcadorTexto: {
     fontSize: fontSize.xs,
     fontFamily: fonts.regular,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  remota: {
-    alignSelf: 'stretch',
-    padding: spacing.xl,
   },
 });

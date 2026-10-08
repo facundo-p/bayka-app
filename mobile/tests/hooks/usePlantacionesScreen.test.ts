@@ -15,6 +15,8 @@ jest.mock('../../src/hooks/useRoutePrefix', () => ({
 }));
 
 const mockHandleDeletePlantation = jest.fn();
+let mockEsAdmin = true;
+let mockConflictosPorPlantacion = new Map<string, number>();
 jest.mock('../../src/hooks/usePlantaciones', () => ({
   usePlantaciones: () => ({
     plantationList: [],
@@ -25,7 +27,7 @@ jest.mock('../../src/hooks/usePlantaciones', () => ({
     headerTitle: 'Plantaciones',
     headerSubtitle: undefined,
     isOnline: true,
-    isAdmin: true,
+    isAdmin: mockEsAdmin,
     syncedCountMap: new Map(),
     pendingSyncMap: new Map(),
     todayCountMap: new Map(),
@@ -96,7 +98,7 @@ jest.mock('../../src/hooks/usePendingSyncCount', () => ({
 }));
 
 jest.mock('../../src/hooks/useConflictosDeSyncPorPlantacion', () => ({
-  useConflictosDeSyncPorPlantacion: () => new Map(),
+  useConflictosDeSyncPorPlantacion: () => mockConflictosPorPlantacion,
 }));
 jest.mock('../../src/hooks/usePendingSyncMap', () => ({
   usePendingSyncMap: () => new Map(),
@@ -106,7 +108,33 @@ import { usePlantacionesScreen } from '../../src/hooks/usePlantacionesScreen';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockEsAdmin = true;
+  mockConflictosPorPlantacion = new Map();
   mockFetchPlantationMeta.mockResolvedValue({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+});
+
+describe('usePlantacionesScreen — cambios por resolver (#634, #804)', () => {
+  const conCambiosDeEdicion = { id: 'p1', conflictosDeEdicion: [{ campo: 'lugar' }] } as never;
+  const sinNada = { id: 'p1', conflictosDeEdicion: null } as never;
+
+  it('admin: los cambios de la edición y los conflictos de sync', () => {
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    expect(result.current.hayCambiosPorResolver(conCambiosDeEdicion)).toBe(true);
+    expect(result.current.hayCambiosPorResolver(sinNada)).toBe(false);
+  });
+
+  it('técnico: los cambios de la edición no son suyos; los conflictos de sync, sí', () => {
+    mockEsAdmin = false;
+    const { result, rerender } = renderHook(() => usePlantacionesScreen());
+
+    expect(result.current.hayCambiosPorResolver(conCambiosDeEdicion)).toBe(false);
+
+    mockConflictosPorPlantacion = new Map([['p1', 2]]);
+    rerender({});
+
+    expect(result.current.hayCambiosPorResolver(sinNada)).toBe(true);
+  });
 });
 
 describe('usePlantacionesScreen — computed flags', () => {

@@ -320,7 +320,13 @@ unidad), la foto y los datos del grupo (nombre, código, tipo y estado).
   a cada uno (`ConflictosParaResolverService`). Si lo propio no se puede conservar
   (plantación no editable, sin permiso, árbol o grupo borrado, especie que ya no
   está, punto incompleto, nombre o código de grupo repetido),
-  `motivoParaNoConservar` lo dice antes y la opción queda deshabilitada.
+  `motivoParaNoConservar` lo dice antes y la opción queda deshabilitada;
+  `conservarLaMia` aplica los mismos rechazos (un test de integración los compara
+  caso por caso).
+- Cada elección lleva el `detectadoEn` que vio el usuario. Si un pull reemplazó el
+  conflicto mientras elegía, no se aplica: la tarjeta vuelve con "Cambió de nuevo"
+  y la elección arranca otra vez. Un conflicto que ya no está cuenta como resuelto.
+- Las fotos del servidor se bajan solas al mostrarse, de a `FOTOS_EN_PARALELO`.
 - **Avisos:** el resumen de la sync suma los conflictos sin resolver de las
   plantaciones sincronizadas al aviso de "Cambios por resolver", la tarjeta de la
   plantación muestra la marca y la pantalla del grupo avisa arriba y marca cada

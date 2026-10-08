@@ -3,7 +3,7 @@
  * por árbol, y el aviso dentro del grupo. Lógica pura.
  */
 import { CAMPO_EN_CONFLICTO, esCampoDeGrupo, type CampoDeGrupo, type CampoEnConflicto } from '../constants/conflictoDeSync';
-import type { ConflictoDeSyncEnContexto } from '../queries/conflictosDeSyncQueries';
+import type { ConflictoEnContexto } from '../types/conflictoDeSync';
 
 export interface SeccionDeConflictos<T> {
   clave: string;
@@ -12,26 +12,48 @@ export interface SeccionDeConflictos<T> {
   conflictos: T[];
 }
 
-const esDelGrupo = (c: ConflictoDeSyncEnContexto) => esCampoDeGrupo(c.conflicto.campo);
+const PREFIJO_DE_SECCION = { grupo: 'grupo', arbol: 'arbol' } as const;
 
-const claveDeSeccion = (c: ConflictoDeSyncEnContexto) =>
-  (esDelGrupo(c) ? `grupo:${c.conflicto.grupoId}` : `arbol:${c.conflicto.entidadId}`);
+/** Dentro de una sección, los campos en el orden en que se cargan. */
+const ORDEN_DE_CAMPOS: readonly CampoEnConflicto[] = [
+  CAMPO_EN_CONFLICTO.especie,
+  CAMPO_EN_CONFLICTO.gps,
+  CAMPO_EN_CONFLICTO.foto,
+  CAMPO_EN_CONFLICTO.codigo,
+  CAMPO_EN_CONFLICTO.nombre,
+  CAMPO_EN_CONFLICTO.tipo,
+  CAMPO_EN_CONFLICTO.estado,
+];
 
-function encabezado(c: ConflictoDeSyncEnContexto): Pick<SeccionDeConflictos<unknown>, 'titulo' | 'sub'> {
+const esDelGrupo = (c: ConflictoEnContexto) => esCampoDeGrupo(c.conflicto.campo);
+
+const claveDeSeccion = (c: ConflictoEnContexto) => (esDelGrupo(c)
+  ? `${PREFIJO_DE_SECCION.grupo}:${c.conflicto.grupoId}`
+  : `${PREFIJO_DE_SECCION.arbol}:${c.conflicto.entidadId}`);
+
+function encabezado(c: ConflictoEnContexto): Pick<SeccionDeConflictos<unknown>, 'titulo' | 'sub'> {
   const grupo = c.grupo ? `Grupo ${c.grupo.codigo}` : 'Grupo borrado';
   if (esDelGrupo(c)) return { titulo: grupo, sub: c.grupo?.nombre ?? null };
   return { titulo: c.arbol ? `Árbol ${c.arbol.subId}` : 'Árbol borrado', sub: grupo };
 }
 
-/** Por grupo; dentro de cada grupo, sus datos primero y después los árboles por posición. */
-function orden(a: ConflictoDeSyncEnContexto, b: ConflictoDeSyncEnContexto): number {
-  if (a.conflicto.grupoId !== b.conflicto.grupoId) return a.conflicto.grupoId < b.conflicto.grupoId ? -1 : 1;
-  if (esDelGrupo(a) !== esDelGrupo(b)) return esDelGrupo(a) ? -1 : 1;
-  return (a.arbol?.posicion ?? 0) - (b.arbol?.posicion ?? 0);
+const comparar = (a: string | number, b: string | number) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Un grupo borrado no tiene código: va al final. */
+const codigoDelGrupo = (c: ConflictoEnContexto) => c.grupo?.codigo ?? '\uffff';
+
+/** Por código de grupo; dentro de cada grupo, sus datos primero y después los árboles por posición. */
+function orden(a: ConflictoEnContexto, b: ConflictoEnContexto): number {
+  return comparar(codigoDelGrupo(a), codigoDelGrupo(b))
+    || comparar(a.conflicto.grupoId, b.conflicto.grupoId)
+    || Number(esDelGrupo(b)) - Number(esDelGrupo(a))
+    || (a.arbol?.posicion ?? 0) - (b.arbol?.posicion ?? 0)
+    || comparar(a.conflicto.entidadId, b.conflicto.entidadId)
+    || ORDEN_DE_CAMPOS.indexOf(a.conflicto.campo) - ORDEN_DE_CAMPOS.indexOf(b.conflicto.campo);
 }
 
 /** Varios conflictos del mismo árbol o del mismo grupo van en la misma sección. */
-export function seccionesDeConflictos<T extends ConflictoDeSyncEnContexto>(conflictos: T[]): SeccionDeConflictos<T>[] {
+export function seccionesDeConflictos<T extends ConflictoEnContexto>(conflictos: T[]): SeccionDeConflictos<T>[] {
   const secciones = new Map<string, SeccionDeConflictos<T>>();
   for (const c of [...conflictos].sort(orden)) {
     const clave = claveDeSeccion(c);

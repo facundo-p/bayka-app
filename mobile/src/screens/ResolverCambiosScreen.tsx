@@ -60,7 +60,7 @@ export default function ResolverCambiosScreen() {
   return (
     <ScreenContainer>
       <CustomHeader title={TITULO} subtitle={subtitulo(r.lugar, r.cantidad)} onBack={r.despues} />
-      {!r.cargando && r.cantidad === 0 && <SinCambios onVolver={r.despues} />}
+      {!r.cargando && !r.guardando && r.cantidad === 0 && <SinCambios onVolver={r.despues} />}
       {r.cantidad > 0 && (
         <>
           <ScrollView style={styles.lista} contentContainerStyle={styles.listaContenido}>

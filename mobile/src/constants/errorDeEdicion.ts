@@ -24,10 +24,10 @@ export const ERROR_DE_DUPLICADO = {
 
 export type ErrorDeDuplicado = (typeof ERROR_DE_DUPLICADO)[keyof typeof ERROR_DE_DUPLICADO];
 
-const chocaElNombre = (error: string) =>
+export const chocaElNombre = (error: string) =>
   error === ERROR_DE_DUPLICADO.nombre || error === ERROR_DE_DUPLICADO.ambos;
 
-const chocaElCodigo = (error: string) =>
+export const chocaElCodigo = (error: string) =>
   error === ERROR_DE_DUPLICADO.codigo || error === ERROR_DE_DUPLICADO.ambos;
 
 type MensajesPorCampo = { nombre: string | null; codigo: string | null };

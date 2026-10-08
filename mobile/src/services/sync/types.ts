@@ -63,8 +63,7 @@ export const PHOTO_PHASE = {
 export type PhotoPhase = (typeof PHOTO_PHASE)[keyof typeof PHOTO_PHASE];
 
 export type SyncGroupResult =
-  /** `conflictos`: datos cambiados acá y en el server; quedó el del server y el propio espera una decisión (#795). */
-  | { success: true; groupId: string; nombre: string; conflictos?: number }
+  | { success: true; groupId: string; nombre: string }
   | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
 
 export type SyncParcelaResult =
