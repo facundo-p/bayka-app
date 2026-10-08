@@ -6,7 +6,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
-import { getTreeEditGating } from '../utils/permisosDeEdicion';
+import { esEdicionPropia } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
@@ -19,6 +19,7 @@ import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { borrarFotosLocales } from '../services/PhotoService';
+import { gruposQueSube, type Subidor } from './subidor';
 
 export type GroupEstado = EstadoGrupo;
 export type { GroupTipo };
@@ -153,17 +154,13 @@ export async function finalizeGroup(grupoId: string): Promise<{ success: true }>
   return { success: true };
 }
 
-// Ownership guard para screens: subgroupEstado no afecta canEdit, solo canDelete.
+// Ownership guard para screens: registrar y deshacer son solo del creador, aunque un admin edite foto y GPS (#768).
 export function canEdit(
   group: { usuarioCreador: string },
   userId: string,
   plantacion: EstadoDeEdicionDePlantacion
 ): boolean {
-  return getTreeEditGating({
-    plantacion,
-    subgroupEstado: ESTADO_GRUPO.activa,
-    isCreator: group.usuarioCreador === userId,
-  }).canEdit;
+  return esEdicionPropia({ plantacion, isCreator: group.usuarioCreador === userId });
 }
 
 export type UpdateGroupResult =
@@ -271,12 +268,12 @@ export async function getFinalizadaGroups(plantacionId: string, userId?: string)
     .where(and(...conditions)) as unknown as Group[];
 }
 
-export async function getSyncableGroups(plantacionId: string, _userId?: string): Promise<Group[]> {
-  const conditions = [
+export async function getSyncableGroups(plantacionId: string, subidor: Subidor): Promise<Group[]> {
+  return db.select().from(groups).where(and(
     eq(groups.plantacionId, plantacionId),
     eq(groups.pendingSync, true),
-  ];
-  return db.select().from(groups).where(and(...conditions)) as unknown as Group[];
+    gruposQueSube(subidor),
+  )) as unknown as Group[];
 }
 
 export async function getPendingSyncCount(userId?: string): Promise<number> {

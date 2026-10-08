@@ -44,7 +44,7 @@ insert into parcelas (id, plantation_id, nombre, codigo) values
 
 insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, usuario_creador) values
   ('b3600000-0000-0000-0000-0000000000c1', 'b3600000-0000-0000-0000-000000000002',
-   'b3600000-0000-0000-0000-0000000000b1', 'Uno', 'L1', 'linea', 'b3600000-0000-0000-0000-0000000000a1');
+   'b3600000-0000-0000-0000-0000000000b1', 'Uno', 'L1', 'linea', 'b3600000-0000-0000-0000-0000000000a2');
 
 -- e1 tiene árboles: su baja se rechaza.
 insert into trees (id, group_id, species_id, posicion, sub_id, usuario_registro) values
@@ -147,7 +147,7 @@ select is(
         'plantation_id', 'b3600000-0000-0000-0000-000000000002',
         'parcela_id', 'b3600000-0000-0000-0000-0000000000b1',
         'nombre', 'Uno', 'codigo', 'L1', 'tipo', 'linea', 'estado', 'finalizada',
-        'usuario_creador', 'b3600000-0000-0000-0000-0000000000a1', 'created_at', now()),
+        'usuario_creador', 'b3600000-0000-0000-0000-0000000000a2', 'created_at', now()),
       jsonb_build_array(
         jsonb_build_object('id', 'b3600000-0000-0000-0000-0000000000d2',
           'group_id', 'b3600000-0000-0000-0000-0000000000c1', 'posicion', 2,

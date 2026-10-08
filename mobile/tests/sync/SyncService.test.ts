@@ -29,6 +29,10 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
   getSyncableGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/subidor', () => ({
+  subidorActual: jest.fn().mockResolvedValue({ userId: 'user-1', esAdmin: false }),
+}));
+
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn(),
   markPhotoSynced: jest.fn(),

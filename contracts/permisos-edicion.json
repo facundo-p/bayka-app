@@ -1,5 +1,5 @@
 {
-  "_comment": "Quién puede cambiar la especie de un árbol (#679) y editar una plantación, como tabla de casos. Cada tabla trae solo las dimensiones que miran todos sus consumidores. Cambiar una regla implica cambiar esta tabla y los consumidores que fallen: supabase/tests/47_contrato_permisos_edicion.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts.",
+  "_comment": "Quién puede cambiar la especie de un árbol (#679), editar una plantación y escribir en un grupo ajeno (#768), como tabla de casos. Cada tabla trae solo las dimensiones que miran todos sus consumidores. Cambiar una regla implica cambiar esta tabla y los consumidores que fallen: supabase/tests/47_contrato_permisos_edicion.test.sql, supabase/tests/55_grupo_ajeno_solo_admin.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts.",
   "web": {
     "_comment": "Desde la web. pgTAP la recorre contra cambiar_especie_arbol y editar_plantacion, que comparten el gate; la web, contra puedeCambiarEspecie y puedeEditarPlantacion. Usuario de la organización de la plantación: la web no ve plantaciones de otra (RLS), y el rechazo por organización lo prueba el test 43.",
     "casos": [
@@ -30,12 +30,23 @@
     ]
   },
   "app": {
-    "_comment": "Cambiar la especie desde la app, que lo sube por sync_subgroup. pgTAP la recorre contra sync_subgroup de un técnico asignado (el server no mira quién creó el grupo); mobile, contra getCambioDeEspecie del creador con el grupo activo. La app no mira el rol: a un superadmin asignado no le ofrece el cambio en una finalizada aunque el server lo aceptaría.",
+    "_comment": "Cambiar la especie desde la app, que lo sube por sync_subgroup. pgTAP la recorre contra sync_subgroup del técnico asignado que creó el grupo; mobile, contra getCambioDeEspecie del creador con el grupo activo. La app no mira el rol: a un superadmin asignado no le ofrece el cambio en una finalizada aunque el server lo aceptaría.",
     "casos": [
       { "estado": "activa", "archivada": false, "permitido": true },
       { "estado": "activa", "archivada": true, "permitido": false },
       { "estado": "finalizada", "archivada": false, "permitido": false },
       { "estado": "finalizada", "archivada": true, "permitido": false }
+    ]
+  },
+  "grupoAjeno": {
+    "_comment": "Quién escribe en un grupo que ya existe, con la plantación activa, según quién lo creó (#768). pgTAP la recorre contra sync_subgroup de un usuario asignado; mobile, contra el canEdit (foto y GPS) de getTreeEditGating. Borrar árboles y renombrar, eliminar o reactivar el grupo siguen siendo solo del creador en la app.",
+    "casos": [
+      { "rol": "tecnico", "creador": true, "permitido": true },
+      { "rol": "tecnico", "creador": false, "permitido": false },
+      { "rol": "admin", "creador": true, "permitido": true },
+      { "rol": "admin", "creador": false, "permitido": true },
+      { "rol": "superadmin", "creador": true, "permitido": true },
+      { "rol": "superadmin", "creador": false, "permitido": true }
     ]
   }
 }

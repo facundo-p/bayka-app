@@ -25,6 +25,11 @@ jest.mock('../../src/database/transaccion', () => ({
     cb(jest.requireMock('../../src/database/client').db)),
 }));
 
+// El permiso sobre el grupo tiene su propio test en TreeRepository.test.ts.
+jest.mock('../../src/repositories/edicionDeArboles', () => ({
+  puedeEditarArbolesDe: jest.fn().mockResolvedValue(true),
+  SIN_PERMISO_SOBRE_ARBOLES: 'sin permiso',
+}));
 
 // mockDb defined after jest.mock (hoisted)
 let mockDb: any;

@@ -30,7 +30,7 @@ import {
 } from '../repositories/GroupRepository';
 import type { GroupEstado } from '../repositories/GroupRepository';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
-import { getGroupGating } from '../utils/permisosDeEdicion';
+import { getGroupGating, puedeEditarArbolesDelGrupo } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 
 /** Default hasta que carga o si la plantación no está local: activa y sin archivar. */
@@ -45,6 +45,8 @@ export interface UseTreeRegistrationParams {
   plantacionId: string;
   grupoCodigo: string;
   userId: string;
+  /** Admin o superadmin: edita foto y GPS también en grupos ajenos (#768). */
+  esAdmin: boolean;
   /** Selector de foto de la pantalla: lo usan N/N, la botonera con "foto en todos los botones" y el detalle de árbol. */
   pickPhoto: PickPhoto;
   /** Último fix del watcher GPS de la pantalla (lectura estable, sin re-render). */
@@ -107,6 +109,7 @@ export function useTreeRegistration({
   plantacionId,
   grupoCodigo,
   userId,
+  esAdmin,
   pickPhoto,
   getLastGpsFix,
   onError,
@@ -157,6 +160,8 @@ export function useTreeRegistration({
   // que cargue habilita la pantalla entera sobre una plantación finalizada (#469).
   const dataLoaded = subgroup !== null && userId !== '' && estadoPlantacionCargado;
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
+  // La pantalla ya no ofrece estas acciones sin permiso: esto frena a la que quede abierta.
+  const puedeEditarArboles = dataLoaded && puedeEditarArbolesDelGrupo({ plantacion, isCreator, esAdmin });
   // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
   // eso reaparecía el borrado en el listado de grupos (#469).
   const canReactivate = dataLoaded && getGroupGating({
@@ -223,15 +228,17 @@ export function useTreeRegistration({
   }, [isReadOnly, grupoId, notifyError]);
 
   const captureTreeGps = useCallback(async (treeId: string): Promise<boolean> => {
+    if (!puedeEditarArboles) return false;
     setGpsCapturingTreeId(treeId);
     try {
       return await recaptureTreeGps(treeId, getLastGpsFix);
     } finally {
       setGpsCapturingTreeId(null);
     }
-  }, [getLastGpsFix]);
+  }, [puedeEditarArboles, getLastGpsFix]);
 
   const addPhotoToTree = useCallback(async (treeId: string, sink?: ErrorSink) => {
+    if (!puedeEditarArboles) return;
     const photoUri = await pickPhoto();
     if (!photoUri) return;
     try {
@@ -239,23 +246,25 @@ export function useTreeRegistration({
     } catch (e) {
       notifyError(e, 'No se pudo guardar la foto.', sink);
     }
-  }, [pickPhoto, notifyError]);
+  }, [puedeEditarArboles, pickPhoto, notifyError]);
 
   const updatePhoto = useCallback(async (treeId: string, newUri: string) => {
+    if (!puedeEditarArboles) return;
     try {
       await updateTreePhoto(treeId, newUri);
     } catch (e) {
       notifyError(e, 'No se pudo actualizar la foto.');
     }
-  }, [notifyError]);
+  }, [puedeEditarArboles, notifyError]);
 
   const removePhoto = useCallback(async (treeId: string, sink?: ErrorSink) => {
+    if (!puedeEditarArboles) return;
     try {
       await updateTreePhoto(treeId, '');
     } catch (e) {
       notifyError(e, 'No se pudo quitar la foto.', sink);
     }
-  }, [notifyError]);
+  }, [puedeEditarArboles, notifyError]);
 
   const executeReverseOrder = useCallback(async () => {
     setReversing(true);

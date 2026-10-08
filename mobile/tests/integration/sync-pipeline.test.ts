@@ -7,7 +7,7 @@
  * Supabase: tablas in-memory para el pull; el RPC y Storage registran las llamadas.
  */
 import Database from 'better-sqlite3';
-import { conUsuarioCacheado } from '../helpers/rolCacheado';
+import { conRolCacheado, conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestParcela, createTestPlantation } from '../helpers/factories';
@@ -176,13 +176,25 @@ describe('push de grupos — lo que lee de la base y manda al RPC', () => {
     expect(await mockTestDb.select().from(trees).where(eq(trees.groupId, GRUPO_ID))).toHaveLength(2);
   });
 
-  it('sube también el grupo que creó otro usuario', async () => {
+  // #768: el server solo deja escribir en un grupo ajeno a admin y superadmin.
+  it('un técnico no sube el grupo que creó otro usuario: queda pendiente', async () => {
     await mockTestDb.insert(groups).values(grupoLocal({ usuarioCreador: 'otro-tecnico', estado: 'activa' }));
+
+    expect(await uploadSyncableGroups(PLANTACION_ID)).toEqual([]);
+    expect(llamadasSyncSubgroup()).toHaveLength(0);
+    expect((await leerGrupo()).pendingSync).toBe(true);
+  });
+
+  it('un admin sube el grupo ajeno que editó, con su foto', async () => {
+    conRolCacheado('admin', 'user-admin-1');
+    await mockTestDb.insert(groups).values(grupoLocal({ usuarioCreador: 'otro-tecnico', estado: 'activa' }));
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: FOTO_LOCAL }));
 
     const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
     expect(resultado.success).toBe(true);
     expect(llamadasSyncSubgroup()[0].args.p_subgroup).toMatchObject({ usuario_creador: 'otro-tecnico', estado: 'activa' });
+    expect(arbolesDelPayload()[0].foto_url).toBe(pathEnStorage('t-1'));
   });
 
   it('un grupo sin cambios pendientes no se sube', async () => {
@@ -255,9 +267,28 @@ describe('fotos pendientes que sube el paso de fotos sueltas', () => {
       arbolLocal('t-sin-foto'),
     ]);
 
-    const ids = (await getTreesWithPendingPhotos(PLANTACION_ID)).map((t) => t.id).sort();
+    const ids = (await getTreesWithPendingPhotos(PLANTACION_ID, { userId: 'user-tecnico-1', esAdmin: false }))
+      .map((t) => t.id).sort();
 
     expect(ids).toEqual(['t-de-grupo-al-dia', 't-pendiente']);
+  });
+
+  // #768: Storage rechaza la foto de un técnico en un grupo ajeno; la de un admin, no.
+  it('un técnico no sube las de un grupo ajeno; un admin sí', async () => {
+    await mockTestDb.insert(groups).values([
+      grupoLocal({ pendingSync: true }),
+      grupoLocal({ id: 'g-ajeno', nombre: 'Linea B', codigo: 'LB', usuarioCreador: 'otro-tecnico' }),
+    ]);
+    await mockTestDb.insert(trees).values([
+      arbolLocal('t-propia', { fotoUrl: FOTO_LOCAL }),
+      arbolLocal('t-ajena', { groupId: 'g-ajeno', fotoUrl: 'file:///data/photos/b.jpg' }),
+    ]);
+
+    const ids = async (subidor: { userId: string; esAdmin: boolean }) =>
+      (await getTreesWithPendingPhotos(PLANTACION_ID, subidor)).map((t) => t.id).sort();
+
+    expect(await ids({ userId: 'user-tecnico-1', esAdmin: false })).toEqual(['t-propia']);
+    expect(await ids({ userId: 'user-admin-1', esAdmin: true })).toEqual(['t-ajena', 't-propia']);
   });
 });
 
@@ -289,7 +320,9 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     });
   });
 
+  // El grupo es de otro técnico: lo resuelve un admin (#768), con la cuenta de la sesión del SDK.
   it('la especie resuelta sobrevive al pull y sube sin reenviar la foto', async () => {
+    conRolCacheado('admin', 'user-tecnico-1');
     await pullFromServer(PLANTACION_ID);
     const bajado = await leerArbol('t-nn');
     expect(bajado.especieId).toBeNull();

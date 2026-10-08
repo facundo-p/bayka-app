@@ -14,8 +14,13 @@ jest.mock('../../src/hooks/usePlantationSpecies', () => ({
   usePlantationSpecies: jest.fn().mockReturnValue({ species: [], loading: false }),
 }));
 
+const mockProfile = { rol: 'admin' };
 jest.mock('../../src/hooks/useProfileData', () => ({
-  useProfileData: jest.fn().mockReturnValue({ profile: { rol: 'admin' }, loading: false }),
+  useProfileData: () => ({ profile: mockProfile, loading: false }),
+}));
+
+jest.mock('../../src/hooks/useCurrentUserId', () => ({
+  useCurrentUserId: () => 'user-1',
 }));
 
 jest.mock('../../src/queries/plantationDetailQueries', () => ({
@@ -30,6 +35,7 @@ const mockPlantationNNTrees: {
   especieId: string | null;
   grupoId: string;
   grupoCodigo?: string;
+  grupoCreador?: string;
 }[] = [];
 
 const mockEstadoDeEdicion: { estado: string; archivadaEn: string | null } = { estado: 'activa', archivadaEn: null };
@@ -55,6 +61,7 @@ beforeEach(() => {
   mockPlantationNNTrees.length = 0;
   mockEstadoDeEdicion.estado = 'activa';
   mockEstadoDeEdicion.archivadaEn = null;
+  mockProfile.rol = 'admin';
 });
 
 describe('useNNResolution — plantación no editable', () => {
@@ -83,5 +90,42 @@ describe('useNNResolution — plantación no editable', () => {
     const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
 
     expect(result.current.canResolve).toBe(false);
+  });
+});
+
+// #768: el server rechaza a un técnico que escribe en un grupo ajeno.
+describe('useNNResolution — grupos ajenos en modo plantación', () => {
+  const propio = { id: 'tree-1', posicion: 1, subId: 'L1NN1', fotoUrl: null, especieId: null, grupoId: 'sg-1', grupoCreador: 'user-1' };
+  const ajeno = { id: 'tree-2', posicion: 1, subId: 'L2NN1', fotoUrl: null, especieId: null, grupoId: 'sg-2', grupoCreador: 'otro' };
+
+  test('un técnico resuelve los N/N de sus grupos', () => {
+    mockProfile.rol = 'tecnico';
+    mockPlantationNNTrees.push(propio, ajeno);
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    expect(result.current.canResolve).toBe(true);
+    act(() => result.current.setCurrentIndex(1));
+    expect(result.current.canResolve).toBe(false);
+  });
+
+  test('un técnico no guarda la especie de un N/N ajeno', async () => {
+    mockProfile.rol = 'tecnico';
+    mockPlantationNNTrees.push(propio, ajeno);
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    act(() => result.current.handleSelectSpecies('esp-1'));
+    act(() => result.current.setCurrentIndex(1));
+    act(() => result.current.handleSelectSpecies('esp-2'));
+    await act(async () => { await result.current.handleGuardar(jest.fn()); });
+
+    expect(mockCambiarEspecie).toHaveBeenCalledTimes(1);
+    expect(mockCambiarEspecie).toHaveBeenCalledWith('tree-1', 'esp-1');
+  });
+
+  test('un admin resuelve también los ajenos', () => {
+    mockPlantationNNTrees.push(ajeno);
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    expect(result.current.canResolve).toBe(true);
   });
 });

@@ -45,25 +45,42 @@ export function plantacionEsEditable(plantacion: EstadoDeEdicionDePlantacion): b
   );
 }
 
+/** Quién mira un grupo: si lo creó, y si tiene rol de admin o superadmin. */
+export interface EditorDelGrupo {
+  plantacion: EstadoDeEdicionDePlantacion;
+  isCreator: boolean;
+  esAdmin: boolean;
+}
+
+/**
+ * Foto, GPS y N/N de los árboles: el creador del grupo, o admin y superadmin en
+ * cualquier grupo (#768), siempre con la plantación editable. El server aplica la misma regla.
+ */
+export function puedeEditarArbolesDelGrupo(params: EditorDelGrupo): boolean {
+  return plantacionEsEditable(params.plantacion) && (params.isCreator || params.esAdmin);
+}
+
+/** Registrar, borrar árboles y todo lo del grupo como entidad: solo su creador, con la plantación editable. */
+export function esEdicionPropia(params: { plantacion: EstadoDeEdicionDePlantacion; isCreator: boolean }): boolean {
+  return plantacionEsEditable(params.plantacion) && params.isCreator;
+}
+
 /**
  * Permisos sobre los árboles de un grupo:
- * - Plantación no editable o usuario no-creador → sólo lectura.
- * - Grupo activo + plantación editable + creador → editar foto/GPS y eliminar.
- * - Grupo finalizado + plantación editable + creador → editar foto/GPS, sin eliminar.
+ * - Plantación no editable → sólo lectura.
+ * - Creador, o admin en un grupo ajeno → editar foto/GPS.
+ * - Eliminar: solo el creador, con el grupo activo.
  */
 export interface TreeEditGating {
   canEdit: boolean;
   canDelete: boolean;
 }
 
-export function getTreeEditGating(params: {
-  plantacion: EstadoDeEdicionDePlantacion;
-  subgroupEstado: string;
-  isCreator: boolean;
-}): TreeEditGating {
-  const canEdit = plantacionEsEditable(params.plantacion) && params.isCreator;
-  const canDelete = canEdit && params.subgroupEstado === ESTADO_GRUPO.activa;
-  return { canEdit, canDelete };
+export function getTreeEditGating(params: EditorDelGrupo & { subgroupEstado: string }): TreeEditGating {
+  return {
+    canEdit: puedeEditarArbolesDelGrupo(params),
+    canDelete: esEdicionPropia(params) && params.subgroupEstado === ESTADO_GRUPO.activa,
+  };
 }
 
 /**
@@ -82,7 +99,7 @@ export function getGroupGating(params: {
   subgroupEstado: string;
   isCreator: boolean;
 }): GroupGating {
-  const habilitado = plantacionEsEditable(params.plantacion) && params.isCreator;
+  const habilitado = esEdicionPropia(params);
   const sobreGrupoActivo = habilitado && params.subgroupEstado === ESTADO_GRUPO.activa;
   return {
     canEdit: sobreGrupoActivo,
@@ -109,15 +126,15 @@ export const CAMBIO_DE_ESPECIE = {
 export type CambioDeEspecie = (typeof CAMBIO_DE_ESPECIE)[keyof typeof CAMBIO_DE_ESPECIE];
 
 /**
- * Cambia la especie quien edita foto y GPS, con el grupo activo. En uno finalizado,
- * solo si además puede reabrirlo: reabrir y cambiar es una sola tarea.
+ * Cambia la especie el creador, con el grupo activo; un admin en un grupo ajeno, no
+ * (#768). En uno finalizado, solo si además puede reabrirlo: reabrir y cambiar es una sola tarea.
  */
 export function getCambioDeEspecie(params: {
   plantacion: EstadoDeEdicionDePlantacion;
   subgroupEstado: string;
   isCreator: boolean;
 }): CambioDeEspecie {
-  if (!getTreeEditGating(params).canEdit) return CAMBIO_DE_ESPECIE.noDisponible;
+  if (!esEdicionPropia(params)) return CAMBIO_DE_ESPECIE.noDisponible;
   if (params.subgroupEstado === ESTADO_GRUPO.activa) return CAMBIO_DE_ESPECIE.disponible;
   return getGroupGating(params).canReactivate ? CAMBIO_DE_ESPECIE.requiereReabrir : CAMBIO_DE_ESPECIE.noDisponible;
 }

@@ -5,6 +5,7 @@ import { eq, and, inArray, isNotNull } from 'drizzle-orm';
 import { isRemoteUri, ensureFileUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/TreeRepository';
+import { subidorActual } from '../../repositories/subidor';
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
@@ -74,7 +75,7 @@ async function correrUploadPendingPhotos(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
 ): Promise<{ uploaded: number; failed: number }> {
-  const pending = await getTreesWithPendingPhotos(plantacionId);
+  const pending = await getTreesWithPendingPhotos(plantacionId, await subidorActual());
   // Sin pendientes no se emite nada: un `{ total: 0, completed: 0 }` es truthy y
   // hacía que el modal saltara a "Subiendo fotos... 0 de 0" (#447).
   if (pending.length === 0) return { uploaded: 0, failed: 0 };

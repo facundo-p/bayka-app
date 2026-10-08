@@ -9,6 +9,7 @@ import {
   getSyncableGroups,
   Group,
 } from '../../repositories/GroupRepository';
+import { subidorActual } from '../../repositories/subidor';
 import {
   getSyncableParcelas,
   markParcelaSynced,
@@ -445,8 +446,7 @@ export async function uploadSyncableGroups(
   onProgress?: (progress: SyncProgress) => void,
   onPhotoProgress?: (progress: PhotoSyncProgress) => void,
 ): Promise<SyncGroupResult[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const pending = await getSyncableGroups(plantacionId, user?.id);
+  const pending = await getSyncableGroups(plantacionId, await subidorActual());
   const results: SyncGroupResult[] = [];
 
   for (let i = 0; i < pending.length; i++) {

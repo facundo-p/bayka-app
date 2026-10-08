@@ -125,6 +125,7 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     grupoId: trees.groupId,
     grupoCodigo: groups.codigo,
     grupoNombre: groups.nombre,
+    grupoCreador: groups.usuarioCreador,
     parcelaNombre: parcelas.nombre,
   })
     .from(trees)

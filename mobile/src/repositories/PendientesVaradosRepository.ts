@@ -9,7 +9,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import { borradosPendientes, groups, parcelas, plantations, trees } from '../database/schema';
 import { and, eq, inArray, notInArray, or } from 'drizzle-orm';
 import type { MotivoVarado } from '../constants/motivoVarado';
-import { conservaLoQueSube, descartarLaSaca } from '../utils/avisoPendientesVarados';
+import { conservaTecnicos, descartarLaSaca } from '../utils/avisoPendientesVarados';
 import { sinEdicionPendiente } from '../utils/camposDePlantacion';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { borrarFotosLocales } from '../services/PhotoService';
@@ -44,12 +44,12 @@ const parcelaPendiente = (plantacionId: string) =>
 
 const fotoSinSubir = and(sqlIsLocalUri(trees.fotoUrl), eq(trees.fotoSynced, false));
 
-/** Archivos que quedan sin fila: los de los árboles que se borran y, si se descartan, las fotos sin subir. */
-async function fotosADescartar(plantacionId: string, conservaFotos: boolean): Promise<string[]> {
+/** Archivos que quedan sin fila: los de los árboles que se borran y las fotos sin subir. */
+async function fotosADescartar(plantacionId: string): Promise<string[]> {
   const deGruposPendientes = and(inArray(trees.groupId, gruposPendientes(plantacionId)), sqlIsLocalUri(trees.fotoUrl));
   const sinSubir = and(inArray(trees.groupId, gruposDeLaPlantacion(plantacionId)), fotoSinSubir);
   const filas = await db.select({ fotoUrl: trees.fotoUrl }).from(trees)
-    .where(conservaFotos ? deGruposPendientes : or(deGruposPendientes, sinSubir));
+    .where(or(deGruposPendientes, sinSubir));
   return filas.map((f) => f.fotoUrl).filter(isLocalUri);
 }
 
@@ -62,11 +62,9 @@ type FilaDePlantacion = typeof plantations.$inferSelect;
  * parcela pendiente con grupos ya subidos existe en el server (sus grupos no suben antes que
  * ella): deja de estar pendiente y el pull la pisa.
  */
-async function descartarFilasDeCampo(tx: typeof db, plantacionId: string, conservaFotos: boolean): Promise<void> {
-  if (!conservaFotos) {
-    await tx.update(trees).set({ fotoUrl: null, fotoSynced: false })
-      .where(and(inArray(trees.groupId, gruposDeLaPlantacion(plantacionId)), fotoSinSubir));
-  }
+async function descartarFilasDeCampo(tx: typeof db, plantacionId: string): Promise<void> {
+  await tx.update(trees).set({ fotoUrl: null, fotoSynced: false })
+    .where(and(inArray(trees.groupId, gruposDeLaPlantacion(plantacionId)), fotoSinSubir));
   await tx.delete(trees).where(inArray(trees.groupId, gruposPendientes(plantacionId)));
   await tx.delete(groups).where(inArray(groups.id, gruposPendientes(plantacionId)));
   await tx.delete(parcelas).where(and(parcelaPendiente(plantacionId), notInArray(parcelas.id, parcelasConGrupos())));
@@ -75,17 +73,16 @@ async function descartarFilasDeCampo(tx: typeof db, plantacionId: string, conser
 }
 
 async function descartarDePlantacionExistente(fila: FilaDePlantacion): Promise<void> {
-  const conserva = conservaLoQueSube(fila.motivoVarado);
   const especies = comoAltasYBajas(await getCambiosPendientes(fila.id));
-  const tecnicos = conserva ? [] : await getAltasPendientes(fila.id);
-  const fotos = await fotosADescartar(fila.id, conserva);
+  const tecnicos = conservaTecnicos(fila.motivoVarado) ? [] : await getAltasPendientes(fila.id);
+  const fotos = await fotosADescartar(fila.id);
   await enTransaccion(async (tx) => {
     await tx.update(plantations)
       .set({ ...(fila.pendingEdit ? sinEdicionPendiente(fila) : {}), motivoVarado: null })
       .where(eq(plantations.id, fila.id));
     await deshacerGuardado(fila.id, especies, []);
     await quitarTecnicosLocal(fila.id, tecnicos);
-    await descartarFilasDeCampo(tx, fila.id, conserva);
+    await descartarFilasDeCampo(tx, fila.id);
   });
   // Recién después del commit: con rollback las filas seguirían apuntando a los archivos.
   borrarFotosLocales(fotos);

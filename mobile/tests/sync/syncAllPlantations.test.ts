@@ -26,6 +26,10 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
   getSyncableGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/subidor', () => ({
+  subidorActual: jest.fn().mockResolvedValue({ userId: 'user-1', esAdmin: false }),
+}));
+
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn().mockResolvedValue([]),
   markPhotoSynced: jest.fn(),
@@ -242,7 +246,7 @@ describe('syncAllPlantations', () => {
 
     await syncAllPlantations(undefined, true);
 
-    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1');
+    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1', { userId: 'user-1', esAdmin: false });
   });
 
   it('sin descargar fotos de otros celulares, igual sube las pendientes (#565)', async () => {
@@ -251,7 +255,7 @@ describe('syncAllPlantations', () => {
 
     await syncAllPlantations(undefined, false);
 
-    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1');
+    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1', { userId: 'user-1', esAdmin: false });
     expect(descarga).not.toHaveBeenCalled();
     descarga.mockRestore();
   });

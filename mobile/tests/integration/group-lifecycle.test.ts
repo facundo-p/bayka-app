@@ -147,23 +147,40 @@ describe('markGroupSynced', () => {
 });
 
 describe('getSyncableGroups', () => {
+  const TECNICO = { userId: 'user-tecnico-1', esAdmin: false };
   const grupoLocal = (id: string, codigo: string, extra: Partial<typeof groups.$inferInsert>) => ({
     ...createTestGroup({ id, plantacionId: PLANTACION_ID, parcelaId: PARCELA_ID, nombre: `G ${codigo}`, codigo }),
     ...extra,
   });
 
-  test('devuelve todo grupo pendiente de la plantación, sin filtrar por estado ni por creador', async () => {
-    await mockTestDb.insert(groups).values([
-      grupoLocal('g-activa', 'GA', { estado: 'activa', pendingSync: true }),
-      grupoLocal('g-finalizada', 'GF', { estado: 'finalizada', pendingSync: true }),
-      grupoLocal('g-sincronizada', 'GS', { estado: 'sincronizada', pendingSync: true }),
-      grupoLocal('g-ajeno', 'GJ', { usuarioCreador: 'otro-tecnico', pendingSync: true }),
-      grupoLocal('g-al-dia', 'GD', { estado: 'finalizada', pendingSync: false }),
-    ]);
+  const conPendientes = () => mockTestDb.insert(groups).values([
+    grupoLocal('g-activa', 'GA', { estado: 'activa', pendingSync: true }),
+    grupoLocal('g-finalizada', 'GF', { estado: 'finalizada', pendingSync: true }),
+    grupoLocal('g-sincronizada', 'GS', { estado: 'sincronizada', pendingSync: true }),
+    grupoLocal('g-ajeno', 'GJ', { usuarioCreador: 'otro-tecnico', pendingSync: true }),
+    grupoLocal('g-al-dia', 'GD', { estado: 'finalizada', pendingSync: false }),
+  ]);
 
-    const ids = (await getSyncableGroups(PLANTACION_ID, 'user-tecnico-1')).map((g) => g.id).sort();
+  test('un técnico sube sus grupos pendientes, sin filtrar por estado, y no los ajenos (#768)', async () => {
+    await conPendientes();
+
+    const ids = (await getSyncableGroups(PLANTACION_ID, TECNICO)).map((g) => g.id).sort();
+
+    expect(ids).toEqual(['g-activa', 'g-finalizada', 'g-sincronizada']);
+  });
+
+  test('un admin sube también los grupos ajenos que editó (#768)', async () => {
+    await conPendientes();
+
+    const ids = (await getSyncableGroups(PLANTACION_ID, { userId: 'user-admin-1', esAdmin: true })).map((g) => g.id).sort();
 
     expect(ids).toEqual(['g-activa', 'g-ajeno', 'g-finalizada', 'g-sincronizada']);
+  });
+
+  test('sin userId, un técnico no sube ningún grupo', async () => {
+    await conPendientes();
+
+    expect(await getSyncableGroups(PLANTACION_ID, { userId: null, esAdmin: false })).toEqual([]);
   });
 
   test('no mezcla grupos de otra plantación', async () => {
@@ -174,6 +191,6 @@ describe('getSyncableGroups', () => {
       pendingSync: true,
     });
 
-    expect(await getSyncableGroups(PLANTACION_ID)).toEqual([]);
+    expect(await getSyncableGroups(PLANTACION_ID, TECNICO)).toEqual([]);
   });
 });
