@@ -104,13 +104,13 @@ select is(
     'b2200000-0000-0000-0000-000000000f11',
     'b2200000-0000-0000-0000-0000000000ff'
   ]::uuid[]),
-  '{"success": true, "quitadas": 0, "rechazados": []}'::jsonb,
+  '{"success": true, "quitadas": 0, "rechazados": [], "conservados": {"arboles": []}}'::jsonb,
   'reintentar y mandar un id que no existe no falla ni lo rechaza'
 );
 
 reset role;
 select ok(
-  not has_function_privilege('anon', 'quitar_fotos_arboles(uuid[])', 'execute'),
+  not has_function_privilege('anon', 'quitar_fotos_arboles(uuid[], jsonb)', 'execute'),
   'anon no puede ejecutarla'
 );
 
