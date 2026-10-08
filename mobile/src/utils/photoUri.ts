@@ -1,7 +1,8 @@
 import { sql, SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 
-const LOCAL_URI_SCHEMES = ['file://', 'content://'];
+/** Esquemas de una foto que sigue en el dispositivo. Contrato en `contracts/foto-local.json`. */
+export const LOCAL_URI_SCHEMES = ['file://', 'content://'] as const;
 
 /** Returns true if the URI points to a local file (file://, content://, etc). */
 export function isLocalUri(uri: string | null | undefined): uri is string {
@@ -22,5 +23,9 @@ export function ensureFileUri(uri: string): string {
 
 /** SQL fragment: true when the column holds a local URI. Use in Drizzle .where() or CASE WHEN expressions. */
 export function sqlIsLocalUri(column: SQLiteColumn): SQL {
-  return sql`(${column} LIKE 'file://%' OR ${column} LIKE 'content://%')`;
+  // Patrones literales y no parámetros: los esquemas son constantes del código.
+  const condiciones = LOCAL_URI_SCHEMES.map(
+    (scheme) => sql`${column} LIKE ${sql.raw(`'${scheme}%'`)}`,
+  );
+  return sql`(${sql.join(condiciones, sql` OR `)})`;
 }
