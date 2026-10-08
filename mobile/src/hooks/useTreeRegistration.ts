@@ -160,10 +160,10 @@ export function useTreeRegistration({
   // que cargue habilita la pantalla entera sobre una plantación finalizada (#469).
   const dataLoaded = subgroup !== null && userId !== '' && estadoPlantacionCargado;
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
-  // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
-  // eso reaparecía el borrado en el listado de grupos (#469).
   // La pantalla ya no ofrece estas acciones sin permiso: esto frena a la que quede abierta.
   const puedeEditarArboles = dataLoaded && puedeEditarArbolesDelGrupo({ plantacion, isCreator, esAdmin });
+  // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
+  // eso reaparecía el borrado en el listado de grupos (#469).
   const canReactivate = dataLoaded && getGroupGating({
     plantacion,
     subgroupEstado,

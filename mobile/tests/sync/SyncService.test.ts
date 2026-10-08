@@ -27,6 +27,9 @@ jest.mock('../../src/database/liveQuery', () => ({
 jest.mock('../../src/repositories/GroupRepository', () => ({
   markGroupSynced: jest.fn().mockResolvedValue(undefined),
   getSyncableGroups: jest.fn(),
+}));
+
+jest.mock('../../src/repositories/subidor', () => ({
   subidorActual: jest.fn().mockResolvedValue({ userId: 'user-1', esAdmin: false }),
 }));
 

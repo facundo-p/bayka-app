@@ -12,8 +12,8 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useCurrentUserId', () => ({
-  useCurrentUserId: () => 'user-1',
+jest.mock('../../src/hooks/useQuienSube', () => ({
+  useQuienSube: () => ({ userId: 'user-1', esAdmin: false }),
 }));
 
 const mockGroupsByPlantation = jest.fn();
@@ -21,9 +21,9 @@ const mockParcelasByPlantation = jest.fn();
 const mockPhotosByPlantation = jest.fn();
 
 jest.mock('../../src/queries/pendingSyncQueries', () => ({
-  countPendingGroupsByPlantation: (userId?: string | null) => mockGroupsByPlantation(userId),
+  countPendingGroupsByPlantation: (quien: unknown) => mockGroupsByPlantation(quien),
   countPendingParcelasByPlantation: () => mockParcelasByPlantation(),
-  countPendingTreePhotosByPlantation: () => mockPhotosByPlantation(),
+  countPendingTreePhotosByPlantation: (quien: unknown) => mockPhotosByPlantation(quien),
 }));
 
 // useMemo fuera de React: se ejecuta la factory directamente.
@@ -78,7 +78,7 @@ describe('usePendingSyncMap', () => {
     expect(map.size).toBe(0);
   });
 
-  test('los fetchers invocan las queries agrupadas (grupos con userId)', async () => {
+  test('los fetchers invocan las queries agrupadas (grupos y fotos con quién sube)', async () => {
     mockUseLiveData.mockReturnValue({ data: undefined });
     mockGroupsByPlantation.mockResolvedValue([]);
     mockParcelasByPlantation.mockResolvedValue([]);
@@ -89,8 +89,8 @@ describe('usePendingSyncMap', () => {
     const fetchers = mockUseLiveData.mock.calls.map((c) => c[0]);
     await Promise.all(fetchers.map((f) => f()));
 
-    expect(mockGroupsByPlantation).toHaveBeenCalledWith('user-1');
+    expect(mockGroupsByPlantation).toHaveBeenCalledWith({ userId: 'user-1', esAdmin: false });
     expect(mockParcelasByPlantation).toHaveBeenCalled();
-    expect(mockPhotosByPlantation).toHaveBeenCalled();
+    expect(mockPhotosByPlantation).toHaveBeenCalledWith({ userId: 'user-1', esAdmin: false });
   });
 });

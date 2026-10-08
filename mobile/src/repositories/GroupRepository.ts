@@ -1,7 +1,7 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { groups, trees, parcelas } from '../database/schema';
-import { eq, and, desc, count, sql, type SQL } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
@@ -19,8 +19,7 @@ import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { borrarFotosLocales } from '../services/PhotoService';
-import { readCachedRole, readCachedUserId } from '../supabase/auth';
-import { esRolAdmin } from '../types/domain';
+import { gruposQueSube, type Subidor } from './subidor';
 
 export type GroupEstado = EstadoGrupo;
 export type { GroupTipo };
@@ -267,24 +266,6 @@ export async function getFinalizadaGroups(plantacionId: string, userId?: string)
   }
   return db.select().from(groups)
     .where(and(...conditions)) as unknown as Group[];
-}
-
-/** Quién sube: un técnico, solo sus grupos; admin y superadmin, también los ajenos que editaron (#768). */
-export interface Subidor {
-  userId: string | null;
-  esAdmin: boolean;
-}
-
-/** La sesión cacheada: el guard de sesión del sync exige que sea la misma cuenta que la del SDK. */
-export async function subidorActual(): Promise<Subidor> {
-  const [userId, rol] = await Promise.all([readCachedUserId(), readCachedRole()]);
-  return { userId, esAdmin: esRolAdmin(rol) };
-}
-
-/** Condición sobre `groups` de lo que sube `subidor`, o undefined si sube todo. Sin userId, ningún grupo. */
-export function gruposQueSube(subidor: Subidor): SQL | undefined {
-  if (subidor.esAdmin) return undefined;
-  return eq(groups.usuarioCreador, subidor.userId ?? '');
 }
 
 export async function getSyncableGroups(plantacionId: string, subidor: Subidor): Promise<Group[]> {

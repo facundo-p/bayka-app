@@ -5,10 +5,21 @@ import { eq, count, and, isNotNull, sql, type SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { sqlIsLocalUri } from '../utils/photoUri';
 import { ESTADO_GRUPO } from '../constants/estados';
+import { gruposQueSube } from '../repositories/subidor';
 
-export interface PendingCountQueryOpts {
-  plantacionId?: string;
+/** Quién está logueado. Los grupos y sus fotos cuentan si su sync los sube (#768). */
+export interface QuienSube {
   userId?: string | null;
+  esAdmin?: boolean;
+}
+
+export interface PendingCountQueryOpts extends QuienSube {
+  plantacionId?: string;
+}
+
+/** Sin userId todavía (la sesión carga async), no filtra. */
+function deQuienSube({ userId, esAdmin = false }: QuienSube): SQL | undefined {
+  return userId ? gruposQueSube({ userId, esAdmin }) : undefined;
 }
 
 /**
@@ -26,8 +37,11 @@ function deLaPlantacionOGlobal(columna: SQLiteColumn, plantacionId?: string): SQ
 }
 
 export function countPendingGroups(opts: PendingCountQueryOpts) {
-  const conditions = [eq(groups.pendingSync, true), deLaPlantacionOGlobal(groups.plantacionId, opts.plantacionId)];
-  if (opts.userId) conditions.push(eq(groups.usuarioCreador, opts.userId));
+  const conditions = [
+    eq(groups.pendingSync, true),
+    deLaPlantacionOGlobal(groups.plantacionId, opts.plantacionId),
+    deQuienSube(opts),
+  ];
   return db.select({ cnt: count() }).from(groups).where(and(...conditions));
 }
 
@@ -37,8 +51,8 @@ export function countNNBlockedGroups(opts: PendingCountQueryOpts) {
     eq(groups.plantacionId, opts.plantacionId),
     eq(groups.estado, ESTADO_GRUPO.finalizada),
     sql`EXISTS (SELECT 1 FROM trees WHERE trees.group_id = ${groups.id} AND trees.especie_id IS NULL)`,
+    deQuienSube(opts),
   ];
-  if (opts.userId) conditions.push(eq(groups.usuarioCreador, opts.userId));
   return db.select({ cnt: count() }).from(groups).where(and(...conditions));
 }
 
@@ -54,7 +68,11 @@ function pendingTreePhotoConditions() {
 
 /** Fotos locales sin subir de grupos ya sincronizados; sin `plantacionId` cuenta todas (el OrangeDot global las suma, #71). */
 export function countPendingTreePhotos(opts: PendingCountQueryOpts) {
-  const conditions = [...pendingTreePhotoConditions(), deLaPlantacionOGlobal(groups.plantacionId, opts.plantacionId)];
+  const conditions = [
+    ...pendingTreePhotoConditions(),
+    deLaPlantacionOGlobal(groups.plantacionId, opts.plantacionId),
+    deQuienSube(opts),
+  ];
   return db
     .select({ cnt: count() })
     .from(trees)
@@ -87,9 +105,8 @@ export function countFotosSinSubirDePlantacion(plantacionId: string) {
 
 // Variantes agrupadas por plantación (dot por tarjeta): mismo criterio que los conteos globales, para que sincronizar una plantación apague el global (#71, follow-up).
 
-export function countPendingGroupsByPlantation(userId?: string | null) {
-  const conditions = [eq(groups.pendingSync, true), noEliminadaEnServidor(groups.plantacionId)];
-  if (userId) conditions.push(eq(groups.usuarioCreador, userId));
+export function countPendingGroupsByPlantation(quien: QuienSube = {}) {
+  const conditions = [eq(groups.pendingSync, true), noEliminadaEnServidor(groups.plantacionId), deQuienSube(quien)];
   return db
     .select({ plantacionId: groups.plantacionId, cnt: count() })
     .from(groups)
@@ -105,11 +122,11 @@ export function countPendingParcelasByPlantation() {
     .groupBy(parcelas.plantacionId);
 }
 
-export function countPendingTreePhotosByPlantation() {
+export function countPendingTreePhotosByPlantation(quien: QuienSube = {}) {
   return db
     .select({ plantacionId: groups.plantacionId, cnt: count() })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(and(...pendingTreePhotoConditions(), noEliminadaEnServidor(groups.plantacionId)))
+    .where(and(...pendingTreePhotoConditions(), noEliminadaEnServidor(groups.plantacionId), deQuienSube(quien)))
     .groupBy(groups.plantacionId);
 }

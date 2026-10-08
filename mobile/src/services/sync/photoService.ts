@@ -5,7 +5,7 @@ import { eq, and, inArray, isNotNull } from 'drizzle-orm';
 import { isRemoteUri, ensureFileUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/TreeRepository';
-import { subidorActual } from '../../repositories/GroupRepository';
+import { subidorActual } from '../../repositories/subidor';
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';

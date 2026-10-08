@@ -7,9 +7,9 @@ import { syncLog } from '../../utils/syncLogger';
 import {
   markGroupSynced,
   getSyncableGroups,
-  subidorActual,
   Group,
 } from '../../repositories/GroupRepository';
+import { subidorActual } from '../../repositories/subidor';
 import {
   getSyncableParcelas,
   markParcelaSynced,
