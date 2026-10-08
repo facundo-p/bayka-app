@@ -202,6 +202,12 @@ propagan y limpian `species.nombre_cientifico`, y la migración de datos unifica
 variantes, deja sin vínculo los nombres en blanco y es idempotente (071, #753).
 `54` `contracts/foto-local.json`: `dashboard_arboles` no cuenta como foto un
 árbol con foto de cada esquema local del contrato, y sí una foto subida (#762).
+`55` en un grupo que ya existe y creó otro, solo escriben admin y superadmin:
+`sync_subgroup` recorre la tabla `grupoAjeno` de `contracts/permisos-edicion.json`
+y un rechazo no toca el grupo; INSERT y UPDATE de `trees` (también mover un árbol
+propio a un grupo ajeno), `quitar_fotos_arboles` (el ajeno no queda en
+`rechazados`) y subir, reemplazar o actualizar la foto de un árbol ajeno en
+`tree-photos`; la foto de un árbol que todavía no existe sí sube (072, #768).
 
 ## Hallazgo fuera de alcance (no corregido)
 

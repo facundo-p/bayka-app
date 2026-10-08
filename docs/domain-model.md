@@ -332,6 +332,15 @@ Las asignaciones de técnicos (`plantation_users`) usan otro gate,
 archivada, pero una finalizada las admite, porque son control de acceso y no
 datos de campo (#522).
 
+En un grupo que ya existe y creó otro usuario solo escriben admin y superadmin
+(072, #768): `sync_subgroup` responde `PERMISSION`, y las policies de `trees`,
+`quitar_fotos_arboles` y las de `tree-photos` (por el árbol del nombre del
+archivo) lo rechazan. Un técnico escribe solo en sus grupos. En la app, el admin
+edita foto y GPS y resuelve N/N de un grupo ajeno, pero no borra árboles, no
+cambia la especie de uno identificado ni renombra, elimina o reactiva el grupo;
+un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un admin y el técnico editan el mismo
+grupo, gana la última sincronización.
+
 ### Eliminada
 
 El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
