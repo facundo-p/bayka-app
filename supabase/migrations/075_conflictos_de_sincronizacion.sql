@@ -18,21 +18,21 @@
 -- sirve de base y una subida no pisa el archivo de otro. La que pierde y la que
 -- queda reemplazada se anotan en `fotos_quitadas` para que las borre el cron.
 --
--- Partes nuevas: `conservar_grupo`, `conservar_fotos_y_gps`, `foto_difiere`,
--- `gps_difiere`, `anotar_fotos_descartadas` y `conservados`. Redefine
--- `upsert_arboles` (SubID con el código de grupo vigente), la orquestadora y
--- `arbol_de_foto`.
---
 -- Rollback: volver a correr `arbol_de_foto` de 072, `sync_subgroup_upsert_arboles`
 -- de 066 y la orquestadora de 065, y después
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservados"("jsonb", "jsonb", "jsonb");
+--   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservado_arbol"("jsonb", "public"."trees");
+--   DROP FUNCTION IF EXISTS "public"."sync_subgroup_punto_distinto"("jsonb", double precision, double precision, timestamp with time zone);
+--   DROP FUNCTION IF EXISTS "public"."sync_subgroup_campos_grupo"();
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_anotar_fotos_descartadas"("jsonb", "jsonb", "jsonb");
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservar_fotos_y_gps"("jsonb");
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_gps_difiere"("jsonb", double precision, double precision, timestamp with time zone);
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_foto_difiere"("jsonb", "text");
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservar_grupo"("jsonb");
--- No hay columnas ni datos que deshacer. En el repo, el rollback borra también el
--- test 58 y saca las partes nuevas del test 45.
+-- No hay columnas ni datos que deshacer, pero con la regex de 072 un path
+-- versionado ya guardado no tiene árbol y las policies de Storage no lo cuidan.
+-- En el repo, el rollback borra también el test 58 y saca las partes nuevas del
+-- test 45.
 
 -- ── A. Foto con versión ──────────────────────────────────────────────────────
 
@@ -47,10 +47,22 @@ $$;
 
 -- ── B. Grupo ─────────────────────────────────────────────────────────────────
 
+-- Los datos del grupo que viajan con base.
+CREATE OR REPLACE FUNCTION "public"."sync_subgroup_campos_grupo"() RETURNS "text"[]
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT ARRAY['nombre', 'codigo', 'tipo', 'estado'];
+$$;
+
+ALTER FUNCTION "public"."sync_subgroup_campos_grupo"() OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."sync_subgroup_campos_grupo"() FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_campos_grupo"() TO "service_role";
+
 -- El grupo a subir, con el valor del servidor en cada campo que difiere de la
--- base. Va antes del rechazo: un código o nombre viejo que el servidor conserva
--- no cuenta como duplicado. FOR UPDATE antes de comparar, y es el primer lock de
--- la orquestadora.
+-- base; un campo que la base no trae se pisa. Va antes del rechazo: un código o
+-- nombre viejo que el servidor conserva no cuenta como duplicado. Toma el lock
+-- del upsert antes de comparar, y es el primero de la orquestadora.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservar_grupo"("p_subgroup" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -62,15 +74,16 @@ BEGIN
     RETURN p_subgroup;
   END IF;
 
-  SELECT to_jsonb(g) INTO v_actual FROM groups g WHERE id = (p_subgroup->>'id')::UUID FOR UPDATE;
+  SELECT to_jsonb(g) INTO v_actual FROM groups g WHERE id = (p_subgroup->>'id')::UUID FOR NO KEY UPDATE;
   IF v_actual IS NULL THEN
     RETURN p_subgroup;
   END IF;
 
   RETURN p_subgroup || (
     SELECT coalesce(jsonb_object_agg(c.campo, v_actual->c.campo), '{}')
-      FROM unnest(ARRAY['nombre', 'codigo', 'tipo', 'estado']) AS c(campo)
-     WHERE v_actual->>c.campo IS DISTINCT FROM p_subgroup->'base'->>c.campo
+      FROM unnest(sync_subgroup_campos_grupo()) AS c(campo)
+     WHERE p_subgroup->'base' ? c.campo
+       AND v_actual->>c.campo IS DISTINCT FROM p_subgroup->'base'->>c.campo
   );
 END;
 $$;
@@ -81,7 +94,8 @@ GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_conservar_grupo"("jsonb") TO "
 
 -- ── C. Foto y GPS ────────────────────────────────────────────────────────────
 
--- La foto del servidor no es la que el móvil vio. Sin `foto_base`, nunca.
+-- La foto del servidor no es la que el móvil vio. Sin `foto_base` no hay
+-- conflicto de foto.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_foto_difiere"("p_arbol" "jsonb", "p_foto_url" "text") RETURNS boolean
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO 'public'
@@ -93,8 +107,26 @@ ALTER FUNCTION "public"."sync_subgroup_foto_difiere"("jsonb", "text") OWNER TO "
 REVOKE ALL ON FUNCTION "public"."sync_subgroup_foto_difiere"("jsonb", "text") FROM PUBLIC, "anon", "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_foto_difiere"("jsonb", "text") TO "service_role";
 
--- El punto del servidor no es el que el móvil vio. Latitud, longitud y momento de
--- captura lo identifican; la precisión viaja con él. Sin `gps_base`, nunca.
+-- El punto no es el del JSON. Latitud, longitud y momento de captura lo
+-- identifican; la precisión viaja con él.
+CREATE OR REPLACE FUNCTION "public"."sync_subgroup_punto_distinto"(
+  "p_punto" "jsonb", "p_latitude" double precision, "p_longitude" double precision, "p_captured_at" timestamp with time zone
+) RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT (p_latitude, p_longitude, p_captured_at) IS DISTINCT FROM (
+           (p_punto->>'latitude')::DOUBLE PRECISION,
+           (p_punto->>'longitude')::DOUBLE PRECISION,
+           (p_punto->>'gps_captured_at')::TIMESTAMPTZ);
+$$;
+
+ALTER FUNCTION "public"."sync_subgroup_punto_distinto"("jsonb", double precision, double precision, timestamp with time zone) OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."sync_subgroup_punto_distinto"("jsonb", double precision, double precision, timestamp with time zone) FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_punto_distinto"("jsonb", double precision, double precision, timestamp with time zone) TO "service_role";
+
+-- El punto del servidor no es el que el móvil vio. Sin `gps_base` no hay
+-- conflicto de GPS.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_gps_difiere"(
   "p_arbol" "jsonb", "p_latitude" double precision, "p_longitude" double precision, "p_captured_at" timestamp with time zone
 ) RETURNS boolean
@@ -102,10 +134,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_subgroup_gps_difiere"(
     SET "search_path" TO 'public'
     AS $$
   SELECT p_arbol ? 'gps_base'
-     AND (p_latitude, p_longitude, p_captured_at) IS DISTINCT FROM (
-           (p_arbol->'gps_base'->>'latitude')::DOUBLE PRECISION,
-           (p_arbol->'gps_base'->>'longitude')::DOUBLE PRECISION,
-           (p_arbol->'gps_base'->>'gps_captured_at')::TIMESTAMPTZ);
+     AND sync_subgroup_punto_distinto(p_arbol->'gps_base', p_latitude, p_longitude, p_captured_at);
 $$;
 
 ALTER FUNCTION "public"."sync_subgroup_gps_difiere"("jsonb", double precision, double precision, timestamp with time zone) OWNER TO "postgres";
@@ -140,8 +169,9 @@ GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_conservar_fotos_y_gps"("jsonb"
 
 -- Anota para el cron los archivos que ningún árbol va a referenciar: la foto que
 -- subió el móvil y el servidor no aceptó, y la que reemplazó una foto nueva. Lo
--- que mandó el móvil cuenta solo si es un archivo de ese árbol en esa plantación.
--- Va antes del upsert, con `foto_url` todavía sin pisar.
+-- que mandó el móvil cuenta solo si es un archivo de ese árbol en la carpeta de
+-- su parcela, y solo para árboles del grupo que sube. Va antes del upsert, con
+-- `foto_url` todavía sin pisar.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_anotar_fotos_descartadas"("p_subgroup" "jsonb", "p_enviados" "jsonb", "p_finales" "jsonb") RETURNS void
     LANGUAGE "sql"
     SET "search_path" TO 'public'
@@ -150,10 +180,11 @@ CREATE OR REPLACE FUNCTION "public"."sync_subgroup_anotar_fotos_descartadas"("p_
   SELECT DISTINCT c.path, actual.id, (p_subgroup->>'plantation_id')::UUID, auth.uid()
     FROM jsonb_array_elements(p_enviados) WITH ORDINALITY AS e(t, orden)
     JOIN jsonb_array_elements(p_finales) WITH ORDINALITY AS f(t, orden) ON f.orden = e.orden
-    JOIN trees actual ON actual.id = (e.t->>'id')::UUID
+    JOIN trees actual ON actual.id = (e.t->>'id')::UUID AND actual.group_id = (p_subgroup->>'id')::UUID
    CROSS JOIN LATERAL (VALUES
            (CASE WHEN arbol_de_foto(e.t->>'foto_url') = actual.id
-                  AND starts_with(e.t->>'foto_url', 'plantations/' || (p_subgroup->>'plantation_id') || '/')
+                  AND starts_with(e.t->>'foto_url', 'plantations/' || (p_subgroup->>'plantation_id')
+                                  || '/parcelas/' || (p_subgroup->>'parcela_id') || '/trees/')
                  THEN path_foto_storage(e.t->>'foto_url') END),
            (path_foto_storage(actual.foto_url))
          ) AS c(path)
@@ -237,10 +268,33 @@ GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_upsert_arboles"("jsonb", "json
 
 -- ── E. Respuesta ─────────────────────────────────────────────────────────────
 
--- Lo que el servidor conservó y quedó distinto de lo que mandó el móvil:
--- `{grupo: {campo: valor}, arboles: [{id, species_id?, foto_url?, gps?}]}`. Un
--- campo sin base nunca vuelve. Foto y GPS vuelven aunque el móvil no los haya
--- mandado (null): el móvil adopta el del servidor.
+-- Lo que el servidor conservó de un árbol y quedó distinto de lo que mandó el
+-- móvil: `{species_id?, foto_url?, gps?}`. Foto y GPS vuelven aunque el móvil no
+-- los haya mandado (null): el móvil adopta el del servidor.
+CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservado_arbol"("p_arbol" "jsonb", "p_actual" "public"."trees") RETURNS "jsonb"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT CASE WHEN p_arbol ? 'species_base_id'
+               AND p_actual.species_id IS DISTINCT FROM NULLIF(p_arbol->>'species_id', '')::UUID
+              THEN jsonb_build_object('species_id', p_actual.species_id) ELSE '{}' END
+      || CASE WHEN sync_subgroup_foto_difiere(p_arbol, p_actual.foto_url)
+               AND p_actual.foto_url IS DISTINCT FROM p_arbol->>'foto_url'
+              THEN jsonb_build_object('foto_url', p_actual.foto_url) ELSE '{}' END
+      || CASE WHEN sync_subgroup_gps_difiere(p_arbol, p_actual.latitude, p_actual.longitude, p_actual.gps_captured_at)
+               AND sync_subgroup_punto_distinto(p_arbol, p_actual.latitude, p_actual.longitude, p_actual.gps_captured_at)
+              THEN jsonb_build_object('gps', jsonb_build_object(
+                     'latitude', p_actual.latitude, 'longitude', p_actual.longitude,
+                     'gps_accuracy', p_actual.gps_accuracy, 'gps_captured_at', p_actual.gps_captured_at))
+              ELSE '{}' END;
+$$;
+
+ALTER FUNCTION "public"."sync_subgroup_conservado_arbol"("jsonb", "public"."trees") OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."sync_subgroup_conservado_arbol"("jsonb", "public"."trees") FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_conservado_arbol"("jsonb", "public"."trees") TO "service_role";
+
+-- `{grupo: {campo: valor}, arboles: [{id, ...}]}`: lo conservado del grupo y de
+-- cada árbol. Un campo sin base nunca vuelve.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservados"("p_subgroup" "jsonb", "p_grupo" "jsonb", "p_trees" "jsonb") RETURNS "jsonb"
     LANGUAGE "sql"
     SET "search_path" TO 'public'
@@ -248,25 +302,13 @@ CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservados"("p_subgroup" "js
   SELECT jsonb_build_object(
     'grupo', (
       SELECT coalesce(jsonb_object_agg(c.campo, p_grupo->c.campo), '{}')
-        FROM unnest(ARRAY['nombre', 'codigo', 'tipo', 'estado']) AS c(campo)
+        FROM unnest(sync_subgroup_campos_grupo()) AS c(campo)
        WHERE p_grupo->c.campo IS DISTINCT FROM p_subgroup->c.campo),
     'arboles', (
       SELECT coalesce(jsonb_agg(d.conservado || jsonb_build_object('id', tr.id) ORDER BY tr.id), '[]')
         FROM jsonb_array_elements(p_trees) AS t
         JOIN trees tr ON tr.id = (t->>'id')::UUID
-       CROSS JOIN LATERAL (SELECT
-           CASE WHEN t ? 'species_base_id' AND tr.species_id IS DISTINCT FROM NULLIF(t->>'species_id', '')::UUID
-                THEN jsonb_build_object('species_id', tr.species_id) ELSE '{}' END
-        || CASE WHEN sync_subgroup_foto_difiere(t, tr.foto_url) AND tr.foto_url IS DISTINCT FROM t->>'foto_url'
-                THEN jsonb_build_object('foto_url', tr.foto_url) ELSE '{}' END
-        || CASE WHEN sync_subgroup_gps_difiere(t, tr.latitude, tr.longitude, tr.gps_captured_at)
-                 AND (tr.latitude, tr.longitude, tr.gps_captured_at) IS DISTINCT FROM (
-                       (t->>'latitude')::DOUBLE PRECISION, (t->>'longitude')::DOUBLE PRECISION,
-                       (t->>'gps_captured_at')::TIMESTAMPTZ)
-                THEN jsonb_build_object('gps', jsonb_build_object(
-                       'latitude', tr.latitude, 'longitude', tr.longitude,
-                       'gps_accuracy', tr.gps_accuracy, 'gps_captured_at', tr.gps_captured_at))
-                ELSE '{}' END AS conservado) AS d
+       CROSS JOIN LATERAL (SELECT sync_subgroup_conservado_arbol(t, tr) AS conservado) AS d
        WHERE d.conservado <> '{}')
   );
 $$;

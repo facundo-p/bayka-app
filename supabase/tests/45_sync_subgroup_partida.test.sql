@@ -1,4 +1,4 @@
--- sync_subgroup partida (064, #734; 065 suma dos partes, #679; 075 seis, #802): las partes no se
+-- sync_subgroup partida (064, #734; 065 suma dos partes, #679; 075 nueve, #802): las partes no se
 -- ejecutan desde el cliente y la orquestadora sigue siendo el único RPC, corto y
 -- con los mismos grants.
 begin;
@@ -12,12 +12,13 @@ create temp view partes_45 as
 
 select is(
   (select array_agg(nombre order by nombre) from partes_45),
-  array['sync_subgroup_anotar_fotos_descartadas', 'sync_subgroup_codigo_parcela', 'sync_subgroup_conservadas',
-        'sync_subgroup_conservados', 'sync_subgroup_conservar_especies', 'sync_subgroup_conservar_fotos_y_gps',
-        'sync_subgroup_conservar_grupo', 'sync_subgroup_foto_difiere', 'sync_subgroup_gps_difiere',
-        'sync_subgroup_habilitar_especies', 'sync_subgroup_rechazo', 'sync_subgroup_upsert_arboles',
+  array['sync_subgroup_anotar_fotos_descartadas', 'sync_subgroup_campos_grupo', 'sync_subgroup_codigo_parcela',
+        'sync_subgroup_conservadas', 'sync_subgroup_conservado_arbol', 'sync_subgroup_conservados',
+        'sync_subgroup_conservar_especies', 'sync_subgroup_conservar_fotos_y_gps', 'sync_subgroup_conservar_grupo',
+        'sync_subgroup_foto_difiere', 'sync_subgroup_gps_difiere', 'sync_subgroup_habilitar_especies',
+        'sync_subgroup_punto_distinto', 'sync_subgroup_rechazo', 'sync_subgroup_upsert_arboles',
         'sync_subgroup_upsert_grupo'],
-  'las trece partes existen');
+  'las dieciséis partes existen');
 
 select is(
   (select count(*)::int from partes_45
@@ -27,7 +28,7 @@ select is(
 
 select is(
   (select count(*)::int from partes_45 where has_function_privilege('service_role', oid, 'execute')),
-  13, 'service_role ejecuta las partes');
+  16, 'service_role ejecuta las partes');
 
 select is(
   (select count(*)::int from partes_45 where prosecdef or not coalesce('search_path=public' = any(proconfig), false)),

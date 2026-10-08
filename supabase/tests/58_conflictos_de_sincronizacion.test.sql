@@ -5,7 +5,7 @@
 -- reemplazada quedan anotadas para el cron, y el SubID sigue al código de grupo
 -- que conserva el servidor.
 begin;
-select plan(32);
+select plan(39);
 
 insert into organizations (id, nombre) values ('b5800000-0000-0000-0000-000000000001', 'Org Test 58');
 
@@ -87,6 +87,15 @@ select ('b5800000-0000-0000-0000-0000000000d' || n)::uuid, 'b5800000-0000-0000-0
        pg_temp.foto58(n, 'v1'), -34.1, -58.1, 5, '2026-10-01T10:00:00+00:00'
   from generate_series(1, 5) as n;
 
+-- Otro grupo del mismo técnico, con un árbol que nadie más puede mandar.
+insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador) values
+  ('b5800000-0000-0000-0000-0000000000c3', 'b5800000-0000-0000-0000-000000000002',
+   'b5800000-0000-0000-0000-0000000000b1', 'Tres', 'L3', 'linea', 'activa', 'b5800000-0000-0000-0000-0000000000a2');
+insert into trees (id, group_id, species_id, posicion, sub_id, usuario_registro, foto_url) values
+  ('b5800000-0000-0000-0000-0000000000d8', 'b5800000-0000-0000-0000-0000000000c3',
+   'b5800000-0000-0000-0000-0000000000e1', 1, 'P1L3T58A1', 'b5800000-0000-0000-0000-0000000000a2',
+   pg_temp.foto58(8, 'v1'));
+
 -- Los payloads, armados antes de cambiar de rol.
 create temp table pedidos_58 (caso text primary key, grupo jsonb, arboles jsonb, esperado jsonb);
 grant select on pedidos_58 to authenticated;
@@ -124,6 +133,10 @@ insert into pedidos_58 values
      pg_temp.arbol58(3, '{"species_id": "b5800000-0000-0000-0000-0000000000e3", "sub_id": "P1L1T58C3", "species_base_id": "b5800000-0000-0000-0000-0000000000e2"}'),
      pg_temp.arbol58(4, pg_temp.punto58('A') || jsonb_build_object('gps_base', pg_temp.punto58('A') - 'gps_accuracy'))),
    '{"success": true, "conservadas": [], "conservados": {"grupo": {}, "arboles": []}}'),
+  ('base incompleta',
+   pg_temp.grupo58('{"nombre": "Uno parcial", "estado": "finalizada", "base": {"codigo": "L1", "tipo": "linea", "estado": "finalizada"}}'),
+   jsonb_build_array(pg_temp.arbol58(5, '{}')),
+   '{"success": true, "conservadas": [], "conservados": {"grupo": {"tipo": "bosquete"}, "arboles": []}}'),
   ('sin base',
    pg_temp.grupo58('{"nombre": "Uno viejo", "estado": "finalizada"}') - 'base',
    jsonb_build_array(
@@ -133,7 +146,11 @@ insert into pedidos_58 values
    pg_temp.grupo58('{"nombre": "Uno viejo", "estado": "finalizada", "base": {"nombre": "Uno viejo", "codigo": "L1", "tipo": "linea", "estado": "finalizada"}}'),
    jsonb_build_array(
      pg_temp.arbol58(6, '{"foto_base": null, "gps_base": null}')),
-   '{"grupo": {"codigo": "L9"}, "arboles": []}');
+   '{"grupo": {"codigo": "L9"}, "arboles": []}'),
+  ('árbol ajeno',
+   pg_temp.grupo58('{"codigo": "L9", "estado": "finalizada", "base": {"nombre": "Uno viejo", "codigo": "L9", "tipo": "linea", "estado": "finalizada"}}'),
+   jsonb_build_array(pg_temp.arbol58(8, jsonb_build_object('foto_url', pg_temp.foto58(8, 't1'), 'sub_id', 'P1L9T58A8'))),
+   '{"success": false, "error": "UNKNOWN"}');
 
 create temp view fotos_anotadas_58 as
   select storage_path from fotos_quitadas where plantation_id = 'b5800000-0000-0000-0000-000000000002';
@@ -221,6 +238,40 @@ select is((select nombre from groups where id = 'b5800000-0000-0000-0000-0000000
 select ok(exists(select 1 from fotos_anotadas_58 where storage_path = pg_temp.foto58(2, 'a1')),
   'la foto del servidor reemplazada queda anotada');
 
+-- Reintento: la respuesta se perdió y el móvil manda lo mismo.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'b5800000-0000-0000-0000-0000000000a2', true);
+
+select is(
+  (select sync_subgroup(grupo, arboles) from pedidos_58 where caso = 'conservar la mía'),
+  (select esperado from pedidos_58 where caso = 'conservar la mía'),
+  'reenviar lo que ya entró no devuelve conflictos');
+
+reset role;
+
+-- La foto del móvil que había perdido volvió a ser la del árbol: el cron no la borra.
+create temp table limpieza_58 as select * from fotos_quitadas_por_limpiar(100);
+select is(
+  (select array_agg(distinct resultado) from fotos_quitadas where storage_path = pg_temp.foto58(2, 't2')),
+  array['reasignada'], 'el cron marca reasignada la foto que volvió a subir');
+
+-- ── Base incompleta: el campo sin base se pisa ───────────────────────────────
+
+update groups set tipo = 'bosquete', nombre = 'Uno admin 3' where id = 'b5800000-0000-0000-0000-0000000000c1';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'b5800000-0000-0000-0000-0000000000a2', true);
+
+select is(
+  (select sync_subgroup(grupo, arboles) from pedidos_58 where caso = 'base incompleta'),
+  (select esperado from pedidos_58 where caso = 'base incompleta'),
+  'conserva el tipo del servidor');
+
+reset role;
+
+select is((select nombre from groups where id = 'b5800000-0000-0000-0000-0000000000c1'),
+  'Uno parcial', 'el nombre sin base pisa');
+
 -- ── Sin base: un APK viejo pisa como antes ───────────────────────────────────
 
 update trees set latitude = -34.2, longitude = -58.2 where id = 'b5800000-0000-0000-0000-0000000000d1';
@@ -265,6 +316,26 @@ select is((select sub_id from trees where id = 'b5800000-0000-0000-0000-00000000
   'P1L9T58A6', 'el SubID lleva el código de grupo que conservó el servidor');
 select is((select codigo from groups where id = 'b5800000-0000-0000-0000-0000000000c1'),
   'L9', 'el grupo conserva su código');
+
+-- ── Rechazos ─────────────────────────────────────────────────────────────────
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'b5800000-0000-0000-0000-0000000000a2', true);
+
+select is(
+  (select sync_subgroup(grupo, arboles) from pedidos_58 where caso = 'árbol ajeno'),
+  (select esperado from pedidos_58 where caso = 'árbol ajeno'),
+  'un árbol de otro grupo en el payload rechaza la subida');
+
+select set_config('request.jwt.claim.sub', 'b5800000-0000-0000-0000-0000000000a3', true);
+select is(
+  (select sync_subgroup(grupo, arboles) ->> 'error' from pedidos_58 where caso = 'conservar la mía'),
+  'PERMISSION', 'con base, un técnico no sube un grupo ajeno');
+
+reset role;
+
+select ok(not exists(select 1 from fotos_quitadas where tree_id = 'b5800000-0000-0000-0000-0000000000d8'),
+  'la subida rechazada no anota fotos');
 
 -- ── Path versionado ──────────────────────────────────────────────────────────
 
