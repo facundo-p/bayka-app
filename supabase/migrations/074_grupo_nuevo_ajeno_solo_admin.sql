@@ -1,16 +1,17 @@
--- Un grupo nuevo lo sube solo quien figura como su creador (#798).
+-- Un grupo nuevo a nombre de otro usuario lo suben solo admin y superadmin (#798).
 --
 -- `sync_subgroup` creaba el grupo con el `usuario_creador` del payload, sin
--- compararlo con `auth.uid()`: un miembro subía un grupo atribuido a otro
--- usuario (un bug de la app o un APK viejo alcanzaba). `puede_escribir_grupo`
--- no lo frena porque el grupo todavía no existe. La policy de INSERT de `groups`
--- ya exigía `usuario_creador = auth.uid()`; ahora el RPC también, para todos los
--- roles. En un grupo que ya existe no cambia nada: el upsert no pisa el creador.
+-- compararlo con `auth.uid()`: un técnico subía un grupo atribuido a otro (un
+-- bug de la app o un APK viejo alcanzaba). `puede_escribir_grupo` no lo frena
+-- porque el grupo todavía no existe. Ahora el técnico sube grupos nuevos solo a
+-- su nombre. Admin y superadmin siguen subiendo el de otro con su creador real:
+-- es el grupo que un técnico dejó sin subir en un celular compartido. Sin
+-- creador, se rechaza para todos. Un grupo que ya existe sigue la regla de 072:
+-- el upsert no pisa su creador.
 --
 -- Rollback: volver a correr `sync_subgroup_rechazo` de 072. No hay columnas ni
 -- datos que deshacer. En el repo, el rollback borra también el test 57.
 
--- Igual a 072 salvo el chequeo del grupo nuevo, junto al del grupo ajeno.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_rechazo"("p_subgroup" "jsonb") RETURNS "text"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -45,7 +46,8 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM groups WHERE id = (p_subgroup->>'id')::UUID)
-     AND (p_subgroup->>'usuario_creador')::UUID IS DISTINCT FROM auth.uid() THEN
+     AND (p_subgroup->>'usuario_creador' IS NULL
+          OR (NOT is_admin() AND (p_subgroup->>'usuario_creador')::UUID IS DISTINCT FROM auth.uid())) THEN
     RETURN 'PERMISSION';
   END IF;
 
