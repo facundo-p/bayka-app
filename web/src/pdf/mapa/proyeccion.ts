@@ -3,15 +3,16 @@
  * encuadrado acá se alinea con los tiles del mismo zoom sin otra conversión.
  */
 
+import { GRADOS_A_RADIANES, RADIO_TIERRA_M, type LatLng } from '../../../../shared/distancia';
+
+export { distanciaMetros, type LatLng } from '../../../../shared/distancia';
+
 /** Lado de un tile XYZ en px. */
 export const LADO_TILE = 256;
 
-const RADIO_TIERRA_M = 6378137;
 /** Latitud donde Web Mercator corta el mundo en un cuadrado. */
 const LATITUD_MAXIMA = 85.05112878;
-const GRADOS_A_RADIANES = Math.PI / 180;
 
-export type LatLng = { lat: number; lng: number };
 export type Pixel = { x: number; y: number };
 
 /**
@@ -118,18 +119,6 @@ export function encuadrar(
   );
   const origen = origenCentrado(caja, zoom, ancho, alto);
   return { zoom, origen, ancho, alto, latitudCentro };
-}
-
-/** Distancia sobre la esfera (haversine), en metros. */
-export function distanciaMetros(a: LatLng, b: LatLng): number {
-  const dLat = (b.lat - a.lat) * GRADOS_A_RADIANES;
-  const dLng = (b.lng - a.lng) * GRADOS_A_RADIANES;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(a.lat * GRADOS_A_RADIANES) *
-      Math.cos(b.lat * GRADOS_A_RADIANES) *
-      Math.sin(dLng / 2) ** 2;
-  return 2 * RADIO_TIERRA_M * Math.asin(Math.sqrt(h));
 }
 
 /** Posición de un punto dentro del encuadre, en sus unidades. */
