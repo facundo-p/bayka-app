@@ -28,15 +28,15 @@ insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, usuario
   ('b5400000-0000-0000-0000-000000000012', 'b5400000-0000-0000-0000-000000000010',
    'b5400000-0000-0000-0000-000000000011', 'G54', 'G54', 'linea', 'b5400000-0000-0000-0000-0000000000a1');
 
--- Un árbol por esquema, más el de control con foto subida en un mes que no usa
--- ningún esquema.
 insert into trees (group_id, posicion, sub_id, usuario_registro, foto_url, created_at)
 select 'b5400000-0000-0000-0000-000000000012', n, 'A' || n, 'b5400000-0000-0000-0000-0000000000a1',
        esquema || 'foto-' || n || '.jpg', creado
-  from esquemas_54
-union all
-select 'b5400000-0000-0000-0000-000000000012', 0, 'A0', 'b5400000-0000-0000-0000-0000000000a1',
-       'plantations/p54/trees/a0.jpg', '2025-12-15T12:00:00Z';
+  from esquemas_54;
+
+-- Control: una foto subida, en un mes que no usa ningún esquema.
+insert into trees (group_id, posicion, sub_id, usuario_registro, foto_url, created_at) values
+  ('b5400000-0000-0000-0000-000000000012', 0, 'A0', 'b5400000-0000-0000-0000-0000000000a1',
+   'plantations/p54/trees/a0.jpg', '2025-12-15T12:00:00Z');
 
 create function pg_temp.con_foto_54(p_mes text) returns boolean
 language sql as $$
