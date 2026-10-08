@@ -4,6 +4,7 @@
 -- organización y plantación escribible (una finalizada solo para superadmin).
 -- `sync_subgroup` conserva la especie del server si difiere de la base que manda
 -- el móvil, y devuelve en `conservadas` los árboles que quedaron con otra especie.
+-- `conservados` (075) lo cubre el test 58.
 begin;
 select plan(29);
 
@@ -243,7 +244,7 @@ select is(
       (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d7',
         'posicion', 5, 'sub_id', 'P1L1NN5',
         'species_id', null, 'species_base_id', null)
-    )) ),
+    )) - 'conservados' ),
   '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d5", "species_id": "b4300000-0000-0000-0000-0000000000e2"}, {"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
   'sync_subgroup devuelve los árboles que quedaron con la especie del server, también un N/N ya resuelto');
 
@@ -282,7 +283,7 @@ select is(
         'posicion', 3, 'sub_id', 'PXL1T43B3',
         'species_id', 'b4300000-0000-0000-0000-0000000000e2',
         'species_base_id', 'b4300000-0000-0000-0000-0000000000e1')
-    )) ),
+    )) - 'conservados' ),
   '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d6", "species_id": "b4300000-0000-0000-0000-0000000000e3"}, {"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
   'vuelven un árbol sin cambiar y un N/N resuelto distinto; uno cambiado a la del server no');
 reset role;
@@ -299,7 +300,7 @@ select is(
       (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d5',
         'posicion', 3, 'sub_id', 'P1L1T43A3',
         'species_id', 'b4300000-0000-0000-0000-0000000000e1')
-    )) ),
+    )) - 'conservados' ),
   '{"success": true, "conservadas": []}'::jsonb,
   'sync_subgroup acepta un árbol sin especie base y no conserva nada');
 reset role;

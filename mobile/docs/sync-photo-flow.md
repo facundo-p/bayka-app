@@ -348,17 +348,21 @@ Muestra resultados separados:
 
 ## RPC: sync_subgroup
 
-**Archivos:** `supabase/migrations/064_partir_sync_subgroup.sql` (los pasos), `065_cambiar_especie_arbol.sql` (la orquestadora y los pasos de la especie) y `066_sync_subgroup_no_escribe_ajeno.sql` (redefine el rechazo, el grupo y los árboles)
+**Archivos:** `supabase/migrations/064_partir_sync_subgroup.sql` (los pasos), `065_cambiar_especie_arbol.sql` (los pasos de la especie), `066_sync_subgroup_no_escribe_ajeno.sql` (redefine el rechazo, el grupo y los árboles), `072_grupo_ajeno_solo_admin.sql` (el rechazo de un grupo ajeno) y `075_conflictos_de_sincronizacion.sql` (la orquestadora y las bases de grupo, foto y GPS)
 
 `sync_subgroup` es una orquestadora: cada paso es una función propia, que solo
 ella (y service_role) ejecuta. Un cambio en un paso redefine solo esa función.
 
 ```sql
+-- sync_subgroup_conservar_grupo
+-- 0. Con `base` en el grupo: fila FOR UPDATE; cada campo (nombre, codigo, tipo,
+--    estado) que en el server difiere de la base sigue con el del server
 -- sync_subgroup_rechazo            (1-3, el primero que aplique; no escribe nada)
 -- 1. Sin fila en plantation_users para auth.uid()     → PERMISSION
 -- 2. motivo_no_escribible(plantation_id) no null      → PLANTACION_ARCHIVADA | PLANTACION_FINALIZADA
 -- 3. El grupo ya existe en otra plantación o parcela,
 --    o la parcela es de otra plantación               → REFERENCIA_AJENA
+--    Grupo ajeno y quien sube no es admin             → PERMISSION
 --    Otro grupo con el mismo código en la parcela     → DUPLICATE_CODE
 --    Otro grupo con el mismo nombre en la parcela     → DUPLICATE_NAME
 -- sync_subgroup_upsert_grupo
@@ -369,24 +373,39 @@ ella (y service_role) ejecuta. Un cambio en un paso redefine solo esa función.
 -- sync_subgroup_conservar_especies
 -- 6. Árboles FOR UPDATE; donde el server tiene una especie distinta de
 --    species_base_id, el payload sigue con la del server
+-- sync_subgroup_conservar_fotos_y_gps
+-- 7. Donde foto_url difiere de foto_base, o el punto (lat, lon, captura) de
+--    gps_base, el payload sigue con el del server
+-- sync_subgroup_anotar_fotos_descartadas
+-- 8. La foto subida que no entró y la que quedó reemplazada van a fotos_quitadas
 -- sync_subgroup_upsert_arboles
--- 7. Un árbol de otro grupo (por su group_id o el que ya tiene) → excepción (UNKNOWN)
+-- 9. Un árbol de otro grupo (por su group_id o el que ya tiene) → excepción (UNKNOWN)
 --    INSERT trees ON CONFLICT (id) DO UPDATE, solo sobre árboles del grupo:
 --    species_id, sub_id                                   -- resolución N/N
---    sub_id que empieza con parcela_codigo + codigo       -- pasa al código vigente de la parcela
+--    sub_id que empieza con parcela_codigo + codigo       -- pasa a parcela y grupo vigentes
 --    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url) -- no borra foto existente
 --    plantacion_id, global_id y GPS también con COALESCE
 -- sync_subgroup_habilitar_especies
--- 8. Re-habilita en plantation_species la especie de los árboles que suben
--- sync_subgroup_conservadas
--- 9. Árboles que quedaron con otra especie que la que mandó el móvil
+-- 10. Re-habilita en plantation_species la especie de los árboles que suben
+-- sync_subgroup_conservadas / sync_subgroup_conservados
+-- 11. Lo que quedó distinto de lo que mandó el móvil
 -- Cualquier excepción                                  → UNKNOWN, sin nada escrito
 ```
 
 Los locks se toman en ese orden: grupo → parcela → árboles →
 `plantation_species`. Otra escritura que tome más de uno tiene que seguirlo.
 
-Respuesta: `{ success: true, conservadas: [{ id, species_id }] }` o `{ success: false, error }`.
+Un campo sin su base (`base`, `species_base_id`, `foto_base`, `gps_base`) se pisa
+como antes de 065 y 075: así sigue funcionando un APK que no las manda.
+
+Respuesta: `{ success: true, conservadas, conservados }` o `{ success: false, error }`.
+`conservadas` (`[{ id, species_id }]`) queda para el APK anterior a 075.
+`conservados` es `{ grupo: { campo: valor }, arboles: [{ id, species_id?, foto_url?, gps? }] }`:
+lo que el server conservó y difiere de lo que mandó el móvil, aunque el móvil no lo
+haya cambiado (una copia vieja). `gps` trae `latitude`, `longitude`, `gps_accuracy` y `gps_captured_at`.
+
+La foto se sube a un path por subida (`trees/<id>-<versión>.jpg`): `foto_url` es
+la base, y una subida nunca pisa el archivo que el server conserva.
 
 ### SECURITY DEFINER
 
