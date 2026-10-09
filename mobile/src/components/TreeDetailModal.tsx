@@ -14,6 +14,7 @@ import ConfirmModal from './ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import type { ErrorSink } from '../hooks/useTreeRegistration';
+import type { ResultadoDeQuitarFoto } from '../repositories/TreeRepository';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import { confirmarReemplazarFoto } from '../utils/avisoReemplazarFoto';
 import FotoRemota from './FotoRemota';
@@ -25,6 +26,8 @@ import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 const MENSAJE_GPS_ERROR = 'No se pudo capturar el punto GPS.';
 
 type AccionDeFoto = (treeId: string, onError: ErrorSink) => Promise<void>;
+
+type QuitarFotoDelArbol = (treeId: string, confirmado: boolean, onError: ErrorSink) => Promise<ResultadoDeQuitarFoto>;
 
 interface Props {
   visible: boolean;
@@ -38,7 +41,7 @@ interface Props {
   onReabrirGrupo: () => Promise<boolean>;
   /** Los errores se reportan por `onError`: el diálogo de la pantalla queda detrás de este Modal. */
   onCapturePhoto: AccionDeFoto;
-  onRemovePhoto: AccionDeFoto;
+  onRemovePhoto: QuitarFotoDelArbol;
   onCaptureGps: (treeId: string) => Promise<boolean>;
   onDelete: (treeId: string, posicion: number) => void;
 }
@@ -89,9 +92,14 @@ export default function TreeDetailModal({
     if (tree) void accionDeFoto(onCapturePhoto, tree.id);
   }
 
+  async function quitarFoto(id: string, confirmado: boolean) {
+    setBusyPhoto(true);
+    try { return await onRemovePhoto(id, confirmado, showError); } finally { setBusyPhoto(false); }
+  }
+
   function handleRemovePhoto() {
     if (!tree) return;
-    confirmarQuitarFoto(confirm.show, tree.fotoSynced ?? true, () => accionDeFoto(onRemovePhoto, tree.id));
+    confirmarQuitarFoto(confirm.show, tree, (confirmado) => quitarFoto(tree.id, confirmado));
   }
 
   async function handleCaptureGps() {

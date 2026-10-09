@@ -21,6 +21,8 @@ import {
   reverseTreeOrder,
   updateTreePhoto,
   quitarFotoDelArbol,
+  RESULTADO_DE_QUITAR_FOTO,
+  type ResultadoDeQuitarFoto,
   deleteTreeAndRecalculate,
 } from '../repositories/TreeRepository';
 import {
@@ -92,7 +94,8 @@ export interface UseTreeRegistrationResult {
   undoLast: () => Promise<void>;
   addPhotoToTree: (treeId: string, sink?: ErrorSink) => Promise<void>;
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
-  removePhoto: (treeId: string, sink?: ErrorSink) => Promise<void>;
+  /** `confirmado`: la persona ya aceptó quitarla para todos. */
+  removePhoto: (treeId: string, confirmado: boolean, sink?: ErrorSink) => Promise<ResultadoDeQuitarFoto>;
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
   executeDeleteGroup: () => Promise<void>;
@@ -258,12 +261,13 @@ export function useTreeRegistration({
     }
   }, [puedeEditarArboles, notifyError]);
 
-  const removePhoto = useCallback(async (treeId: string, sink?: ErrorSink) => {
-    if (!puedeEditarArboles) return;
+  const removePhoto = useCallback(async (treeId: string, confirmado: boolean, sink?: ErrorSink) => {
+    if (!puedeEditarArboles) return RESULTADO_DE_QUITAR_FOTO.hecho;
     try {
-      await quitarFotoDelArbol(treeId);
+      return await quitarFotoDelArbol(treeId, confirmado);
     } catch (e) {
       notifyError(e, 'No se pudo quitar la foto.', sink);
+      return RESULTADO_DE_QUITAR_FOTO.hecho;
     }
   }, [puedeEditarArboles, notifyError]);
 

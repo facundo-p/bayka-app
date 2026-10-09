@@ -8,12 +8,14 @@
  */
 import { db } from '../database/client';
 import { groups, trees } from '../database/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { isRemoteUri } from '../utils/photoUri';
+import { fotoSinSubir, isRemoteUri } from '../utils/photoUri';
 import { getGroupParcelaCodigo } from './GroupRepository';
 import { destinoDelCambio } from './TreeRepository';
 import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
+import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isUniqueConstraintError } from '../database/sqliteErrors';
 import {
   CAMPO_EN_CONFLICTO, type CampoDeGrupo, type DatosDeGrupo, type PuntoGps,
@@ -37,10 +39,41 @@ export const confirmarBaseDeEspecie = (tx: Tx, treeId: string, especieId: string
 export const confirmarBaseDeGps = (tx: Tx, treeId: string, punto: PuntoGps) =>
   tx.update(trees).set(basesDelPunto(punto)).where(eq(trees.id, treeId));
 
-/** La foto que subió el push: es la base, y la local queda subida si la fila sigue con ella. */
+/**
+ * La foto que subió el push: es la base, y la local queda subida si la fila sigue
+ * con ella. Recién ahí reemplaza a una foto quitada sin propagar (#816).
+ */
 export async function confirmarFotoSubida(tx: Tx, treeId: string, uriLocal: string, path: string): Promise<void> {
   await tx.update(trees).set({ fotoBase: path }).where(eq(trees.id, treeId));
-  await tx.update(trees).set({ fotoSynced: true }).where(and(eq(trees.id, treeId), eq(trees.fotoUrl, uriLocal)));
+  const subida = await tx.update(trees).set({ fotoSynced: true })
+    .where(and(eq(trees.id, treeId), eq(trees.fotoUrl, uriLocal)))
+    .returning({ id: trees.id });
+  if (subida.length > 0) await descartarFotoQuitada(tx, treeId);
+  else await quitarSiSeBorroAlSubir(tx, treeId);
+}
+
+/**
+ * La foto se borró mientras subía: el servidor se quedó con ella. Se pide
+ * quitarla, con su path como base, salvo que haya otra sin subir en su lugar: esa
+ * la reemplaza al subirse.
+ */
+async function quitarSiSeBorroAlSubir(tx: Tx, treeId: string): Promise<void> {
+  const [fila] = await tx.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
+    .from(trees).where(eq(trees.id, treeId));
+  if (!fila || fotoSinSubir(fila)) return;
+  const plantacionId = await plantacionDelGrupo(tx, fila.grupoId);
+  if (plantacionId) await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: fila.grupoId, plantacionId });
+}
+
+export async function fotoDelArbol(tx: Tx, treeId: string): Promise<string | null> {
+  const [fila] = await tx.select({ fotoUrl: trees.fotoUrl }).from(trees).where(eq(trees.id, treeId));
+  return fila?.fotoUrl ?? null;
+}
+
+/** Fotos que el servidor quitó: ya no tiene ninguna, y esa es la base. */
+export async function confirmarFotosQuitadas(tx: Tx, treeIds: string[]): Promise<void> {
+  if (treeIds.length === 0) return;
+  await tx.update(trees).set({ fotoBase: null }).where(inArray(trees.id, treeIds));
 }
 
 export const confirmarBaseDeFoto = (tx: Tx, treeId: string, path: string) =>

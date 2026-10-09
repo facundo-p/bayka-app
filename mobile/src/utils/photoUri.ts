@@ -16,6 +16,11 @@ export function isRemoteUri(uri: string | null | undefined): uri is string {
   return !isLocalUri(uri);
 }
 
+/** Una foto tomada en este teléfono que el servidor todavía no tiene. Sin dato de sync cuenta como subida. */
+export function fotoSinSubir(arbol: { fotoUrl: string | null | undefined; fotoSynced?: boolean | null }): boolean {
+  return isLocalUri(arbol.fotoUrl) && arbol.fotoSynced === false;
+}
+
 /** Ensures a URI has the file:// scheme (some Android devices return bare paths). */
 export function ensureFileUri(uri: string): string {
   return isLocalUri(uri) ? uri : `file://${uri}`;

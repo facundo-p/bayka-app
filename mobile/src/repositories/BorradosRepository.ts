@@ -52,12 +52,23 @@ export async function registrarBorrado(
   });
 }
 
-/** Poner otra foto deja sin efecto la que se había quitado: la nueva se sube por el camino normal. */
+const esFotoQuitadaDe = (arbolId: string) => and(
+  eq(borradosPendientes.id, arbolId),
+  eq(borradosPendientes.tipo, ENTIDAD_BORRADA.foto),
+);
+
+/**
+ * Una foto nueva subida deja sin efecto la que se había quitado. Hasta que se
+ * sube, la quitada sigue pendiente: si la nueva se borra, el árbol queda sin
+ * foto (#816).
+ */
 export async function descartarFotoQuitada(exec: DbExecutor, arbolId: string): Promise<void> {
-  await exec.delete(borradosPendientes).where(and(
-    eq(borradosPendientes.id, arbolId),
-    eq(borradosPendientes.tipo, ENTIDAD_BORRADA.foto),
-  ));
+  await exec.delete(borradosPendientes).where(esFotoQuitadaDe(arbolId));
+}
+
+export async function tieneFotoQuitadaPendiente(exec: DbExecutor, arbolId: string): Promise<boolean> {
+  const filas = await exec.select({ id: borradosPendientes.id }).from(borradosPendientes).where(esFotoQuitadaDe(arbolId));
+  return filas.length > 0;
 }
 
 /** La plantación de un grupo, para anotar el borrado. `trees.plantacionId` no sirve: es el id numérico del server, no el UUID. */

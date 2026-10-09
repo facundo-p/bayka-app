@@ -50,3 +50,9 @@ export function leerConservados(respuesta: unknown): Conservados {
     : (r.conservadas ?? []).map((a): [string, ArbolConservado] => [a.id, { especieId: a.species_id }]);
   return { grupo: grupoConservado(r.conservados?.grupo), arboles: new Map(arboles) };
 }
+
+/** Las quitadas que `quitar_fotos_arboles` aplicó: ni rechazadas ni conservadas. */
+export function quitadasAplicadas(pendientes: { id: string }[], respuesta: unknown, rechazadas: Set<string>): string[] {
+  const { arboles } = leerConservados(respuesta);
+  return pendientes.map((b) => b.id).filter((id) => !rechazadas.has(id) && !arboles.has(id));
+}

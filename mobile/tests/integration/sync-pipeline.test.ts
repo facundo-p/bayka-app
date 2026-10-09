@@ -11,7 +11,7 @@ import { conRolCacheado, conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestParcela, createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, borradosPendientes } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -57,6 +57,14 @@ jest.mock('../../src/supabase/client', () => {
       rpc(fn: string, args: any) {
         mockRpcCalls.push({ fn, args });
         if (fn === 'sync_subgroup') return Promise.resolve(mockRespuesta.syncSubgroup);
+        // Doble de `quitar_fotos_arboles` que siempre puede quitar.
+        if (fn === 'quitar_fotos_arboles') {
+          for (const id of args.p_arboles as string[]) {
+            const arbol = mockServerState.trees.get(id);
+            if (arbol) arbol.foto_url = null;
+          }
+          return Promise.resolve({ data: { success: true, quitadas: args.p_arboles.length, rechazados: [] }, error: null });
+        }
         // Server sin `estado_remoto_plantaciones`: el acceso sale de la membresía (#478).
         return Promise.resolve({ data: null, error: { code: 'PGRST202' } });
       },
@@ -101,9 +109,11 @@ jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn(), warn: jest.fn() },
 }));
 
-import { uploadSyncableGroups } from '../../src/services/sync/pushService';
+import { pushBorrados, uploadSyncableGroups } from '../../src/services/sync/pushService';
 import { pullFromServer } from '../../src/services/sync/pullService';
-import { cambiarEspecie, getTreesWithPendingPhotos, updateTreeGps, updateTreePhoto } from '../../src/repositories/TreeRepository';
+import {
+  cambiarEspecie, getTreesWithPendingPhotos, quitarFotoDelArbol, updateTreeGps, updateTreePhoto,
+} from '../../src/repositories/TreeRepository';
 import { deleteGroup, type Group } from '../../src/repositories/GroupRepository';
 import { conflictosDePlantacion } from '../../src/repositories/ConflictosDeSyncRepository';
 import { asentarGrupo } from '../../src/services/sync/asentarGrupo';
@@ -256,6 +266,28 @@ describe('push de grupos — fotos', () => {
 
     expect(mockSubidas).toEqual([]);
     expect(arbolesDelPayload()[0].foto_url).toBe(pathEnStorage('t-1'));
+  });
+});
+
+// #816: la quitada va primero y deja la base sin foto; la nueva sube sin conflicto falso.
+describe('quitar la foto del server y sacar otra antes de sincronizar', () => {
+  const VISTA = pathEnStorage('t-1-v1');
+
+  it('la sync quita la del server y sube la nueva sin conflicto', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal({ pendingSync: false }));
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: VISTA, fotoSynced: true, fotoBase: VISTA }));
+    serverState.trees.set('t-1', { id: 't-1', group_id: GRUPO_ID, foto_url: VISTA });
+
+    await quitarFotoDelArbol('t-1', true);
+    await updateTreePhoto('t-1', FOTO_LOCAL);
+    await pushBorrados(PLANTACION_ID);
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(serverState.trees.get('t-1').foto_url).toBeNull();
+    expect(arbolesDelPayload()[0]).toMatchObject({ foto_url: FOTO_SUBIDA, foto_base: null });
+    expect(await leerArbol('t-1')).toMatchObject({ fotoUrl: FOTO_LOCAL, fotoSynced: true, fotoBase: FOTO_SUBIDA });
+    expect(await conflictosDePlantacion(PLANTACION_ID)).toEqual([]);
+    expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
   });
 });
 

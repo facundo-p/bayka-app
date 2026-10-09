@@ -34,6 +34,19 @@ jest.mock('../../src/repositories/AsentamientoDeSyncRepository', () => ({
   confirmarFotoSubida: jest.fn(),
 }));
 
+// Passthrough que registra si la escritura corre adentro de una transacción.
+const mockTransaccion = { abierta: false };
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
+    mockTransaccion.abierta = true;
+    try {
+      return await cb(jest.requireMock('../../src/database/client').db);
+    } finally {
+      mockTransaccion.abierta = false;
+    }
+  }),
+}));
+
 jest.mock('../../src/services/sync/asentarGrupo', () => ({
   asentarGrupo: jest.fn(),
 }));
@@ -704,6 +717,16 @@ describe('SyncService', () => {
 
         expect(result).toEqual({ uploaded: 1, failed: 1 });
         expect(mockConfirmarFotoSubida).toHaveBeenCalledWith(db, 'tree-2', expect.any(String), expect.any(String));
+      });
+
+      // #816: un corte entre la base nueva y descartar la quitada borraría la foto recién subida.
+      it('confirma la subida en una transacción', async () => {
+        const dentro: boolean[] = [];
+        mockConfirmarFotoSubida.mockImplementation(async () => { dentro.push(mockTransaccion.abierta); });
+
+        await uploadPendingPhotos('plantation-1');
+
+        expect(dentro).toEqual([true, true]);
       });
 
       it('una cancelación sigue cortando la tanda', async () => {

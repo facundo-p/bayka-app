@@ -34,10 +34,6 @@ export const especieCambiadaAca = (t: ArbolDeGrupo): boolean => (t.especieId ?? 
 
 export const gpsCambiadoAca = (t: ArbolDeGrupo): boolean => !mismoPunto(puntoDe(t), puntoBaseDe(t));
 
-/** Una foto tomada acá que el servidor todavía no confirmó. */
-export const fotoCambiadaAca = (t: Pick<ArbolDeGrupo, 'fotoUrl' | 'fotoSynced'>): boolean =>
-  isLocalUri(t.fotoUrl) && !t.fotoSynced;
-
 /**
  * Una foto bajada antes de que el teléfono guardara bases: está en el servidor,
  * pero no se sabe con qué path. Sin base, el servidor no la compara.

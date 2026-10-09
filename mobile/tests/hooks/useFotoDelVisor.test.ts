@@ -3,15 +3,15 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useFotoDelVisor } from '../../src/hooks/useFotoDelVisor';
 
 const ARBOLES = [
-  { id: 't1', subId: 'A-1', fotoSynced: true },
-  { id: 't2', subId: 'A-2', fotoSynced: false },
+  { id: 't1', subId: 'A-1', fotoUrl: 'file:///a1.jpg', fotoSynced: true },
+  { id: 't2', subId: 'A-2', fotoUrl: 'file:///a2.jpg', fotoSynced: false },
 ];
 
 function setup(pickResult: string | null = 'file:///nueva.jpg') {
   const show = jest.fn();
   const pickPhoto = jest.fn().mockResolvedValue(pickResult);
   const updatePhoto = jest.fn().mockResolvedValue(undefined);
-  const removePhoto = jest.fn().mockResolvedValue(undefined);
+  const removePhoto = jest.fn().mockResolvedValue({ requiereConfirmacion: false });
   const hook = renderHook(() => useFotoDelVisor({ arboles: ARBOLES, show, pickPhoto, updatePhoto, removePhoto }));
   const boton = (label: string) => show.mock.calls[0][0].buttons.find((b: any) => b.label === label);
   return { hook, show, pickPhoto, updatePhoto, removePhoto, boton };
@@ -71,29 +71,47 @@ describe('useFotoDelVisor', () => {
   });
 
   describe('quitar', () => {
-    it('confirma, quita la foto y cierra el visor', () => {
+    it('confirma, quita la foto y cierra el visor', async () => {
       const { hook, boton, removePhoto } = setup();
       act(() => hook.result.current.abrir({ uri: 'file:///a1.jpg', treeId: 't1' }));
       act(() => hook.result.current.handleRemovePhoto('t1'));
       expect(removePhoto).not.toHaveBeenCalled();
-      act(() => boton('Quitar').onPress());
-      expect(removePhoto).toHaveBeenCalledWith('t1');
+      await act(async () => boton('Quitar').onPress());
+      expect(removePhoto).toHaveBeenCalledWith('t1', true);
       expect(hook.result.current.foto).toBeNull();
     });
 
-    it('el aviso depende de si la foto se subió', () => {
-      const subida = setup();
-      act(() => subida.hook.result.current.handleRemovePhoto('t1'));
-      expect(subida.show.mock.calls[0][0].message).toContain('Se va a quitar de Bayka');
-      const local = setup();
-      act(() => local.hook.result.current.handleRemovePhoto('t2'));
-      expect(local.show.mock.calls[0][0].message).toContain('Se va a quitar de este celular.');
+    it('avisa que se quita para todos', () => {
+      const { hook, show } = setup();
+      act(() => hook.result.current.handleRemovePhoto('t1'));
+      expect(show.mock.calls[0][0]).toMatchObject({
+        title: 'Quitar la foto del árbol', message: 'Se quita para todos los que vean este árbol.',
+      });
     });
 
-    it('árbol que ya no está: asume foto subida', () => {
+    // #816: una foto sin subir se deshace sin preguntar.
+    it('sin subir la quita sin confirmar y cierra el visor', async () => {
+      const { hook, show, removePhoto } = setup();
+      act(() => hook.result.current.abrir({ uri: 'file:///a2.jpg', treeId: 't2' }));
+      await act(async () => hook.result.current.handleRemovePhoto('t2'));
+      expect(show).not.toHaveBeenCalled();
+      expect(removePhoto).toHaveBeenCalledWith('t2', false);
+      expect(hook.result.current.foto).toBeNull();
+    });
+
+    it('si ya estaba subida, deja el visor abierto y pregunta', async () => {
+      const { hook, show, removePhoto } = setup();
+      removePhoto.mockResolvedValueOnce({ requiereConfirmacion: true });
+      act(() => hook.result.current.abrir({ uri: 'file:///a2.jpg', treeId: 't2' }));
+      await act(async () => hook.result.current.handleRemovePhoto('t2'));
+      expect(show.mock.calls[0][0].title).toBe('Quitar la foto del árbol');
+      expect(hook.result.current.foto?.treeId).toBe('t2');
+    });
+
+    it('árbol que ya no está: pregunta igual', () => {
       const { hook, show } = setup();
       act(() => hook.result.current.handleRemovePhoto('borrado'));
-      expect(show.mock.calls[0][0].message).toContain('Se va a quitar de Bayka');
+      expect(show.mock.calls[0][0].title).toBe('Quitar la foto del árbol');
     });
   });
 });

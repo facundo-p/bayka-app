@@ -109,6 +109,7 @@ import {
   reverseTreeOrder,
   cambiarEspecie,
   updateTreePhoto,
+  quitarFotoDelArbol,
   deleteTreeAndRecalculate,
 } from '../../src/repositories/TreeRepository';
 import { enTransaccion } from '../../src/database/transaccion';
@@ -450,13 +451,13 @@ describe('TreeRepository', () => {
       );
     });
 
-    // Si quedara anotada, el push pondría en null la foto nueva en el server.
-    it('poner otra foto descarta la quitada y no anota nada', async () => {
+    // #816: la quitada se conserva hasta que la foto nueva se sube.
+    it('poner otra foto no descarta la quitada ni anota nada', async () => {
       mockDb = buildMockDb(arbolExistente);
 
       await updateTreePhoto('tree-1', 'file://document/photos/photo_new.jpg');
 
-      expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
+      expect(mockDeleteWhere).not.toHaveBeenCalled();
       expect(mockInsertValues).not.toHaveBeenCalled();
     });
 
@@ -499,6 +500,38 @@ describe('TreeRepository', () => {
       expect(mockPuedeEditarArbolesDe).toHaveBeenCalledWith('sg-1');
       expect(mockUpdateWhere).not.toHaveBeenCalled();
       expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+  });
+
+  // El deshacer de una foto sin subir se prueba contra SQLite real (borrados-propagados).
+  describe('quitarFotoDelArbol (#816)', () => {
+    it('una foto ya subida se anota para quitarla del server', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
+
+      await quitarFotoDelArbol('tree-1', true);
+
+      expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ id: 'tree-1', tipo: ENTIDAD_BORRADA.foto }));
+    });
+
+    // La UI creyó que estaba sin subir y no preguntó.
+    it('una foto ya subida sin confirmar no se quita y pide confirmación', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
+
+      expect(await quitarFotoDelArbol('tree-1', false)).toEqual({ requiereConfirmacion: true });
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
+    it('sin permiso lanza y no escribe nada', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', fotoUrl: FOTO_VIEJA, fotoSynced: false, fotoBase: null }]);
+      mockPuedeEditarArbolesDe.mockResolvedValueOnce(false);
+
+      await expect(quitarFotoDelArbol('tree-1', false)).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
       expect(mockBorrarFotos).not.toHaveBeenCalled();
     });
   });

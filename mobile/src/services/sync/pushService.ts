@@ -2,7 +2,7 @@ import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { trees, parcelas as parcelasTable } from '../../database/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { isRemoteUri } from '../../utils/photoUri';
+import { fotoSinSubir, isRemoteUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { getSyncableGroups, Group } from '../../repositories/GroupRepository';
 import { subidorActual } from '../../repositories/subidor';
@@ -13,7 +13,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { asentarFotosQuitadas, asentarGrupo } from './asentarGrupo';
-import { basesDeFotosQuitadas, basesDelArbol, fotoCambiadaAca, type ArbolDeGrupo } from './basesDeSync';
+import { basesDeFotosQuitadas, basesDelArbol, type ArbolDeGrupo } from './basesDeSync';
 import { getFotoBaseDeArboles } from '../../queries/treeQueries';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
@@ -187,7 +187,7 @@ async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
   }
 
   await anotarRechazos(plantacionId, data.rechazos);
-  const rechazados = await limpiarConfirmados(pendientes, data.rechazados, ENTIDADES_DE_FILA);
+  const rechazados = await limpiarConfirmados(pendientes, idsRechazados(data.rechazados), ENTIDADES_DE_FILA);
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
   if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
@@ -217,8 +217,9 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
   }
 
   await anotarRechazos(plantacionId, data.rechazos);
-  const conflictos = await asentarFotosQuitadas(pendientes, data);
-  const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
+  const rechazados = idsRechazados(data.rechazados);
+  const conflictos = await asentarFotosQuitadas(pendientes, data, rechazados);
+  const rechazadas = await limpiarConfirmados(pendientes, rechazados, FOTOS_QUITADAS);
   syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
   if (conflictos > 0) syncLog.info(`Push fotos quitadas: ${conflictos} cambiaron en el server, quedan para resolver`);
   if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, ${motivosDeRechazo(data.rechazos)}`);
@@ -231,13 +232,14 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
  */
 async function limpiarConfirmados(
   pendientes: BorradoPendiente[],
-  idsRechazados: unknown,
+  rechazados: Set<string>,
   tipos: readonly EntidadBorrada[],
 ): Promise<number> {
-  const rechazados = new Set<string>(Array.isArray(idsRechazados) ? idsRechazados : []);
   await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)), tipos);
   return rechazados.size;
 }
+
+const idsRechazados = (ids: unknown): Set<string> => new Set(Array.isArray(ids) ? ids : []);
 
 /** Los borrados rechazados quedan varados con el motivo de cada uno. */
 async function anotarRechazos(plantacionId: string, rechazos: unknown): Promise<void> {
@@ -269,7 +271,7 @@ async function subirFotosDelGrupo(
 ): Promise<Map<string, string>> {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
-  const pendientes = sgTrees.filter(fotoCambiadaAca);
+  const pendientes = sgTrees.filter(fotoSinSubir);
   // Sin esto el modal queda clavado en "grupo i de n" mientras se suben K fotos: es
   // el tramo más largo del sync de una plantación con fotos.
   const inicio = Date.now();
