@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
+import { enTransaccion } from '../../database/transaccion';
 import { groups, trees } from '../../database/schema';
 import { eq, and, inArray, isNotNull } from 'drizzle-orm';
 import { isRemoteUri, ensureFileUri } from '../../utils/photoUri';
@@ -45,7 +46,8 @@ async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transfere
 
   if (!(await apuntarFotoUrlEnServer(tree, storagePath))) return FALLO;
 
-  await confirmarFotoSubida(db, tree.id, tree.fotoUrl, storagePath);
+  // Atómico: un corte con la base nueva y la quitada todavía anotada quitaría la foto recién subida.
+  await enTransaccion((tx) => confirmarFotoSubida(tx, tree.id, tree.fotoUrl, storagePath));
   return { ok: true, bytes };
 }
 

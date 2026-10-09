@@ -16,19 +16,19 @@ import {
 } from '../../repositories/ConflictosDeSyncRepository';
 import {
   adoptarCampoDeGrupo, adoptarEspecie, adoptarFoto, adoptarGps, confirmarBaseDeEspecie,
-  confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida, confirmarFotosQuitadas,
+  confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida, confirmarFotosQuitadas, fotoDelArbol,
 } from '../../repositories/AsentamientoDeSyncRepository';
 import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
 import { borrarFotosLocales } from '../PhotoService';
 import { CAMPO_EN_CONFLICTO, CAMPOS_DE_GRUPO, type CampoDeGrupo, type CampoEnConflicto } from '../../constants/conflictoDeSync';
 import { FOTOS_QUITADAS } from '../../constants/entidadBorrada';
-import { isLocalUri, isRemoteUri } from '../../utils/photoUri';
+import { fotoSinSubir, isLocalUri, isRemoteUri } from '../../utils/photoUri';
 import { asegurarEspecies } from './catalogoDeEspecies';
 import {
-  camposDeGrupoCambiadosAca, datosDeGrupo, especieCambiadaAca, fotoCambiadaAca, gpsCambiadoAca, puntoDe,
+  camposDeGrupoCambiadosAca, datosDeGrupo, especieCambiadaAca, gpsCambiadoAca, puntoDe,
   type ArbolDeGrupo,
 } from './basesDeSync';
-import { leerConservados, type ArbolConservado, type Conservados } from './conservados';
+import { leerConservados, quitadasAplicadas, type ArbolConservado, type Conservados } from './conservados';
 
 type Tx = typeof db;
 
@@ -109,15 +109,15 @@ async function confirmarFoto(tx: Tx, t: ArbolDeGrupo, subida: string | undefined
 
 /**
  * Una foto quitada acá que el servidor conservó porque allá cambió (#810): queda
- * la del servidor y lo quitado pasa a conflicto. La quitada deja de estar
- * pendiente: si no, el próximo push la quitaría con la base nueva sin que nadie
- * lo haya decidido.
+ * la del servidor y lo de acá pasa a conflicto: sin foto, o la nueva sin subir
+ * que se sacó después de quitarla (#816). La quitada deja de estar pendiente: si
+ * no, el próximo push la quitaría con la base nueva sin que nadie lo haya decidido.
  */
-async function asentarFotoQuitada(tx: Tx, donde: DondeVa, treeId: string, delServidor: string | null): Promise<Asentado> {
+async function asentarFotoQuitada(tx: Tx, donde: DondeVa, treeId: string, local: string | null, delServidor: string | null): Promise<Asentado> {
   await limpiarBorrados([treeId], FOTOS_QUITADAS, tx);
-  if (!(await adoptarFoto(tx, treeId, null, delServidor))) return SIN_ADOPTAR;
+  if (!(await adoptarFoto(tx, treeId, local, delServidor))) return SIN_ADOPTAR;
   return conflictoSiCambioAca(tx, donde, true,
-    { entidadId: treeId, campo: CAMPO_EN_CONFLICTO.foto, mio: null, servidor: delServidor });
+    { entidadId: treeId, campo: CAMPO_EN_CONFLICTO.foto, mio: local, servidor: delServidor });
 }
 
 /**
@@ -127,9 +127,9 @@ async function asentarFotoQuitada(tx: Tx, donde: DondeVa, treeId: string, delSer
  */
 async function asentarFoto(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: SubidaDelGrupo, conservado: ArbolConservado): Promise<Asentado> {
   if (conservado.fotoUrl === undefined) return confirmarFoto(tx, t, subida.fotos.get(t.id));
-  if (subida.quitadas.has(t.id)) return asentarFotoQuitada(tx, sg, t.id, conservado.fotoUrl);
+  if (subida.quitadas.has(t.id)) return asentarFotoQuitada(tx, sg, t.id, t.fotoUrl ?? null, conservado.fotoUrl);
   if (!(await adoptarFoto(tx, t.id, t.fotoUrl, conservado.fotoUrl))) return SIN_ADOPTAR;
-  const cambioAca = fotoCambiadaAca(t);
+  const cambioAca = fotoSinSubir(t);
   if (!cambioAca && isLocalUri(t.fotoUrl)) return { ...NADA, archivos: [t.fotoUrl] };
   return conflictoSiCambioAca(tx, sg, cambioAca,
     { entidadId: t.id, campo: CAMPO_EN_CONFLICTO.foto, mio: t.fotoUrl, servidor: conservado.fotoUrl });
@@ -207,12 +207,6 @@ function quitadasConservadas(pendientes: BorradoPendiente[], respuesta: unknown)
   });
 }
 
-/** Las quitadas que el servidor aplicó: ni rechazadas ni conservadas. */
-function quitadasAplicadas(pendientes: BorradoPendiente[], respuesta: unknown, rechazadas: Set<string>): string[] {
-  const { arboles } = leerConservados(respuesta);
-  return pendientes.map((b) => b.id).filter((id) => !rechazadas.has(id) && !arboles.has(id));
-}
-
 /**
  * Asienta la respuesta de `quitar_fotos_arboles`: lo quitado deja la base sin foto
  * (#816) y lo conservado se adopta (#810). Devuelve cuántos conflictos nuevos quedaron.
@@ -226,7 +220,10 @@ export async function asentarFotosQuitadas(
   const asentado = await enTransaccion(async (tx) => {
     await confirmarFotosQuitadas(tx, quitadasAplicadas(pendientes, respuesta, rechazadas));
     let total = NADA;
-    for (const c of conservadas) total = sumar(total, await asentarFotoQuitada(tx, c.donde, c.treeId, c.fotoUrl));
+    for (const c of conservadas) {
+      const local = await fotoDelArbol(tx, c.treeId);
+      total = sumar(total, await asentarFotoQuitada(tx, c.donde, c.treeId, local, c.fotoUrl));
+    }
     return total;
   });
   borrarFotosLocales(asentado.archivos);

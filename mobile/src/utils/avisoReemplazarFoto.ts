@@ -15,11 +15,14 @@ export function fotoAReemplazar(arbol: { subId: string; fotoSynced?: boolean | n
 /** Sin `onVerActual` el aviso no lo ofrece: es para cuando la foto ya está a la vista. */
 export type AccionesReemplazarFoto = { onVerActual?: () => void; onConfirm: () => void };
 
-/** fotoSynced=false no prueba que el server no la tenga: el texto no afirma que sea solo local. */
+/**
+ * Una foto subida sigue en Bayka hasta sincronizar: quitar la nueva antes vuelve
+ * a ella (#816). Una sin subir se pierde.
+ */
 export function textoReemplazarFoto(subId: string, fotoSynced: boolean): string {
   return fotoSynced
-    ? `${subId} ya tiene foto. La nueva la reemplaza en Bayka y en los demás celulares en la próxima sincronización. ${NO_SE_PUEDE_DESHACER}`
-    : `${subId} ya tiene una foto que puede no haberse subido a Bayka. La nueva la reemplaza. ${NO_SE_PUEDE_DESHACER}`;
+    ? `${subId} ya tiene foto. La nueva la reemplaza para todos al sincronizar; hasta entonces, quitar la nueva vuelve a esta.`
+    : `${subId} tiene una foto sin sincronizar. La nueva la reemplaza. ${NO_SE_PUEDE_DESHACER}`;
 }
 
 /** Confirmación previa a reemplazar la foto de un árbol; cancelar la deja como está. */

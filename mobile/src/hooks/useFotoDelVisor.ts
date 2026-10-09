@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FotoDeArbol } from '../components/TreePhotoViewer';
 import type { PickPhoto } from '../services/photo/photoCaptureRules';
 import type { ShowFn } from '../utils/alertHelpers';
+import type { ResultadoDeQuitarFoto } from '../repositories/TreeRepository';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import { confirmarReemplazoEnVisor, fotoAReemplazar } from '../utils/avisoReemplazarFoto';
 
@@ -12,7 +13,7 @@ interface Params {
   show: ShowFn;
   pickPhoto: PickPhoto;
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
-  removePhoto: (treeId: string) => Promise<void>;
+  removePhoto: (treeId: string, confirmado: boolean) => Promise<ResultadoDeQuitarFoto>;
 }
 
 type Visor = Params & { setFoto: (foto: FotoDeArbol | null) => void };
@@ -40,9 +41,10 @@ function reemplazar(visor: Visor, foto: FotoDeArbol) {
 /** Sin el árbol (se borró con el visor abierto) se pregunta igual. */
 function quitar(visor: Visor, treeId: string) {
   const arbol = arbolDelGrupo(visor.arboles, treeId);
-  confirmarQuitarFoto(visor.show, { fotoUrl: arbol?.fotoUrl, fotoSynced: arbol?.fotoSynced ?? true }, () => {
-    void visor.removePhoto(treeId);
-    visor.setFoto(null);
+  confirmarQuitarFoto(visor.show, { fotoUrl: arbol?.fotoUrl, fotoSynced: arbol?.fotoSynced ?? true }, async (confirmado) => {
+    const resultado = await visor.removePhoto(treeId, confirmado);
+    if (!resultado.requiereConfirmacion) visor.setFoto(null);
+    return resultado;
   });
 }
 

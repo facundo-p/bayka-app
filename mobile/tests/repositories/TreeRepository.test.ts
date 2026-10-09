@@ -509,16 +509,27 @@ describe('TreeRepository', () => {
     it('una foto ya subida se anota para quitarla del server', async () => {
       mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
 
-      await quitarFotoDelArbol('tree-1');
+      await quitarFotoDelArbol('tree-1', true);
 
       expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ id: 'tree-1', tipo: ENTIDAD_BORRADA.foto }));
+    });
+
+    // La UI creyó que estaba sin subir y no preguntó.
+    it('una foto ya subida sin confirmar no se quita y pide confirmación', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
+
+      expect(await quitarFotoDelArbol('tree-1', false)).toEqual({ requiereConfirmacion: true });
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
     });
 
     it('sin permiso lanza y no escribe nada', async () => {
       mockDb = buildMockDb([{ grupoId: 'sg-1', fotoUrl: FOTO_VIEJA, fotoSynced: false, fotoBase: null }]);
       mockPuedeEditarArbolesDe.mockResolvedValueOnce(false);
 
-      await expect(quitarFotoDelArbol('tree-1')).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
+      await expect(quitarFotoDelArbol('tree-1', false)).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
       expect(mockBorrarFotos).not.toHaveBeenCalled();

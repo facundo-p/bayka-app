@@ -11,6 +11,7 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
   updateTreePhoto: jest.fn(),
   quitarFotoDelArbol: jest.fn(),
   deleteTreeAndRecalculate: jest.fn(),
+  RESULTADO_DE_QUITAR_FOTO: jest.requireActual('../../src/repositories/TreeRepository').RESULTADO_DE_QUITAR_FOTO,
 }));
 
 jest.mock('../../src/repositories/GroupRepository', () => ({
@@ -308,7 +309,7 @@ describe('useTreeRegistration', () => {
 
     it.each([
       ['updatePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.updatePhoto('tree-1', FOTO)],
-      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1')],
+      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1', true)],
       ['addPhotoToTree', (r: ReturnType<typeof useTreeRegistration>) => r.addPhotoToTree('tree-1')],
     ])('%s: un técnico no escribe en un grupo ajeno', async (_, accion) => {
       mockLiveQueries({ group: grupoAjeno });
@@ -333,9 +334,9 @@ describe('useTreeRegistration', () => {
       mockLiveQueries({ group: grupoAjeno });
       const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
 
-      await act(async () => { await result.current.removePhoto('tree-1'); });
+      await act(async () => { await result.current.removePhoto('tree-1', true); });
 
-      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1');
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1', true);
       expect(updateTreePhoto).not.toHaveBeenCalled();
     });
 
@@ -350,9 +351,20 @@ describe('useTreeRegistration', () => {
     it('el creador quita la foto en su grupo', async () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
 
-      await act(async () => { await result.current.removePhoto('tree-1'); });
+      await act(async () => { await result.current.removePhoto('tree-1', true); });
 
-      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1');
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1', true);
+    });
+
+    // #816: la foto se subió mientras la UI creía que no; la UI tiene que preguntar.
+    it('removePhoto devuelve si falta confirmar', async () => {
+      (quitarFotoDelArbol as jest.Mock).mockResolvedValueOnce({ requiereConfirmacion: true });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      let resultado: unknown;
+      await act(async () => { resultado = await result.current.removePhoto('tree-1', false); });
+
+      expect(resultado).toEqual({ requiereConfirmacion: true });
     });
 
     it('nadie escribe en una plantación finalizada', async () => {

@@ -199,7 +199,7 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 
 **Archivo:** `services/sync/pushService.ts` → `uploadSyncableGroups` → `uploadGroup(sg, sgTrees)`
 
-1. **Para cada árbol con foto cambiada acá (`fotoCambiadaAca`: local y sin subir):**
+1. **Para cada árbol con foto cambiada acá (`fotoSinSubir`: local y sin subir):**
    - Sube la foto a Storage en su path versionado (`pathDeFotoEnStorage`)
    - Si éxito: guarda el path en un mapa. `fotoSynced` todavía no se marca (ver punto 4)
    - Si falla: log del error. El árbol irá con `foto_url: null` en el RPC. La foto queda local (`fotoSynced = false`) para retry en la próxima sync.

@@ -148,7 +148,7 @@ import { deleteGroup, type Group } from '../../src/repositories/GroupRepository'
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
 import { conservarLaMia, descartarConflicto } from '../../src/services/ConflictosDeSyncService';
-import { asentarGrupo } from '../../src/services/sync/asentarGrupo';
+import { asentarFotosQuitadas, asentarGrupo } from '../../src/services/sync/asentarGrupo';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
@@ -577,15 +577,17 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
     expect(serverState.trees.get('t2').foto_url).toBeNull();
   });
 
-  it('en una plantación finalizada el server la rechaza y queda pendiente', async () => {
+  it('en una plantación finalizada el server la rechaza y queda pendiente, con su base', async () => {
     await arbolConFotoSincronizada();
+    await mockTestDb.update(trees).set({ fotoBase: FOTO_EN_STORAGE }).where(eq(trees.id, 't2'));
     await updateTreePhoto('t2', '');
     serverState.plantations.get(PLANTACION_ID).estado = 'finalizada';
 
-    await sincronizar();
+    await pushBorrados(PLANTACION_ID);
 
     expect(serverState.trees.get('t2').foto_url).toBe(FOTO_EN_STORAGE);
     expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+    expect((await leerArbol('t2')).fotoBase).toBe(FOTO_EN_STORAGE);
   });
 
   // #816: si la nueva se borra antes de subirse, el árbol tiene que quedar sin foto.
@@ -639,8 +641,16 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
 
 describe('borrar una foto que no se subió (#816)', () => {
   const FOTO_VISTA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v1.jpg';
+  const DEL_OTRO = 'plantations/plant-1/parcelas/parc-1/trees/t2-v9.jpg';
+  const SUBIDA = 'plantations/plant-1/parcelas/parc-1/trees/t2-nueva.jpg';
   const NUEVA = 'file:///document/photos/photo_t2_nueva.jpg';
+  const OTRA = 'file:///document/photos/photo_t2_otra.jpg';
+  const SIN_CONFIRMAR = false;
+  const CONFIRMADO = true;
   const pendientes = () => mockTestDb.select().from(borradosPendientes);
+  const tiposPendientes = async () => (await pendientes()).map((b: any) => b.tipo);
+  const conflictos = () => mockTestDb.select().from(conflictosDeSync);
+  const leerGrupo = async () => (await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID)))[0] as Group;
 
   /** t2 con la foto que el teléfono vio en el server, sin bajar. */
   async function arbolConFotoRemota() {
@@ -649,12 +659,19 @@ describe('borrar una foto que no se subió (#816)', () => {
     await mockTestDb.update(trees).set({ fotoUrl: FOTO_VISTA, fotoSynced: true, fotoBase: FOTO_VISTA }).where(eq(trees.id, 't2'));
   }
 
+  /** El push del grupo confirmó la subida de `enviado` con el path SUBIDA. */
+  async function confirmarSubida(enviado: any) {
+    await asentarGrupo(await leerGrupo(), [enviado], new Map([['t2', SUBIDA]]), {
+      success: true, conservados: { grupo: {}, arboles: [] },
+    });
+  }
+
   it('vuelve a la foto del server, sin bajar, y no anota nada para el server', async () => {
     await arbolConFotoRemota();
     await updateTreePhoto('t2', NUEVA);
     (borrarFotosLocales as jest.Mock).mockClear();
 
-    await quitarFotoDelArbol('t2');
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: false });
 
     expect(await leerArbol('t2')).toMatchObject({ fotoUrl: FOTO_VISTA, fotoSynced: true, fotoBase: FOTO_VISTA });
     expect(await pendientes()).toEqual([]);
@@ -665,7 +682,7 @@ describe('borrar una foto que no se subió (#816)', () => {
     await grupoSincronizadoDeTres();
     await updateTreePhoto('t2', NUEVA);
 
-    await quitarFotoDelArbol('t2');
+    await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
 
     expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoSynced: false });
     expect(await pendientes()).toEqual([]);
@@ -674,35 +691,62 @@ describe('borrar una foto que no se subió (#816)', () => {
   it('después de sincronizar, el server conserva su foto', async () => {
     await arbolConFotoRemota();
     await updateTreePhoto('t2', NUEVA);
-    await quitarFotoDelArbol('t2');
+    await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
 
     await sincronizar();
 
     expect(serverState.trees.get('t2').foto_url).toBe(FOTO_VISTA);
   });
 
-  it('una foto ya subida se anota para quitarla del server', async () => {
+  it('una foto ya subida, confirmada, se anota para quitarla del server', async () => {
     await arbolConFotoRemota();
 
-    await quitarFotoDelArbol('t2');
+    await quitarFotoDelArbol('t2', CONFIRMADO);
 
     expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoBase: FOTO_VISTA });
-    expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+    expect(await tiposPendientes()).toEqual(['foto']);
+  });
+
+  it('una foto ya subida sin confirmar no se toca y pide confirmación', async () => {
+    await arbolConFotoRemota();
+
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: true });
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: FOTO_VISTA, fotoSynced: true });
+    expect(await pendientes()).toEqual([]);
+  });
+
+  // La sync confirmó la subida entre la lectura y la escritura: no se deshace ni se quita sin preguntar.
+  it('si la foto se subió mientras se deshacía, pide confirmación', async () => {
+    await arbolConFotoRemota();
+    await updateTreePhoto('t2', NUEVA);
+    const borrados = jest.requireActual('../../src/repositories/BorradosRepository');
+    const real = borrados.tieneFotoQuitadaPendiente;
+    const espia = jest.spyOn(borrados, 'tieneFotoQuitadaPendiente').mockImplementationOnce(async (exec: any, id: any) => {
+      await mockTestDb.update(trees).set({ fotoSynced: true, fotoBase: SUBIDA }).where(eq(trees.id, 't2'));
+      return real(exec, id);
+    });
+
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: true });
+
+    espia.mockRestore();
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true });
+    expect(await pendientes()).toEqual([]);
   });
 
   describe('quitar la del server, sacar una nueva y borrarla', () => {
     async function quitarYBorrarLaNueva() {
       await arbolConFotoRemota();
-      await quitarFotoDelArbol('t2');
+      await quitarFotoDelArbol('t2', CONFIRMADO);
       await updateTreePhoto('t2', NUEVA);
-      await quitarFotoDelArbol('t2');
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
     }
 
     it('deja el árbol sin foto y el pedido de quitar pendiente', async () => {
       await quitarYBorrarLaNueva();
 
       expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoSynced: false });
-      expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+      expect(await tiposPendientes()).toEqual(['foto']);
     });
 
     it('el pedido de quitar llega al server', async () => {
@@ -716,41 +760,104 @@ describe('borrar una foto que no se subió (#816)', () => {
     });
   });
 
-  describe('la nueva sube y reemplaza a la quitada', () => {
-    const SUBIDA = 'plantations/plant-1/parcelas/parc-1/trees/t2-nueva.jpg';
-
-    async function subirLaNueva() {
-      const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
-      await asentarGrupo(grupo as Group, [await leerArbol('t2')], new Map([['t2', SUBIDA]]), {
-        success: true, conservados: { grupo: {}, arboles: [] },
-      });
-    }
-
-    it('con la subida confirmada, la quitada deja de estar pendiente', async () => {
+  describe('la subida de la nueva', () => {
+    it('confirmada, descarta la quitada', async () => {
       await arbolConFotoRemota();
-      await quitarFotoDelArbol('t2');
+      await quitarFotoDelArbol('t2', CONFIRMADO);
       await updateTreePhoto('t2', NUEVA);
 
-      await subirLaNueva();
+      await confirmarSubida(await leerArbol('t2'));
 
       expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true, fotoBase: SUBIDA });
       expect(await pendientes()).toEqual([]);
     });
 
-    // La subida terminó después del borrado: el pedido de quitar sigue en pie.
     it('si la nueva se borró mientras subía, la quitada sigue pendiente', async () => {
       await arbolConFotoRemota();
-      await quitarFotoDelArbol('t2');
+      await quitarFotoDelArbol('t2', CONFIRMADO);
       await updateTreePhoto('t2', NUEVA);
       const enviado = await leerArbol('t2');
-      await quitarFotoDelArbol('t2');
-      const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
 
-      await asentarGrupo(grupo as Group, [enviado], new Map([['t2', SUBIDA]]), {
-        success: true, conservados: { grupo: {}, arboles: [] },
+      await confirmarSubida(enviado);
+
+      expect(await tiposPendientes()).toEqual(['foto']);
+      expect((await leerArbol('t2')).fotoBase).toBe(SUBIDA);
+    });
+
+    // El server se quedó con la que se borró: hay que pedir quitarla.
+    it('si se borró mientras subía, sin quitada previa, anota la quitada con la subida como base', async () => {
+      await arbolConFotoRemota();
+      await updateTreePhoto('t2', NUEVA);
+      const enviado = await leerArbol('t2');
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+
+      await confirmarSubida(enviado);
+
+      expect(await tiposPendientes()).toEqual(['foto']);
+      expect((await leerArbol('t2')).fotoBase).toBe(SUBIDA);
+    });
+
+    it('si mientras subía se sacó otra, no anota quitada: la otra la reemplaza al subirse', async () => {
+      await arbolConFotoRemota();
+      await updateTreePhoto('t2', NUEVA);
+      const enviado = await leerArbol('t2');
+      await updateTreePhoto('t2', OTRA);
+
+      await confirmarSubida(enviado);
+
+      expect(await pendientes()).toEqual([]);
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: OTRA, fotoSynced: false, fotoBase: SUBIDA });
+    });
+  });
+
+  it('en un lote mixto, solo la quitada aplicada deja la base sin foto', async () => {
+    await grupoSincronizadoDeTres();
+    const conBase = (id: string) => `plantations/plant-1/parcelas/parc-1/trees/${id}-v1.jpg`;
+    for (const id of ['t1', 't2', 't3']) {
+      await mockTestDb.update(trees).set({ fotoUrl: conBase(id), fotoSynced: true, fotoBase: conBase(id) }).where(eq(trees.id, id));
+      await quitarFotoDelArbol(id, CONFIRMADO);
+    }
+
+    await asentarFotosQuitadas(await pendientes() as any, {
+      success: true, rechazados: ['t2'], conservados: { arboles: [{ id: 't3', foto_url: DEL_OTRO }] },
+    }, new Set(['t2']));
+
+    expect((await leerArbol('t1')).fotoBase).toBeNull();
+    expect((await leerArbol('t2')).fotoBase).toBe(conBase('t2'));
+    expect((await leerArbol('t3')).fotoBase).toBe(DEL_OTRO);
+  });
+
+  describe('quitada pendiente con una nueva sin subir, y el server con otra', () => {
+    async function quitarYSacarOtra() {
+      await arbolConFotoRemota();
+      await quitarFotoDelArbol('t2', CONFIRMADO);
+      await updateTreePhoto('t2', NUEVA);
+      serverState.trees.get('t2').foto_url = DEL_OTRO;
+    }
+
+    async function esperarConflictoConLaNueva() {
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: DEL_OTRO, fotoSynced: true, fotoBase: DEL_OTRO });
+      expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', campo: 'foto', mio: NUEVA, servidor: DEL_OTRO })]);
+      expect(await pendientes()).toEqual([]);
+    }
+
+    it('por el push de fotos quitadas, la nueva queda como conflicto', async () => {
+      await quitarYSacarOtra();
+
+      await pushBorrados(PLANTACION_ID);
+
+      await esperarConflictoConLaNueva();
+    });
+
+    it('por el push del grupo, la nueva queda como conflicto', async () => {
+      await quitarYSacarOtra();
+
+      await asentarGrupo(await leerGrupo(), [await leerArbol('t2')], new Map(), {
+        success: true, conservados: { grupo: {}, arboles: [{ id: 't2', foto_url: DEL_OTRO }] },
       });
 
-      expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+      await esperarConflictoConLaNueva();
     });
   });
 });

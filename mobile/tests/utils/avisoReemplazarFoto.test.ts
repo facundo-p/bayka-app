@@ -8,14 +8,14 @@ import {
 const FOTO = { subId: 'A-14', fotoSynced: true };
 
 describe('textoReemplazarFoto', () => {
-  it('foto subida: avisa que se reemplaza en Bayka y en los demás celulares', () => {
+  it('foto subida: se reemplaza para todos al sincronizar y quitar la nueva antes vuelve a esta (#816)', () => {
     expect(textoReemplazarFoto('A-14', true)).toBe(
-      'A-14 ya tiene foto. La nueva la reemplaza en Bayka y en los demás celulares en la próxima sincronización. No se puede deshacer.');
+      'A-14 ya tiene foto. La nueva la reemplaza para todos al sincronizar; hasta entonces, quitar la nueva vuelve a esta.');
   });
 
-  it('foto sin confirmar en Bayka: no afirma que sea solo local', () => {
+  it('foto sin sincronizar: avisa que se pierde', () => {
     expect(textoReemplazarFoto('A-14', false)).toBe(
-      'A-14 ya tiene una foto que puede no haberse subido a Bayka. La nueva la reemplaza. No se puede deshacer.');
+      'A-14 tiene una foto sin sincronizar. La nueva la reemplaza. No se puede deshacer.');
   });
 });
 

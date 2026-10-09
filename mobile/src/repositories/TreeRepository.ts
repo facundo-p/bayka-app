@@ -202,18 +202,21 @@ async function fotoEditable(treeId: string): Promise<FotoDelArbol | null> {
 /**
  * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
  * fotoSynced=false para forzar re-upload a Storage.
- *
- * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
- * foto en null en el server, y el pull la restauraría. Va en la misma transacción
- * que el update, por lo mismo que los borrados de fila. Una foto nueva no descarta
- * esa anotación: lo hace su subida (#816).
  */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
-  const nueva = fotoUrl || null;
   const arbol = await fotoEditable(treeId);
-  if (!arbol) return;
-  const plantacionId = await plantacionDelGrupo(db, arbol.grupoId);
+  if (arbol) await escribirFoto(treeId, arbol, fotoUrl || null);
+}
 
+/**
+ * Escribe la foto sobre la fila ya leída. Quitarla se anota para propagarlo
+ * (#498): el push del grupo no puede poner la foto en null en el server, y el
+ * pull la restauraría. Va en la misma transacción que el update, por lo mismo que
+ * los borrados de fila. Una foto nueva no descarta esa anotación: lo hace su
+ * subida (#816).
+ */
+async function escribirFoto(treeId: string, arbol: FotoDelArbol, nueva: string | null): Promise<void> {
+  const plantacionId = await plantacionDelGrupo(db, arbol.grupoId);
   await enTransaccion(async (tx) => {
     await tx.update(trees)
       .set({ fotoUrl: nueva, fotoSynced: false })
@@ -234,23 +237,50 @@ export const quitarFotoParaTodos = (treeId: string): Promise<void> => updateTree
 /**
  * Deshace una foto sin subir (#816): el árbol vuelve a lo que tenía en la última
  * sincronización, sin anotar nada para el servidor. Si antes se había pedido
- * quitar la del servidor, queda sin foto y ese pedido sigue pendiente.
+ * quitar la del servidor, queda sin foto y ese pedido sigue pendiente. El grupo
+ * queda pendiente: `pendingSync` no distingue qué cambió.
+ *
+ * Devuelve false si la fila cambió desde que se leyó (por ejemplo, la sync subió
+ * la foto): no toca nada.
  */
-async function deshacerFotoSinSubir(treeId: string, arbol: FotoDelArbol): Promise<void> {
-  const vuelta = (await tieneFotoQuitadaPendiente(db, treeId)) ? null : arbol.fotoBase;
-  await db.update(trees)
-    .set({ fotoUrl: vuelta, fotoSynced: isRemoteUri(vuelta) })
-    .where(eq(trees.id, treeId));
+async function deshacerFotoSinSubir(treeId: string, arbol: FotoDelArbol): Promise<boolean> {
+  const deshecho = await enTransaccion(async (tx) => {
+    const vuelta = (await tieneFotoQuitadaPendiente(tx, treeId)) ? null : arbol.fotoBase;
+    const escritas = await tx.update(trees)
+      .set({ fotoUrl: vuelta, fotoSynced: isRemoteUri(vuelta) })
+      .where(and(eq(trees.id, treeId), eq(trees.fotoUrl, arbol.fotoUrl!), eq(trees.fotoSynced, false)))
+      .returning({ id: trees.id });
+    return escritas.length > 0;
+  });
+  if (!deshecho) return false;
   borrarFotoLocal(arbol.fotoUrl);
   notifyDataChanged();
+  return true;
 }
 
-/** Borra la foto que se ve: si no se subió, deshace el cambio; si ya está en el servidor, la quita para todos. */
-export async function quitarFotoDelArbol(treeId: string): Promise<void> {
+/** Quitar una foto ya subida la quita para todos: sin la confirmación de la persona, no se hace. */
+export type ResultadoDeQuitarFoto = { requiereConfirmacion: boolean };
+
+export const RESULTADO_DE_QUITAR_FOTO = {
+  hecho: { requiereConfirmacion: false },
+  faltaConfirmar: { requiereConfirmacion: true },
+} as const satisfies Record<string, ResultadoDeQuitarFoto>;
+
+/**
+ * Borra la foto que se ve: si no se subió, deshace el cambio; si ya está en el
+ * servidor, la quita para todos, solo con `confirmado`. La UI decide si pregunta
+ * con lo que muestra; si la fila ya cambió, la respuesta le pide preguntar.
+ */
+export async function quitarFotoDelArbol(treeId: string, confirmado: boolean): Promise<ResultadoDeQuitarFoto> {
   const arbol = await fotoEditable(treeId);
-  if (!arbol) return;
-  if (fotoSinSubir(arbol)) await deshacerFotoSinSubir(treeId, arbol);
-  else await quitarFotoParaTodos(treeId);
+  if (!arbol) return RESULTADO_DE_QUITAR_FOTO.hecho;
+  if (fotoSinSubir(arbol)) {
+    // Si la fila cambió entre la lectura y la escritura, se decide de nuevo con la fila nueva.
+    return (await deshacerFotoSinSubir(treeId, arbol)) ? RESULTADO_DE_QUITAR_FOTO.hecho : quitarFotoDelArbol(treeId, confirmado);
+  }
+  if (!confirmado) return RESULTADO_DE_QUITAR_FOTO.faltaConfirmar;
+  await escribirFoto(treeId, arbol, null);
+  return RESULTADO_DE_QUITAR_FOTO.hecho;
 }
 
 export interface ArbolConFotoPendiente {

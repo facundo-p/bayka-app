@@ -9,7 +9,7 @@ import type { Group } from '../../repositories/GroupRepository';
 import {
   CAMPOS_DE_GRUPO, type CampoDeGrupo, type DatosDeGrupo, type PuntoGps,
 } from '../../constants/conflictoDeSync';
-import { fotoSinSubir, isLocalUri } from '../../utils/photoUri';
+import { isLocalUri } from '../../utils/photoUri';
 
 /** El árbol tal como se leyó antes del push. */
 export type ArbolDeGrupo = typeof trees.$inferSelect;
@@ -33,9 +33,6 @@ export const mismoPunto = (a: Omit<PuntoGps, 'gpsAccuracy'>, b: Omit<PuntoGps, '
 export const especieCambiadaAca = (t: ArbolDeGrupo): boolean => (t.especieId ?? null) !== (t.especieBaseId ?? null);
 
 export const gpsCambiadoAca = (t: ArbolDeGrupo): boolean => !mismoPunto(puntoDe(t), puntoBaseDe(t));
-
-/** Una foto tomada acá que el servidor todavía no confirmó. */
-export const fotoCambiadaAca = (t: Pick<ArbolDeGrupo, 'fotoUrl' | 'fotoSynced'>): boolean => fotoSinSubir(t);
 
 /**
  * Una foto bajada antes de que el teléfono guardara bases: está en el servidor,

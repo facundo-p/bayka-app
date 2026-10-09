@@ -10,11 +10,12 @@ import { db } from '../database/client';
 import { groups, trees } from '../database/schema';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { isRemoteUri } from '../utils/photoUri';
+import { fotoSinSubir, isRemoteUri } from '../utils/photoUri';
 import { getGroupParcelaCodigo } from './GroupRepository';
 import { destinoDelCambio } from './TreeRepository';
 import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
-import { descartarFotoQuitada } from './BorradosRepository';
+import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isUniqueConstraintError } from '../database/sqliteErrors';
 import {
   CAMPO_EN_CONFLICTO, type CampoDeGrupo, type DatosDeGrupo, type PuntoGps,
@@ -48,6 +49,25 @@ export async function confirmarFotoSubida(tx: Tx, treeId: string, uriLocal: stri
     .where(and(eq(trees.id, treeId), eq(trees.fotoUrl, uriLocal)))
     .returning({ id: trees.id });
   if (subida.length > 0) await descartarFotoQuitada(tx, treeId);
+  else await quitarSiSeBorroAlSubir(tx, treeId);
+}
+
+/**
+ * La foto se borró mientras subía: el servidor se quedó con ella. Se pide
+ * quitarla, con su path como base, salvo que haya otra sin subir en su lugar: esa
+ * la reemplaza al subirse.
+ */
+async function quitarSiSeBorroAlSubir(tx: Tx, treeId: string): Promise<void> {
+  const [fila] = await tx.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
+    .from(trees).where(eq(trees.id, treeId));
+  if (!fila || fotoSinSubir(fila)) return;
+  const plantacionId = await plantacionDelGrupo(tx, fila.grupoId);
+  if (plantacionId) await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: fila.grupoId, plantacionId });
+}
+
+export async function fotoDelArbol(tx: Tx, treeId: string): Promise<string | null> {
+  const [fila] = await tx.select({ fotoUrl: trees.fotoUrl }).from(trees).where(eq(trees.id, treeId));
+  return fila?.fotoUrl ?? null;
 }
 
 /** Fotos que el servidor quitó: ya no tiene ninguna, y esa es la base. */

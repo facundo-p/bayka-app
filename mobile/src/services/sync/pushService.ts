@@ -2,7 +2,7 @@ import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { trees, parcelas as parcelasTable } from '../../database/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { isRemoteUri } from '../../utils/photoUri';
+import { fotoSinSubir, isRemoteUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { getSyncableGroups, Group } from '../../repositories/GroupRepository';
 import { subidorActual } from '../../repositories/subidor';
@@ -13,7 +13,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { asentarFotosQuitadas, asentarGrupo } from './asentarGrupo';
-import { basesDeFotosQuitadas, basesDelArbol, fotoCambiadaAca, type ArbolDeGrupo } from './basesDeSync';
+import { basesDeFotosQuitadas, basesDelArbol, type ArbolDeGrupo } from './basesDeSync';
 import { getFotoBaseDeArboles } from '../../queries/treeQueries';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
@@ -271,7 +271,7 @@ async function subirFotosDelGrupo(
 ): Promise<Map<string, string>> {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
-  const pendientes = sgTrees.filter(fotoCambiadaAca);
+  const pendientes = sgTrees.filter(fotoSinSubir);
   // Sin esto el modal queda clavado en "grupo i de n" mientras se suben K fotos: es
   // el tramo más largo del sync de una plantación con fotos.
   const inicio = Date.now();
