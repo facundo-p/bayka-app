@@ -278,6 +278,15 @@ describe('limpiarFotosQuitadas', () => {
     expect(respuesta.body).toMatchObject({ huerfanasBorradas: 3, huerfanasPendientes: TAMANO_TANDA_FOTOS });
     expect(deps.borrarArchivos).toHaveBeenCalledTimes(2);
   });
+
+  test('si el RPC de huérfanas falla, las quitadas ya quedaron borradas y la acción lanza', async () => {
+    const deps = crearDeps();
+    deps.fotosHuerfanasPorLimpiar = vi.fn(async () => {
+      throw new Error('function fotos_huerfanas_por_limpiar does not exist');
+    });
+    await expect(manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps)).rejects.toThrow();
+    expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledWith([1, 2]);
+  });
 });
 
 describe('secretosIguales', () => {

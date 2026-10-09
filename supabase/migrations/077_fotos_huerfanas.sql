@@ -26,7 +26,9 @@ GRANT EXECUTE ON FUNCTION "public"."fotos_huerfanas_antiguedad_minima"() TO "ser
 
 -- Objetos de `tree-photos` con nombre de foto de árbol que ningún `foto_url`
 -- referencia, sin quitada pendiente (esos los borra `fotos_quitadas_por_limpiar`)
--- y sin escribir dentro del plazo. Sin fecha no se devuelve.
+-- y sin escribir dentro del plazo. Sin fecha no se devuelve. Un reintento que
+-- reescribe el archivo entre esta consulta y el borrado lo perdería, igual que
+-- en `fotos_quitadas_por_limpiar`; el cron corre de madrugada.
 CREATE OR REPLACE FUNCTION "public"."fotos_huerfanas_por_limpiar"("p_limite" integer)
 RETURNS TABLE ("storage_path" "text")
 LANGUAGE "sql" STABLE SECURITY DEFINER

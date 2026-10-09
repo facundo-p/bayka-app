@@ -3,7 +3,7 @@ name: Limpiar fotos quitadas
 # Borra de Storage los archivos de fotos quitadas a árboles (#516). La lista la
 # arma la DB (`fotos_quitadas`); la edge function `admin-plantaciones` los borra
 # con service_role. También borra las fotos huérfanas: archivos de árbol que
-# ningún árbol usa, con más de 30 días (#806). Cada corrida procesa hasta 1000
+# ningún árbol usa, pasado el plazo de gracia (#806). Cada corrida procesa hasta 1000
 # de cada tipo; el resto queda para la siguiente.
 
 on:
