@@ -9,6 +9,7 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
   deleteLastTree: jest.fn(),
   reverseTreeOrder: jest.fn(),
   updateTreePhoto: jest.fn(),
+  quitarFotoDelArbol: jest.fn(),
   deleteTreeAndRecalculate: jest.fn(),
 }));
 
@@ -36,7 +37,7 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getGroupById: jest.fn(),
 }));
 
-const { insertTree, deleteLastTree, updateTreePhoto } = require('../../src/repositories/TreeRepository');
+const { insertTree, deleteLastTree, updateTreePhoto, quitarFotoDelArbol } = require('../../src/repositories/TreeRepository');
 const { finalizeGroup, canEdit } = require('../../src/repositories/GroupRepository');
 const { useLiveData } = require('../../src/database/liveQuery');
 const { useTrees } = require('../../src/hooks/useTrees');
@@ -316,18 +317,26 @@ describe('useTreeRegistration', () => {
       await act(async () => { await accion(result.current); });
 
       expect(updateTreePhoto).not.toHaveBeenCalled();
+      expect(quitarFotoDelArbol).not.toHaveBeenCalled();
     });
 
-    it.each([
-      ['updatePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.updatePhoto('tree-1', FOTO), FOTO],
-      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1'), ''],
-    ])('%s: un admin escribe en un grupo ajeno', async (_, accion, esperado) => {
+    it('updatePhoto: un admin escribe en un grupo ajeno', async () => {
       mockLiveQueries({ group: grupoAjeno });
       const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
 
-      await act(async () => { await accion(result.current); });
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
 
-      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', esperado);
+      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', FOTO);
+    });
+
+    it('removePhoto: un admin quita la foto en un grupo ajeno', async () => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await result.current.removePhoto('tree-1'); });
+
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1');
+      expect(updateTreePhoto).not.toHaveBeenCalled();
     });
 
     it('el creador escribe en su grupo', async () => {
