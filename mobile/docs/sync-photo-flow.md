@@ -98,9 +98,11 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
   la fila ya se lleva la foto.
 - **Árbol que nunca llegó al server:** el RPC no encuentra la fila, no la rechaza
   y el registro se limpia.
-- **Objeto de Storage:** NO se borra. La policy de DELETE de `tree-photos` exige
-  admin, así que un técnico no podría. Queda huérfano (las fotos reemplazadas o
-  perdedoras de un conflicto sí las anota `sync_subgroup` para el borrado programado).
+- **Objeto de Storage:** el móvil no lo borra (la policy de DELETE de
+  `tree-photos` exige admin). `quitar_fotos_arboles` lo anota en `fotos_quitadas`
+  y lo borra el cron, igual que las fotos reemplazadas o perdedoras de un conflicto
+  que anota `sync_subgroup`. Lo que nadie anota (una subida que el server rechazó)
+  lo borra el cron a los 30 días si ningún árbol lo usa (#806).
 - **Otros devices:** conservan su copia local (`file://`), porque el pull preserva
   siempre la foto local.
 
