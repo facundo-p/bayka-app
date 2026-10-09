@@ -38,6 +38,9 @@
  * Cada módulo que compone vuelve a emitir esta regla, y la última copia gana:
  * una variante que redeclarara `padding` perdería según qué pantalla cargó
  * antes (#789). Por eso el padding variable se pide con propiedades custom.
+ * Una clase que llega al control por `className` empata con esta regla: si
+ * redeclara una de sus propiedades, va calificada (`input.buscador`) o anidada
+ * (`.campo .input`). Ningún test lo detecta: revisarlo al agregar una (#814).
  */
 .control {
   min-height: var(--control-height);

@@ -24,24 +24,28 @@
   min-width: 0;
 }
 
-/* Anchos por control: el más informativo (parcela) es el más ancho. */
-.filtroParcela {
+/* Anchos por control: el más informativo (parcela) es el más ancho.
+   Calificados por elemento (0,1,1) para ganarle al `width: 100%` de
+   `FormField.control` sin depender del orden de carga del CSS. No anidados
+   (0,2,0): una media query posterior con `.filtrosCompactos select` tiene que
+   poder pisarlos. */
+select.filtroParcela {
   width: var(--ancho-filtro-lg);
 }
 
-.filtroGrupo {
+select.filtroGrupo {
   width: var(--ancho-filtro-md);
 }
 
-.filtroEspecie {
+select.filtroEspecie {
   width: var(--ancho-filtro-md);
 }
 
-.filtroGps {
+select.filtroGps {
   width: var(--ancho-filtro-xs);
 }
 
-.filtroFoto {
+select.filtroFoto {
   width: var(--ancho-filtro-sm);
 }
 
