@@ -347,6 +347,14 @@ describe('useTreeRegistration', () => {
       expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', FOTO);
     });
 
+    it('el creador quita la foto en su grupo', async () => {
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await result.current.removePhoto('tree-1'); });
+
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1');
+    });
+
     it('nadie escribe en una plantación finalizada', async () => {
       mockLiveQueries({ group: grupoAjeno, plantacionEstado: 'finalizada' });
       const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
