@@ -3,7 +3,7 @@
 export const ACCION = {
   eliminar: 'eliminar',
   limpiarFotos: 'limpiarFotos',
-  /** Borra los archivos de fotos quitadas a árboles (#516); la dispara un cron con la service role key. */
+  /** Borra las fotos quitadas a árboles (#516) y las huérfanas (#806); la dispara un cron con la service role key. */
   limpiarFotosQuitadas: 'limpiarFotosQuitadas',
 } as const;
 
@@ -22,6 +22,9 @@ export const TAMANO_TANDA_FOTOS = 100;
 
 /** Tope por corrida de `limpiarFotosQuitadas`; lo que sobra queda para la siguiente. */
 export const LIMITE_FOTOS_QUITADAS = 1000;
+
+/** Tope aparte para las huérfanas: un atraso de quitadas no las frena. */
+export const LIMITE_FOTOS_HUERFANAS = 1000;
 
 /**
  * Compara un token contra un secreto en tiempo que depende solo del largo del secreto,
@@ -97,6 +100,8 @@ export type Deps = {
   /** RPC `fotos_quitadas_por_limpiar`: ya excluye los paths que un árbol volvió a usar. */
   fotosQuitadasPorLimpiar: (limite: number) => Promise<FotoQuitada[]>;
   marcarFotosQuitadasBorradas: (ids: number[]) => Promise<void>;
+  /** RPC `fotos_huerfanas_por_limpiar`: archivos de árbol sin `foto_url` que los use, pasado el plazo de gracia. */
+  fotosHuerfanasPorLimpiar: (limite: number) => Promise<string[]>;
 };
 
 export type CuerpoAdminPlantaciones =
@@ -112,6 +117,8 @@ export type CuerpoRespuesta = {
   fotosPendientes?: boolean;
   limpiadas?: number;
   pendientes?: number;
+  huerfanasBorradas?: number;
+  huerfanasPendientes?: number;
 };
 
 export type Respuesta = { status: number; body: CuerpoRespuesta };
@@ -178,22 +185,51 @@ async function limpiarFotos(jwt: string, plantacionId: string | undefined, deps:
   return { status: 200, body: { ok: true, limpiadas, pendientes: ids.length - limpiadas } };
 }
 
-/** Una tanda fallida no corta las demás: sus filas quedan pendientes para la próxima corrida. */
-async function limpiarFotosQuitadas(jwt: string, deps: Deps): Promise<Respuesta> {
-  if (!deps.esServiceRole(jwt)) return fallo(403, MENSAJES.soloServiceRole);
-  const fotos = await deps.fotosQuitadasPorLimpiar(LIMITE_FOTOS_QUITADAS);
-  let limpiadas = 0;
-  for (let desde = 0; desde < fotos.length; desde += TAMANO_TANDA_FOTOS) {
-    const tanda = fotos.slice(desde, desde + TAMANO_TANDA_FOTOS);
+/**
+ * Borra las rutas en tandas y corre `despues` con cada tanda borrada. Una tanda
+ * fallida no corta las demás: queda para la próxima corrida. Devuelve cuántas se borraron.
+ */
+async function borrarEnTandas<T>(
+  items: T[],
+  rutaDe: (item: T) => string,
+  deps: Deps,
+  despues: (tanda: T[]) => Promise<void> = async () => undefined,
+): Promise<number> {
+  let borradas = 0;
+  for (let desde = 0; desde < items.length; desde += TAMANO_TANDA_FOTOS) {
+    const tanda = items.slice(desde, desde + TAMANO_TANDA_FOTOS);
     try {
-      await deps.borrarArchivos(tanda.map((foto) => foto.ruta));
-      await deps.marcarFotosQuitadasBorradas(tanda.map((foto) => foto.id));
-      limpiadas += tanda.length;
+      await deps.borrarArchivos(tanda.map(rutaDe));
+      await despues(tanda);
+      borradas += tanda.length;
     } catch {
       // Queda pendiente; la corrida siguiente la reintenta.
     }
   }
-  return { status: 200, body: { ok: true, limpiadas, pendientes: fotos.length - limpiadas } };
+  return borradas;
+}
+
+async function limpiarFotosQuitadas(jwt: string, deps: Deps): Promise<Respuesta> {
+  if (!deps.esServiceRole(jwt)) return fallo(403, MENSAJES.soloServiceRole);
+  const fotos = await deps.fotosQuitadasPorLimpiar(LIMITE_FOTOS_QUITADAS);
+  const limpiadas = await borrarEnTandas(
+    fotos,
+    (foto) => foto.ruta,
+    deps,
+    (tanda) => deps.marcarFotosQuitadasBorradas(tanda.map((foto) => foto.id)),
+  );
+  const huerfanas = await deps.fotosHuerfanasPorLimpiar(LIMITE_FOTOS_HUERFANAS);
+  const huerfanasBorradas = await borrarEnTandas(huerfanas, (ruta) => ruta, deps);
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      limpiadas,
+      pendientes: fotos.length - limpiadas,
+      huerfanasBorradas,
+      huerfanasPendientes: huerfanas.length - huerfanasBorradas,
+    },
+  };
 }
 
 function nombreDe(cuerpo: { nombreConfirmacion?: unknown }): string | null {

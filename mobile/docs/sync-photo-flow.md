@@ -101,6 +101,7 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 - **Objeto de Storage:** NO se borra. La policy de DELETE de `tree-photos` exige
   admin, así que un técnico no podría. Queda huérfano (las fotos reemplazadas o
   perdedoras de un conflicto sí las anota `sync_subgroup` para el borrado programado).
+  Lo que nadie anota lo borra el cron a los 30 días si ningún árbol lo usa (#806).
 - **Otros devices:** conservan su copia local (`file://`), porque el pull preserva
   siempre la foto local.
 

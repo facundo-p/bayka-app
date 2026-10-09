@@ -2,8 +2,9 @@ name: Limpiar fotos quitadas
 
 # Borra de Storage los archivos de fotos quitadas a árboles (#516). La lista la
 # arma la DB (`fotos_quitadas`); la edge function `admin-plantaciones` los borra
-# con service_role. Cada corrida procesa hasta 1000; el resto queda para la
-# siguiente.
+# con service_role. También borra las fotos huérfanas: archivos de árbol que
+# ningún árbol usa, con más de 30 días (#806). Cada corrida procesa hasta 1000
+# de cada tipo; el resto queda para la siguiente.
 
 on:
   schedule:
@@ -44,6 +45,6 @@ jobs:
             -d '{"accion":"limpiarFotosQuitadas"}')
           cat respuesta.json; echo
           [ "$status" = "200" ] || { echo "::error::HTTP $status"; exit 1; }
-          if [ "$(jq -r '.pendientes' respuesta.json)" != "0" ]; then
+          if [ "$(jq -r '.pendientes + (.huerfanasPendientes // 0)' respuesta.json)" != "0" ]; then
             echo "::warning::Quedaron fotos sin borrar; se reintentan en la próxima corrida."
           fi

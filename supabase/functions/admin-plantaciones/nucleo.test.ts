@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
+  LIMITE_FOTOS_HUERFANAS,
   LIMITE_FOTOS_QUITADAS,
   MENSAJES,
   TAMANO_TANDA_FOTOS,
@@ -48,6 +49,7 @@ function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
       { id: 2, ruta: 'plantations/p/parcelas/q/trees/t2.jpg' },
     ]),
     marcarFotosQuitadasBorradas: vi.fn(async () => undefined),
+    fotosHuerfanasPorLimpiar: vi.fn(async () => []),
   };
 }
 
@@ -200,13 +202,17 @@ describe('limpiarFotosQuitadas', () => {
     const respuesta = await manejarAdminPlantaciones('jwt', PEDIDO, deps);
     expect(respuesta).toEqual({ status: 403, body: { ok: false, error: MENSAJES.soloServiceRole } });
     expect(deps.fotosQuitadasPorLimpiar).not.toHaveBeenCalled();
+    expect(deps.fotosHuerfanasPorLimpiar).not.toHaveBeenCalled();
     expect(deps.borrarArchivos).not.toHaveBeenCalled();
   });
 
   test('borra solo los paths registrados y los marca', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
-    expect(respuesta).toEqual({ status: 200, body: { ok: true, limpiadas: 2, pendientes: 0 } });
+    expect(respuesta).toEqual({
+      status: 200,
+      body: { ok: true, limpiadas: 2, pendientes: 0, huerfanasBorradas: 0, huerfanasPendientes: 0 },
+    });
     expect(deps.fotosQuitadasPorLimpiar).toHaveBeenCalledWith(LIMITE_FOTOS_QUITADAS);
     expect(deps.borrarArchivos).toHaveBeenCalledWith([
       'plantations/p/parcelas/q/trees/t1.jpg',
@@ -220,7 +226,13 @@ describe('limpiarFotosQuitadas', () => {
     const deps = crearDeps();
     deps.fotosQuitadasPorLimpiar = vi.fn(async () => []);
     const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
-    expect(respuesta.body).toEqual({ ok: true, limpiadas: 0, pendientes: 0 });
+    expect(respuesta.body).toEqual({
+      ok: true,
+      limpiadas: 0,
+      pendientes: 0,
+      huerfanasBorradas: 0,
+      huerfanasPendientes: 0,
+    });
     expect(deps.borrarArchivos).not.toHaveBeenCalled();
   });
 
@@ -234,13 +246,37 @@ describe('limpiarFotosQuitadas', () => {
       if (rutas.length === TAMANO_TANDA_FOTOS) throw new Error('storage caído');
     });
     const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
-    expect(respuesta.body).toEqual({ ok: true, limpiadas: 3, pendientes: TAMANO_TANDA_FOTOS });
+    expect(respuesta.body).toMatchObject({ limpiadas: 3, pendientes: TAMANO_TANDA_FOTOS });
     expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledTimes(1);
     expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledWith([
       TAMANO_TANDA_FOTOS,
       TAMANO_TANDA_FOTOS + 1,
       TAMANO_TANDA_FOTOS + 2,
     ]);
+  });
+
+  test('después de las quitadas borra las huérfanas que devuelve el RPC, sin marcar nada', async () => {
+    const deps = crearDeps();
+    deps.fotosHuerfanasPorLimpiar = vi.fn(async () => ['h1.jpg', 'h2.jpg']);
+    const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
+    expect(respuesta.body).toMatchObject({ huerfanasBorradas: 2, huerfanasPendientes: 0 });
+    expect(deps.fotosHuerfanasPorLimpiar).toHaveBeenCalledWith(LIMITE_FOTOS_HUERFANAS);
+    expect(deps.borrarArchivos).toHaveBeenLastCalledWith(['h1.jpg', 'h2.jpg']);
+    expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledTimes(1);
+  });
+
+  test('una tanda de huérfanas que falla queda pendiente y no corta las demás', async () => {
+    const deps = crearDeps();
+    deps.fotosQuitadasPorLimpiar = vi.fn(async () => []);
+    deps.fotosHuerfanasPorLimpiar = vi.fn(async () =>
+      Array.from({ length: TAMANO_TANDA_FOTOS + 3 }, (_, i) => `h${i}.jpg`),
+    );
+    deps.borrarArchivos = vi.fn(async (rutas: string[]) => {
+      if (rutas.length === TAMANO_TANDA_FOTOS) throw new Error('storage caído');
+    });
+    const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
+    expect(respuesta.body).toMatchObject({ huerfanasBorradas: 3, huerfanasPendientes: TAMANO_TANDA_FOTOS });
+    expect(deps.borrarArchivos).toHaveBeenCalledTimes(2);
   });
 });
 

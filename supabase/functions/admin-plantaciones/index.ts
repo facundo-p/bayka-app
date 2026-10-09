@@ -122,6 +122,11 @@ const deps: Deps = {
     const { error } = await admin.rpc('marcar_fotos_quitadas_borradas', { p_ids: ids });
     lanzarSiError('marcarFotosQuitadasBorradas', error);
   },
+  fotosHuerfanasPorLimpiar: async (limite) => {
+    const { data, error } = await admin.rpc('fotos_huerfanas_por_limpiar', { p_limite: limite });
+    lanzarSiError('fotosHuerfanasPorLimpiar', error);
+    return ((data ?? []) as { storage_path: string }[]).map((fila) => fila.storage_path);
+  },
 };
 
 Deno.serve(async (solicitud) => {
