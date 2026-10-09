@@ -20,6 +20,7 @@ import {
   deleteLastTree,
   reverseTreeOrder,
   updateTreePhoto,
+  quitarFotoDelArbol,
   deleteTreeAndRecalculate,
 } from '../repositories/TreeRepository';
 import {
@@ -260,7 +261,7 @@ export function useTreeRegistration({
   const removePhoto = useCallback(async (treeId: string, sink?: ErrorSink) => {
     if (!puedeEditarArboles) return;
     try {
-      await updateTreePhoto(treeId, '');
+      await quitarFotoDelArbol(treeId);
     } catch (e) {
       notifyError(e, 'No se pudo quitar la foto.', sink);
     }
