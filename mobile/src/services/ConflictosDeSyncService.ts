@@ -11,7 +11,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import {
   conflictoDe, quitarConflictos, type ConflictoDeSync,
 } from '../repositories/ConflictosDeSyncRepository';
-import { cambiarEspecie, quitarFotoDelArbol, updateTreeGps, updateTreePhoto } from '../repositories/TreeRepository';
+import { cambiarEspecie, quitarFotoParaTodos, updateTreeGps, updateTreePhoto } from '../repositories/TreeRepository';
 import {
   finalizeGroup, reactivateGroup, updateGroup, type UpdateGroupResult,
 } from '../repositories/GroupRepository';
@@ -52,7 +52,7 @@ async function gpsMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
 
 /** Una foto quitada se vuelve a quitar: la próxima sync lo pide con la foto del servidor como base. */
 async function fotoMia(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
-  if (esFotoQuitada(c.mio)) await quitarFotoDelArbol(c.entidadId);
+  if (esFotoQuitada(c.mio)) await quitarFotoParaTodos(c.entidadId);
   else if (typeof c.mio === 'string') await updateTreePhoto(c.entidadId, c.mio);
   else return falla(ERROR_DE_CONFLICTO.sinValor);
   return OK;

@@ -9,9 +9,9 @@ import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { gruposQueSube, type Subidor } from './subidor';
-import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { plantacionDelGrupo, registrarBorrado, tieneFotoQuitadaPendiente } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
+import { fotoSinSubir, isLocalUri, isRemoteUri, sqlIsLocalUri } from '../utils/photoUri';
 import { codigoParaSubId, especieCodigoParaSubId, esEspecieRecuperada } from '../utils/speciesHelpers';
 import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
@@ -187,40 +187,71 @@ function borrarFotosDelArbol(fotoUrl: string | null | undefined, deConflictos: s
   if (deConflictos.length > 0) borrarFotosLocales(deConflictos);
 }
 
+type FotoDelArbol = Pick<typeof trees.$inferSelect, 'groupId' | 'fotoUrl' | 'fotoSynced' | 'fotoBase'>;
+
+/** La foto de un árbol que se puede editar; null si el árbol ya no está. */
+async function fotoEditable(treeId: string): Promise<FotoDelArbol | null> {
+  const [arbol] = await db.select({
+    groupId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced, fotoBase: trees.fotoBase,
+  }).from(trees).where(eq(trees.id, treeId));
+  if (!arbol) return null;
+  if (!(await puedeEditarArbolesDe(arbol.groupId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
+  return arbol;
+}
+
 /**
  * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
  * fotoSynced=false para forzar re-upload a Storage.
  *
  * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
  * foto en null en el server, y el pull la restauraría. Va en la misma transacción
- * que el update, por lo mismo que los borrados de fila.
+ * que el update, por lo mismo que los borrados de fila. Una foto nueva no descarta
+ * esa anotación: lo hace su subida (#816).
  */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
   const nueva = fotoUrl || null;
-  const [treeRow] = await db.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl })
-    .from(trees).where(eq(trees.id, treeId));
-  if (!treeRow) return;
-  if (!(await puedeEditarArbolesDe(treeRow.grupoId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
-  const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
+  const arbol = await fotoEditable(treeId);
+  if (!arbol) return;
+  const plantacionId = await plantacionDelGrupo(db, arbol.groupId);
 
   await enTransaccion(async (tx) => {
     await tx.update(trees)
       .set({ fotoUrl: nueva, fotoSynced: false })
       .where(eq(trees.id, treeId));
-    if (fotoUrl) {
-      await descartarFotoQuitada(tx, treeId);
-    } else if (plantacionId) {
-      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: treeRow.grupoId, plantacionId });
+    if (!nueva && plantacionId) {
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: arbol.groupId, plantacionId });
     }
   });
   // Mismo path: el archivo "anterior" es el que queda en la fila.
-  if (treeRow.fotoUrl !== nueva) borrarFotoLocal(treeRow.fotoUrl);
-  await markGroupPendingSync(treeRow.grupoId);
+  if (arbol.fotoUrl !== nueva) borrarFotoLocal(arbol.fotoUrl);
+  await markGroupPendingSync(arbol.groupId);
   notifyDataChanged();
 }
 
-/** Quita la foto del árbol, como `updateTreePhoto` con string vacío. */
-export const quitarFotoDelArbol = (treeId: string): Promise<void> => updateTreePhoto(treeId, '');
+/** Quita la foto para todos: el push la quita del servidor con la que vio como base (#810). */
+export const quitarFotoParaTodos = (treeId: string): Promise<void> => updateTreePhoto(treeId, '');
+
+/**
+ * Deshace una foto sin subir (#816): el árbol vuelve a lo que tenía en la última
+ * sincronización, sin anotar nada para el servidor. Si antes se había pedido
+ * quitar la del servidor, queda sin foto y ese pedido sigue pendiente.
+ */
+async function deshacerFotoSinSubir(treeId: string, arbol: FotoDelArbol): Promise<void> {
+  const vuelta = (await tieneFotoQuitadaPendiente(db, treeId)) ? null : arbol.fotoBase;
+  await db.update(trees)
+    .set({ fotoUrl: vuelta, fotoSynced: isRemoteUri(vuelta) })
+    .where(eq(trees.id, treeId));
+  borrarFotoLocal(arbol.fotoUrl);
+  notifyDataChanged();
+}
+
+/** Borra la foto que se ve: si no se subió, deshace el cambio; si ya está en el servidor, la quita para todos. */
+export async function quitarFotoDelArbol(treeId: string): Promise<void> {
+  const arbol = await fotoEditable(treeId);
+  if (!arbol) return;
+  if (fotoSinSubir(arbol)) await deshacerFotoSinSubir(treeId, arbol);
+  else await quitarFotoParaTodos(treeId);
+}
 
 export interface ArbolConFotoPendiente {
   id: string;

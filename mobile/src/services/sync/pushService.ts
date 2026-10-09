@@ -187,7 +187,7 @@ async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
   }
 
   await anotarRechazos(plantacionId, data.rechazos);
-  const rechazados = await limpiarConfirmados(pendientes, data.rechazados, ENTIDADES_DE_FILA);
+  const rechazados = await limpiarConfirmados(pendientes, idsRechazados(data.rechazados), ENTIDADES_DE_FILA);
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
   if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
@@ -217,8 +217,9 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
   }
 
   await anotarRechazos(plantacionId, data.rechazos);
-  const conflictos = await asentarFotosQuitadas(pendientes, data);
-  const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
+  const rechazados = idsRechazados(data.rechazados);
+  const conflictos = await asentarFotosQuitadas(pendientes, data, rechazados);
+  const rechazadas = await limpiarConfirmados(pendientes, rechazados, FOTOS_QUITADAS);
   syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
   if (conflictos > 0) syncLog.info(`Push fotos quitadas: ${conflictos} cambiaron en el server, quedan para resolver`);
   if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, ${motivosDeRechazo(data.rechazos)}`);
@@ -231,13 +232,14 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
  */
 async function limpiarConfirmados(
   pendientes: BorradoPendiente[],
-  idsRechazados: unknown,
+  rechazados: Set<string>,
   tipos: readonly EntidadBorrada[],
 ): Promise<number> {
-  const rechazados = new Set<string>(Array.isArray(idsRechazados) ? idsRechazados : []);
   await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)), tipos);
   return rechazados.size;
 }
+
+const idsRechazados = (ids: unknown): Set<string> => new Set(Array.isArray(ids) ? ids : []);
 
 /** Los borrados rechazados quedan varados con el motivo de cada uno. */
 async function anotarRechazos(plantacionId: string, rechazos: unknown): Promise<void> {

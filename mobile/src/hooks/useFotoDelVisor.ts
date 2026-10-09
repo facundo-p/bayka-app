@@ -5,7 +5,7 @@ import type { ShowFn } from '../utils/alertHelpers';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import { confirmarReemplazoEnVisor, fotoAReemplazar } from '../utils/avisoReemplazarFoto';
 
-type ArbolConFoto = { id: string; subId: string; fotoSynced?: boolean | null };
+type ArbolConFoto = { id: string; subId: string; fotoUrl?: string | null; fotoSynced?: boolean | null };
 
 interface Params {
   arboles: readonly ArbolConFoto[];
@@ -37,9 +37,10 @@ function reemplazar(visor: Visor, foto: FotoDeArbol) {
     foto.reemplazoConfirmado, () => capturarReemplazo(visor, foto.treeId));
 }
 
+/** Sin el árbol (se borró con el visor abierto) se pregunta igual. */
 function quitar(visor: Visor, treeId: string) {
-  const fotoSynced = arbolDelGrupo(visor.arboles, treeId)?.fotoSynced ?? true;
-  confirmarQuitarFoto(visor.show, fotoSynced, () => {
+  const arbol = arbolDelGrupo(visor.arboles, treeId);
+  confirmarQuitarFoto(visor.show, { fotoUrl: arbol?.fotoUrl, fotoSynced: arbol?.fotoSynced ?? true }, () => {
     void visor.removePhoto(treeId);
     visor.setFoto(null);
   });

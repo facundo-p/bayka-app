@@ -16,7 +16,7 @@ import {
 } from '../../repositories/ConflictosDeSyncRepository';
 import {
   adoptarCampoDeGrupo, adoptarEspecie, adoptarFoto, adoptarGps, confirmarBaseDeEspecie,
-  confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida,
+  confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida, confirmarFotosQuitadas,
 } from '../../repositories/AsentamientoDeSyncRepository';
 import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
 import { borrarFotosLocales } from '../PhotoService';
@@ -207,11 +207,24 @@ function quitadasConservadas(pendientes: BorradoPendiente[], respuesta: unknown)
   });
 }
 
-/** Asienta lo que `quitar_fotos_arboles` conservó (#810). Devuelve cuántos conflictos nuevos quedaron. */
-export async function asentarFotosQuitadas(pendientes: BorradoPendiente[], respuesta: unknown): Promise<number> {
+/** Las quitadas que el servidor aplicó: ni rechazadas ni conservadas. */
+function quitadasAplicadas(pendientes: BorradoPendiente[], respuesta: unknown, rechazadas: Set<string>): string[] {
+  const { arboles } = leerConservados(respuesta);
+  return pendientes.map((b) => b.id).filter((id) => !rechazadas.has(id) && !arboles.has(id));
+}
+
+/**
+ * Asienta la respuesta de `quitar_fotos_arboles`: lo quitado deja la base sin foto
+ * (#816) y lo conservado se adopta (#810). Devuelve cuántos conflictos nuevos quedaron.
+ */
+export async function asentarFotosQuitadas(
+  pendientes: BorradoPendiente[],
+  respuesta: unknown,
+  rechazadas: Set<string>,
+): Promise<number> {
   const conservadas = quitadasConservadas(pendientes, respuesta);
-  if (conservadas.length === 0) return 0;
   const asentado = await enTransaccion(async (tx) => {
+    await confirmarFotosQuitadas(tx, quitadasAplicadas(pendientes, respuesta, rechazadas));
     let total = NADA;
     for (const c of conservadas) total = sumar(total, await asentarFotoQuitada(tx, c.donde, c.treeId, c.fotoUrl));
     return total;

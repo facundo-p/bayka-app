@@ -3,7 +3,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import TreeDetailModal from '../../src/components/TreeDetailModal';
-import { textoQuitarFoto, TITULO_QUITAR_FOTO } from '../../src/utils/avisoQuitarFoto';
+import { TEXTO_QUITAR_FOTO, TITULO_QUITAR_FOTO } from '../../src/utils/avisoQuitarFoto';
 import { textoReemplazarFoto, TITULO_REEMPLAZAR_FOTO } from '../../src/utils/avisoReemplazarFoto';
 
 let mockTree: Record<string, unknown> | null;
@@ -64,11 +64,20 @@ describe('TreeDetailModal: quitar foto', () => {
     await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
   });
 
-  it.each([true, false])('muestra el texto de fotoSynced=%s', (synced) => {
-    mockTree = arbol(synced);
+  it('avisa que se quita para todos', () => {
+    mockTree = arbol(true);
     const { getByText } = renderModal();
     fireEvent.press(getByText('Quitar'));
-    expect(getByText(textoQuitarFoto(synced))).toBeTruthy();
+    expect(getByText(TEXTO_QUITAR_FOTO)).toBeTruthy();
+  });
+
+  // #816: deshacer una foto sin subir no pregunta.
+  it('sin subir la quita sin confirmar', async () => {
+    mockTree = arbol(false);
+    const { getByText, queryByText, onRemovePhoto } = renderModal();
+    fireEvent.press(getByText('Quitar'));
+    expect(queryByText(TITULO_QUITAR_FOTO)).toBeNull();
+    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
   });
 });
 

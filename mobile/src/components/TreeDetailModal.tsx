@@ -91,7 +91,7 @@ export default function TreeDetailModal({
 
   function handleRemovePhoto() {
     if (!tree) return;
-    confirmarQuitarFoto(confirm.show, tree.fotoSynced ?? true, () => accionDeFoto(onRemovePhoto, tree.id));
+    confirmarQuitarFoto(confirm.show, tree, () => accionDeFoto(onRemovePhoto, tree.id));
   }
 
   async function handleCaptureGps() {
