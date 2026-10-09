@@ -3,8 +3,8 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useFotoDelVisor } from '../../src/hooks/useFotoDelVisor';
 
 const ARBOLES = [
-  { id: 't1', subId: 'A-1', fotoSynced: true },
-  { id: 't2', subId: 'A-2', fotoSynced: false },
+  { id: 't1', subId: 'A-1', fotoUrl: 'file:///a1.jpg', fotoSynced: true },
+  { id: 't2', subId: 'A-2', fotoUrl: 'file:///a2.jpg', fotoSynced: false },
 ];
 
 function setup(pickResult: string | null = 'file:///nueva.jpg') {
@@ -81,19 +81,28 @@ describe('useFotoDelVisor', () => {
       expect(hook.result.current.foto).toBeNull();
     });
 
-    it('el aviso depende de si la foto se subió', () => {
-      const subida = setup();
-      act(() => subida.hook.result.current.handleRemovePhoto('t1'));
-      expect(subida.show.mock.calls[0][0].message).toContain('Se va a quitar de Bayka');
-      const local = setup();
-      act(() => local.hook.result.current.handleRemovePhoto('t2'));
-      expect(local.show.mock.calls[0][0].message).toContain('Se va a quitar de este celular.');
+    it('avisa que se quita para todos', () => {
+      const { hook, show } = setup();
+      act(() => hook.result.current.handleRemovePhoto('t1'));
+      expect(show.mock.calls[0][0]).toMatchObject({
+        title: 'Quitar la foto del árbol', message: 'Se quita para todos los que vean este árbol.',
+      });
     });
 
-    it('árbol que ya no está: asume foto subida', () => {
+    // #816: una foto sin subir se deshace sin preguntar.
+    it('sin subir la quita sin confirmar y cierra el visor', () => {
+      const { hook, show, removePhoto } = setup();
+      act(() => hook.result.current.abrir({ uri: 'file:///a2.jpg', treeId: 't2' }));
+      act(() => hook.result.current.handleRemovePhoto('t2'));
+      expect(show).not.toHaveBeenCalled();
+      expect(removePhoto).toHaveBeenCalledWith('t2');
+      expect(hook.result.current.foto).toBeNull();
+    });
+
+    it('árbol que ya no está: pregunta igual', () => {
       const { hook, show } = setup();
       act(() => hook.result.current.handleRemovePhoto('borrado'));
-      expect(show.mock.calls[0][0].message).toContain('Se va a quitar de Bayka');
+      expect(show.mock.calls[0][0].title).toBe('Quitar la foto del árbol');
     });
   });
 });

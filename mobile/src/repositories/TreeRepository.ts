@@ -187,15 +187,15 @@ function borrarFotosDelArbol(fotoUrl: string | null | undefined, deConflictos: s
   if (deConflictos.length > 0) borrarFotosLocales(deConflictos);
 }
 
-type FotoDelArbol = Pick<typeof trees.$inferSelect, 'groupId' | 'fotoUrl' | 'fotoSynced' | 'fotoBase'>;
+type FotoDelArbol = Pick<typeof trees.$inferSelect, 'fotoUrl' | 'fotoSynced' | 'fotoBase'> & { grupoId: string };
 
 /** La foto de un árbol que se puede editar; null si el árbol ya no está. */
 async function fotoEditable(treeId: string): Promise<FotoDelArbol | null> {
   const [arbol] = await db.select({
-    groupId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced, fotoBase: trees.fotoBase,
+    grupoId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced, fotoBase: trees.fotoBase,
   }).from(trees).where(eq(trees.id, treeId));
   if (!arbol) return null;
-  if (!(await puedeEditarArbolesDe(arbol.groupId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
+  if (!(await puedeEditarArbolesDe(arbol.grupoId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
   return arbol;
 }
 
@@ -212,19 +212,19 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   const nueva = fotoUrl || null;
   const arbol = await fotoEditable(treeId);
   if (!arbol) return;
-  const plantacionId = await plantacionDelGrupo(db, arbol.groupId);
+  const plantacionId = await plantacionDelGrupo(db, arbol.grupoId);
 
   await enTransaccion(async (tx) => {
     await tx.update(trees)
       .set({ fotoUrl: nueva, fotoSynced: false })
       .where(eq(trees.id, treeId));
     if (!nueva && plantacionId) {
-      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: arbol.groupId, plantacionId });
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: arbol.grupoId, plantacionId });
     }
   });
   // Mismo path: el archivo "anterior" es el que queda en la fila.
   if (arbol.fotoUrl !== nueva) borrarFotoLocal(arbol.fotoUrl);
-  await markGroupPendingSync(arbol.groupId);
+  await markGroupPendingSync(arbol.grupoId);
   notifyDataChanged();
 }
 
