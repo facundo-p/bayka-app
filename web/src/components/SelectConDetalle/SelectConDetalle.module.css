@@ -62,7 +62,10 @@
   border-bottom: var(--border-thin) solid var(--color-border);
 }
 
-.busqueda {
+/* Anidado a propósito: llega al Input por `className` y tiene que ganarle a
+   `FormField.control`, de la misma especificidad y re-emitida en cada módulo
+   que la compone. Suelta, el orden de inyección decidía alto y letra (#790). */
+.cabecera .busqueda {
   min-height: var(--control-height-input);
   font-size: var(--text-md);
 }
