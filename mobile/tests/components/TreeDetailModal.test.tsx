@@ -25,8 +25,10 @@ function arbol(fotoSynced: boolean) {
   };
 }
 
+const QUITADA = { requiereConfirmacion: false };
+
 function renderModal(over: { onRemovePhoto?: jest.Mock; onCapturePhoto?: jest.Mock; onCaptureGps?: jest.Mock } = {}) {
-  const onRemovePhoto = over.onRemovePhoto ?? jest.fn().mockResolvedValue(undefined);
+  const onRemovePhoto = over.onRemovePhoto ?? jest.fn().mockResolvedValue(QUITADA);
   const utils = render(
     <TreeDetailModal
       visible treeId="t1" plantacionId="p1" canEdit canDelete={false} cambioDeEspecie="disponible"
@@ -61,7 +63,7 @@ describe('TreeDetailModal: quitar foto', () => {
     fireEvent.press(getAllByText('Quitar')[0]);
     const botones = getAllByText('Quitar');
     fireEvent.press(botones[botones.length - 1]);
-    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
+    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', true, expect.any(Function)));
   });
 
   it('avisa que se quita para todos', () => {
@@ -77,7 +79,22 @@ describe('TreeDetailModal: quitar foto', () => {
     const { getByText, queryByText, onRemovePhoto } = renderModal();
     fireEvent.press(getByText('Quitar'));
     expect(queryByText(TITULO_QUITAR_FOTO)).toBeNull();
-    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
+    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', false, expect.any(Function)));
+  });
+
+  // La foto se subió mientras el detalle seguía mostrándola sin subir.
+  it('si al quitarla ya estaba subida, pregunta y recién al confirmar la quita para todos', async () => {
+    mockTree = arbol(false);
+    const onRemovePhoto = jest.fn()
+      .mockResolvedValueOnce({ requiereConfirmacion: true })
+      .mockResolvedValueOnce(QUITADA);
+    const { getAllByText, findByText } = renderModal({ onRemovePhoto });
+    fireEvent.press(getAllByText('Quitar')[0]);
+    expect(await findByText(TITULO_QUITAR_FOTO)).toBeTruthy();
+    expect(onRemovePhoto).toHaveBeenCalledTimes(1);
+    const botones = getAllByText('Quitar');
+    fireEvent.press(botones[botones.length - 1]);
+    await waitFor(() => expect(onRemovePhoto).toHaveBeenLastCalledWith('t1', true, expect.any(Function)));
   });
 });
 
@@ -161,7 +178,7 @@ describe('TreeDetailModal: errores de sus acciones (#730)', () => {
 
   it('quitar foto: el error que reporta la acción se muestra desde el detalle', async () => {
     mockTree = arbol(true);
-    const onRemovePhoto = jest.fn((_id: string, onError: (m: string) => void) => { onError(MENSAJE); return Promise.resolve(); });
+    const onRemovePhoto = jest.fn((_id: string, _confirmado: boolean, onError: (m: string) => void) => { onError(MENSAJE); return Promise.resolve(QUITADA); });
     const { getAllByText, findByText } = renderModal({ onRemovePhoto });
     fireEvent.press(getAllByText('Quitar')[0]);
     const botones = getAllByText('Quitar');

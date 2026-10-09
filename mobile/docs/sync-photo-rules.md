@@ -143,7 +143,8 @@ Vale para la especie (también un N/N resuelto distinto), el GPS, la foto y los 
 ### Caso 4b: Borrar una foto (#816)
 
 - **Sin subir:** se deshace sin preguntar. El árbol vuelve a la foto que tenía en la última sincronización (sin bajar; se baja al abrirla) o queda sin foto. El servidor no se entera: si otro celular subió una foto mientras tanto, no se toca.
-- **Ya subida:** se pide confirmar ("Quitar la foto del árbol. Se quita para todos los que vean este árbol.") y se quita del servidor en la próxima sync, con la foto que el teléfono vio como base (Caso 4).
+- **Ya subida:** se pide confirmar ("Quitar la foto del árbol. Se quita para todos los que vean este árbol.") y se quita del servidor en la próxima sync, con la foto que el teléfono vio como base (Caso 4). Si la pantalla la mostraba sin subir pero la sync ya la subió, también se pregunta.
+- **Borrada mientras subía:** si el servidor se quedó con ella, se pide quitarla en la próxima sync.
 - **Quitar la del servidor, sacar otra y borrarla:** el árbol queda sin foto y la del servidor se quita igual. El pedido de quitar se conserva hasta que la foto nueva se sube.
 - No hay opción "solo en este celular": para liberar espacio están "borrar las fotos descargadas" de la plantación y la descarga de a una.
 

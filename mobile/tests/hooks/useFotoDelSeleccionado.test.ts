@@ -73,10 +73,10 @@ describe('useFotoDelSeleccionado', () => {
     expect(capturar).toHaveBeenCalledWith('t14');
   });
 
-  it('foto sin subir: el aviso no afirma que esté en Bayka', () => {
+  it('foto sin subir: el aviso dice que no está sincronizada', () => {
     const { hook, aviso } = setup({ ...CON_FOTO, fotoSynced: false });
     act(() => hook.result.current.fotografiar());
-    expect(aviso().message).toContain('puede no haberse subido a Bayka');
+    expect(aviso().message).toContain('tiene una foto sin sincronizar');
   });
 
   it('mientras guarda: spinner, deshabilitado y un segundo toque no abre otra cámara', async () => {

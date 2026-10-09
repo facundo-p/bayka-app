@@ -64,16 +64,25 @@ Después de crear: `markGroupPendingSync(grupoId)` → `pendingSync = true`.
 
 ### 2b. Quitar la foto (#498, #816)
 
-El botón Quitar llama `quitarFotoDelArbol(treeId)`, que decide según la foto:
+El botón Quitar llama `quitarFotoDelArbol(treeId, confirmado)`, que decide según
+la fila, no según lo que muestra la pantalla:
 
 - **Sin subir** (`fotoSinSubir`: local y `fotoSynced = false`): deshace el cambio
   local sin preguntar y sin anotar nada para el server. El árbol vuelve a lo que
   tenía en la última sincronización: `fotoBase` como foto remota sin bajar
   (`fotoSynced = true`, se baja a demanda), o sin foto. Borra el archivo local.
   Si había una quitada pendiente (se quitó la del server y después se sacó la que
-  se borra), queda sin foto y la quitada sigue pendiente.
-- **Ya subida:** pide confirmar ("Quitar la foto del árbol. Se quita para todos
-  los que vean este árbol.") y llama `quitarFotoParaTodos`.
+  se borra), queda sin foto y la quitada sigue pendiente. La escritura va en una
+  transacción con guard sobre la fila leída: si la sync la subió en el medio, no
+  la deshace y se decide de nuevo.
+- **Ya subida:** la UI pide confirmar ("Quitar la foto del árbol. Se quita para
+  todos los que vean este árbol.") y llama con `confirmado`, que pasa a
+  `quitarFotoParaTodos`. Sin `confirmado` no se quita: devuelve
+  `requiereConfirmacion` y la UI pregunta. Cubre la foto que la pantalla mostraba
+  sin subir y la sync subió antes del toque.
+- **El grupo queda pendiente** después de deshacer, aunque ya no tenga nada que
+  subir: `pendingSync` no distingue qué cambió (lo mismo que en #808). El push
+  siguiente lo baja sin cambiar nada en el server.
 
 `quitarFotoParaTodos` (`updateTreePhoto(treeId, '')`) deja `fotoUrl = null` y, en
 la misma transacción, anota en `borrados_pendientes` una fila `tipo = 'foto'` con
@@ -93,8 +102,9 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 - **La foto cambió en el server (#810):** `quitar_fotos_arboles` la conserva y la
   devuelve en `conservados.arboles`, con la forma de `sync_subgroup`.
   `asentarFotosQuitadas` (`asentarGrupo.ts`) adopta la del server y guarda un
-  conflicto de foto con `mio = null` ("Sin foto (la quitaste)"), en la misma
-  transacción que limpia el registro. "Conservar la mía" la vuelve a quitar, con
+  conflicto de foto con lo que tiene la fila: `mio = null` ("Sin foto (la
+  quitaste)"), o la nueva sin subir si se sacó otra después de quitarla (#816).
+  Va en la misma transacción que limpia el registro. "Conservar la mía" la vuelve a quitar, con
   la del server como base; "descartar" se queda con la del server. Un árbol sin
   `fotoBase` (una foto bajada antes de que existieran las bases) viaja sin base y
   el server la quita como antes, igual que con el APK de prod.
@@ -105,12 +115,24 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 - **Quitar → sacar otra → borrarla (#816):** la quitada se conserva mientras la
   nueva no sube, así que borrar la nueva deja el árbol sin foto y el pedido de
   quitar llega al server. En la sync, la quitada va primero (`pushBorrados`) y el
-  push del grupo sube la nueva sobre la base ya sin foto.
-- **Límite conocido:** un `fotoBase` null no distingue "no vio foto" de "la bajó
-  antes de las bases", así que viaja sin base. Pasa solo con una foto ya subida y
-  bajada antes de 0034 en un grupo que el pull todavía no refrescó: el primer pull
-  después de actualizar completa la base de los grupos sin cambios pendientes. No
-  hay backfill: el path del server no se puede derivar con certeza del teléfono.
+  push del grupo sube la nueva sobre la base ya sin foto. `confirmarFotoSubida`
+  descarta la quitada solo si la fila sigue con la foto subida, y en la misma
+  transacción que mueve la base.
+- **Foto borrada mientras subía:** si al confirmar la subida la fila ya no tiene
+  esa foto ni otra sin subir, `confirmarFotoSubida` anota la quitada con la subida
+  como base: el server no se queda con la que se borró. Si hay otra sin subir, esa
+  la reemplaza al subirse.
+- **Límites conocidos:**
+  - Un `fotoBase` null no distingue "no vio foto" de "la bajó antes de las
+    bases", así que viaja sin base. Pasa solo con una foto ya subida y bajada
+    antes de 0034 en un grupo que el pull todavía no refrescó: el primer pull
+    después de actualizar completa la base de los grupos sin cambios pendientes.
+    No hay backfill: el path del server no se puede derivar con certeza del
+    teléfono.
+  - Un grupo pendiente no recibe el pull, así que su `fotoBase` puede ser vieja si
+    otro cambió la foto en el server. Deshacer una foto sin subir vuelve a esa
+    foto vieja; el push del grupo la corrige: el server devuelve la suya en
+    `conservados` y el teléfono la adopta sin conflicto.
 
 - **Id compartido con el borrado del árbol:** `borrados_pendientes.id` es la
   clave. Si después se borra el árbol, el registro pasa a `tipo = 'arbol'`: borrar
