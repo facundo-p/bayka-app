@@ -136,6 +136,7 @@ Vale para la especie (también un N/N resuelto distinto), el GPS, la foto y los 
 - B elige: "conservar la mía" vuelve a subir Y con X como base, y pisa; "descartar" se queda con X
 - Mientras no elija, el grupo sigue pendiente; lo demás del grupo ya subió
 - Un dato que B no tocó también vuelve en `conservados`: B adopta X sin conflicto
+- Si B, en vez de sacar otra foto, quitó la que tenía, pasa lo mismo (#810): el server conserva X, B la adopta y lo quitado queda como conflicto ("Sin foto (la quitaste)"). Conservar la de B quita X
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

@@ -116,9 +116,13 @@ export async function borradosPorTipo(plantacionId: string): Promise<BorradosPor
  * para el próximo intento. Filtra por tipo porque, mientras el push viaja, borrar
  * el árbol puede convertir una foto quitada en un borrado de fila con el mismo id.
  */
-export async function limpiarBorrados(ids: string[], tipos: readonly EntidadBorrada[]): Promise<void> {
+export async function limpiarBorrados(
+  ids: string[],
+  tipos: readonly EntidadBorrada[],
+  exec: DbExecutor = db,
+): Promise<void> {
   if (ids.length === 0) return;
-  await db.delete(borradosPendientes).where(and(
+  await exec.delete(borradosPendientes).where(and(
     inArray(borradosPendientes.id, ids),
     inArray(borradosPendientes.tipo, [...tipos]),
   ));

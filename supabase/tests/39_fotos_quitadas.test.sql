@@ -70,7 +70,7 @@ select is(
     'b3900000-0000-0000-0000-000000000f03',
     'b3900000-0000-0000-0000-000000000f04'
   ]::uuid[]),
-  '{"success": true, "quitadas": 4, "rechazados": []}'::jsonb,
+  '{"success": true, "quitadas": 4, "rechazados": [], "conservados": {"arboles": []}}'::jsonb,
   'la respuesta no cambia con el registro'
 );
 

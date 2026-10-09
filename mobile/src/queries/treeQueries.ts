@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../database/client';
 import { groups, plantations, species, trees } from '../database/schema';
 
@@ -70,4 +70,13 @@ export async function getDatosNombreDeFoto(treeId: string) {
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .where(eq(trees.id, treeId));
   return fila ?? null;
+}
+
+/** La foto que cada árbol vio en el servidor: la base de una foto quitada (#810). */
+export async function getFotoBaseDeArboles(treeIds: string[]) {
+  if (treeIds.length === 0) return [];
+  return db
+    .select({ id: trees.id, fotoBase: trees.fotoBase })
+    .from(trees)
+    .where(inArray(trees.id, treeIds));
 }

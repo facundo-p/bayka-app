@@ -11,7 +11,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import {
   conflictoDe, quitarConflictos, type ConflictoDeSync,
 } from '../repositories/ConflictosDeSyncRepository';
-import { cambiarEspecie, updateTreeGps, updateTreePhoto } from '../repositories/TreeRepository';
+import { cambiarEspecie, quitarFotoDelArbol, updateTreeGps, updateTreePhoto } from '../repositories/TreeRepository';
 import {
   finalizeGroup, reactivateGroup, updateGroup, type UpdateGroupResult,
 } from '../repositories/GroupRepository';
@@ -23,7 +23,7 @@ import { borrarFotosLocales } from './PhotoService';
 import {
   CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto,
 } from '../constants/conflictoDeSync';
-import { puntoCompleto, valorReaplicable } from '../utils/conflictosDeSync';
+import { esFotoQuitada, puntoCompleto, valorReaplicable } from '../utils/conflictosDeSync';
 import { ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion } from '../constants/errorDeEdicion';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { esGroupTipo } from '../constants/groupTipo';
@@ -50,9 +50,11 @@ async function gpsMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
   return OK;
 }
 
+/** Una foto quitada se vuelve a quitar: la próxima sync lo pide con la foto del servidor como base. */
 async function fotoMia(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
-  if (typeof c.mio !== 'string') return falla(ERROR_DE_CONFLICTO.sinValor);
-  await updateTreePhoto(c.entidadId, c.mio);
+  if (esFotoQuitada(c.mio)) await quitarFotoDelArbol(c.entidadId);
+  else if (typeof c.mio === 'string') await updateTreePhoto(c.entidadId, c.mio);
+  else return falla(ERROR_DE_CONFLICTO.sinValor);
   return OK;
 }
 

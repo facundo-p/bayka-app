@@ -219,6 +219,9 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   notifyDataChanged();
 }
 
+/** Quita la foto del árbol, como `updateTreePhoto` con string vacío. */
+export const quitarFotoDelArbol = (treeId: string): Promise<void> => updateTreePhoto(treeId, '');
+
 export interface ArbolConFotoPendiente {
   id: string;
   fotoUrl: string;

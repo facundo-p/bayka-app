@@ -7,7 +7,8 @@
  * la constante. Renombrarlos rompe la propagación.
  *
  * `foto` es la foto quitada de un árbol que sigue existiendo (#498). No cruza el
- * contrato: va por `quitar_fotos_arboles`, que recibe solo ids.
+ * contrato: va por `quitar_fotos_arboles`, que recibe ids y la foto que vio el
+ * teléfono (#810).
  */
 export const ENTIDAD_BORRADA = {
   arbol: 'arbol',
