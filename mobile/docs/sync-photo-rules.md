@@ -49,9 +49,11 @@ Es un flag booleano **local** (solo existe en el SQLite del dispositivo):
 
 ### Regla 3: Cualquier cambio en la foto resetea fotoSynced
 
-Cuando se adjunta, reemplaza o elimina una foto de un árbol, `fotoSynced` vuelve a `false`.
+Cuando se adjunta, reemplaza o quita una foto de un árbol, `fotoSynced` vuelve a `false`.
 
 **Por qué:** si cambiaste la foto, la versión anterior en Storage ya no es válida. La nueva foto necesita subirse.
+
+**Excepción, borrar una foto sin subir (#816):** no es un cambio sino deshacerlo. El árbol vuelve a la foto de la última sincronización (`fotoBase`, remota y con `fotoSynced = true`) o queda sin foto, y no se anota nada para el servidor.
 
 ### Regla 4: El pull preserva fotos locales
 
@@ -137,6 +139,13 @@ Vale para la especie (también un N/N resuelto distinto), el GPS, la foto y los 
 - Mientras no elija, el grupo sigue pendiente; lo demás del grupo ya subió
 - Un dato que B no tocó también vuelve en `conservados`: B adopta X sin conflicto
 - Si B, en vez de sacar otra foto, quitó la que tenía, pasa lo mismo (#810): el server conserva X, B la adopta y lo quitado queda como conflicto ("Sin foto (la quitaste)"). Conservar la de B quita X
+
+### Caso 4b: Borrar una foto (#816)
+
+- **Sin subir:** se deshace sin preguntar. El árbol vuelve a la foto que tenía en la última sincronización (sin bajar; se baja al abrirla) o queda sin foto. El servidor no se entera: si otro celular subió una foto mientras tanto, no se toca.
+- **Ya subida:** se pide confirmar ("Quitar la foto del árbol. Se quita para todos los que vean este árbol.") y se quita del servidor en la próxima sync, con la foto que el teléfono vio como base (Caso 4).
+- **Quitar la del servidor, sacar otra y borrarla:** el árbol queda sin foto y la del servidor se quita igual. El pedido de quitar se conserva hasta que la foto nueva se sube.
+- No hay opción "solo en este celular": para liberar espacio están "borrar las fotos descargadas" de la plantación y la descarga de a una.
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

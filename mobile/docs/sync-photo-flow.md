@@ -59,13 +59,26 @@ Después de crear: `markGroupPendingSync(grupoId)` → `pendingSync = true`.
 
 - Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (fuerza re-upload)
 - Llama `markGroupPendingSync(grupoId)`
-- Poner una foto descarta la quitada pendiente del mismo árbol (ver abajo)
+- Poner una foto no descarta la quitada pendiente del mismo árbol: la descarta su subida (`confirmarFotoSubida`), si la fila sigue con esa foto (#816)
 - Cerrada la transacción, borra el archivo local de la foto anterior (best-effort, solo dentro de `photos/`), salvo que el path no haya cambiado. Borrar un árbol o un grupo también borra sus archivos (#490)
 
-### 2b. Quitar la foto (#498)
+### 2b. Quitar la foto (#498, #816)
 
-`updateTreePhoto(treeId, '')` deja `fotoUrl = null` y, en la misma transacción,
-anota en `borrados_pendientes` una fila `tipo = 'foto'` con el id del árbol.
+El botón Quitar llama `quitarFotoDelArbol(treeId)`, que decide según la foto:
+
+- **Sin subir** (`fotoSinSubir`: local y `fotoSynced = false`): deshace el cambio
+  local sin preguntar y sin anotar nada para el server. El árbol vuelve a lo que
+  tenía en la última sincronización: `fotoBase` como foto remota sin bajar
+  (`fotoSynced = true`, se baja a demanda), o sin foto. Borra el archivo local.
+  Si había una quitada pendiente (se quitó la del server y después se sacó la que
+  se borra), queda sin foto y la quitada sigue pendiente.
+- **Ya subida:** pide confirmar ("Quitar la foto del árbol. Se quita para todos
+  los que vean este árbol.") y llama `quitarFotoParaTodos`.
+
+`quitarFotoParaTodos` (`updateTreePhoto(treeId, '')`) deja `fotoUrl = null` y, en
+la misma transacción, anota en `borrados_pendientes` una fila `tipo = 'foto'` con
+el id del árbol. "Conservar la mía" de un conflicto de foto quitada también va por
+acá.
 
 Sin ese registro la foto volvía: `sync_subgroup` hace
 `foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url)` (un null nunca borra) y
@@ -75,7 +88,7 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 |------|------------------------------|
 | Pull (`pullTrees`) | Baja la fila del árbol con `foto_url = null`: no restaura ni re-descarga |
 | Push (`pushBorrados`) | Llama `quitar_fotos_arboles(ids, bases)` (044, 076), que pone `trees.foto_url = NULL`. `bases` lleva el `fotoBase` de cada árbol: si el server ya tiene otra foto, no la quita (#810) |
-| Confirmación | Limpia el registro, salvo los ids `rechazados` (plantación no escribible), que quedan pendientes. Los `conservados` se asientan como conflicto (ver abajo) |
+| Confirmación | Limpia el registro, salvo los ids `rechazados` (plantación no escribible), que quedan pendientes. Las quitadas dejan `fotoBase = null`: el server ya no tiene foto. Los `conservados` se asientan como conflicto (ver abajo) |
 
 - **La foto cambió en el server (#810):** `quitar_fotos_arboles` la conserva y la
   devuelve en `conservados.arboles`, con la forma de `sync_subgroup`.
@@ -89,9 +102,15 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
   conserva el `fotoBase` local, y si el push del grupo trae la foto nueva antes que
   la quitada, `asentarGrupo` también la asienta como conflicto. Sin esto, el push
   siguiente quitaría la foto nueva con ella como base.
+- **Quitar → sacar otra → borrarla (#816):** la quitada se conserva mientras la
+  nueva no sube, así que borrar la nueva deja el árbol sin foto y el pedido de
+  quitar llega al server. En la sync, la quitada va primero (`pushBorrados`) y el
+  push del grupo sube la nueva sobre la base ya sin foto.
 - **Límite conocido:** un `fotoBase` null no distingue "no vio foto" de "la bajó
-  antes de las bases", así que viaja sin base. Sacar una foto, quitarla sin
-  sincronizar y que otro celular suba una entre medio sigue quitando la del otro.
+  antes de las bases", así que viaja sin base. Pasa solo con una foto ya subida y
+  bajada antes de 0034 en un grupo que el pull todavía no refrescó: el primer pull
+  después de actualizar completa la base de los grupos sin cambios pendientes. No
+  hay backfill: el path del server no se puede derivar con certeza del teléfono.
 
 - **Id compartido con el borrado del árbol:** `borrados_pendientes.id` es la
   clave. Si después se borra el árbol, el registro pasa a `tipo = 'arbol'`: borrar
