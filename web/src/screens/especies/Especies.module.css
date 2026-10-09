@@ -39,8 +39,8 @@
   composes: formCompacto from '../../components/Formulario.module.css';
 }
 
-/* Calificado por elemento para ganarle a `FormField.control`, de la misma
-   especificidad: suelta, la fuente dependía del orden de carga del CSS (#814). */
+/* Calificado por elemento: suelto empata con `FormField.control` y la fuente
+   dependería del orden de carga del CSS (#814). */
 input.campoCodigo {
   font-family: var(--font-mono);
 }
