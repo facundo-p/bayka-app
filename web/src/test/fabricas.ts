@@ -14,6 +14,7 @@ import type {
   FilaGrupo,
   FilaParcela,
 } from '../queries/dataExplorerQueries';
+import type { EspecieDePlantacion } from '../queries/especieQueries';
 import type { ArbolParaFicha } from '../queries/fichasQueries';
 import {
   ESTADO_PLANTACION,
@@ -23,6 +24,7 @@ import {
 } from '../queries/plantationQueries';
 import type { PerfilResumen } from '../queries/usuarioQueries';
 import { ROL } from '../repositories/profileRepository';
+import { coloresDeEspecies, type ColorEspecie } from '../theme/coloresEspecie';
 
 const CREADO_EN = '2026-01-01T00:00:00Z';
 
@@ -198,4 +200,28 @@ export function perfilResumen(overrides: Partial<PerfilResumen> = {}): PerfilRes
     activo: true,
     ...overrides,
   };
+}
+
+/** Especie habilitada en una plantación, con su lugar de color. */
+export function especieDePlantacion(
+  overrides: Partial<EspecieDePlantacion> = {},
+): EspecieDePlantacion {
+  return {
+    id: 'sp-1',
+    codigo: 'ANC',
+    nombre: 'Anchico',
+    nombreCientifico: null,
+    lugarColor: 0,
+    ...overrides,
+  };
+}
+
+/** Especie habilitada en el lugar dado; el código hace también de id y de nombre. */
+export function especieEnLugar(codigo: string, lugarColor: number): EspecieDePlantacion {
+  return especieDePlantacion({ id: codigo, codigo, nombre: codigo, lugarColor });
+}
+
+/** Colores de una plantación cuyas especies ocupan los lugares en el orden dado. */
+export function coloresEnOrden(...codigos: string[]): ColorEspecie {
+  return coloresDeEspecies(codigos.map((codigo, lugarColor) => ({ codigo, lugarColor })));
 }

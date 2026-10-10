@@ -1,12 +1,16 @@
 /*
- * Colores de especie de una plantación (#777): salen de sus especies habilitadas.
- * Usa la clave del selector de especies, así comparten caché y se invalidan
- * juntos cuando se habilita o quita una especie.
+ * Colores de especie de una plantación (#777, #845): salen del lugar fijo de cada
+ * especie habilitada. Usa la clave del selector de especies, así comparten caché
+ * y se invalidan juntos cuando se habilita o quita una especie.
  */
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarEspeciesDePlantacion, type EspecieDePlantacion } from '../queries/especieQueries';
-import { coloresDeEspecies, type ColorEspecie } from '../theme/coloresEspecie';
+import {
+  colorEspeciePorCodigo,
+  coloresDeEspecies,
+  type ColorEspecie,
+} from '../theme/coloresEspecie';
 
 export function consultaEspeciesHabilitadas(plantationId: string) {
   return queryOptions({
@@ -15,13 +19,11 @@ export function consultaEspeciesHabilitadas(plantationId: string) {
   });
 }
 
-/** Sin especies habilitadas legibles, los colores salen de los códigos `presentes`. */
+/** Sin especies legibles (undefined), cada código se pinta por su hash: el mismo respaldo en todas las vistas. */
 export function coloresDeHabilitadas(
   especies: readonly EspecieDePlantacion[] | undefined,
-  presentes: readonly string[],
 ): ColorEspecie {
-  const catalogo = (especies ?? []).map((especie) => especie.codigo);
-  return coloresDeEspecies(catalogo, presentes);
+  return especies ? coloresDeEspecies(especies) : colorEspeciePorCodigo;
 }
 
 /** Para las descargas: si las especies no se leen, la descarga sale igual (undefined). */
@@ -35,7 +37,6 @@ export function leerEspeciesHabilitadas(
 export async function leerColoresEspecie(
   queryClient: QueryClient,
   plantationId: string,
-  presentes: readonly string[],
 ): Promise<ColorEspecie> {
-  return coloresDeHabilitadas(await leerEspeciesHabilitadas(queryClient, plantationId), presentes);
+  return coloresDeHabilitadas(await leerEspeciesHabilitadas(queryClient, plantationId));
 }

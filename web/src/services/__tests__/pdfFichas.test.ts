@@ -5,7 +5,8 @@ import { leerNombreOrganizacion, listarArbolesParaFichas } from '../../queries/f
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
-import { arbolParaFicha, plantacion } from '../../test/fabricas';
+import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { descargarBlob } from '../descargas';
 import {
   ERROR_FICHAS_SIN_ARBOLES,
@@ -43,8 +44,8 @@ const MAPA: MapaPdf = {
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
-const ANC = { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombreCientifico: null };
-const TIM = { id: 's2', codigo: 'TIM', nombre: 'Timbó', nombreCientifico: null };
+const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
+const TIM = especieDePlantacion({ id: 's2', codigo: 'TIM', nombre: 'Timbó', lugarColor: 0 });
 
 /** El `colorDe` que recibió el motor, para ver de qué catálogo salió. */
 function colorDeRecibido() {
@@ -150,17 +151,15 @@ test('los colores de especie son los de la plantación, para la ficha y el minim
   await descargarFichaPdf('t1', contexto());
   expect(listarEspeciesDePlantacion).toHaveBeenCalledWith(PLANTACION.id);
   const colorDe = colorDeRecibido();
-  expect(colorDe('ANC')).not.toBe(colorDe('TIM'));
+  expect(colorDe('TIM')).toBe('#0a3760');
+  expect(colorDe('ANC')).toBe('#99b95b');
   expect(vi.mocked(motor.minimapaDeArbol).mock.lastCall![2]).toBe(colorDe);
 });
 
-test('sin especies legibles, los colores salen de las especies de los puntos', async () => {
+test('sin especies legibles, cada código se pinta por su hash', async () => {
   vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
-  const punto = { lat: 0, lng: 0, nombre: '', idArbol: '', subId: '', parcelaId: null };
-  const puntos = ['TIM', 'ANC'].map((codigo) => ({ ...punto, codigo }));
-  vi.mocked(listarPuntosGps).mockResolvedValue(puntos);
   await descargarFichaPdf('t1', contexto());
-  expect(colorDeRecibido()('ANC')).toBe('#0a3760');
-  expect(colorDeRecibido()('TIM')).toBe('#99b95b');
+  expect(colorDeRecibido()('ANC')).toBe(colorEspeciePorCodigo('ANC'));
+  expect(colorDeRecibido()('TIM')).toBe(colorEspeciePorCodigo('TIM'));
   expect(descargarBlob).toHaveBeenCalled();
 });

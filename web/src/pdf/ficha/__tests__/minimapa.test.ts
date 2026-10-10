@@ -1,7 +1,6 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
-import { arbolParaFicha } from '../../../test/fabricas';
+import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
-import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
 import { contenidoMinimapa, minimapaDeArbol } from '../minimapa';
 
@@ -21,7 +20,7 @@ function punto(sobre: Partial<PuntoGps>): PuntoGps {
   };
 }
 
-const COLOR_DE = coloresDeEspecies(['ANC', 'LAP']);
+const COLOR_DE = coloresEnOrden('ANC', 'LAP');
 
 const ARBOL = arbolParaFicha({
   idArbol: 'A-001-SS26',

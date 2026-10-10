@@ -140,6 +140,14 @@ describe('cliente demo: árboles de muestra', () => {
     }
   });
 
+  it('cada especie habilitada tiene su lugar de color, sin repetir en la plantación (#845)', async () => {
+    for (const plantacion of await plantacionesConArboles()) {
+      const lugares = (await listarEspeciesDePlantacion(plantacion)).map((e) => e.lugarColor);
+      expect(lugares.includes(null), plantacion).toBe(false);
+      expect(new Set(lugares).size, plantacion).toBe(lugares.length);
+    }
+  });
+
   it('la tarjeta cuenta las parcelas que lista el explorador', async () => {
     const { data } = await supabase.rpc('stats_plantaciones');
 

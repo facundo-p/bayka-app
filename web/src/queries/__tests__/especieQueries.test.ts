@@ -29,8 +29,8 @@ const FILA_ALGARROBO = {
   nombre_cientifico: null,
 };
 
-function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO) {
-  return { species_id: fila.id, species: fila };
+function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO, lugarColor = 0) {
+  return { species_id: fila.id, lugar_color: lugarColor, species: fila };
 }
 
 describe('listarCatalogo', () => {
@@ -53,9 +53,9 @@ describe('listarCatalogo', () => {
 });
 
 describe('listarEspeciesDePlantacion', () => {
-  test('filtra por plantación, ordena por nombre y mapea el embed (#635)', async () => {
+  test('filtra por plantación, ordena por nombre y mapea el embed con el lugar de color', async () => {
     const consultas = capturarConsultas(() => ({
-      data: [filaAsignada(FILA_QUEBRACHO), filaAsignada(FILA_ALGARROBO)],
+      data: [filaAsignada(FILA_QUEBRACHO, 0), filaAsignada(FILA_ALGARROBO, 3)],
     }));
     const especies = await listarEspeciesDePlantacion('plant-1');
 
@@ -64,9 +64,25 @@ describe('listarEspeciesDePlantacion', () => {
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
     ]);
     expect(especies).toEqual([
-      { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombreCientifico: null },
-      { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombreCientifico: 'Schinopsis balansae' },
+      { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombreCientifico: null, lugarColor: 3 },
+      {
+        id: 'sp-1',
+        codigo: 'QB',
+        nombre: 'Quebracho',
+        nombreCientifico: 'Schinopsis balansae',
+        lugarColor: 0,
+      },
     ]);
+  });
+
+  test('en una base sin la columna del lugar, lee igual y deja el lugar en null (#845)', async () => {
+    const consultas = capturarConsultas(() => ({
+      data: [{ species_id: FILA_QUEBRACHO.id, species: FILA_QUEBRACHO }],
+    }));
+    const [especie] = await listarEspeciesDePlantacion('plant-1');
+
+    expect(consultas[0].columnas).not.toContain('lugar_color');
+    expect(especie.lugarColor).toBeNull();
   });
 
   test('propaga el error de Supabase', async () => {

@@ -25,10 +25,13 @@ export type EspecieConCatalogoUso = EspecieClasificada & {
 };
 
 /** Especie habilitada en una plantación. La app las ordena por nombre (#635). */
-export type EspecieDePlantacion = EspecieCatalogo;
+export type EspecieDePlantacion = EspecieCatalogo & {
+  /** Lugar fijo en la paleta de colores de la plantación (#845); null para N/N. */
+  lugarColor: number | null;
+};
 
 /** Especie habilitada + si tiene árboles registrados (bloquea quitarla). */
-export type EspecieConUso = EspecieDePlantacion & { tieneArboles: boolean };
+export type EspecieConUso = EspecieCatalogo & { tieneArboles: boolean };
 
 type FilaEspecie = {
   id: string;
@@ -46,6 +49,8 @@ type FilaEspecieClasificada = FilaEspecie & {
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
   species_id: string;
+  /** Falta mientras la base no tenga la columna. */
+  lugar_color?: number | null;
   species: FilaEspecie | null;
 };
 
@@ -88,16 +93,21 @@ function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
     codigo: fila.species?.codigo ?? '',
     nombre: fila.species?.nombre ?? '',
     nombreCientifico: fila.species?.nombre_cientifico ?? null,
+    lugarColor: fila.lugar_color ?? null,
   };
 }
 
-/** Especies habilitadas de la plantación, por nombre: el orden de la botonera en la app (#635). */
+/**
+ * Especies habilitadas de la plantación, por nombre: el orden de la botonera en la app (#635).
+ * `*` en vez de nombrar `lugar_color`: en una base que todavía no tiene la columna la
+ * lectura no falla, y los colores caen al respaldo por hash (#845).
+ */
 export async function listarEspeciesDePlantacion(
   plantationId: string,
 ): Promise<EspecieDePlantacion[]> {
   const { data, error } = await supabase
     .from('plantation_species')
-    .select('species_id, species(id, codigo, nombre, nombre_cientifico)')
+    .select('*, species(id, codigo, nombre, nombre_cientifico)')
     .eq('plantation_id', plantationId);
   if (error) throw new Error(error.message);
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).

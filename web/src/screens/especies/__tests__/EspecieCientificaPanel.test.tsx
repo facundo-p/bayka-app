@@ -112,6 +112,13 @@ test('editar: precarga el nombre, lista las especies que agrupa y guarda con el 
   );
 });
 
+test('las especies que agrupa se listan sin color: fuera de una plantación no tienen uno (#845)', () => {
+  renderPanel(PROSOPIS);
+
+  expect(screen.getByText('Algarrobo blanco')).toBeInTheDocument();
+  expect(document.querySelector('[style*="--color"]')).toBeNull();
+});
+
 test('una que agrupa especies no se puede eliminar, y dice por qué', () => {
   renderPanel(PROSOPIS);
 
