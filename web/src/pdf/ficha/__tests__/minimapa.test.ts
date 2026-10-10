@@ -1,7 +1,7 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
 import { arbolParaFicha } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
-import { colorEspeciePorCodigo } from '../../../theme/coloresEspecie';
+import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
 import { contenidoMinimapa, minimapaDeArbol } from '../minimapa';
 
@@ -21,6 +21,8 @@ function punto(sobre: Partial<PuntoGps>): PuntoGps {
   };
 }
 
+const COLOR_DE = coloresDeEspecies(['ANC', 'LAP']);
+
 const ARBOL = arbolParaFicha({
   idArbol: 'A-001-SS26',
   parcelaId: 'parc-1',
@@ -28,7 +30,7 @@ const ARBOL = arbolParaFicha({
 });
 
 test('sin GPS no hay minimapa', () => {
-  expect(contenidoMinimapa({ ...ARBOL, gps: null }, [punto({})])).toBeNull();
+  expect(contenidoMinimapa({ ...ARBOL, gps: null }, [punto({})], COLOR_DE)).toBeNull();
 });
 
 test('toda la parcela del árbol, sin otras parcelas ni el árbol repetido', () => {
@@ -38,9 +40,9 @@ test('toda la parcela del árbol, sin otras parcelas ni el árbol repetido', () 
     punto({ idArbol: 'D-SS26', parcelaId: 'parc-2' }),
     punto({ idArbol: 'A-001-SS26', lat: -27.361, lng: -55.891 }),
   ];
-  const contenido = contenidoMinimapa(ARBOL, puntos);
+  const contenido = contenidoMinimapa(ARBOL, puntos, COLOR_DE);
   expect(contenido?.puntos.map((vecino) => vecino.color)).toEqual([
-    colorEspeciePorCodigo('LAP'),
+    COLOR_DE('LAP'),
     COLOR_GRAFICO_NN,
   ]);
   expect(contenido?.resaltado).toEqual({
@@ -52,7 +54,7 @@ test('toda la parcela del árbol, sin otras parcelas ni el árbol repetido', () 
 
 test('sin parcela no suma vecinos de toda la plantación', () => {
   const sinParcela = { ...ARBOL, parcelaId: null };
-  const contenido = contenidoMinimapa(sinParcela, [punto({ parcelaId: null })]);
+  const contenido = contenidoMinimapa(sinParcela, [punto({ parcelaId: null })], COLOR_DE);
   expect(contenido?.puntos).toEqual([]);
   expect(contenido?.resaltado).toBeDefined();
 });
@@ -64,17 +66,17 @@ test('un vecino a más de 2 km es un GPS errado y no entra al encuadre', () => {
     // Un dígito de más en la latitud: ~2,7 km al sur.
     punto({ idArbol: 'TYPO-SS26', lat: -27.385, lng: -55.891 }),
   ];
-  expect(contenidoMinimapa(ARBOL, puntos)?.puntos).toHaveLength(1);
+  expect(contenidoMinimapa(ARBOL, puntos, COLOR_DE)?.puntos).toHaveLength(1);
 });
 
 test('si el canvas falla, ese mapa queda no disponible en vez de cortar las fichas', async () => {
   vi.mocked(dibujarMapa).mockRejectedValueOnce(new Error('canvas'));
-  await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({ estado: 'no-disponible' });
+  await expect(minimapaDeArbol(ARBOL, [], COLOR_DE)).resolves.toEqual({ estado: 'no-disponible' });
 });
 
 test('con el mapa dibujado sobre el satélite, la ficha lo muestra con satélite', async () => {
   vi.mocked(dibujarMapa).mockResolvedValueOnce({ src: 'data:image/jpeg;base64,M', conFondo: true });
-  await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({
+  await expect(minimapaDeArbol(ARBOL, [], COLOR_DE)).resolves.toEqual({
     estado: 'listo',
     src: 'data:image/jpeg;base64,M',
     conSatelite: true,
@@ -84,7 +86,7 @@ test('con el mapa dibujado sobre el satélite, la ficha lo muestra con satélite
 
 test('si el satélite no se pudo bajar, el mapa sale liso y sin satélite', async () => {
   vi.mocked(dibujarMapa).mockResolvedValueOnce({ src: 'data:image/png;base64,M', conFondo: false });
-  await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({
+  await expect(minimapaDeArbol(ARBOL, [], COLOR_DE)).resolves.toEqual({
     estado: 'listo',
     src: 'data:image/png;base64,M',
     conSatelite: false,
@@ -93,7 +95,7 @@ test('si el satélite no se pudo bajar, el mapa sale liso y sin satélite', asyn
 
 test('sin GPS ni se intenta dibujar', async () => {
   vi.mocked(dibujarMapa).mockClear();
-  await expect(minimapaDeArbol({ ...ARBOL, gps: null }, [])).resolves.toEqual({
+  await expect(minimapaDeArbol({ ...ARBOL, gps: null }, [], COLOR_DE)).resolves.toEqual({
     estado: 'sin-gps',
   });
   expect(dibujarMapa).not.toHaveBeenCalled();

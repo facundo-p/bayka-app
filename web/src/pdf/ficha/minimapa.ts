@@ -1,6 +1,6 @@
 import type { ArbolParaFicha } from '../../queries/fichasQueries';
 import type { PuntoGps } from '../../queries/mapaQueries';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
 import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa } from '../mapa/dibujarMapa';
 import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
@@ -31,6 +31,7 @@ function vecinosDe(arbol: ArbolParaFicha, centro: LatLng, puntos: readonly Punto
 export function contenidoMinimapa(
   arbol: ArbolParaFicha,
   puntos: readonly PuntoGps[],
+  colorDe: ColorEspecie,
 ): ContenidoMapa | null {
   if (!arbol.gps) return null;
   const { lat, lng } = arbol.gps;
@@ -38,9 +39,9 @@ export function contenidoMinimapa(
     puntos: vecinosDe(arbol, { lat, lng }, puntos).map((vecino) => ({
       lat: vecino.lat,
       lng: vecino.lng,
-      color: colorEspeciePorCodigo(vecino.codigo),
+      color: colorDe(vecino.codigo),
     })),
-    resaltado: { lat, lng, color: colorEspeciePorCodigo(arbol.especie?.codigo ?? null) },
+    resaltado: { lat, lng, color: colorDe(arbol.especie?.codigo ?? null) },
     ancho: MEDIDA_FICHA.ladoMapa,
     alto: MEDIDA_FICHA.ladoMapa,
   };
@@ -50,8 +51,9 @@ export function contenidoMinimapa(
 export async function minimapaDeArbol(
   arbol: ArbolParaFicha,
   puntos: readonly PuntoGps[],
+  colorDe: ColorEspecie,
 ): Promise<MapaPdf> {
-  const contenido = contenidoMinimapa(arbol, puntos);
+  const contenido = contenidoMinimapa(arbol, puntos, colorDe);
   if (!contenido) return MAPA_SIN_GPS;
   try {
     return mapaDeDibujo(

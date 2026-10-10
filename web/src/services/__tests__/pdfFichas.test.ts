@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import * as motor from '../../pdf/ficha/motorFichas';
 import { ESTADO_MAPA, type MapaPdf } from '../../pdf/mapa/estadoMapa';
 import { leerNombreOrganizacion, listarArbolesParaFichas } from '../../queries/fichasQueries';
+import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { arbolParaFicha, plantacion } from '../../test/fabricas';
@@ -19,6 +20,7 @@ vi.mock('../../queries/fichasQueries', () => ({
   leerNombreOrganizacion: vi.fn(),
 }));
 vi.mock('../../queries/mapaQueries', () => ({ listarPuntosGps: vi.fn() }));
+vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
 vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
@@ -41,6 +43,13 @@ const MAPA: MapaPdf = {
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
+const ANC = { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombreCientifico: null };
+const TIM = { id: 's2', codigo: 'TIM', nombre: 'Timbó', nombreCientifico: null };
+
+/** El `colorDe` que recibió el motor, para ver de qué catálogo salió. */
+function colorDeRecibido() {
+  return vi.mocked(motor.datosFicha).mock.lastCall![1].colorDe;
+}
 
 function contexto() {
   return {
@@ -55,6 +64,7 @@ beforeEach(() => {
   vi.mocked(listarArbolesParaFichas).mockResolvedValue([ARBOL]);
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue(PUNTOS);
+  vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC, TIM]);
   vi.mocked(motor.cargarFotos).mockResolvedValue([{ estado: 'sin-foto' }]);
   vi.mocked(motor.minimapaDeArbol).mockResolvedValue(MAPA);
   vi.mocked(motor.logoNavegador).mockReturnValue('/logo.png');
@@ -79,6 +89,7 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
     tecnico: 'Lucía Ferreyra',
     foto: { estado: 'sin-foto' },
     mapa: MAPA,
+    colorDe: expect.any(Function),
   });
   expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka', '/logo.png');
   expect(descargarBlob).toHaveBeenCalledWith(
@@ -124,7 +135,7 @@ test('sin organización ni puntos legibles, la ficha sale igual', async () => {
   vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
   vi.mocked(listarPuntosGps).mockRejectedValue(new Error('red'));
   await descargarFichaPdf('t1', contexto());
-  expect(motor.minimapaDeArbol).toHaveBeenCalledWith(ARBOL, []);
+  expect(motor.minimapaDeArbol).toHaveBeenCalledWith(ARBOL, [], expect.any(Function));
   expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, null, '/logo.png');
   expect(descargarBlob).toHaveBeenCalled();
 });
@@ -133,4 +144,18 @@ test('si el árbol no llega, falla sin descargar nada', async () => {
   vi.mocked(listarArbolesParaFichas).mockResolvedValue([]);
   await expect(descargarFichaPdf('t1', contexto())).rejects.toThrow(ERROR_FICHAS_SIN_ARBOLES);
   expect(descargarBlob).not.toHaveBeenCalled();
+});
+
+test('los colores de especie son los de la plantación, para la ficha y el minimapa', async () => {
+  await descargarFichaPdf('t1', contexto());
+  expect(listarEspeciesDePlantacion).toHaveBeenCalledWith(PLANTACION.id);
+  const colorDe = colorDeRecibido();
+  expect(colorDe('ANC')).not.toBe(colorDe('TIM'));
+  expect(vi.mocked(motor.minimapaDeArbol).mock.lastCall![2]).toBe(colorDe);
+});
+
+test('sin especies legibles, la ficha sale igual', async () => {
+  vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
+  await descargarFichaPdf('t1', contexto());
+  expect(descargarBlob).toHaveBeenCalled();
 });
