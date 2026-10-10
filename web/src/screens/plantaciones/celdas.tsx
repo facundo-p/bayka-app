@@ -1,5 +1,7 @@
-import { Eye, Sprout } from 'lucide-react';
-import { Badge } from '../../components';
+import { Sprout } from 'lucide-react';
+import tabla from '../../components/Table.module.css';
+import { cx } from '../../lib/classNames';
+import { formatearEntero } from '../../lib/formato';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Plantaciones.module.css';
 
@@ -15,13 +17,9 @@ export function CeldaLugar({ lugar }: { lugar: string }) {
   );
 }
 
-/** Visibilidad en la app móvil: ojo + "Sí", o badge cuando está oculta. */
-export function CeldaVisible({ visible }: { visible: boolean }) {
-  if (!visible) return <Badge variant="neutral">Oculta</Badge>;
+/** Conteo de la fila, con separador de miles. */
+export function CeldaConteo({ cantidad, className }: { cantidad: number; className?: string }) {
   return (
-    <span className={styles.visibleSi}>
-      <Eye size={TAMANO_ICONO.md} aria-hidden />
-      Sí
-    </span>
+    <span className={cx(tabla.mono, tabla.numero, className)}>{formatearEntero(cantidad)}</span>
   );
 }
