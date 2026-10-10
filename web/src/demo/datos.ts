@@ -72,8 +72,6 @@ const TIPO_GRUPO = { linea: 'linea', bosquete: 'bosquete' } as const satisfies R
   TipoGrupo
 >;
 
-const ESTADO = { finalizada: 'finalizada' } as const satisfies Record<string, EstadoPlantacion>;
-
 export const SESION_DEMO = { user: { id: 'u1', email: 'demo@bayka.app' } };
 
 const ORGANIZACION = { id: 'org-1', nombre: 'Bayka' };
@@ -473,8 +471,6 @@ const GRADOS_ENTRE_PLANTACIONES = 0.05;
 const GRADOS_ENTRE_LINEAS = 0.0003;
 const GRADOS_ENTRE_ARBOLES = 0.0001;
 const FOTO_SIN_SINCRONIZAR = 'file:///data/foto.jpg';
-/** Las finalizadas ya generaron sus IDs; las activas todavía no, para ver las dos fichas. */
-const PRIMER_ID_GLOBAL = 10001;
 
 const SIN_GPS = { latitude: null, longitude: null, gps_accuracy: null, gps_captured_at: null };
 
@@ -499,11 +495,6 @@ function fotoDeMuestra(grupo: Grupo, arbolId: string, indice: number): string | 
   return estados[indice % estados.length];
 }
 
-function idGlobalDeMuestra(grupo: Grupo, indiceGrupo: number, indice: number): number | null {
-  if (plantacionPorId(grupo.plantation_id).estado !== ESTADO.finalizada) return null;
-  return PRIMER_ID_GLOBAL + indiceGrupo * ARBOLES_DE_MUESTRA_POR_GRUPO + indice;
-}
-
 /** Rota las especies que la matriz habilita en la plantación, desfasada por grupo. */
 function especieDeMuestra(grupo: Grupo, indiceGrupo: number, indice: number): Especie {
   const especies = Object.keys(ARBOLES_POR_PLANTACION[grupo.plantation_id] ?? {});
@@ -518,7 +509,6 @@ function arbolDeMuestra(grupo: Grupo, indiceGrupo: number, indice: number): Fila
     id,
     sub_id: `${parcelaPorId(grupo.parcela_id).codigo}${grupo.codigo}${especie.codigo}${posicion}`,
     posicion,
-    global_id: idGlobalDeMuestra(grupo, indiceGrupo, indice),
     group_id: grupo.id,
     species_id: especie.id,
     foto_url: fotoDeMuestra(grupo, id, indice),

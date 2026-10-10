@@ -15,7 +15,6 @@ const MAPA: MapaPdf = {
 const COMPLETO = arbolParaFicha({
   subId: 'LP12L10ANC23',
   idArbol: 'LP12L10ANC23-SS26',
-  idGlobal: 10479,
   posicion: 23,
   especie: {
     codigo: 'ANC',

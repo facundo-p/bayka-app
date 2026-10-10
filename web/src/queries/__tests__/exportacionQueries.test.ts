@@ -12,11 +12,13 @@ vi.mock('../../lib/supabase', async () => {
 beforeEach(resetEstadoMock);
 
 const FILA_COMPLETA = {
-  global_id: 1001,
-  plantacion_id: 12,
+  id: 'arbol-a',
+  posicion: 1,
   sub_id: 'A-001',
   species: { nombre: 'Quebracho' },
   groups: {
+    id: 'grupo-1',
+    created_at: '2026-03-01T10:00:00+00:00',
     nombre: 'Línea 1',
     plantation_id: 'plant-1',
     plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
@@ -34,11 +36,13 @@ const FILA_PARCELA_ELIMINADA = {
 };
 
 const FILA_HUERFANA = {
-  global_id: null,
-  plantacion_id: null,
+  id: 'arbol-b',
+  posicion: 1,
   sub_id: 'B-002',
   species: null,
   groups: {
+    id: 'grupo-2',
+    created_at: '2026-03-02T10:00:00+00:00',
     nombre: 'Bosquete 2',
     plantation_id: 'plant-1',
     plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
@@ -53,7 +57,7 @@ const FILA_SIN_PLANTACION = {
 };
 
 describe('listarFilasExportacion', () => {
-  test('acota por plantación, embebe plantations/parcelas/species y ordena por global_id asc', async () => {
+  test('acota por plantación, embebe grupo/plantations/parcelas/species y pagina por id', async () => {
     const consultas = capturarConsultas(() => ({ data: [FILA_COMPLETA] }));
 
     await listarFilasExportacion('plant-1');
@@ -64,31 +68,29 @@ describe('listarFilasExportacion', () => {
     expect(deArboles[0].columnas).toContain('plantations(lugar, periodo, codigo)');
     expect(deArboles[0].columnas).toContain('parcelas(nombre, deleted_at)');
     expect(deArboles[0].columnas).toContain('species(nombre)');
-    expect(deArboles[0].columnas).toContain('global_id');
-    expect(deArboles[0].columnas).toContain('plantacion_id');
+    expect(deArboles[0].columnas).toContain('groups!inner(id, created_at,');
+    expect(deArboles[0].columnas).toContain('posicion');
+    expect(deArboles[0].columnas).not.toContain('global_id');
+    expect(deArboles[0].columnas).not.toContain('plantacion_id');
     expect(deArboles[0].filtros).toContainEqual({
       metodo: 'eq',
       columna: 'groups.plantation_id',
       valor: 'plant-1',
     });
-    // global_id puede ser null: `id` desempata para que la paginación no repita filas.
-    expect(deArboles[0].ordenes).toEqual([
-      { columna: 'global_id', ascending: true },
-      { columna: 'id', ascending: true },
-    ]);
+    // Una clave única, para que la paginación no repita filas; el orden final es el del ID Parcial.
+    expect(deArboles[0].ordenes).toEqual([{ columna: 'id', ascending: true }]);
     // Lectura paginada con `.range()`, no `.limit()`.
     expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
     expect(deArboles[0].limite).toBeUndefined();
   });
 
-  test('mapea embeds preservando nulls (parcela/especie null, ids null); ID Árbol = SubID-código', async () => {
+  test('mapea embeds preservando nulls (parcela/especie null); ID Árbol = SubID-código', async () => {
     capturarConsultas(() => ({ data: [FILA_COMPLETA, FILA_HUERFANA] }));
 
     expect(await listarFilasExportacion('plant-1')).toEqual([
       {
         idArbol: 'A-001-SS26-1',
-        idGlobal: 1001,
-        idParcial: 12,
+        idParcial: 1,
         zona: 'Sitio',
         plantacion: 'Sitio',
         parcela: 'Norte',
@@ -99,8 +101,7 @@ describe('listarFilasExportacion', () => {
       },
       {
         idArbol: 'B-002-SS26-1',
-        idGlobal: null,
-        idParcial: null,
+        idParcial: 2,
         zona: 'Sitio',
         plantacion: 'Sitio',
         parcela: null,
@@ -109,6 +110,29 @@ describe('listarFilasExportacion', () => {
         periodo: '2025-2026',
         especie: null,
       },
+    ]);
+  });
+
+  test('numera el ID Parcial por alta del grupo y posición, no por el orden de lectura', async () => {
+    const grupoViejo = {
+      ...FILA_COMPLETA.groups,
+      id: 'grupo-z',
+      created_at: '2026-02-01T00:00:00Z',
+    };
+    capturarConsultas(() => ({
+      data: [
+        { ...FILA_COMPLETA, id: 'a1', sub_id: 'NUEVO-1' },
+        { ...FILA_COMPLETA, id: 'a2', posicion: 2, sub_id: 'VIEJO-2', groups: grupoViejo },
+        { ...FILA_COMPLETA, id: 'a3', posicion: 1, sub_id: 'VIEJO-1', groups: grupoViejo },
+      ],
+    }));
+
+    const filas = await listarFilasExportacion('plant-1');
+
+    expect(filas.map((fila) => [fila.subId, fila.idParcial])).toEqual([
+      ['VIEJO-1', 1],
+      ['VIEJO-2', 2],
+      ['NUEVO-1', 3],
     ]);
   });
 
@@ -140,7 +164,7 @@ describe('listarFilasExportacion', () => {
       const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalFilas - 1 };
       const filas = [];
       for (let indice = desde; indice <= hasta && indice < totalFilas; indice++) {
-        filas.push({ ...FILA_COMPLETA, sub_id: `A-${indice}` });
+        filas.push({ ...FILA_COMPLETA, id: `arbol-${indice}`, sub_id: `A-${indice}` });
       }
       return { data: filas };
     };

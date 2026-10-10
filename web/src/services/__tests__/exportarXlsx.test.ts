@@ -4,7 +4,6 @@ import { COLUMNAS_XLSX, columnasConAncho, nombreArchivoXlsx } from '../exportarX
 function fila(parcial: Partial<FilaExportacion> = {}): FilaExportacion {
   return {
     idArbol: 'A-001-SS26-1',
-    idGlobal: 1001,
     idParcial: 12,
     zona: 'Sitio',
     plantacion: 'Sitio',
@@ -23,10 +22,9 @@ function celdas(filaExport: FilaExportacion) {
 }
 
 describe('COLUMNAS_XLSX', () => {
-  test('encabezados en el orden canónico (10 columnas)', () => {
+  test('encabezados en el orden canónico (9 columnas)', () => {
     expect(COLUMNAS_XLSX.map((columna) => columna.header)).toEqual([
       'ID Árbol',
-      'ID Global',
       'ID Parcial',
       'Zona',
       'Plantación',
@@ -42,39 +40,31 @@ describe('COLUMNAS_XLSX', () => {
     expect(celdas(fila())[0]).toEqual({ value: 'A-001-SS26-1', type: String });
   });
 
-  test('ID Global / ID Parcial tipados como número (la ventaja sobre CSV)', () => {
-    const [, idGlobal, idParcial] = celdas(fila());
-    expect(idGlobal).toEqual({ value: 1001, type: Number });
+  test('ID Parcial tipado como número (la ventaja sobre CSV)', () => {
+    const [, idParcial] = celdas(fila());
     expect(idParcial).toEqual({ value: 12, type: Number });
-  });
-
-  test('idGlobal/idParcial null → celdas vacías, no ceros ni texto', () => {
-    const [, idGlobal, idParcial] = celdas(fila({ idGlobal: null, idParcial: null }));
-    expect(idGlobal).toBeNull();
-    expect(idParcial).toBeNull();
   });
 
   test('parcela null → celda vacía y especie null → "N/N" (paridad con CSV)', () => {
     const valores = celdas(fila({ parcela: null, especie: null }));
-    expect(valores[5]).toEqual({ value: '', type: String });
-    expect(valores[9]).toEqual({ value: 'N/N', type: String });
+    expect(valores[4]).toEqual({ value: '', type: String });
+    expect(valores[8]).toEqual({ value: 'N/N', type: String });
   });
 
   test('textos con coma, comillas y acentos viajan intactos (sin escaping CSV)', () => {
     const valores = celdas(fila({ especie: 'Quebracho, "blanco" & ñandubay' }));
-    expect(valores[9]).toEqual({ value: 'Quebracho, "blanco" & ñandubay', type: String });
+    expect(valores[8]).toEqual({ value: 'Quebracho, "blanco" & ñandubay', type: String });
   });
 });
 
 describe('columnasConAncho (#54)', () => {
   test('ancho = max(encabezado, celdas) + 2, por columna', () => {
     const columnas = columnasConAncho([fila()]);
-    // Gana el header en ID Global/ID Parcial/Plantación; gana el dato en Zona
+    // Gana el header en ID Parcial/Plantación; gana el dato en Zona
     // ('Sitio' 5), Parcela ('Norte' 5 < header 7 → header), Grupo ('Línea 1'),
     // Periodo ('2025-2026') y Especie ('Quebracho').
     expect(columnas.map((columna) => columna.width)).toEqual([
       14, // ID Árbol: 'A-001-SS26-1' 12
-      11, // ID Global: header 9
       12, // ID Parcial: header 10
       7, // Zona: 'Sitio' 5
       12, // Plantación: header 10
@@ -89,12 +79,12 @@ describe('columnasConAncho (#54)', () => {
   test('sin filas, el ancho es el del encabezado + 2', () => {
     const columnas = columnasConAncho([]);
     expect(columnas[0].width).toBe('ID Árbol'.length + 2);
-    expect(columnas[9].width).toBe('Especie'.length + 2);
+    expect(columnas[8].width).toBe('Especie'.length + 2);
   });
 
   test('el ancho se topea en 100 caracteres (+2 de padding)', () => {
     const columnas = columnasConAncho([fila({ especie: 'x'.repeat(150) })]);
-    expect(columnas[9].width).toBe(102);
+    expect(columnas[8].width).toBe(102);
   });
 
   test('no muta COLUMNAS_XLSX (devuelve copias con width)', () => {
