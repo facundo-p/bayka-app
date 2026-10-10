@@ -276,17 +276,11 @@
   --alto-banner-entorno: 26px;
 }
 
-/* Anchos estructurales por escalón. No van con clamp(): entre "panel al
-   costado" y "panel apilado" no hay valores intermedios que tengan sentido. */
+/* Anchos estructurales por escalón. No van con clamp(): el panel al costado
+   tiene dos anchos y a ≤900 sale en una hoja, sin intermedios con sentido. */
 @media (max-width: 1200px) {
   :root {
     --ancho-panel-lateral: 340px;
-  }
-}
-
-@media (max-width: 900px) {
-  :root {
-    --ancho-panel-lateral: 100%;
   }
 }
 

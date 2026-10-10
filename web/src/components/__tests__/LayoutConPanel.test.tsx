@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { vi } from 'vitest';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
+import { Modal } from '../Modal';
 import { LayoutConPanel, PanelLateral } from '../PanelLateral';
 import { Table, type TableColumn } from '../Table';
 
@@ -40,6 +41,21 @@ function ListadoConDetalle() {
         onRowClick={setAbierta}
       />
     </LayoutConPanel>
+  );
+}
+
+/** Panel con un modal propio adentro, como la foto ampliada del detalle de un árbol. */
+function DetalleConFoto() {
+  const [fotoAbierta, setFotoAbierta] = useState(false);
+  return (
+    <PanelLateral etiqueta="Detalle" cabecera={<h2>Anchico</h2>} onCerrar={() => {}}>
+      <button type="button" onClick={() => setFotoAbierta(true)}>
+        Ampliar foto
+      </button>
+      <Modal open={fotoAbierta} title="Foto" onClose={() => setFotoAbierta(false)}>
+        <p>foto</p>
+      </Modal>
+    </PanelLateral>
   );
 }
 
@@ -89,6 +105,18 @@ describe('a 900px o menos', () => {
     await cerrar(usuario);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(fila('Anchico')).toHaveFocus();
+  });
+
+  test('un modal abierto desde la hoja queda encima y su Escape no cierra la hoja', async () => {
+    const usuario = userEvent.setup();
+    render(<DetalleConFoto />);
+    await usuario.click(screen.getByRole('button', { name: 'Ampliar foto' }));
+    expect(screen.getByRole('dialog', { name: 'Foto' })).toHaveFocus();
+
+    await usuario.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Foto' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Detalle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ampliar foto' })).toHaveFocus();
   });
 
   test('el Escape lo atiende la hoja: el panel no cierra dos veces', () => {
