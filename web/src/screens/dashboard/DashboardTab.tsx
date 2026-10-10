@@ -7,6 +7,7 @@ import {
   obtenerFuenteDashboard,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
+import { useColoresEspecie } from '../../hooks/useColoresEspecie';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePlantacion } from '../../hooks/usePlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -109,10 +110,11 @@ function ContenidoDashboard(props: ContenidoDashboardProps) {
   const filtro = useFiltroParcela(parcelas);
   const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
+  const colorDe = useColoresEspecie();
   // El vacío es de la plantación: una parcela sin árboles muestra ceros y la
   // salida a "Ver todos", no una pantalla sin retorno.
   if (fuente.arboles.length === 0) return <SinArboles />;
-  const especies = asignarColoresEspecies(datos.porEspecie);
+  const especies = asignarColoresEspecies(datos.porEspecie, colorDe);
   return (
     <div className={styles.dashboard}>
       <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />
