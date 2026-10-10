@@ -24,31 +24,45 @@ export function esMapaEnHojaCompleta(plan: PlanInforme): boolean {
 const ALTO_ENCABEZADO_BLOQUE =
   M.altoEncabezadoBloque + M.aireEncabezadoBloque + M.separacionEncabezadoBloque;
 
-/** Lo que ocupa un tramo que no se parte; `alEmpezarHoja` es lo que suma si abre una hoja. */
-export type Renglon = { alto: number; alEmpezarHoja: number };
+/**
+ * Lo que ocupa un tramo que no se parte. `presencia` es lo que tiene que entrar
+ * para que arranque en esta hoja, si es más que su alto; `alEmpezarHoja` es lo
+ * que suma si abre una hoja.
+ */
+export type Renglon = { alto: number; alEmpezarHoja: number; presencia?: number };
 
 const renglon = (alto: number, alEmpezarHoja = 0): Renglon => ({ alto, alEmpezarHoja });
 
-/** El título de bloque no queda solo al pie de una hoja: viaja con lo que lo sigue. */
-function conEncabezado([primero = 0, ...resto]: number[]): number[] {
-  return [ALTO_ENCABEZADO_BLOQUE + Math.max(primero, M.presenciaTrasEncabezado), ...resto];
+/**
+ * El título de bloque no queda solo al pie de una hoja: arranca si entra con lo
+ * que lo sigue, pero ocupa solo lo suyo y su primer renglón.
+ */
+function conEncabezado([primero = 0, ...resto]: number[], alEmpezarHoja = 0): Renglon[] {
+  const inicio = {
+    alto: ALTO_ENCABEZADO_BLOQUE + primero,
+    alEmpezarHoja: 0,
+    presencia: ALTO_ENCABEZADO_BLOQUE + Math.max(primero, M.presenciaTrasEncabezado),
+  };
+  return [inicio, ...resto.map((alto) => renglon(alto, alEmpezarHoja))];
 }
 
 function renglonesEspecies({ especies }: ModeloInforme): Renglon[] {
   const fila = M.altoFilaEspecie + M.separacionFilaEspecie;
-  return conEncabezado(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => fila)).map(
-    (alto) => renglon(alto),
-  );
+  return conEncabezado(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => fila));
 }
 
 /** Las filas y el total; en una hoja nueva, el encabezado de columnas se repite. */
 function renglonesTabla({ parcelas }: ModeloInforme): Renglon[] {
-  if (parcelas.vacio) return conEncabezado([M.altoMensaje]).map((alto) => renglon(alto));
+  if (parcelas.vacio) return conEncabezado([M.altoMensaje]);
   // La última fila y el total van juntos: no se parten.
   const sueltas = parcelas.filas.slice(0, -1).map(() => M.altoFilaTabla);
   const [primera, ...resto] = [...sueltas, M.altoFilaTabla * 2];
-  const [inicio, ...siguientes] = conEncabezado([M.altoEncabezadoTabla + primera, ...resto]);
-  return [renglon(inicio), ...siguientes.map((alto) => renglon(alto, M.altoEncabezadoTabla))];
+  return conEncabezado([M.altoEncabezadoTabla + primera, ...resto], M.altoEncabezadoTabla);
+}
+
+/** Un tramo precedido por la separación entre bloques. */
+function separado({ alto, presencia = alto, ...resto }: Renglon): Renglon {
+  return { ...resto, alto: M.separacionBloques + alto, presencia: M.separacionBloques + presencia };
 }
 
 /** Cada tramo que no se parte, en el orden del documento. */
@@ -58,7 +72,7 @@ function renglonesDelFlujo(modelo: ModeloInforme): Renglon[] {
     renglon(M.altoTitulo + M.aireTitulo + M.altoLineaTitulo + M.separacionBloques),
     renglon(M.altoIndicadores + M.separacionBloques),
     ...renglonesEspecies(modelo),
-    { ...tabla, alto: M.separacionBloques + tabla.alto },
+    separado(tabla),
     ...restoTabla,
   ];
 }
@@ -66,8 +80,10 @@ function renglonesDelFlujo(modelo: ModeloInforme): Renglon[] {
 /** Alto ocupado en la última hoja: un renglón que no entra empieza la hoja siguiente. */
 export function altoEnUltimaHoja(renglones: readonly Renglon[]): number {
   return renglones.reduce(
-    (ocupado, { alto, alEmpezarHoja }) =>
-      ocupado + alto > CUERPO_HOJA.alto ? alto + alEmpezarHoja : ocupado + alto,
+    (ocupado, { alto, alEmpezarHoja, presencia = alto }) =>
+      ocupado + Math.max(alto, presencia) > CUERPO_HOJA.alto
+        ? alto + alEmpezarHoja
+        : ocupado + alto,
     0,
   );
 }

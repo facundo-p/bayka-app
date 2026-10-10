@@ -17,8 +17,16 @@ test('la caja del mapa es 16:9 horizontal, al ancho del cuerpo', () => {
   expect(CAJA_MAPA_INFORME.ancho / CAJA_MAPA_INFORME.alto).toBeCloseTo(16 / 9);
 });
 
-test('una parcela y una especie: el mapa va al pie de la hoja 1', () => {
-  expect(plan(1, 1).ubicacion).toBe('ultima-hoja');
+// El borde contra el render real está en DocumentoInforme.test.tsx.
+test.each([
+  [4, 1, 'ultima-hoja'],
+  [5, 1, 'hoja-completa'],
+  [3, 2, 'ultima-hoja'],
+  [4, 2, 'hoja-completa'],
+  [1, 5, 'ultima-hoja'],
+  [1, 6, 'hoja-completa'],
+])('%i parcelas y %i especies: el mapa va a %s', (parcelas, especies, ubicacion) => {
+  expect(plan(parcelas, especies).ubicacion).toBe(ubicacion);
 });
 
 test('17 parcelas y 9 especies: el mapa va a hoja completa', () => {
@@ -32,10 +40,6 @@ test('muchas especies empujan el mapa a hoja completa aunque haya pocas parcelas
 describe('en el umbral de lo libre', () => {
   const cuatro = modelo(4, 4);
   const umbral = libreMinimoAlPie(cuatro);
-
-  test('el umbral es el mapa 16:9 más título, leyenda y nota', () => {
-    expect(umbral).toBeGreaterThan(CAJA_MAPA_INFORME.alto);
-  });
 
   test('justo en el umbral va al pie', () => {
     expect(planSegunLibre(cuatro, umbral).ubicacion).toBe('ultima-hoja');
@@ -65,6 +69,13 @@ describe('altoEnUltimaHoja', () => {
     const casiLlena = CUERPO_HOJA.alto - 10;
     expect(altoEnUltimaHoja([renglon(casiLlena), renglon(20), renglon(30)])).toBe(50);
     expect(altoEnUltimaHoja([renglon(100), renglon(200)])).toBe(300);
+  });
+
+  test('la presencia decide si salta de hoja, pero no suma al alto ocupado', () => {
+    const casiLlena = CUERPO_HOJA.alto - 30;
+    const titulo = { alto: 20, alEmpezarHoja: 0, presencia: 50 };
+    expect(altoEnUltimaHoja([renglon(100), titulo])).toBe(120);
+    expect(altoEnUltimaHoja([renglon(casiLlena), titulo])).toBe(20);
   });
 
   test('si abre hoja, suma lo que se repite arriba (el encabezado de la tabla)', () => {

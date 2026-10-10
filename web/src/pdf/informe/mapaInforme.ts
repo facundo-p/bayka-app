@@ -28,8 +28,6 @@ export function etiquetasDeParcelas(
   });
 }
 
-export type Caja = { ancho: number; alto: number };
-
 /**
  * Pocos puntos en un mapa grande se pierden con el radio de miles, y muchos
  * juntos se pisan: el radio sigue a la separación entre vecinos, en pt.
@@ -41,7 +39,7 @@ export function radioDePuntos(pixeles: readonly Pixel[]): number {
   return Math.min(maximo, Math.max(minimo, MEDIDA_INFORME.factorRadioPunto * separacion));
 }
 
-export type MapaInformePdf = { mapa: MapaPdf; caja: Caja };
+export type MapaInformePdf = { mapa: MapaPdf };
 
 /**
  * Siempre en la caja 16:9 del informe, con los puntos encuadrados adentro.
@@ -51,10 +49,9 @@ export async function dibujarMapaInforme(contenido: {
   puntos: PuntoMapa[];
   etiquetas: EtiquetaMapa[];
 }): Promise<MapaInformePdf> {
-  const caja: Caja = CAJA_MAPA_INFORME;
-  if (contenido.puntos.length === 0) return { mapa: MAPA_SIN_GPS, caja };
+  if (contenido.puntos.length === 0) return { mapa: MAPA_SIN_GPS };
   try {
-    const opciones = { ...contenido, ...caja, margen: MEDIDA_INFORME.margenMapa };
+    const opciones = { ...contenido, ...CAJA_MAPA_INFORME, margen: MEDIDA_INFORME.margenMapa };
     const ubicados = planificarMapa(opciones)?.puntos ?? [];
     const dibujado = await dibujarMapa({
       ...opciones,
@@ -63,8 +60,8 @@ export async function dibujarMapaInforme(contenido: {
       // Con ~7800 puntos, JPEG pesa la mitad que PNG y no se nota la diferencia impreso.
       formato: FORMATO_MAPA.jpeg,
     });
-    return { mapa: mapaDeDibujo(dibujado), caja };
+    return { mapa: mapaDeDibujo(dibujado) };
   } catch {
-    return { mapa: MAPA_NO_DISPONIBLE, caja };
+    return { mapa: MAPA_NO_DISPONIBLE };
   }
 }

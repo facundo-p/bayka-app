@@ -7,27 +7,33 @@ import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
 import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
-import { CAJA_MAPA_INFORME } from '../../plantilla/tokens';
 import { datosInforme, type EntradaInforme } from '../datosInforme';
 import { DocumentoInforme } from '../DocumentoInforme';
-import { esMapaEnHojaCompleta, planificarInforme } from '../planificarInforme';
+import {
+  esMapaEnHojaCompleta,
+  planificarInforme,
+  UBICACION_MAPA,
+  type UbicacionMapa,
+} from '../planificarInforme';
 
 // El extractor lee la nota al pie en dos tramos: «* » y la atribución.
 const ATRIBUCION = 'Imágenes © Esri, Maxar';
 
 /** Como el motor del navegador, pero con un PNG cualquiera en lugar del canvas. */
-async function renderizar(entrada: EntradaInforme, sinMapa = false, conSatelite = false) {
+async function renderizar(
+  entrada: EntradaInforme,
+  sinMapa = false,
+  conSatelite = false,
+  ubicacion?: UbicacionMapa,
+) {
   registrarFuentes(FUENTES_NODE);
   const calculado = datosInforme(entrada);
   // Sin mapa: el aviso de una línea en su lugar, para contar las hojas del resto.
   const modelo = sinMapa ? { ...calculado, mapa: { ...calculado.mapa, vacio: 'x' } } : calculado;
-  const plan = planificarInforme(modelo);
+  const plan = ubicacion ? { ubicacion } : planificarInforme(modelo);
   const mapa = modelo.mapa.vacio
     ? null
-    : {
-        mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite },
-        caja: CAJA_MAPA_INFORME,
-      };
+    : { mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite } };
   const encabezado = encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE);
   const pdf = await renderToBuffer(
     <DocumentoInforme {...{ encabezado, emitido: '06/10/2026', modelo, plan, mapa }} />,
@@ -170,6 +176,27 @@ test('cuando el plan pone el mapa al pie, entra en la última hoja', async () =>
     expect(paginasDelPdf(pdf), `${parcelas} parcelas`).toBe(paginasDelPdf(sinMapa));
   }
 }, 30_000);
+
+/** Con el mapa forzado al pie, ¿el informe ocupa las mismas hojas que sin mapa? */
+async function entraAlPie(entrada: EntradaInforme) {
+  const alPie = await renderizar(entrada, false, false, UBICACION_MAPA.ultimaHoja);
+  const sinMapa = await renderizar(entrada, true);
+  return paginasDelPdf(alPie.pdf) === paginasDelPdf(sinMapa.pdf);
+}
+
+describe('en el borde de los informes cortos, con 1 especie', () => {
+  test('con 4 parcelas el plan lo pone al pie y de verdad entra', async () => {
+    const entrada = entradaInforme({ parcelas: 4, especies: 1, nn: 3 });
+    expect((await renderizar(entrada)).plan.ubicacion).toBe(UBICACION_MAPA.ultimaHoja);
+    expect(await entraAlPie(entrada)).toBe(true);
+  });
+
+  test('con 6 parcelas el plan abre hoja nueva porque de verdad no entra', async () => {
+    const entrada = entradaInforme({ parcelas: 6, especies: 1, nn: 3 });
+    expect((await renderizar(entrada)).plan.ubicacion).toBe(UBICACION_MAPA.hojaCompleta);
+    expect(await entraAlPie(entrada)).toBe(false);
+  });
+});
 
 test('dos documentos pedidos a la vez salen enteros, uno después del otro', async () => {
   const documento = (parcelas: number) => {

@@ -4,7 +4,6 @@ import { entradaInforme } from '../../../test/informePdf';
 import { PNG_DE_PRUEBA } from '../../../test/pdfNode';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
-import { CAJA_MAPA_INFORME } from '../../plantilla/tokens';
 import { dibujarMapaInforme } from '../mapaInforme';
 import { renderizarInforme } from '../motorInforme';
 
@@ -24,7 +23,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(dibujarMapaInforme).mockResolvedValue({
     mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false },
-    caja: CAJA_MAPA_INFORME,
   });
 });
 

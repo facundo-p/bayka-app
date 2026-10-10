@@ -1,7 +1,7 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
 import { planificarMapa } from '../../mapa/planMapa';
-import { CUERPO_HOJA } from '../../plantilla/tokens';
+import { CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
 import { dibujarMapaInforme, etiquetasDeParcelas, radioDePuntos } from '../mapaInforme';
 
 vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
@@ -72,45 +72,65 @@ describe('dibujarMapaInforme', () => {
     vi.mocked(dibujarMapa).mockResolvedValue({ src: 'data:image/jpeg;base64,M', conFondo: true });
   });
 
+  const MARGEN = MEDIDA_INFORME.margenMapa;
+  const TOLERANCIA = 1e-6;
+
   /** Lo que recibió el canvas, encuadrado como lo encuadra él. */
   async function dibujado(puntos: typeof contenido.puntos) {
-    const { caja } = await dibujarMapaInforme({ puntos, etiquetas: [] });
+    await dibujarMapaInforme({ puntos, etiquetas: [] });
     const opciones = vi.mocked(dibujarMapa).mock.calls[0][0];
-    return { caja, opciones, plan: planificarMapa(opciones) };
+    return { opciones, ubicados: planificarMapa(opciones)!.puntos };
   }
+
+  /** 16:9 al ancho del cuerpo, con cada punto dentro del margen. */
+  async function esperarEncuadrado(puntos: typeof contenido.puntos) {
+    const { opciones, ubicados } = await dibujado(puntos);
+    expect(opciones.ancho).toBe(CUERPO_HOJA.ancho);
+    expect(opciones.ancho / opciones.alto).toBeCloseTo(16 / 9);
+    expect(ubicados).toHaveLength(puntos.length);
+    for (const { x, y } of ubicados) {
+      expect(x).toBeGreaterThanOrEqual(MARGEN - TOLERANCIA);
+      expect(x).toBeLessThanOrEqual(opciones.ancho - MARGEN + TOLERANCIA);
+      expect(y).toBeGreaterThanOrEqual(MARGEN - TOLERANCIA);
+      expect(y).toBeLessThanOrEqual(opciones.alto - MARGEN + TOLERANCIA);
+    }
+  }
+
+  type Paso = { lat: number; lng: number };
+
+  /** 20 puntos en línea; uno de cada dos corrido en `desvio`, para no quedar en una recta. */
+  const enLinea = (paso: Paso, desvio: Paso) =>
+    Array.from({ length: 20 }, (_, i) => ({
+      lat: -27.4 + i * paso.lat + (i % 2) * desvio.lat,
+      lng: -55.9 + i * paso.lng + (i % 2) * desvio.lng,
+      color,
+    }));
 
   test('dibuja en JPEG, con margen interior y el radio según la densidad', async () => {
     const { mapa } = await dibujarMapaInforme(contenido);
     expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M', conSatelite: true });
     expect(vi.mocked(dibujarMapa).mock.calls[0][0]).toMatchObject({
       formato: { tipo: 'image/jpeg' },
-      margen: 24,
+      margen: MARGEN,
       radioPunto: 4,
       fondo: expect.any(Function),
     });
   });
 
   test('un solo punto sale en 16:9 horizontal, al ancho del cuerpo', async () => {
-    const { caja, opciones } = await dibujado(contenido.puntos);
-    expect(caja.ancho).toBe(CUERPO_HOJA.ancho);
-    expect(caja.ancho / caja.alto).toBeCloseTo(16 / 9);
-    expect(opciones).toMatchObject(caja);
+    await esperarEncuadrado(contenido.puntos);
+  });
+
+  test('puntos idénticos también', async () => {
+    await esperarEncuadrado([...contenido.puntos, ...contenido.puntos]);
   });
 
   test('una plantación alargada en vertical sale en 16:9 con todos los puntos adentro', async () => {
-    const alta = Array.from({ length: 20 }, (_, i) => ({
-      lat: -27.4 - i * 0.003,
-      lng: -55.9 + (i % 2) * 0.0005,
-      color,
-    }));
-    const { caja, plan } = await dibujado(alta);
-    expect(caja.ancho / caja.alto).toBeCloseTo(16 / 9);
-    for (const { x, y } of plan!.puntos) {
-      expect(x).toBeGreaterThanOrEqual(24 - 1e-6);
-      expect(x).toBeLessThanOrEqual(caja.ancho - 24 + 1e-6);
-      expect(y).toBeGreaterThanOrEqual(24 - 1e-6);
-      expect(y).toBeLessThanOrEqual(caja.alto - 24 + 1e-6);
-    }
+    await esperarEncuadrado(enLinea({ lat: -0.003, lng: 0 }, { lat: 0, lng: 0.0005 }));
+  });
+
+  test('una plantación más apaisada que 16:9 también', async () => {
+    await esperarEncuadrado(enLinea({ lat: 0, lng: 0.003 }, { lat: 0.0005, lng: 0 }));
   });
 
   test('sin puntos no dibuja nada', async () => {
