@@ -7,9 +7,9 @@ import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
 import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
+import { CAJA_MAPA_INFORME } from '../../plantilla/tokens';
 import { datosInforme, type EntradaInforme } from '../datosInforme';
 import { DocumentoInforme } from '../DocumentoInforme';
-import { cajaDelMapa } from '../mapaInforme';
 import { esMapaEnHojaCompleta, planificarInforme } from '../planificarInforme';
 
 // El extractor lee la nota al pie en dos tramos: «* » y la atribución.
@@ -26,7 +26,7 @@ async function renderizar(entrada: EntradaInforme, sinMapa = false, conSatelite 
     ? null
     : {
         mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite },
-        caja: cajaDelMapa(modelo.mapa.puntos, plan.disponible),
+        caja: CAJA_MAPA_INFORME,
       };
   const encabezado = encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE);
   const pdf = await renderToBuffer(
@@ -35,20 +35,25 @@ async function renderizar(entrada: EntradaInforme, sinMapa = false, conSatelite 
   return { pdf, textos: textosDelPdf(pdf), plan };
 }
 
-test('4 parcelas y 4 especies: todo en una hoja, con el mapa al pie', async () => {
-  const { pdf, textos } = await renderizar(entradaInforme({ parcelas: 4, especies: 4, nn: 3 }));
+test('1 parcela y 1 especie: todo en una hoja, con el mapa al pie', async () => {
+  const { pdf, textos } = await renderizar(entradaInforme({ parcelas: 1, especies: 1, nn: 3 }));
   expect(paginasDelPdf(pdf)).toBe(1);
   expect(textos).toEqual(
     expect.arrayContaining([
       'Informe de plantación',
-      'Distribución por especie · 4 especies',
       'N/N · Sin identificar',
       'Árboles por parcela',
-      'Total · 4 parcelas',
       'Puntos GPS por especie',
       'Emitido el 06/10/2026 · Página 1 de 1',
     ]),
   );
+});
+
+test('4 parcelas y 4 especies: el mapa 16:9 no entra al pie y abre la hoja 2', async () => {
+  const { pdf, textos } = await renderizar(entradaInforme({ parcelas: 4, especies: 4, nn: 3 }));
+  expect(paginasDelPdf(pdf)).toBe(2);
+  expect(hojaDeTexto(textos, 'Total · 4 parcelas')).toBe(1);
+  expect(hojaDeTexto(textos, 'Puntos GPS por especie')).toBe(2);
 });
 
 test('17 parcelas y 9 especies: resumen y tabla en la hoja 1, el mapa en la 2', async () => {
@@ -116,7 +121,7 @@ test('120 parcelas: la tabla sigue en las hojas siguientes con su encabezado', a
 }, 30_000);
 
 test('con satélite, el mapa lleva la llamada y la última hoja la nota de Esri al pie', async () => {
-  const entrada = entradaInforme({ parcelas: 4, especies: 4, nn: 3 });
+  const entrada = entradaInforme({ parcelas: 1, especies: 1, nn: 3 });
   const conSatelite = await renderizar(entrada, false, true);
   expect(conSatelite.textos).toEqual(expect.arrayContaining(['*', ATRIBUCION]));
   expect(paginasDelPdf(conSatelite.pdf)).toBe(1);

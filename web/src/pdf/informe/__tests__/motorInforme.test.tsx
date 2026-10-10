@@ -4,6 +4,7 @@ import { entradaInforme } from '../../../test/informePdf';
 import { PNG_DE_PRUEBA } from '../../../test/pdfNode';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
+import { CAJA_MAPA_INFORME } from '../../plantilla/tokens';
 import { dibujarMapaInforme } from '../mapaInforme';
 import { renderizarInforme } from '../motorInforme';
 
@@ -21,22 +22,21 @@ vi.mock('../mapaInforme', async (importOriginal) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(dibujarMapaInforme).mockImplementation(async (_contenido, disponible) => ({
+  vi.mocked(dibujarMapaInforme).mockResolvedValue({
     mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false },
-    caja: disponible,
-  }));
+    caja: CAJA_MAPA_INFORME,
+  });
 });
 
 const textosDe = async (blob: Blob) => textosDelPdf(Buffer.from(await blob.arrayBuffer()));
 
-test('dibuja el mapa en el lugar que dejó el plan y arma el PDF', async () => {
+test('dibuja el mapa con los puntos de la plantación y arma el PDF', async () => {
   const blob = await renderizarInforme({
     ...entradaInforme({ parcelas: 4, especies: 4 }),
     emitido: '06/10/2026',
   });
-  const [contenido, disponible] = vi.mocked(dibujarMapaInforme).mock.calls[0];
+  const [contenido] = vi.mocked(dibujarMapaInforme).mock.calls[0];
   expect(contenido.puntos).toHaveLength(12);
-  expect(disponible.alto).toBeGreaterThanOrEqual(198);
   expect(await textosDe(blob)).toContain('Total · 4 parcelas');
 });
 

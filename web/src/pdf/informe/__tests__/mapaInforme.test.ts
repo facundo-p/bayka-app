@@ -1,11 +1,8 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
-import {
-  cajaDelMapa,
-  dibujarMapaInforme,
-  etiquetasDeParcelas,
-  radioDePuntos,
-} from '../mapaInforme';
+import { planificarMapa } from '../../mapa/planMapa';
+import { CUERPO_HOJA } from '../../plantilla/tokens';
+import { dibujarMapaInforme, etiquetasDeParcelas, radioDePuntos } from '../mapaInforme';
 
 vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../mapa/dibujarMapa')>()),
@@ -45,31 +42,6 @@ describe('etiquetasDeParcelas', () => {
   });
 });
 
-describe('cajaDelMapa', () => {
-  const DISPONIBLE = { ancho: 535, alto: 400 };
-  const color = '#000';
-
-  test('una plantación ancha ocupa todo el ancho y achica el alto', () => {
-    const ancha = [
-      { lat: -27.47, lng: -55.9, color },
-      { lat: -27.471, lng: -55.85, color },
-    ];
-    const caja = cajaDelMapa(ancha, DISPONIBLE);
-    expect(caja.ancho).toBe(535);
-    expect(caja.alto).toBeLessThan(400);
-  });
-
-  test('una plantación alta ocupa todo el alto y achica el ancho', () => {
-    const alta = [
-      { lat: -27.4, lng: -55.9, color },
-      { lat: -27.45, lng: -55.901, color },
-    ];
-    const caja = cajaDelMapa(alta, DISPONIBLE);
-    expect(caja.alto).toBe(400);
-    expect(caja.ancho).toBeLessThan(535);
-  });
-});
-
 describe('radioDePuntos', () => {
   const grilla = (paso: number, desde = 0) =>
     Array.from({ length: 100 }, (_, i) => ({
@@ -93,15 +65,22 @@ describe('radioDePuntos', () => {
 });
 
 describe('dibujarMapaInforme', () => {
-  const contenido = {
-    puntos: [{ lat: -27.47, lng: -55.9, color: '#000' }],
-    etiquetas: [],
-  };
-  const DISPONIBLE = { ancho: 535, alto: 400 };
+  const color = '#000';
+  const contenido = { puntos: [{ lat: -27.47, lng: -55.9, color }], etiquetas: [] };
+
+  beforeEach(() => {
+    vi.mocked(dibujarMapa).mockResolvedValue({ src: 'data:image/jpeg;base64,M', conFondo: true });
+  });
+
+  /** Lo que recibió el canvas, encuadrado como lo encuadra él. */
+  async function dibujado(puntos: typeof contenido.puntos) {
+    const { caja } = await dibujarMapaInforme({ puntos, etiquetas: [] });
+    const opciones = vi.mocked(dibujarMapa).mock.calls[0][0];
+    return { caja, opciones, plan: planificarMapa(opciones) };
+  }
 
   test('dibuja en JPEG, con margen interior y el radio según la densidad', async () => {
-    vi.mocked(dibujarMapa).mockResolvedValue({ src: 'data:image/jpeg;base64,M', conFondo: true });
-    const { mapa } = await dibujarMapaInforme(contenido, DISPONIBLE);
+    const { mapa } = await dibujarMapaInforme(contenido);
     expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M', conSatelite: true });
     expect(vi.mocked(dibujarMapa).mock.calls[0][0]).toMatchObject({
       formato: { tipo: 'image/jpeg' },
@@ -111,16 +90,39 @@ describe('dibujarMapaInforme', () => {
     });
   });
 
+  test('un solo punto sale en 16:9 horizontal, al ancho del cuerpo', async () => {
+    const { caja, opciones } = await dibujado(contenido.puntos);
+    expect(caja.ancho).toBe(CUERPO_HOJA.ancho);
+    expect(caja.ancho / caja.alto).toBeCloseTo(16 / 9);
+    expect(opciones).toMatchObject(caja);
+  });
+
+  test('una plantación alargada en vertical sale en 16:9 con todos los puntos adentro', async () => {
+    const alta = Array.from({ length: 20 }, (_, i) => ({
+      lat: -27.4 - i * 0.003,
+      lng: -55.9 + (i % 2) * 0.0005,
+      color,
+    }));
+    const { caja, plan } = await dibujado(alta);
+    expect(caja.ancho / caja.alto).toBeCloseTo(16 / 9);
+    for (const { x, y } of plan!.puntos) {
+      expect(x).toBeGreaterThanOrEqual(24 - 1e-6);
+      expect(x).toBeLessThanOrEqual(caja.ancho - 24 + 1e-6);
+      expect(y).toBeGreaterThanOrEqual(24 - 1e-6);
+      expect(y).toBeLessThanOrEqual(caja.alto - 24 + 1e-6);
+    }
+  });
+
   test('sin puntos no dibuja nada', async () => {
-    const { mapa } = await dibujarMapaInforme({ puntos: [], etiquetas: [] }, DISPONIBLE);
+    const { mapa } = await dibujarMapaInforme({ puntos: [], etiquetas: [] });
     expect(mapa.estado).toBe('sin-gps');
     expect(dibujarMapa).not.toHaveBeenCalled();
   });
 
   test('si el canvas falla o no devuelve imagen, el mapa no está disponible', async () => {
     vi.mocked(dibujarMapa).mockRejectedValueOnce(new Error('canvas'));
-    expect((await dibujarMapaInforme(contenido, DISPONIBLE)).mapa.estado).toBe('no-disponible');
+    expect((await dibujarMapaInforme(contenido)).mapa.estado).toBe('no-disponible');
     vi.mocked(dibujarMapa).mockResolvedValueOnce(null);
-    expect((await dibujarMapaInforme(contenido, DISPONIBLE)).mapa.estado).toBe('no-disponible');
+    expect((await dibujarMapaInforme(contenido)).mapa.estado).toBe('no-disponible');
   });
 });

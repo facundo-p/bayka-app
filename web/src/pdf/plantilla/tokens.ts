@@ -195,8 +195,8 @@ export const MEDIDA_INFORME = {
   anchoItemLeyenda: 44,
   separacionLeyenda: 10,
   altoNotaMapa: 11,
-  /** Lo mínimo que tiene que medir el mapa para ir al pie de la última hoja: 7 cm. */
-  altoMinimoMapa: 198,
+  /** Horizontal, como el mapa del dashboard. */
+  proporcionMapa: { ancho: 16, alto: 9 },
   /** Colchón contra los redondeos del layout: si el cálculo se queda corto, el mapa salta solo. */
   holgura: 8,
   /** Aire dentro del marco del mapa: las etiquetas, el norte y la escala no tocan los puntos. */
@@ -205,4 +205,11 @@ export const MEDIDA_INFORME = {
   radioPuntoMapa: { minimo: 1.1, maximo: 4 },
   /** Fracción de la distancia al vecino más cercano: deja aire entre dos puntos vecinos. */
   factorRadioPunto: 0.35,
+} as const;
+
+/** El mapa del informe: al ancho del cuerpo y con proporción fija; los puntos se encuadran adentro. */
+export const CAJA_MAPA_INFORME = {
+  ancho: CUERPO_HOJA.ancho,
+  alto:
+    (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;

@@ -1,5 +1,5 @@
 import { entradaInforme } from '../../../test/informePdf';
-import { CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
+import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
 import { datosInforme } from '../datosInforme';
 import {
   altoEnUltimaHoja,
@@ -12,17 +12,17 @@ const modelo = (parcelas: number, especies: number) =>
   datosInforme(entradaInforme({ parcelas, especies, nn: 3 }));
 const plan = (parcelas: number, especies: number) => planificarInforme(modelo(parcelas, especies));
 
-test('4 parcelas y 4 especies: el mapa va al pie de la hoja 1, con al menos 7 cm', () => {
-  const resultado = plan(4, 4);
-  expect(resultado.ubicacion).toBe('ultima-hoja');
-  expect(resultado.disponible.alto).toBeGreaterThanOrEqual(MEDIDA_INFORME.altoMinimoMapa);
-  expect(resultado.disponible.ancho).toBe(CUERPO_HOJA.ancho);
+test('la caja del mapa es 16:9 horizontal, al ancho del cuerpo', () => {
+  expect(CAJA_MAPA_INFORME.ancho).toBe(CUERPO_HOJA.ancho);
+  expect(CAJA_MAPA_INFORME.ancho / CAJA_MAPA_INFORME.alto).toBeCloseTo(16 / 9);
+});
+
+test('una parcela y una especie: el mapa va al pie de la hoja 1', () => {
+  expect(plan(1, 1).ubicacion).toBe('ultima-hoja');
 });
 
 test('17 parcelas y 9 especies: el mapa va a hoja completa', () => {
-  const resultado = plan(17, 9);
-  expect(resultado.ubicacion).toBe('hoja-completa');
-  expect(resultado.disponible.alto).toBeGreaterThan(CUERPO_HOJA.alto * 0.8);
+  expect(plan(17, 9).ubicacion).toBe('hoja-completa');
 });
 
 test('muchas especies empujan el mapa a hoja completa aunque haya pocas parcelas', () => {
@@ -33,10 +33,12 @@ describe('en el umbral de lo libre', () => {
   const cuatro = modelo(4, 4);
   const umbral = libreMinimoAlPie(cuatro);
 
-  test('justo en el umbral va al pie, con el mapa de 7 cm exactos', () => {
-    const resultado = planSegunLibre(cuatro, umbral);
-    expect(resultado.ubicacion).toBe('ultima-hoja');
-    expect(resultado.disponible.alto).toBe(198);
+  test('el umbral es el mapa 16:9 más título, leyenda y nota', () => {
+    expect(umbral).toBeGreaterThan(CAJA_MAPA_INFORME.alto);
+  });
+
+  test('justo en el umbral va al pie', () => {
+    expect(planSegunLibre(cuatro, umbral).ubicacion).toBe('ultima-hoja');
   });
 
   test('medio punto menos ya va a hoja completa', () => {

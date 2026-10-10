@@ -3,20 +3,19 @@
  * hojas; acá se simula ese flujo con los altos fijos de los renglones para
  * saber cuánto queda libre en la última hoja.
  */
-import { CUERPO_HOJA, MEDIDA_INFORME as M } from '../plantilla/tokens';
-import type { Caja } from './mapaInforme';
+import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME as M } from '../plantilla/tokens';
 import type { ModeloInforme } from './datosInforme';
 
 export const UBICACION_MAPA = {
   /** Al pie de la última hoja, en lo que queda libre. */
   ultimaHoja: 'ultima-hoja',
-  /** Sola en una hoja nueva al final, con su título. */
+  /** Al principio de una hoja nueva al final, con su título. */
   hojaCompleta: 'hoja-completa',
 } as const;
 
 export type UbicacionMapa = (typeof UBICACION_MAPA)[keyof typeof UBICACION_MAPA];
 
-export type PlanInforme = { ubicacion: UbicacionMapa; disponible: Caja };
+export type PlanInforme = { ubicacion: UbicacionMapa };
 
 export function esMapaEnHojaCompleta(plan: PlanInforme): boolean {
   return plan.ubicacion === UBICACION_MAPA.hojaCompleta;
@@ -90,23 +89,16 @@ function altoQueAcompana(modelo: ModeloInforme): number {
   return titulo + altoLeyenda(modelo) + M.aireMapa + M.altoNotaMapa + M.holgura;
 }
 
-/** Lo mínimo que tiene que quedar libre en la última hoja para que el mapa vaya al pie. */
+/** Lo que tiene que quedar libre en la última hoja para que el mapa 16:9 vaya al pie. */
 export function libreMinimoAlPie(modelo: ModeloInforme): number {
-  return altoQueAcompana(modelo) + M.altoMinimoMapa;
+  return altoQueAcompana(modelo) + CAJA_MAPA_INFORME.alto;
 }
 
-/** En hoja propia: título y nota arriba, mapa y leyenda debajo. */
-function planEnHojaCompleta(modelo: ModeloInforme): PlanInforme {
-  const titulo = M.altoTituloMapa + M.aireTitulo + M.altoLineaTitulo + M.aireTituloMapa;
-  const alto = CUERPO_HOJA.alto - titulo - altoLeyenda(modelo) - M.holgura;
-  return { ubicacion: UBICACION_MAPA.hojaCompleta, disponible: { ancho: CUERPO_HOJA.ancho, alto } };
-}
-
-/** Al pie si en lo que queda `libre` entra un mapa de al menos 7 cm; si no, en hoja propia. */
+/** Al pie si en lo que queda `libre` entran el mapa y lo que lo acompaña; si no, en hoja nueva. */
 export function planSegunLibre(modelo: ModeloInforme, libre: number): PlanInforme {
-  if (libre < libreMinimoAlPie(modelo)) return planEnHojaCompleta(modelo);
-  const alto = libre - altoQueAcompana(modelo);
-  return { ubicacion: UBICACION_MAPA.ultimaHoja, disponible: { ancho: CUERPO_HOJA.ancho, alto } };
+  const ubicacion =
+    libre < libreMinimoAlPie(modelo) ? UBICACION_MAPA.hojaCompleta : UBICACION_MAPA.ultimaHoja;
+  return { ubicacion };
 }
 
 export function planificarInforme(modelo: ModeloInforme): PlanInforme {

@@ -2,11 +2,11 @@ import type { PuntoGps } from '../../queries/mapaQueries';
 import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa, FORMATO_MAPA } from '../mapa/dibujarMapa';
 import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
-import { ENCUADRE_MAPA, planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
-import { aspectoDe, type Pixel } from '../mapa/proyeccion';
+import { planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
+import type { Pixel } from '../mapa/proyeccion';
 import { TOPE_TILES } from '../mapa/tiles';
 import { medianaAlVecino } from '../mapa/vecinos';
-import { MEDIDA_INFORME } from '../plantilla/tokens';
+import { CAJA_MAPA_INFORME, MEDIDA_INFORME } from '../plantilla/tokens';
 
 type Acumulado = { lat: number; lng: number; cantidad: number };
 
@@ -31,20 +31,6 @@ export function etiquetasDeParcelas(
 export type Caja = { ancho: number; alto: number };
 
 /**
- * El rectángulo más grande dentro de `disponible` con el aspecto de los puntos:
- * así el mapa no deja franjas vacías a los costados de la plantación.
- */
-export function cajaDelMapa(puntos: readonly PuntoMapa[], disponible: Caja): Caja {
-  const margen = MEDIDA_INFORME.margenMapa * 2;
-  const aspecto = aspectoDe(puntos, ENCUADRE_MAPA.minimoMetros);
-  const util = { ancho: disponible.ancho - margen, alto: disponible.alto - margen };
-  if (util.ancho / util.alto > aspecto) {
-    return { ancho: util.alto * aspecto + margen, alto: disponible.alto };
-  }
-  return { ancho: disponible.ancho, alto: util.ancho / aspecto + margen };
-}
-
-/**
  * Pocos puntos en un mapa grande se pierden con el radio de miles, y muchos
  * juntos se pisan: el radio sigue a la separación entre vecinos, en pt.
  */
@@ -57,12 +43,15 @@ export function radioDePuntos(pixeles: readonly Pixel[]): number {
 
 export type MapaInformePdf = { mapa: MapaPdf; caja: Caja };
 
-/** Si el canvas falla, el informe sale igual con «Mapa no disponible». */
-export async function dibujarMapaInforme(
-  contenido: { puntos: PuntoMapa[]; etiquetas: EtiquetaMapa[] },
-  disponible: Caja,
-): Promise<MapaInformePdf> {
-  const caja = cajaDelMapa(contenido.puntos, disponible);
+/**
+ * Siempre en la caja 16:9 del informe, con los puntos encuadrados adentro.
+ * Si el canvas falla, el informe sale igual con «Mapa no disponible».
+ */
+export async function dibujarMapaInforme(contenido: {
+  puntos: PuntoMapa[];
+  etiquetas: EtiquetaMapa[];
+}): Promise<MapaInformePdf> {
+  const caja: Caja = CAJA_MAPA_INFORME;
   if (contenido.puntos.length === 0) return { mapa: MAPA_SIN_GPS, caja };
   try {
     const opciones = { ...contenido, ...caja, margen: MEDIDA_INFORME.margenMapa };
