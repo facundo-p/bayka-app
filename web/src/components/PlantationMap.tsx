@@ -12,7 +12,7 @@ export interface EspecieLeyenda {
 
 interface PlantationMapProps {
   puntos: PuntoGps[];
-  /** Especies del alcance visible: los nombres salen de acá y no de los puntos. */
+  /** Especies del alcance visible: dan el color de cada punto por su código. */
   leyenda: EspecieLeyenda[];
   /** Código de la parcela cuando el mapa está filtrado. */
   parcelaFiltro?: string;
