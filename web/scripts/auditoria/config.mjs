@@ -17,8 +17,13 @@ export const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PUERTO_DEMO}
 
 export const ALTO_VENTANA = 900;
 
-/** Pantallas reales: al menos una por banda de la escala, más los extremos. */
-const PANTALLAS = [1920, 1440, 1280, 1024, 768, 430, 360];
+/**
+ * Pantallas reales: al menos una por banda de la escala, más los extremos. 390
+ * es el teléfono más común, y ahí la auditoría vio las tabs del detalle encima
+ * de la miga. A 430 la miga ya estaba aplastada en 66px, pero sin texto encima
+ * de otro texto, y la celda salía limpia (#825).
+ */
+const PANTALLAS = [1920, 1440, 1280, 1024, 768, 430, 390, 360];
 
 /**
  * Los escalones que cambian la estructura (sidebar horizontal, tablas sin
@@ -38,6 +43,9 @@ export const claseModulo = (nombre) => `[class*="_${nombre}_"]`;
 
 export const SELECTOR_DIALOGO = '[role="dialog"]';
 
+/** La miga de la topbar, por el nombre accesible que le ponen `Breadcrumb` y `CabeceraSeccion`. */
+export const SELECTOR_MIGA = 'nav[aria-label="Migas de navegación"]';
+
 /** Contenedores que pueden quedar en 0px al perder el contexto flex (`H`). */
 export const SELECTOR_CARDS = [
   claseModulo('panel'),
@@ -48,10 +56,13 @@ export const SELECTOR_CARDS = [
 
 /** La define el fake de `src/demo/datos.ts`. */
 const PLANTACION_DEMO = 'p1';
+/** Finalizada y archivada: dos badges en la miga, la más ancha del demo. */
+const PLANTACION_ARCHIVADA_DEMO = 'p7';
 
 export const RUTA = Object.freeze({
   plantaciones: '/plantaciones',
   dashboard: `/plantaciones/${PLANTACION_DEMO}`,
+  dashboardArchivada: `/plantaciones/${PLANTACION_ARCHIVADA_DEMO}`,
   datosParcelas: `/plantaciones/${PLANTACION_DEMO}/datos/parcelas`,
   datosGrupos: `/plantaciones/${PLANTACION_DEMO}/datos/grupos`,
   datosArboles: `/plantaciones/${PLANTACION_DEMO}/datos/arboles`,
@@ -86,6 +97,10 @@ export const TODOS_LOS_DETAILS = Symbol('todos los <details>');
 export const VISTAS = Object.freeze([
   { pantalla: 'plantaciones', ruta: RUTA.plantaciones },
   { pantalla: 'dashboard', ruta: RUTA.dashboard },
+  // Con un solo badge, la miga aplastada por las tabs no pinta texto encima de
+  // nada y `dashboard` sale limpia; con dos, el badge queda bajo las tabs (#825).
+  // Solo en teléfono: arriba de 600 la base de la miga la protege.
+  { pantalla: 'dashboard-archivada', ruta: RUTA.dashboardArchivada, anchos: ANCHOS_MOVIL },
   { pantalla: 'datos-parcelas', ruta: RUTA.datosParcelas },
   { pantalla: 'datos-grupos', ruta: RUTA.datosGrupos },
   { pantalla: 'datos-arboles', ruta: RUTA.datosArboles },

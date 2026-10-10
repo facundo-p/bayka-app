@@ -1,12 +1,12 @@
 import { CardTabla, LayoutConPanel, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { pluralizar } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { EspecieCientificaConEspecies } from '../../queries/especieCientificaQueries';
 import { COLUMNAS_CIENTIFICAS } from './columnasCientificas';
 import { EspecieCientificaPanel } from './EspecieCientificaPanel';
 
-const PIE_AYUDA = 'clic en una fila abre la edición en el panel lateral';
 const PIE_NOTA = 'Las que no agrupan ninguna especie aparecen atenuadas';
 
 /** Selección del panel: una especie científica a editar, o el alta. */
@@ -36,7 +36,7 @@ export function ListadoEspeciesCientificas({
   return (
     <LayoutConPanel panel={panel}>
       <CardTabla
-        pie={`${pluralizar(visibles.length, SUSTANTIVO.especieCientifica)} · ${PIE_AYUDA}`}
+        pie={`${pluralizar(visibles.length, SUSTANTIVO.especieCientifica)} · ${AYUDA_FILA.edicion}`}
         pieDerecha={PIE_NOTA}
       >
         <Table

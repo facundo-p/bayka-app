@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { CardTabla, LayoutConPanel, Table, type TableColumn } from '../../components';
 import { useAuth } from '../../hooks/useAuth';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { pluralizar } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
@@ -9,7 +10,7 @@ import { contarSuperadminsActivos, type AccionActiva, type ContextoAcciones } fr
 import { columnasUsuarios } from './columnas';
 import { UsuarioPanel } from './UsuarioPanel';
 
-const PIE_AYUDA = 'clic en una fila abre el detalle en el panel lateral · ⋯ para acciones rápidas';
+const PIE_AYUDA = `${AYUDA_FILA.detalle} · ⋯ para acciones rápidas`;
 const PIE_NOTA = 'Las personas inactivas aparecen atenuadas';
 
 type AlElegirAccion = (activa: AccionActiva) => void;

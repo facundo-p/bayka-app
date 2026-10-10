@@ -1,20 +1,21 @@
 import { useNavigate } from 'react-router';
 import { CardTabla, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { pluralizar } from '../../lib/formato';
 import { rutaPlantacion } from '../../lib/rutas';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import { COLUMNAS_PLANTACIONES } from './columnas';
 
-const PIE_AYUDA = 'clic en una fila abre el detalle';
-
 /** Tabla de plantaciones: cada fila lleva a su detalle. */
 export function ListadoPlantaciones({ visibles }: { visibles: PlantacionConStats[] }) {
   const navigate = useNavigate();
   const columnas = useColumnasVisibles(COLUMNAS_PLANTACIONES);
   return (
-    <CardTabla pie={`${pluralizar(visibles.length, SUSTANTIVO.plantacion)} · ${PIE_AYUDA}`}>
+    <CardTabla
+      pie={`${pluralizar(visibles.length, SUSTANTIVO.plantacion)} · ${AYUDA_FILA.detalle}`}
+    >
       <Table
         columns={columnas}
         rows={visibles}

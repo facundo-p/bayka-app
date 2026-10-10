@@ -113,6 +113,13 @@ beforeEach(() => {
   });
 });
 
+test('el pie dice qué hace la fila sin decir dónde se abre', async () => {
+  renderSeccion();
+  expect(
+    await screen.findByText('Mostrando 1–6 de 6 · clic en una fila abre el detalle'),
+  ).toBeInTheDocument();
+});
+
 describe('entrar y salir del modo selección', () => {
   test('sin modo no hay checkboxes ni franja', async () => {
     renderSeccion();

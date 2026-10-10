@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
@@ -68,6 +69,8 @@ test('renderiza la cabecera con el uso del catálogo y una fila de especie', asy
   const filaAnchico = main.getByText('Anchico').closest('tr');
   if (!filaAnchico) throw new Error('No se encontró la fila de Anchico');
   expect(within(filaAnchico).getByText('1.234')).toBeInTheDocument();
+  // El pie no dice dónde se abre: según el ancho es columna u hoja.
+  expect(main.getByText('2 especies · clic en una fila abre la edición')).toBeInTheDocument();
 });
 
 test('muestra el uso por especie: plantaciones y árboles (0/0 la sin uso)', async () => {
@@ -168,6 +171,9 @@ test('la pestaña Científicas lista cada especie científica con las especies q
   expect(
     main.getByText('Catálogo global · 2 especies científicas · 1 con especies'),
   ).toBeInTheDocument();
+  expect(
+    main.getByText('2 especies científicas · clic en una fila abre la edición'),
+  ).toBeInTheDocument();
   expect(main.getByRole('button', { name: 'Nueva especie científica' })).toBeInTheDocument();
 });
 
@@ -198,6 +204,22 @@ test('el panel se cierra con la X y la fila abierta queda marcada', async () => 
 
   await usuario.click(screen.getByRole('button', { name: 'Cerrar Editar especie' }));
   expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
+});
+
+test('a ≤900 la fila abre el detalle en una hoja y al cerrarla el foco vuelve a la fila', async () => {
+  simularAncho(ANCHO.tablet);
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  const celda = await screen.findByText('Anchico');
+  await usuario.click(celda);
+  expect(screen.getByRole('dialog', { name: 'Editar especie' })).toBeInTheDocument();
+  expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
+
+  await usuario.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog', { name: 'Editar especie' })).not.toBeInTheDocument();
+  expect(celda.closest('tr')).toHaveFocus();
 });
 
 test('con el catálogo vacío muestra el vacío total, no el de la búsqueda', async () => {
