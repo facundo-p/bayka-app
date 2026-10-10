@@ -1,14 +1,9 @@
 .contenedor {
-  position: relative;
-  display: inline-block;
+  composes: ancla from './flotanteAnclado.module.css';
 }
 
 .menu {
-  composes: caja from './listaFlotante.module.css';
-  position: absolute;
-  right: 0;
-  top: calc(100% + var(--space-xs));
-  z-index: var(--z-flotante);
+  composes: panel derecha from './flotanteAnclado.module.css';
   min-width: 200px;
   display: flex;
   flex-direction: column;

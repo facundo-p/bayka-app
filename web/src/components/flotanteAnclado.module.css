@@ -1,0 +1,26 @@
+/*
+ * Panel que cuelga de su disparador: MenuDesplegable y el panel de filtros de
+ * BarraHerramientas. El contenedor envuelve a los dos, que es también lo que
+ * `useDesplegableAnclado` toma como "adentro" para el clic afuera.
+ */
+
+.ancla {
+  position: relative;
+  display: inline-block;
+}
+
+.panel {
+  composes: caja from './listaFlotante.module.css';
+  position: absolute;
+  top: calc(100% + var(--space-xs));
+  z-index: var(--z-flotante);
+}
+
+/* Qué borde del panel se alinea con el mismo borde del disparador. */
+.izquierda {
+  left: 0;
+}
+
+.derecha {
+  right: 0;
+}

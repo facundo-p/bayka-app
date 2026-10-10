@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cx } from '../lib/classNames';
-import { useCerrarAfuera } from '../hooks/useCerrarAfuera';
+import { useDesplegableAnclado } from '../hooks/useDesplegableAnclado';
 import styles from './MenuDesplegable.module.css';
 
 export interface ItemDesplegable {
@@ -29,10 +29,7 @@ interface MenuDesplegableProps {
 
 /** Menú flotante anclado a un disparador: cierra al clickear afuera o con Escape. */
 export function MenuDesplegable({ etiqueta, disparador, items }: MenuDesplegableProps) {
-  const [abierto, setAbierto] = useState(false);
-  const contenedorRef = useRef<HTMLDivElement>(null);
-  const cerrar = useCallback(() => setAbierto(false), []);
-  useCerrarAfuera(abierto, cerrar, contenedorRef);
+  const { abierto, cerrar, alternar, contenedorRef } = useDesplegableAnclado();
 
   return (
     <div className={styles.contenedor} ref={contenedorRef}>
@@ -40,7 +37,7 @@ export function MenuDesplegable({ etiqueta, disparador, items }: MenuDesplegable
         'aria-haspopup': 'menu',
         'aria-expanded': abierto,
         'aria-label': etiqueta,
-        onClick: () => setAbierto((previo) => !previo),
+        onClick: alternar,
       })}
       {abierto && (
         <div role="menu" aria-label={etiqueta} className={styles.menu}>
