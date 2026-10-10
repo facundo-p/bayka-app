@@ -1,7 +1,7 @@
 // Cámara in-app (#749): Galería adentro, «Sin foto» con foto opcional y galería también sin permiso de cámara.
 
 import React from 'react';
-import { Modal } from 'react-native';
+import { Modal, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useCameraPermissions } from 'expo-camera';
 import CameraCaptureView from '../../src/components/CameraCaptureView';
@@ -59,6 +59,14 @@ describe('CameraCaptureView con permiso', () => {
     expect(queryByLabelText('Cerrar cámara')).toBeNull();
     fireEvent.press(getByText('Sin foto'));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('el preview va entero en 4:3 y el marco cuadrado ocupa el ancho, centrado (#831)', () => {
+    const { getByTestId, UNSAFE_getByProps } = renderCamara(false);
+    expect(UNSAFE_getByProps({ facing: 'back' }).props.ratio).toBe('4:3');
+    fireEvent(getByTestId('camera-frame-overlay'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 900 } } });
+    // Preview 3:4 de 400×533 centrado: el cuadrado de 400 arranca en y=250.
+    expect(StyleSheet.flatten(getByTestId('crop-frame').props.style)).toMatchObject({ left: 0, top: 250, width: 400, height: 400 });
   });
 
   it('con foto obligatoria muestra la X y no «Sin foto»', () => {
