@@ -4,12 +4,22 @@ import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CAPA_SATELITE } from '../../lib/capaSatelite';
 import { cx } from '../../lib/classNames';
+import {
+  areaConMargen,
+  esPuntoUnico,
+  extremosDe,
+  zoomDeEncuadre,
+  zoomDePartida,
+  zoomSinChequeo,
+  type Extremos,
+} from '../../lib/mapa/encuadreSatelital';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import { VARIANTE_MAPA_POR_DEFECTO, type MapaPuntosProps, type PuntoGps } from './types';
 import styles from './MapaPuntos.module.css';
 
-/** Zoom inicial cuando hay un único punto (fitBounds degenera con bounds nulos). */
-const ZOOM_PUNTO_UNICO = 17;
+/** Aire entre los puntos y el borde del mapa, en px. */
+const MARGEN_PX = 24;
+const MARGEN_AJUSTE = L.point(MARGEN_PX, MARGEN_PX);
 
 /** Borde blanco del punto: color JS de Leaflet (mismo caso que chartColors). */
 const BORDE_PUNTO = '#ffffff';
@@ -18,20 +28,44 @@ function colorDePunto(punto: PuntoGps, colorPorCodigo: Map<string, string>): str
   return colorPorCodigo.get(punto.codigo) ?? COLOR_GRAFICO_NN;
 }
 
-/** Ajusta la vista a los puntos y revalida el tamaño tras montar (evita tiles
- *  grises cuando el panel aparece al cambiar de tab). */
+/** Zoom de partida y área a chequear, con el mismo margen que usa `fitBounds`. */
+function planDeEncuadre(map: L.Map, extremos: Extremos) {
+  const limites = L.latLngBounds([extremos.sur, extremos.oeste], [extremos.norte, extremos.este]);
+  const zoomQueEntra = map.getBoundsZoom(limites, false, MARGEN_AJUSTE.multiplyBy(2));
+  const desde = zoomDePartida(zoomQueEntra, esPuntoUnico(extremos));
+  if (desde === null) return null;
+  const caja = {
+    min: map.project(limites.getNorthWest(), desde),
+    max: map.project(limites.getSouthEast(), desde),
+  };
+  return { limites, desde, area: areaConMargen(caja, desde, MARGEN_PX) };
+}
+
+/**
+ * Encuadra los puntos con el tope seguro y, si Esri tiene imagen más cerca,
+ * se acerca (#827). Revalida el tamaño tras montar (evita tiles grises cuando
+ * el panel aparece al cambiar de tab).
+ */
 function AjustarVista({ puntos }: { puntos: PuntoGps[] }) {
   const map = useMap();
+  // Por valor: un array nuevo con los mismos bordes no re-encuadra.
+  const { sur, oeste, norte, este } = useMemo(() => extremosDe(puntos), [puntos]);
   useEffect(() => {
+    let vigente = true;
     map.invalidateSize();
-    if (puntos.length === 0) return;
-    if (puntos.length === 1) {
-      map.setView([puntos[0].lat, puntos[0].lng], ZOOM_PUNTO_UNICO);
-      return;
-    }
-    const limites = L.latLngBounds(puntos.map((punto) => [punto.lat, punto.lng]));
-    map.fitBounds(limites, { padding: [24, 24] });
-  }, [map, puntos]);
+    const plan = planDeEncuadre(map, { sur, oeste, norte, este });
+    if (!plan) return;
+    const { limites, desde, area } = plan;
+    const encuadrarHasta = (maxZoom: number) =>
+      map.fitBounds(limites, { padding: MARGEN_AJUSTE, maxZoom });
+    encuadrarHasta(zoomSinChequeo(desde));
+    void zoomDeEncuadre(area, desde).then((zoom) => {
+      if (vigente && zoom !== zoomSinChequeo(desde)) encuadrarHasta(zoom);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [map, sur, oeste, norte, este]);
   return null;
 }
 
