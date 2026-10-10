@@ -1,5 +1,4 @@
 // Tests for PlantationRepository — admin mutation functions
-// (La generación de IDs se movió a la web server-side — issue #232.)
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {

@@ -652,7 +652,7 @@ Número del árbol dentro de la plantación, desde 1. No se guarda: la web y la 
 lo calculan al exportar con la misma función (`shared/idParcial.ts`):
 
 - Ordena por alta del grupo y después por posición del árbol en el grupo.
-- Con la misma alta desempata el id del grupo, y después el del árbol.
+- Con la misma alta y posición desempata el id del grupo, y después el del árbol.
 
 Ejemplo:
 
@@ -699,7 +699,8 @@ Periodo
 Especie
 ```
 
-Las filas salen en orden de ID Parcial.
+Las filas salen en orden de ID Parcial. El export de la app numera con los árboles
+que tiene el teléfono: conviene sincronizar antes de exportar.
 
 ---
 

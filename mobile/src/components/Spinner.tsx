@@ -3,8 +3,8 @@ import { spinnerStyles as styles } from './Spinner.styles';
 import { colors } from '../theme';
 
 /**
- * Spinner — indicador global de "transacción en progreso" (círculo que gira).
- * Reutilizable: modal de generación de IDs, modal de sync de grupos, etc.
+ * Spinner — indicador global de "transacción en progreso" (círculo que gira),
+ * con un texto opcional al costado.
  */
 export default function Spinner({
   label,
