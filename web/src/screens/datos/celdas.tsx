@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { PuntoColor } from '../../components';
+import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { tieneFotoSubida } from '../../services/fotoService';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import {
@@ -44,12 +44,10 @@ interface EspecieConPuntoProps {
 
 /** Punto de color de la especie seguido de "código · nombre". */
 export function EspecieConPunto({ arbol, className }: EspecieConPuntoProps) {
+  const colorDe = useColorEspecie();
   return (
     <span className={className}>
-      <PuntoColor
-        color={colorEspeciePorCodigo(arbol.especieCodigo)}
-        className={styles.puntoEspecie}
-      />
+      <PuntoColor color={colorDe(arbol.especieCodigo)} className={styles.puntoEspecie} />
       {etiquetaEspecie(arbol)}
     </span>
   );

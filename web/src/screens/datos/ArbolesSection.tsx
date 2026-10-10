@@ -9,6 +9,7 @@ import {
   Table,
   type SeleccionTabla,
 } from '../../components';
+import { ColoresEspecieContext } from '../../hooks/useColoresEspecie';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { useEnfocarAlMontar } from '../../hooks/useEnfocarAlMontar';
 import { formatearEntero } from '../../lib/formato';
@@ -123,15 +124,17 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
 
 function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   const { arboles, arbolSeleccionado: arbol } = seccion;
-  if (!arboles.data) return <Cargando label="Cargando árboles…" />;
+  if (!arboles.data || !seccion.colores.listo) return <Cargando label="Cargando árboles…" />;
   if (arboles.data.total === 0 && seccion.hayFiltro) {
     return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiar} />;
   }
   const panel = arbol && <PanelArbolSeleccionado seccion={seccion} arbol={arbol} />;
   return (
-    <LayoutConPanel panel={panel}>
-      <TablaArboles seccion={seccion} datos={arboles.data} />
-    </LayoutConPanel>
+    <ColoresEspecieContext value={seccion.colores.colorDe}>
+      <LayoutConPanel panel={panel}>
+        <TablaArboles seccion={seccion} datos={arboles.data} />
+      </LayoutConPanel>
+    </ColoresEspecieContext>
   );
 }
 

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Button, Cargando, PuntoColor, SelectConDetalle } from '../../components';
+import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { cx } from '../../lib/classNames';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { BloqueDetalle } from './BloqueDetalle';
 import { opcionesDeEspecie } from './cambioDeEspecie';
 import {
@@ -74,15 +74,12 @@ function FormularioDeEspecie({ cambio }: { cambio: CambioDeEspecie }) {
 
 /** Nombre destacado con el código en un chip y, debajo, el científico o el aviso de N/N. */
 function FichaDeEspecie({ arbol, accion }: { arbol: ArbolDetalle; accion?: ReactNode }) {
+  const colorDe = useColorEspecie();
   const sinIdentificar = esSinIdentificar(arbol);
   const secundario = sinIdentificar ? AVISO_SIN_IDENTIFICAR : arbol.especieNombreCientifico;
   return (
     <div className={cx(styles.ficha, sinIdentificar && styles.sinIdentificar)}>
-      <PuntoColor
-        color={colorEspeciePorCodigo(arbol.especieCodigo)}
-        tamano="lg"
-        className={styles.punto}
-      />
+      <PuntoColor color={colorDe(arbol.especieCodigo)} tamano="lg" className={styles.punto} />
       <div className={styles.textos}>
         <span className={styles.nombre}>
           {arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR}

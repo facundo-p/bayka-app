@@ -18,8 +18,8 @@ export const COLORES_GRAFICOS = [
 ];
 
 /**
- * Cuatro colores más, solo para el informe PDF (#756): ahí cada especie lleva
- * un color único por orden de cantidad, y con más de 8 la paleta se acabaría.
+ * Cuatro colores más para las especies (#756, #777): cada especie de una
+ * plantación lleva un color único, y con más de 8 la paleta se acabaría.
  */
 export const COLORES_GRAFICOS_EXTRA = [
   '#7d4e7a', // ciruela

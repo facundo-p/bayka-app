@@ -12,7 +12,8 @@ import type {
   EspecieDeFicha,
   GpsDeFicha,
 } from '../../queries/fichasQueries';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
 import type { FotoPdf } from '../estadoFoto';
 import { esMapaSatelital, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
 import { TEXTO_FICHA } from './textosFicha';
@@ -32,8 +33,6 @@ export type GpsFicha = { coordenadas: string; precision: string | null };
 export type ModeloFicha = {
   subId: string;
   idArbol: string;
-  /** null mientras no se generaron los IDs. */
-  idGlobal: string | null;
   especie: EspecieFicha;
   /** null si el grupo no tiene parcela. */
   parcela: CodigoNombre | null;
@@ -47,21 +46,27 @@ export type ModeloFicha = {
   mapa: MapaPdf;
 };
 
-export type ContextoFicha = { tecnico: string | null; foto: FotoPdf; mapa: MapaPdf };
+export type ContextoFicha = {
+  tecnico: string | null;
+  foto: FotoPdf;
+  mapa: MapaPdf;
+  /** Colores de especie de la plantación, los mismos del mapa. */
+  colorDe: ColorEspecie;
+};
 
 const ESPECIE_FICHA_NN: EspecieFicha = {
-  color: colorEspeciePorCodigo(null),
+  color: COLOR_GRAFICO_NN,
   titulo: etiquetaEspecie({ especieCodigo: null, especieNombre: null }),
   cientifico: null,
   clasificacion: null,
   sinIdentificar: true,
 };
 
-export function especieFicha(especie: EspecieDeFicha | null): EspecieFicha {
+export function especieFicha(especie: EspecieDeFicha | null, colorDe: ColorEspecie): EspecieFicha {
   if (!especie) return ESPECIE_FICHA_NN;
   const { separador } = TEXTO_FICHA;
   return {
-    color: colorEspeciePorCodigo(especie.codigo),
+    color: colorDe(especie.codigo),
     titulo: etiquetaEspecie({ especieCodigo: especie.codigo, especieNombre: especie.nombre }),
     cientifico: especie.nombreCientifico,
     clasificacion: `${ETIQUETA_TIPO_ESPECIE[especie.tipo]}${separador}${ETIQUETA_SUBTIPO_ESPECIE[especie.subtipo]}`,
@@ -83,9 +88,7 @@ export function datosFicha(arbol: ArbolParaFicha, contexto: ContextoFicha): Mode
   return {
     subId: arbol.subId,
     idArbol: arbol.idArbol,
-    // Es un identificador: sin separador de miles.
-    idGlobal: arbol.idGlobal == null ? null : String(arbol.idGlobal),
-    especie: especieFicha(arbol.especie),
+    especie: especieFicha(arbol.especie, contexto.colorDe),
     parcela: arbol.parcela,
     grupo: arbol.grupo,
     posicion: arbol.posicion == null ? SIN_DATO : String(arbol.posicion),

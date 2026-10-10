@@ -457,22 +457,6 @@ function parcelasDePlantacion(plantationId: string): number {
   return PARCELAS.filter((parcela) => parcela.plantation_id === plantationId).length;
 }
 
-/** Devuelto por el RPC agregado `stats_plantaciones` (migración 027). Los
- *  árboles salen de la matriz y las parcelas, de las que lista el explorador. */
-const STATS_PLANTACIONES: FilaDemo[] = [
-  { plantation_id: 'p1', usuarios: 6 },
-  { plantation_id: 'p2', usuarios: 4 },
-  { plantation_id: 'p3', usuarios: 3 },
-  { plantation_id: 'p4', usuarios: 5 },
-  { plantation_id: 'p5', usuarios: 2 },
-  { plantation_id: 'p6', usuarios: 3 },
-  { plantation_id: 'p7', usuarios: 2 },
-].map((stats) => ({
-  ...stats,
-  parcelas: parcelasDePlantacion(stats.plantation_id),
-  arboles: arbolesDePlantacion(stats.plantation_id),
-}));
-
 function parcelaPorId(id: string): Parcela {
   const parcela = PARCELAS.find((candidata) => candidata.id === id);
   if (!parcela) throw new Error(`Parcela de demo inexistente: ${id}`);
@@ -550,6 +534,31 @@ const ARBOLES: FilaDemo[] = GRUPOS.flatMap((grupo, indiceGrupo) =>
     arbolDeMuestra(grupo, indiceGrupo, posicion - 1),
   ),
 );
+
+function tecnicosDePlantacion(plantationId: string): string[] {
+  return PLANTACION_USUARIOS.filter((fila) => fila.plantation_id === plantationId).map((fila) =>
+    String(fila.user_id),
+  );
+}
+
+/** Puntos GPS y fotos con el criterio del dashboard, sobre los árboles de muestra. */
+function conteosDeMuestra(plantationId: string): FilaDemo {
+  const arboles = arbolesDeLaPlantacion({ p_plantation_id: plantationId });
+  return {
+    puntos_gps: arboles.filter((arbol) => arbol.latitude !== null).length,
+    fotos: arboles.filter((arbol) => fotoSubida(arbol.foto_url)).length,
+  };
+}
+
+/** Devuelto por el RPC agregado `stats_plantaciones` (migración 078). Los
+ *  árboles salen de la matriz y las parcelas, de las que lista el explorador. */
+const STATS_PLANTACIONES: FilaDemo[] = PLANTACIONES.map(({ id }) => ({
+  plantation_id: id,
+  parcelas: parcelasDePlantacion(id),
+  arboles: arbolesDePlantacion(id),
+  ...conteosDeMuestra(id),
+  tecnicos: tecnicosDePlantacion(id),
+}));
 
 /** Columna con la que otra tabla apunta a cada una. Un nombre por destino
  *  alcanza porque las FK que embebe la web siguen esa convención. */

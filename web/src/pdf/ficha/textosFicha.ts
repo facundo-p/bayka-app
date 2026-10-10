@@ -10,8 +10,6 @@ export const TEXTO_FICHA = {
   registrado: 'Registrado',
   tecnico: 'Técnico',
   gps: 'GPS',
-  idGlobal: 'ID Global',
-  idGlobalSinGenerar: 'ID Global sin generar',
   sinFoto: 'Sin foto',
   fotoNoDisponible: 'Foto no disponible',
   sinPuntoGps: 'Sin punto GPS',

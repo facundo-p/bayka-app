@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CameraOff, Download, ExternalLink, MapPinOff, Smartphone } from 'lucide-react';
 import { BotonCopiar, BotonIcono, Button, MapaPuntos, Modal, Spinner } from '../../components';
+import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { useDescarga } from '../../hooks/useDescarga';
 import { cx } from '../../lib/classNames';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -14,7 +15,6 @@ import {
   obtenerUrlDescargaFoto,
   obtenerUrlFoto,
 } from '../../services/fotoService';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import {
   textoCoordenadas,
@@ -223,6 +223,7 @@ function CeldaFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: str
 
 /** El único punto del árbol, con el color de su especie. */
 function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
+  const colorDe = useColorEspecie();
   const codigo = arbol.especieCodigo ?? ESPECIE_SIN_IDENTIFICAR;
   const punto = {
     lat: arbol.latitude,
@@ -233,7 +234,7 @@ function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
     subId: arbol.subId,
     parcelaId: arbol.parcelaId,
   };
-  const colorPorCodigo = new Map([[codigo, colorEspeciePorCodigo(arbol.especieCodigo)]]);
+  const colorPorCodigo = new Map([[codigo, colorDe(arbol.especieCodigo)]]);
   return <MapaPuntos variante="compacto" puntos={[punto]} colorPorCodigo={colorPorCodigo} />;
 }
 

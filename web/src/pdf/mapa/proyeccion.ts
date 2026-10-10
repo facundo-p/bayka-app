@@ -4,14 +4,12 @@
  */
 
 import { GRADOS_A_RADIANES, RADIO_TIERRA_M, type LatLng } from '../../../../shared/distancia';
+import { LADO_TILE, type Pixel } from '../../lib/mapa/tiles';
 
-/** Lado de un tile XYZ en px. */
-export const LADO_TILE = 256;
+export type { Pixel };
 
 /** Latitud donde Web Mercator corta el mundo en un cuadrado. */
 const LATITUD_MAXIMA = 85.05112878;
-
-export type Pixel = { x: number; y: number };
 
 /**
  * Lo que se ve del mundo en un rectángulo de `ancho` × `alto`. El zoom es
@@ -94,13 +92,6 @@ function extensionDe(puntos: readonly LatLng[], minimoMetros: number): Extension
     x: Math.max(caja.max.x - caja.min.x, minimo),
     y: Math.max(caja.max.y - caja.min.y, minimo),
   };
-}
-
-/** Ancho sobre alto de lo que ocupan los puntos en el mapa; 1 sin puntos. */
-export function aspectoDe(puntos: readonly LatLng[], minimoMetros: number): number {
-  if (puntos.length === 0) return 1;
-  const extension = extensionDe(puntos, minimoMetros);
-  return extension.x / extension.y;
 }
 
 /** El zoom más alto que deja entrar todos los puntos con el margen pedido. */

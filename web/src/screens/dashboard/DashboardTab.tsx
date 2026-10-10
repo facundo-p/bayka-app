@@ -7,13 +7,19 @@ import {
   obtenerFuenteDashboard,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
+import { useColoresEspecie } from '../../hooks/useColoresEspecie';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePlantacion } from '../../hooks/usePlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { useParcelasDatos } from '../datos/useDatosQueries';
-import { asignarColoresEspecies, type EspecieColoreada } from './coloresEspecies';
+import {
+  asignarColoresEspecies,
+  codigosConArboles,
+  type EspecieColoreada,
+} from './coloresEspecies';
 import { ResumenPlantacion } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
@@ -102,17 +108,18 @@ interface ContenidoDashboardProps {
   objetivoArboles: number | null;
   parcelas: ParcelaConStats[];
   puntos: PuntoGps[];
+  colorDe: ColorEspecie;
 }
 
 function ContenidoDashboard(props: ContenidoDashboardProps) {
-  const { fuente, objetivoArboles: objetivo, parcelas, puntos } = props;
+  const { fuente, objetivoArboles: objetivo, parcelas, puntos, colorDe } = props;
   const filtro = useFiltroParcela(parcelas);
   const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
   // El vacío es de la plantación: una parcela sin árboles muestra ceros y la
   // salida a "Ver todos", no una pantalla sin retorno.
   if (fuente.arboles.length === 0) return <SinArboles />;
-  const especies = asignarColoresEspecies(datos.porEspecie);
+  const especies = asignarColoresEspecies(datos.porEspecie, colorDe);
   return (
     <div className={styles.dashboard}>
       <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />
@@ -122,7 +129,8 @@ function ContenidoDashboard(props: ContenidoDashboardProps) {
 }
 
 /** Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
- *  defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla. */
+ *  defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla. Los colores
+ *  de especie se leen en paralelo y sí se esperan, para no repintar (#777). */
 function useDatosDashboard(plantationId: string) {
   const dashboard = useQuery({
     queryKey: CLAVE_QUERY.dashboard(plantationId),
@@ -134,15 +142,22 @@ function useDatosDashboard(plantationId: string) {
     queryFn: () => listarPuntosGps(plantationId),
   });
   const parcelas = useParcelasDatos(plantationId);
+  const colores = useColoresEspecie(plantationId, codigosConArboles(dashboard.data));
   const objetivoArboles = plantacion.data?.objetivoArboles ?? null;
-  return { dashboard, objetivoArboles, parcelas: parcelas.data ?? [], puntos: mapa.data ?? [] };
+  return {
+    dashboard,
+    colores,
+    objetivoArboles,
+    parcelas: parcelas.data ?? [],
+    puntos: mapa.data ?? [],
+  };
 }
 
 /** Tab Dashboard del detalle de plantación: hero, KPIs, mapa y panel de especies. */
 export function DashboardTab() {
   const id = useIdPlantacion();
-  const { dashboard, ...contexto } = useDatosDashboard(id);
-  if (dashboard.isPending) return <Cargando />;
+  const { dashboard, colores, ...contexto } = useDatosDashboard(id);
+  if (dashboard.isPending || !colores.listo) return <Cargando />;
   if (dashboard.isError) {
     return (
       <ErrorConReintento
@@ -151,5 +166,5 @@ export function DashboardTab() {
       />
     );
   }
-  return <ContenidoDashboard fuente={dashboard.data} {...contexto} />;
+  return <ContenidoDashboard fuente={dashboard.data} colorDe={colores.colorDe} {...contexto} />;
 }

@@ -143,7 +143,7 @@ function crearConsulta(tabla: string): ConsultaDemo {
 
 /** Foto de muestra: sin red no hay Storage, y con `data:` el botón Descargar también anda. */
 const FOTO_DEMO = `data:image/svg+xml;utf8,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="320" height="240" fill="#cfe3c4"/><circle cx="160" cy="100" r="60" fill="#5b8c4a"/><rect x="150" y="150" width="20" height="60" fill="#7a5a3a"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect width="320" height="320" fill="#cfe3c4"/><circle cx="160" cy="130" r="70" fill="#5b8c4a"/><rect x="150" y="190" width="20" height="80" fill="#7a5a3a"/></svg>',
 )}`;
 
 const SIN_SESION = new URLSearchParams(window.location.search).has(PARAMETRO_SIN_SESION);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
+import { useColoresEspecie } from '../../hooks/useColoresEspecie';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
@@ -89,6 +90,11 @@ function descargaFichaDe(contexto: ContextoFichasPdf | null) {
     contexto && (() => descargarFichaPdf(arbol.id, contexto));
 }
 
+/** Respaldo de los colores si la plantación no tiene especies habilitadas legibles. */
+function codigosDePagina(arboles: ArbolDetalle[] | undefined): string[] {
+  return (arboles ?? []).flatMap((arbol) => (arbol.especieCodigo ? [arbol.especieCodigo] : []));
+}
+
 function useSeleccionDeArboles(
   { arboles, clavePagina }: ReturnType<typeof usePaginaArboles>,
   contexto: ContextoFichasPdf | null,
@@ -118,6 +124,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
+  const colores = useColoresEspecie(id, codigosDePagina(paginaArboles.arboles.data?.arboles));
   const contextoFichas = useContextoFichas(plantacion, mapas);
   const seleccion = useSeleccionDeArboles(paginaArboles, contextoFichas);
   return {
@@ -133,5 +140,6 @@ export function useArbolesSection() {
     edicionDeEspecie,
     descargaFichaDe: descargaFichaDe(contextoFichas),
     seleccion,
+    colores,
   };
 }

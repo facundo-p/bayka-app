@@ -35,23 +35,6 @@ function Especie({ especie }: { especie: EspecieFicha }) {
   );
 }
 
-function Identificador({ ficha }: { ficha: ModeloFicha }) {
-  return (
-    <View style={styles.identificador}>
-      <Text style={styles.idArbol}>{ficha.idArbol}</Text>
-      {ficha.idGlobal ? (
-        <Text style={styles.idGlobal}>
-          {TEXTO_FICHA.idGlobal} <Text style={styles.idGlobalNumero}>{ficha.idGlobal}</Text>
-        </Text>
-      ) : (
-        <View style={styles.marca}>
-          <Text style={styles.marcaTexto}>{TEXTO_FICHA.idGlobalSinGenerar}</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
 function Foto({ foto }: { foto: FotoPdf }) {
   if (esFotoLista(foto)) return <Image style={styles.foto} src={foto.src} />;
   return (
@@ -130,7 +113,7 @@ export function Ficha({ ficha }: { ficha: ModeloFicha }) {
     <View style={styles.ficha} wrap={false}>
       <View style={styles.superior}>
         <Especie especie={ficha.especie} />
-        <Identificador ficha={ficha} />
+        <Text style={styles.idArbol}>{ficha.idArbol}</Text>
       </View>
       <View style={styles.cuerpo}>
         <Foto foto={ficha.foto} />

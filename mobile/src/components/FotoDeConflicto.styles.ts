@@ -1,13 +1,13 @@
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
-const MINIATURA_ANCHO = 132;
-const MINIATURA_ALTO = 96;
+/** Cuadrada como las fotos (#831). */
+const MINIATURA_LADO = 120;
 
 export const fotoDeConflictoStyles = StyleSheet.create({
   miniatura: {
-    width: MINIATURA_ANCHO,
-    height: MINIATURA_ALTO,
+    width: MINIATURA_LADO,
+    height: MINIATURA_LADO,
     borderRadius: borderRadius.md,
     backgroundColor: colors.background,
   },
