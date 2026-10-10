@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { usePopoverAnclado } from '../hooks/usePopoverAnclado';
 import { cx } from '../lib/classNames';
+import { varsCss } from '../lib/cssVars';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { Button } from './Button';
 import styles from './PanelFiltros.module.css';
@@ -58,14 +59,22 @@ function conFocoAlLimpiar(popover: Popover, onLimpiar?: () => void) {
   };
 }
 
+/**
+ * `tabIndex={-1}`: un clic en un área sin controles deja el foco en el panel y
+ * no en `body`, así el Escape sigue pasando por el contenedor y no cierra
+ * también el detalle de atrás.
+ */
 function Caja({ popover, titulo, children, ...pie }: PanelFiltrosProps & { popover: Popover }) {
+  const { lado, desvio } = popover.ubicacion;
   return (
     <div
       ref={popover.refs.panel}
       id={popover.idPanel}
       role="dialog"
       aria-label={titulo}
-      className={cx(styles.panel, styles[popover.lado])}
+      tabIndex={-1}
+      className={cx(styles.panel, styles[lado])}
+      style={varsCss({ 'desvio-panel': `${desvio}px` })}
     >
       <p className={styles.cabecera}>
         <span className={styles.titulo}>Filtros</span> se aplican al toque

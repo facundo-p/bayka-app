@@ -64,7 +64,8 @@ test('el botón vuelve a cerrarlo', async () => {
   expect(panel()).not.toBeInTheDocument();
 });
 
-test('Escape lo cierra, devuelve el foco al botón y no llega a lo de atrás', async () => {
+/** Un `keydown` en `document`, como el del panel de detalle que queda atrás. */
+function escucharDeAtras() {
   const deAtras = vi.fn();
   function OyenteDeAtras() {
     useEffect(() => {
@@ -74,6 +75,11 @@ test('Escape lo cierra, devuelve el foco al botón y no llega a lo de atrás', a
     return null;
   }
   render(<OyenteDeAtras />);
+  return deAtras;
+}
+
+test('Escape lo cierra, devuelve el foco al botón y no llega a lo de atrás', async () => {
+  const deAtras = escucharDeAtras();
   const { usuario, boton } = renderPanel();
   await usuario.click(boton);
 
@@ -81,6 +87,19 @@ test('Escape lo cierra, devuelve el foco al botón y no llega a lo de atrás', a
   expect(panel()).not.toBeInTheDocument();
   await waitFor(() => expect(boton).toHaveFocus());
   expect(deAtras).not.toHaveBeenCalled();
+});
+
+test('tras un clic en el texto del panel, Escape tampoco llega a lo de atrás', async () => {
+  const deAtras = escucharDeAtras();
+  const { usuario, boton } = renderPanel();
+  await usuario.click(boton);
+
+  await usuario.click(screen.getByText(/se aplican al toque/));
+  expect(panel()).toBeInTheDocument();
+  await usuario.keyboard('{Escape}');
+  expect(panel()).not.toBeInTheDocument();
+  expect(deAtras).not.toHaveBeenCalled();
+  await waitFor(() => expect(boton).toHaveFocus());
 });
 
 test('un clic en un área inerte lo cierra y el foco vuelve al botón', async () => {

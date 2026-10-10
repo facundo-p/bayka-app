@@ -21,39 +21,52 @@ export const LADO_PANEL = {
 
 export type LadoPanel = (typeof LADO_PANEL)[keyof typeof LADO_PANEL];
 
-/** Se abre hacia la derecha del disparador si ahí entra; si no, hacia la izquierda. */
-export function ladoQueEntra(
-  disparador: Pick<DOMRect, 'left'>,
+export interface UbicacionPanel {
+  lado: LadoPanel;
+  /** px hacia la derecha, cuando el panel tampoco entra alineado por la derecha. */
+  desvio: number;
+}
+
+/** Borde izquierdo con el del disparador: se abre hacia la derecha. */
+const ALINEADO_IZQUIERDA: UbicacionPanel = { lado: LADO_PANEL.izquierda, desvio: 0 };
+
+/**
+ * Se abre hacia la derecha del disparador si ahí entra; si no, hacia la
+ * izquierda, y si tampoco entra, se corre lo justo para dejar el margen.
+ */
+export function ubicarPanel(
+  disparador: Pick<DOMRect, 'left' | 'right'>,
   anchoPanel: number,
   anchoVentana: number,
-): LadoPanel {
-  const entra = disparador.left + anchoPanel <= anchoVentana - MARGEN_VIEWPORT;
-  return entra ? LADO_PANEL.izquierda : LADO_PANEL.derecha;
+): UbicacionPanel {
+  if (disparador.left + anchoPanel <= anchoVentana - MARGEN_VIEWPORT) return ALINEADO_IZQUIERDA;
+  const bordeIzquierdo = disparador.right - anchoPanel;
+  return { lado: LADO_PANEL.derecha, desvio: Math.max(0, MARGEN_VIEWPORT - bordeIzquierdo) };
 }
 
 type Ref<T extends HTMLElement> = RefObject<T | null>;
 
 /** `clientWidth` y no `innerWidth`: la barra de scroll también tapa. */
-function medirLado(disparador: HTMLElement, panel: HTMLElement): LadoPanel {
+function medirUbicacion(disparador: HTMLElement, panel: HTMLElement): UbicacionPanel {
   const anchoVentana = document.documentElement.clientWidth;
-  return ladoQueEntra(disparador.getBoundingClientRect(), panel.offsetWidth, anchoVentana);
+  return ubicarPanel(disparador.getBoundingClientRect(), panel.offsetWidth, anchoVentana);
 }
 
 /** Mide antes de pintar, así el panel nunca se ve un instante desbordado. */
-function useLado(abierto: boolean, disparador: Ref<HTMLElement>, panel: Ref<HTMLElement>) {
-  const [lado, setLado] = useState<LadoPanel>(LADO_PANEL.izquierda);
+function useUbicacion(abierto: boolean, disparador: Ref<HTMLElement>, panel: Ref<HTMLElement>) {
+  const [ubicacion, setUbicacion] = useState(ALINEADO_IZQUIERDA);
   useLayoutEffect(() => {
     if (!abierto) return;
     function medir() {
       if (disparador.current && panel.current) {
-        setLado(medirLado(disparador.current, panel.current));
+        setUbicacion(medirUbicacion(disparador.current, panel.current));
       }
     }
     medir();
     window.addEventListener('resize', medir);
     return () => window.removeEventListener('resize', medir);
   }, [abierto, disparador, panel]);
-  return lado;
+  return ubicacion;
 }
 
 function enfocarPrimero(panel: Ref<HTMLElement>) {
@@ -106,21 +119,21 @@ function cierresPorTeclado(cerrar: () => void, contenedor: Ref<HTMLElement>) {
 /**
  * Popover no modal anclado a un botón: abre con el foco en su primer control,
  * cierra con Escape, con un clic afuera o cuando el Tab sale de él, y se abre
- * hacia el lado donde entra en la ventana.
+ * hacia el lado donde entra en la ventana, o corrido si no entra en ninguno.
  */
 export function usePopoverAnclado() {
   const { abierto, cerrar, alternar, contenedorRef } = useDesplegableAnclado();
   const disparadorRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const idPanel = useId();
-  const lado = useLado(abierto, disparadorRef, panelRef);
+  const ubicacion = useUbicacion(abierto, disparadorRef, panelRef);
   useFocoInicial(abierto, panelRef);
   useDevolverFoco(abierto, disparadorRef);
   const refs = { contenedor: contenedorRef, disparador: disparadorRef, panel: panelRef };
   return {
     abierto,
     alternar,
-    lado,
+    ubicacion,
     idPanel,
     refs,
     enfocarPrimero: () => enfocarPrimero(panelRef),

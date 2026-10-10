@@ -19,6 +19,13 @@
   min-width: var(--ancho-panel-filtros-min);
   max-width: min(var(--ancho-panel-filtros-max), calc(100vw - 2 * var(--page-pad-x)));
   border-radius: var(--radius-card-sm);
+  /* Lo que se corre cuando no entra hacia ningún lado del botón. */
+  translate: var(--desvio-panel, 0) 0;
+}
+
+/* Recibe el foco de un clic sin control debajo, como el diálogo de `Modal`. */
+.panel:focus {
+  outline: none;
 }
 
 .izquierda {
