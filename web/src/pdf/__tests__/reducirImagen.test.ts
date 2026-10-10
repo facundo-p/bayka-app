@@ -23,3 +23,13 @@ test('una foto panorámica se recorta a los costados', () => {
 test('con la misma proporción no recorta', () => {
   expect(recorteCubriendo(640, 480, CUATRO_TERCIOS)).toEqual({ x: 0, y: 0, ancho: 640, alto: 480 });
 });
+
+const CUADRADA = 1;
+
+test('una foto 4:3 vieja se recorta al centro para el recuadro cuadrado', () => {
+  expect(recorteCubriendo(640, 480, CUADRADA)).toEqual({ x: 80, y: 0, ancho: 480, alto: 480 });
+});
+
+test('una foto cuadrada entra entera en el recuadro cuadrado', () => {
+  expect(recorteCubriendo(1080, 1080, CUADRADA)).toEqual({ x: 0, y: 0, ancho: 1080, alto: 1080 });
+});

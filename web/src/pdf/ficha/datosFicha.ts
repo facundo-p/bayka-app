@@ -35,8 +35,6 @@ export type GpsFicha = { coordenadas: string; precision: string | null };
 export type ModeloFicha = {
   subId: string;
   idArbol: string;
-  /** null mientras no se generaron los IDs. */
-  idGlobal: string | null;
   especie: EspecieFicha;
   /** null si el grupo no tiene parcela. */
   parcela: CodigoNombre | null;
@@ -92,8 +90,6 @@ export function datosFicha(arbol: ArbolParaFicha, contexto: ContextoFicha): Mode
   return {
     subId: arbol.subId,
     idArbol: arbol.idArbol,
-    // Es un identificador: sin separador de miles.
-    idGlobal: arbol.idGlobal == null ? null : String(arbol.idGlobal),
     especie: especieFicha(arbol.especie, contexto.colorDe),
     parcela: arbol.parcela,
     grupo: arbol.grupo,

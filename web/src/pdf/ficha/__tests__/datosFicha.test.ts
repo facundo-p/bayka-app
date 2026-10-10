@@ -37,7 +37,6 @@ test('ficha completa: todo formateado para pintar', () => {
   expect(datosFicha(COMPLETO, CONTEXTO)).toEqual({
     subId: 'LP12L10ANC23',
     idArbol: 'LP12L10ANC23-SS26',
-    idGlobal: '10479',
     especie: {
       color: COLOR_DE('ANC'),
       titulo: 'ANC · Anchico',
@@ -83,10 +82,6 @@ test('N/N: ámbar, sin científico ni clasificación', () => {
     clasificacion: null,
     sinIdentificar: true,
   });
-});
-
-test('sin ID Global generado queda en null para la marca', () => {
-  expect(datosFicha({ ...COMPLETO, idGlobal: null }, CONTEXTO).idGlobal).toBeNull();
 });
 
 test('sin científico conserva la clasificación', () => {

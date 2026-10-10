@@ -11,8 +11,8 @@ import { reducirImagen, type MedidaImagen } from './reducirImagen';
 const SIN_FOTO: FotoPdf = { estado: ESTADO_FOTO.sinFoto };
 const NO_DISPONIBLE: FotoPdf = { estado: ESTADO_FOTO.noDisponible };
 
-/** 4:3 como el recuadro de la ficha; 480 px alcanzan para 4 cm impresos. */
-export const MEDIDA_FOTO_PDF: MedidaImagen = { ancho: 480, alto: 360, calidad: 0.75 };
+/** Cuadrada como el recuadro de la ficha (las 4:3 viejas se recortan al centro); 480 px alcanzan para 4 cm impresos. */
+export const MEDIDA_FOTO_PDF: MedidaImagen = { ancho: 480, alto: 480, calidad: 0.75 };
 
 /** Descargas simultáneas: más satura la conexión sin terminar antes. */
 const DESCARGAS_SIMULTANEAS = 5;

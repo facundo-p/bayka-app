@@ -5,9 +5,11 @@ export const SUSTANTIVO = {
   arbol: { singular: 'árbol', plural: 'árboles' },
   especie: { singular: 'especie', plural: 'especies' },
   especieCientifica: { singular: 'especie científica', plural: 'especies científicas' },
+  foto: { singular: 'foto', plural: 'fotos' },
   grupo: { singular: 'grupo', plural: 'grupos' },
   parcela: { singular: 'parcela', plural: 'parcelas' },
   persona: { singular: 'persona', plural: 'personas' },
   plantacion: { singular: 'plantación', plural: 'plantaciones' },
+  punto: { singular: 'punto', plural: 'puntos' },
   temporada: { singular: 'temporada', plural: 'temporadas' },
 } as const satisfies Record<string, Sustantivo>;

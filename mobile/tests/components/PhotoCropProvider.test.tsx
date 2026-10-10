@@ -140,6 +140,18 @@ describe('recorte', () => {
     expect(mockedGallery).toHaveBeenCalledTimes(1);
   });
 
+  it('ninguna foto sale sin pasar por el recorte cuadrado (#831)', async () => {
+    const promesa = abrir();
+    let resuelta = false;
+    void promesa.then(() => { resuelta = true; });
+    fireEvent.press(screen.getByText('capturar'));
+    await act(async () => {});
+    expect(screen.getByTestId('recorte')).toBeTruthy();
+    expect(resuelta).toBe(false);
+    fireEvent.press(screen.getByText('guardar'));
+    await expect(promesa).resolves.toBe('file:///camara.jpg');
+  });
+
   it('cancelar el recorte resuelve null', async () => {
     const promesa = abrir();
     fireEvent.press(screen.getByText('capturar'));

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { PlantationMap } from '../PlantationMap';
 
@@ -24,13 +24,13 @@ function punto(codigo: string, nombre: string): PuntoGps {
   };
 }
 
-test('la leyenda usa los nombres de la plantación, no los de los puntos visibles', () => {
-  // Filtrado por parcela solo quedan quebrachos: el algarrobo igual se nombra.
+test('el header queda solo con el título: sin leyenda de especies ni chip de puntos', () => {
   render(<PlantationMap puntos={[punto('QB', 'Quebracho')]} leyenda={LEYENDA} />);
 
-  expect(screen.getByText('Quebracho')).toBeInTheDocument();
-  expect(screen.getByText('Algarrobo')).toBeInTheDocument();
-  expect(screen.queryByText('AL')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Mapa de la plantación' })).toBeInTheDocument();
+  expect(screen.queryByText('Quebracho')).not.toBeInTheDocument();
+  expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
+  expect(screen.queryByText(/^puntos?$/)).not.toBeInTheDocument();
 });
 
 test('sin filtro: subtítulo genérico y vacío genérico', () => {
@@ -45,28 +45,4 @@ test('con filtro: el subtítulo y el vacío nombran la parcela', () => {
 
   expect(screen.getByText(/Parcela P1/)).toBeInTheDocument();
   expect(screen.getByText('Sin puntos GPS en la parcela P1')).toBeInTheDocument();
-});
-
-test('el chip cuenta los puntos que recibe (ya filtrados)', () => {
-  render(
-    <PlantationMap
-      puntos={[punto('QB', 'Quebracho'), punto('QB', 'Quebracho')]}
-      leyenda={LEYENDA}
-      parcelaFiltro="P1"
-    />,
-  );
-
-  expect(screen.getByText('2')).toBeInTheDocument();
-});
-
-test.each([
-  [0, '0', 'puntos'],
-  [1, '1', 'punto'],
-  [2, '2', 'puntos'],
-  [1000, '1.000', 'puntos'],
-])('el chip concuerda con %i puntos: "%s %s"', (cantidad, numero, sustantivo) => {
-  const puntos = Array.from({ length: cantidad }, () => punto('QB', 'Quebracho'));
-  render(<PlantationMap puntos={puntos} leyenda={LEYENDA} />);
-
-  expect(within(screen.getByText(sustantivo)).getByText(numero)).toBeInTheDocument();
 });

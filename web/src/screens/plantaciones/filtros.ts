@@ -10,6 +10,7 @@ import {
   sinArchivadas,
   type PlantacionConStats,
 } from '../../queries/plantationQueries';
+import type { PerfilResumen } from '../../queries/usuarioQueries';
 
 const ARBOL_REGISTRADO: Sustantivo = {
   singular: 'árbol registrado',
@@ -38,10 +39,25 @@ export type OrdenPlantacion = (typeof ORDEN_PLANTACION)[keyof typeof ORDEN_PLANT
 /** `temporada` vacía = todas (el Select no tiene sentinela propio). */
 export const TEMPORADA_TODAS = '';
 
+/** `visiblePor` vacío = sin filtrar por técnico. */
+export const TECNICO_TODOS = '';
+
+/** Visibilidad en la app móvil (`visible_in_app`). */
+export const FILTRO_VISIBLES = {
+  todas: 'todas',
+  si: 'si',
+  no: 'no',
+} as const;
+
+export type FiltroVisibles = (typeof FILTRO_VISIBLES)[keyof typeof FILTRO_VISIBLES];
+
 export type FiltrosPlantaciones = {
   busqueda: string;
   estado: FiltroEstado;
   temporada: string;
+  /** Id del técnico asignado, o `TECNICO_TODOS`. */
+  visiblePor: string;
+  visibles: FiltroVisibles;
   orden: OrdenPlantacion;
 };
 
@@ -51,6 +67,8 @@ export type FiltrosBarraPlantaciones = Omit<FiltrosPlantaciones, 'busqueda'>;
 export const FILTROS_INICIALES_PLANTACIONES: FiltrosBarraPlantaciones = {
   estado: FILTRO_ESTADO.todas,
   temporada: TEMPORADA_TODAS,
+  visiblePor: TECNICO_TODOS,
+  visibles: FILTRO_VISIBLES.todas,
   orden: ORDEN_PLANTACION.arboles,
 };
 
@@ -58,6 +76,21 @@ export const FILTROS_INICIALES_PLANTACIONES: FiltrosBarraPlantaciones = {
 export function temporadasDisponibles(plantaciones: PlantacionConStats[]): string[] {
   const unicas = new Set(plantaciones.map((plantacion) => plantacion.periodo).filter(Boolean));
   return [...unicas].sort((a, b) => b.localeCompare(a, 'es'));
+}
+
+/** Técnicos activos asignados a alguna plantación, en el orden de `perfiles`.
+ *  Los admins no figuran: ven todas. */
+export function tecnicosAsignados(
+  perfiles: PerfilResumen[],
+  plantaciones: PlantacionConStats[],
+): PerfilResumen[] {
+  const asignados = new Set(plantaciones.flatMap((plantacion) => plantacion.tecnicos));
+  return perfiles.filter((perfil) => perfil.activo && asignados.has(perfil.id));
+}
+
+/** Falso si el técnico elegido ya no está entre los elegibles (desactivado o sin asignaciones). */
+export function tecnicoElegible(visiblePor: string, elegibles: string[]): boolean {
+  return visiblePor === TECNICO_TODOS || elegibles.includes(visiblePor);
 }
 
 /** Coincidencia contra lugar y temporada, sin distinguir mayúsculas ni tildes. */
@@ -73,6 +106,25 @@ function pasaEstado(plantacion: PlantacionConStats, estado: FiltroEstado): boole
 
 function pasaTemporada(plantacion: PlantacionConStats, temporada: string): boolean {
   return temporada === TEMPORADA_TODAS || plantacion.periodo === temporada;
+}
+
+function pasaVisiblePor(plantacion: PlantacionConStats, tecnico: string): boolean {
+  return tecnico === TECNICO_TODOS || plantacion.tecnicos.includes(tecnico);
+}
+
+function pasaVisibles(plantacion: PlantacionConStats, visibles: FiltroVisibles): boolean {
+  if (visibles === FILTRO_VISIBLES.todas) return true;
+  return plantacion.visibleInApp === (visibles === FILTRO_VISIBLES.si);
+}
+
+function pasaFiltros(plantacion: PlantacionConStats, filtros: FiltrosPlantaciones): boolean {
+  return (
+    coincide(plantacion, filtros.busqueda) &&
+    pasaEstado(plantacion, filtros.estado) &&
+    pasaTemporada(plantacion, filtros.temporada) &&
+    pasaVisiblePor(plantacion, filtros.visiblePor) &&
+    pasaVisibles(plantacion, filtros.visibles)
+  );
 }
 
 /** Comparadores por criterio; los conteos y las fechas van de mayor a menor. */
@@ -93,16 +145,11 @@ function comparar(orden: OrdenPlantacion) {
 
 export function filtrarPlantaciones(
   plantaciones: PlantacionConStats[],
-  { busqueda, estado, temporada, orden }: FiltrosPlantaciones,
+  filtros: FiltrosPlantaciones,
 ): PlantacionConStats[] {
   return plantaciones
-    .filter(
-      (plantacion) =>
-        coincide(plantacion, busqueda) &&
-        pasaEstado(plantacion, estado) &&
-        pasaTemporada(plantacion, temporada),
-    )
-    .sort(comparar(orden));
+    .filter((plantacion) => pasaFiltros(plantacion, filtros))
+    .sort(comparar(filtros.orden));
 }
 
 export function contarArboles(plantaciones: PlantacionConStats[]): number {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   BarraHerramientas,
   CampoBusqueda,
@@ -8,16 +8,23 @@ import {
   type Opcion,
 } from '../../components';
 import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import { usePerfiles } from '../../hooks/usePerfiles';
+import { nombreVisible } from '../../lib/presentacionUsuario';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import {
   contarArboles,
   FILTRO_ESTADO,
+  FILTRO_VISIBLES,
   ORDEN_PLANTACION,
+  TECNICO_TODOS,
+  tecnicoElegible,
+  tecnicosAsignados,
   TEMPORADA_TODAS,
   temporadasDisponibles,
   type FiltroEstado,
   type FiltrosBarraPlantaciones,
+  type FiltroVisibles,
   type OrdenPlantacion,
 } from './filtros';
 
@@ -34,8 +41,76 @@ const OPCIONES_ORDEN: Array<Opcion<OrdenPlantacion>> = [
   { value: ORDEN_PLANTACION.creada, label: 'Orden: creada ↓' },
 ];
 
+const OPCIONES_VISIBLES: Array<Opcion<FiltroVisibles>> = [
+  { value: FILTRO_VISIBLES.todas, label: 'Visibles: todas' },
+  { value: FILTRO_VISIBLES.si, label: 'Visibles: sí' },
+  { value: FILTRO_VISIBLES.no, label: 'Visibles: no' },
+];
+
 function opcionesTemporada(temporadas: string[]): Array<Opcion<string>> {
   return temporadas.map((temporada) => ({ value: temporada, label: temporada }));
+}
+
+/** Técnicos que se pueden elegir en «Visible por»: los activos con alguna asignación.
+ *  `listas` es falso mientras falten los perfiles o las plantaciones. */
+function useOpcionesTecnico(todas: PlantacionConStats[] | undefined) {
+  const perfiles = usePerfiles();
+  const opciones = useMemo(
+    () =>
+      tecnicosAsignados(perfiles.data ?? [], todas ?? []).map((perfil) => ({
+        value: perfil.id,
+        label: nombreVisible(perfil.nombre, perfil.id),
+      })),
+    [perfiles.data, todas],
+  );
+  return { opciones, listas: perfiles.isSuccess && todas !== undefined };
+}
+
+/** Si el técnico elegido sale de las opciones, el Select mostraría «todos» con el filtro
+ *  aplicado: se suelta. Vive en la barra y no en la hoja, que en teléfono se desmonta. */
+function useSoltarTecnicoAusente(
+  controles: ControlesFiltros<FiltrosBarraPlantaciones>,
+  todas: PlantacionConStats[] | undefined,
+): Array<Opcion<string>> {
+  const { opciones, listas } = useOpcionesTecnico(todas);
+  const { filtros, onFiltro } = controles;
+  useEffect(() => {
+    const elegibles = opciones.map((opcion) => opcion.value);
+    if (listas && !tecnicoElegible(filtros.visiblePor, elegibles)) {
+      onFiltro('visiblePor', TECNICO_TODOS);
+    }
+  }, [listas, opciones, filtros.visiblePor, onFiltro]);
+  return opciones;
+}
+
+interface FiltrosVisibilidadProps {
+  controles: ControlesFiltros<FiltrosBarraPlantaciones>;
+  tecnicos: Array<Opcion<string>>;
+}
+
+/** «Visible por» (técnico asignado) y «Visibles» (en la app): juntos dicen qué ve un técnico. */
+function FiltrosVisibilidad({ controles, tecnicos }: FiltrosVisibilidadProps) {
+  const { filtros, onFiltro } = controles;
+  return (
+    <>
+      <Select
+        label="Filtrar por técnico asignado"
+        labelOculto
+        value={filtros.visiblePor}
+        onChange={(evento) => onFiltro('visiblePor', evento.target.value)}
+        opciones={tecnicos}
+      >
+        <option value={TECNICO_TODOS}>Visible por: todos</option>
+      </Select>
+      <Select
+        label="Filtrar por visibilidad en la app"
+        labelOculto
+        value={filtros.visibles}
+        onChange={(evento) => onFiltro('visibles', evento.target.value as FiltroVisibles)}
+        opciones={OPCIONES_VISIBLES}
+      />
+    </>
+  );
 }
 
 interface PlantacionesToolbarProps {
@@ -46,10 +121,11 @@ interface PlantacionesToolbarProps {
   visibles: PlantacionConStats[];
 }
 
-/** Toolbar de Plantaciones: búsqueda, estado, temporada, orden y recuento. */
+/** Toolbar de Plantaciones: búsqueda, estado, temporada, visibilidad, orden y recuento. */
 export function PlantacionesToolbar({ controles, todas, visibles }: PlantacionesToolbarProps) {
   const { busqueda, onBuscar, filtros, onFiltro } = controles;
   const temporadas = useMemo(() => temporadasDisponibles(todas ?? []), [todas]);
+  const tecnicos = useSoltarTecnicoAusente(controles, todas);
   return (
     <BarraHerramientas
       encabezado={
@@ -89,6 +165,7 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
           <option value={TEMPORADA_TODAS}>Temporada: todas</option>
         </Select>
       )}
+      <FiltrosVisibilidad controles={controles} tecnicos={tecnicos} />
       <Select
         label="Ordenar plantaciones"
         labelOculto

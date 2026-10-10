@@ -5,10 +5,11 @@ import { AuthProvider } from '../hooks/useAuth';
 import { AppRoutes } from '../App';
 
 /** Renderiza las rutas reales con los providers de test.
- *  Query client propio por render: sin retry y sin cache compartida. */
+ *  Query client propio por render: sin retry y sin cache compartida. Se
+ *  devuelve para forzar un refetch desde el test. */
 export function renderRutasEn(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const resultado = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
@@ -17,6 +18,7 @@ export function renderRutasEn(path: string) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return Object.assign(resultado, { queryClient });
 }
 
 /** El contenido de la pantalla vive en <main>: acotar ahí evita chocar con el
