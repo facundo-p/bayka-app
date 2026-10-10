@@ -18,6 +18,9 @@ import { conPagina, medirPagina } from './navegacion.mjs';
 const ESPERA_ESTILO_MS = 300;
 const ANCHO_COBERTURA = 1440;
 
+/** La miga de la topbar, por su nombre accesible. */
+const SELECTOR_MIGA = 'nav[aria-label="Migas de navegación"]';
+
 /** Apretón que recorta el recuento de Especies sin ellipsis. */
 const RECUENTO_RECORTADO =
   `${claseModulo('recuento')}{display:block !important;width:40px !important;` +
@@ -286,6 +289,12 @@ const CASOS_AUTOTEST = [
  * `plantaciones` — cobertura fantasma que puntuaba impecable.
  */
 const COBERTURA = [
+  {
+    nombre: 'dashboard-archivada · la miga lleva el badge «Archivada», además del estado',
+    ruta: RUTA.dashboardArchivada,
+    vale: async (pagina) =>
+      (await pagina.locator(SELECTOR_MIGA).getByText('Archivada', { exact: true }).count()) > 0,
+  },
   {
     nombre: 'login · se mide el login, no el listado al que redirige',
     ruta: RUTA.loginSinSesion,
