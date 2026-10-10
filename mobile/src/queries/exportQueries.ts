@@ -5,6 +5,7 @@ import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
 import { eq, and, asc, isNotNull } from 'drizzle-orm';
 import { idDeArbol } from '../../../shared/codigoPlantacion';
+import { numerarPorIdParcial } from '../../../shared/idParcial';
 
 /**
  * Fila para el export CSV/Excel. lugar/plantacionLugar resuelven ambos a plantations.lugar ("Zona"
@@ -15,8 +16,8 @@ import { idDeArbol } from '../../../shared/codigoPlantacion';
 export interface ExportRow {
   /** `<SubID>-<código de plantación>` (#559). */
   idArbol: string;
-  globalId: number | null;
-  idParcial: number | null;
+  /** Número del árbol en la plantación, calculado al exportar como en la web (#822). */
+  idParcial: number;
   lugar: string;
   plantacionLugar: string;
   parcelaNombre: string | null;
@@ -31,14 +32,14 @@ function nombreVigente(nombre: string | null, borradaEn: string | null): string 
   return borradaEn === null ? nombre : null;
 }
 
-/** Filas de export ordenadas por globalId ASC; ver `ExportRow` para el porqué de los JOIN. */
-export async function getExportRows(plantacionId: string): Promise<ExportRow[]> {
-  const filas = await db
+function leerFilasDeExport(plantacionId: string) {
+  return db
     .select({
-      globalId: trees.globalId,
-      idParcial: trees.plantacionId,
+      arbolId: trees.id,
+      grupoId: groups.id,
+      grupoCreadoEn: groups.createdAt,
+      posicion: trees.posicion,
       lugar: plantations.lugar,
-      plantacionLugar: plantations.lugar,
       parcelaNombre: parcelas.nombre,
       parcelaBorradaEn: parcelas.deletedAt,
       grupoNombre: groups.nombre,
@@ -52,14 +53,28 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
-    .where(eq(groups.plantacionId, plantacionId))
-    .orderBy(asc(trees.globalId));
+    .where(eq(groups.plantacionId, plantacionId));
+}
 
-  return filas.map(({ parcelaBorradaEn, plantacionCodigo, ...fila }) => ({
-    idArbol: idDeArbol(fila.subId, plantacionCodigo),
-    ...fila,
-    parcelaNombre: nombreVigente(fila.parcelaNombre, parcelaBorradaEn),
-  }));
+type FilaLeida = Awaited<ReturnType<typeof leerFilasDeExport>>[number];
+
+function filaDeExport(fila: FilaLeida & { idParcial: number }): ExportRow {
+  return {
+    idArbol: idDeArbol(fila.subId, fila.plantacionCodigo),
+    idParcial: fila.idParcial,
+    lugar: fila.lugar,
+    plantacionLugar: fila.lugar,
+    parcelaNombre: nombreVigente(fila.parcelaNombre, fila.parcelaBorradaEn),
+    grupoNombre: fila.grupoNombre,
+    subId: fila.subId,
+    periodo: fila.periodo,
+    especieNombre: fila.especieNombre,
+  };
+}
+
+/** Filas de export en orden de ID Parcial; ver `ExportRow` para el porqué de los JOIN. */
+export async function getExportRows(plantacionId: string): Promise<ExportRow[]> {
+  return numerarPorIdParcial(await leerFilasDeExport(plantacionId)).map(filaDeExport);
 }
 
 /** Fila del export KML (solo árboles con coordenadas); especieNombre y parcelaNombre nullables:

@@ -1,6 +1,5 @@
 /**
  * PlantationRepository — mutaciones admin: escriben a Supabase primero, sincronizan a SQLite después.
- * IDs finales (plantacion_id/global_id) los genera el server (RPC generate_tree_ids, #232) y llegan vía pull.
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';

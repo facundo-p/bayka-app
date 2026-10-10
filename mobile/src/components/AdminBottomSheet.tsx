@@ -17,9 +17,6 @@ import { ayudaFinalizarConPendientes } from '../utils/finalizarPlantacion';
 import { esActiva, esArchivada, esEliminadaEnServidor, esFinalizada } from '../constants/estados';
 import { AYUDA_REABRIR_SIN_CONEXION, ETIQUETA_REABRIR, esReabrible } from '../utils/reaperturaPlantacion';
 
-/** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
-export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
-
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type AdminBottomSheetProps = {
@@ -221,35 +218,24 @@ export default function AdminBottomSheet({
             {isAdmin && esFinalizada(plantation) && (
               <>
                 <View style={styles.divider} />
-                {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}
-                {!meta.idsGenerated && (
-                  <View style={styles.infoNote}>
-                    <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-                    <Text style={styles.infoNoteText}>{AVISO_IDS_DESDE_WEB}</Text>
-                  </View>
-                )}
-                {meta.idsGenerated && (
-                  <>
-                    <ActionItem
-                      icon="document-text-outline"
-                      label="Exportar CSV"
-                      color={colors.primary}
-                      onPress={onExportCsv}
-                    />
-                    <ActionItem
-                      icon="grid-outline"
-                      label="Exportar Excel"
-                      color={colors.primary}
-                      onPress={onExportExcel}
-                    />
-                    <ActionItem
-                      icon="location-outline"
-                      label="Exportar KML"
-                      color={colors.primary}
-                      onPress={onExportKml}
-                    />
-                  </>
-                )}
+                <ActionItem
+                  icon="document-text-outline"
+                  label="Exportar CSV"
+                  color={colors.primary}
+                  onPress={onExportCsv}
+                />
+                <ActionItem
+                  icon="grid-outline"
+                  label="Exportar Excel"
+                  color={colors.primary}
+                  onPress={onExportExcel}
+                />
+                <ActionItem
+                  icon="location-outline"
+                  label="Exportar KML"
+                  color={colors.primary}
+                  onPress={onExportKml}
+                />
                 {canReopen && esReabrible(plantation) && (
                   <ActionItem
                     icon="lock-open-outline"

@@ -127,9 +127,9 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     // Un árbol apuntando al id del server no puede existir antes de reconciliar:
     // las FKs lo rechazan (#617). Los dos apuntan al id local.
     await mockTestDb.insert(trees).values([
-      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
+      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1' }),
       {
-        ...createTestTree({ id: 't2', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC2', globalId: 6002 }),
+        ...createTestTree({ id: 't2', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC2' }),
         especieBaseId: LOCAL_ID,
       },
     ]);
@@ -210,7 +210,7 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     const { group } = await crearPlantacionConGrupo();
     await insertarEspecie(LOCAL_ID, 'COC');
     await mockTestDb.insert(trees).values(
-      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
+      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1' }),
     );
     mockServer.species = [especieDelServer(SERVER_ID, 'COC')];
     // Hace fallar el último paso: el borrado de la especie duplicada.

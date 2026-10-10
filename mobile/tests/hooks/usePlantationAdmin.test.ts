@@ -2,7 +2,6 @@
 
 jest.mock('../../src/queries/adminQueries', () => ({
   checkFinalizationGate: jest.fn(),
-  hasIdsGenerated: jest.fn(),
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({
@@ -66,7 +65,7 @@ jest.mock('../../src/services/PlantationCreationService', () => ({
 
 import { renderHook, act } from '@testing-library/react-native';
 import { fetchPlantationMeta, usePlantationAdmin } from '../../src/hooks/usePlantationAdmin';
-import { checkFinalizationGate, hasIdsGenerated } from '../../src/queries/adminQueries';
+import { checkFinalizationGate } from '../../src/queries/adminQueries';
 import { useConfirm } from '../../src/hooks/useConfirm';
 import { useCurrentUserId } from '../../src/hooks/useCurrentUserId';
 import { useProfileData } from '../../src/hooks/useProfileData';
@@ -81,7 +80,6 @@ import type { Plantation } from '../../src/types/plantation';
 const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
 
 const mockCheckGate =checkFinalizationGate as jest.MockedFunction<typeof checkFinalizationGate>;
-const mockHasIds = hasIdsGenerated as jest.MockedFunction<typeof hasIdsGenerated>;
 
 function makePlantation(estado: string, overrides?: Partial<Plantation>): Plantation {
   return {
@@ -106,7 +104,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 
   it('returns canFinalize=false for activa when gate fails', async () => {
@@ -121,7 +119,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 
   it('con fotos sin subir: canFinalize=false y dice qué falta sincronizar (#537)', async () => {
@@ -136,20 +134,11 @@ describe('fetchPlantationMeta', () => {
     expect(result.pendientesSinSubir).toBe('2 fotos sin subir');
   });
 
-  it('returns idsGenerated=true for finalizada with IDs', async () => {
-    mockHasIds.mockResolvedValue(true);
-
+  it('una finalizada no consulta el gate de finalización', async () => {
     const result = await fetchPlantationMeta(makePlantation('finalizada'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
-  });
-
-  it('returns idsGenerated=false for finalizada without IDs', async () => {
-    mockHasIds.mockResolvedValue(false);
-
-    const result = await fetchPlantationMeta(makePlantation('finalizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(mockCheckGate).not.toHaveBeenCalled();
   });
 
   it('handles checkFinalizationGate error gracefully', async () => {
@@ -157,15 +146,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
-  });
-
-  it('handles hasIdsGenerated error gracefully', async () => {
-    mockHasIds.mockRejectedValue(new Error('DB error'));
-
-    const result = await fetchPlantationMeta(makePlantation('finalizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 });
 

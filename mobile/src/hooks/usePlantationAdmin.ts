@@ -1,9 +1,7 @@
 /**
  * usePlantationAdmin — all data logic for AdminScreen.
  *
- * Encapsulates plantation list, finalization, and export. Los IDs finales se
- * generan desde la web de gestión (issue #232); acá solo se lee el gate
- * idsGenerated para habilitar los exports.
+ * Encapsulates plantation list, finalization, and export.
  * Screens import this hook and pass callbacks to components.
  */
 import { useState } from 'react';
@@ -15,7 +13,7 @@ import { useConfirm } from './useConfirm';
 import { useReaperturaPlantacion } from './useReaperturaPlantacion';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
-import { checkFinalizationGate, hasIdsGenerated, type FinalizationGate } from '../queries/adminQueries';
+import { checkFinalizationGate, type FinalizationGate } from '../queries/adminQueries';
 import {
   updatePlantation,
   finalizePlantation,
@@ -40,7 +38,6 @@ import type { Plantation } from '../types/plantation';
 
 export type ExpandedMeta = {
   canFinalize: boolean;
-  idsGenerated: boolean;
   unresolvedNNCount: number;
   unresolvedNNGroups: number;
   /** Detalle de lo que falta subir; vacío si no falta nada. */
@@ -66,21 +63,10 @@ async function fetchMetaDeFinalizacion(plantacionId: string) {
   }
 }
 
-async function fetchIdsGenerated(plantacionId: string): Promise<boolean> {
-  try {
-    return await hasIdsGenerated(plantacionId);
-  } catch (e) {
-    console.error('[fetchPlantationMeta] hasIdsGenerated failed:', e);
-    return false;
-  }
-}
-
 export async function fetchPlantationMeta(plantation: Plantation): Promise<ExpandedMeta> {
-  const finalizacion = plantation.estado === ESTADO_PLANTACION.activa
-    ? await fetchMetaDeFinalizacion(plantation.id)
+  return plantation.estado === ESTADO_PLANTACION.activa
+    ? fetchMetaDeFinalizacion(plantation.id)
     : SIN_META_DE_FINALIZACION;
-  const idsGenerated = plantation.estado === ESTADO_PLANTACION.finalizada && await fetchIdsGenerated(plantation.id);
-  return { ...finalizacion, idsGenerated };
 }
 
 export function usePlantationAdmin() {

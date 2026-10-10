@@ -71,7 +71,7 @@ export async function tieneFotoQuitadaPendiente(exec: DbExecutor, arbolId: strin
   return filas.length > 0;
 }
 
-/** La plantación de un grupo, para anotar el borrado. `trees.plantacionId` no sirve: es el id numérico del server, no el UUID. */
+/** La plantación de un grupo, para anotar el borrado: el árbol no la guarda. */
 export async function plantacionDelGrupo(exec: DbExecutor, grupoId: string): Promise<string | null> {
   const [grupo] = await exec
     .select({ plantacionId: groups.plantacionId })

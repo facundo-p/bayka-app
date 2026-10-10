@@ -136,8 +136,6 @@ export const trees = sqliteTable('trees', {
   subId: text('sub_id').notNull(),
   fotoUrl: text('foto_url'),
   fotoSynced: integer('foto_synced', { mode: 'boolean' }).notNull().default(false),
-  plantacionId: integer('plantacion_id'),
-  globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
   // Especie que el servidor tenía la última vez que se lo vio: la base que manda el
