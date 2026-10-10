@@ -1,18 +1,17 @@
 // @vitest-environment node
 // node y no jsdom: con jsdom, pdfkit no reconoce los Buffer de las imágenes (otro realm).
 import { renderToBuffer } from '@react-pdf/renderer';
-import { arbolParaFicha } from '../../../test/fabricas';
+import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from '../../../test/pdfNode';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../../mapa/estadoMapa';
 import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
-import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { datosFicha } from '../datosFicha';
 import { DocumentoFichas } from '../DocumentoFichas';
 
-const COLOR_DE = coloresDeEspecies(['ANC']);
+const COLOR_DE = coloresEnOrden('ANC');
 
 const ENCABEZADO = encabezadoDePlantacion(
   { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },

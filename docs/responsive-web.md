@@ -24,7 +24,7 @@ La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 |---|---|---|
 | **1400** | notebook | La barra del detalle deja de entrar en un renglón (1366×768 real) |
 | **1200** | compacta | Grillas de 2 columnas → 1; las toolbars empiezan a envolver |
-| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento |
+| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento; el detalle de los listados sale en una hoja |
 | **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho; la navegación se va al pie y los filtros a una hoja |
 | **(max-height: 760)** | ventana baja | Fallback de alto, no de ancho |
 
@@ -72,6 +72,31 @@ Dos trampas que costaron caro:
   divisor quedaba flotando a media altura. Al tocar algo del sidebar, mirarlo
   también a ≤900.
 
+## El detalle de los listados sale en una hoja
+
+A ≤900 no hay lugar para el panel al costado de la tabla (`LayoutConPanel`).
+Apilado debajo, con 24 árboles arrancaba en y=1490 y el clic en la fila parecía
+no hacer nada (#823). Ahí `PanelLateral` se renderiza en un `Modal
+posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
+
+- Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
+  filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
+  orden del Tab.
+- Cruzar el umbral pasa de columna a hoja, o al revés, y remonta todo lo que
+  está adentro de `PanelLateral`. Se conserva lo que vive por encima: la
+  selección y los formularios de Especies, Científicas y Usuarios. Se descarta
+  lo de adentro: en Árboles el cambio de especie en curso, la foto ampliada, una
+  confirmación abierta desde el panel (Eliminar en Científicas) y el scroll del
+  panel.
+- Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
+  la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
+- La hoja va en su propia capa (`--z-detalle`), debajo de `--z-modal`: un
+  diálogo queda siempre adelante, sin depender del orden en el DOM. Vale para
+  los que abre el detalle (foto ampliada, confirmaciones) y para uno de la
+  pantalla que ya estaba abierto al cruzar el umbral (la confirmación de
+  «Desactivar» en Usuarios). En ese caso el foco queda en la hoja hasta que
+  se toca el diálogo. El selector de especie usa `--z-popover`, más arriba.
+
 ## Teléfono: lo que tiene forma propia
 
 Cuatro patrones, todos en el escalón de 600 que ya existía — no hizo falta
@@ -108,12 +133,23 @@ botón «PDF» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
 22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
-Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
-crece, no con una base grande que después se achica. Lo mismo con un botón detrás
-de un bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la
-base del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
+Para que un control comparta renglón en teléfono, su vecino va con una base chica
+y crece, no con una base grande que después se achica. Chica no quiere decir 0:
+con 0, lo que entra al lado puede dejar al vecino en nada (ver abajo). La base es
+lo mínimo que el vecino necesita para leerse. Lo mismo con un botón detrás de un
+bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la base
+del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
 `BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
 bloque se angosta y el botón queda en su última fila.
+
+La base en 0 tiene su propia trampa: lo que comparte renglón puede exprimir al
+vecino hasta dejarlo en nada. Con `.left` en 0, entre 370 y 550 las tabs del
+detalle de la plantación entraban al lado de la miga y la aplastaban —a 370,
+6px de ancho—, con el título en «San S…» y, a 390, el badge de estado debajo
+de las tabs (#825). En teléfono la base es 192px: el "+" del alta entra al lado
+del título hasta en 320, y lo que no le deja 192px a la miga baja de renglón.
+Va en px y no en rem porque el texto de la app está en px: con una fuente raíz
+de 20px, una base de 12rem crecía sola y el "+" bajaba de renglón a 320.
 
 ## Columnas de tabla en teléfono
 
@@ -204,6 +240,12 @@ Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja d
 filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
 botón que no está. Esas celdas salen `–` en la matriz.
 
+`dashboard-archivada` mide el detalle de la plantación archivada, solo en
+teléfono. Con estado y «Archivada», su miga es la más ancha del demo: cuando las
+tabs la aplastan, el badge queda debajo de ellas y O lo ve. Con el badge solo de
+`dashboard` la miga se aplastaba igual, pero sin texto encima de otro texto, y la
+fila salía limpia (#825).
+
 ### Baseline
 
 Cada corrida se compara contra `web/scripts/auditoria/baseline.json` y sale con
@@ -260,7 +302,10 @@ Para no leer de más en un `·`:
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
   se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
-  temporada.
+  temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
+  común: ahí la auditoría vio las tabs del detalle encima de la miga. A 430 la
+  celda salía limpia con la miga ya aplastada en 66px: limpia quiere decir sin
+  texto encima de otro texto, no sin defecto (#825).
 - **No detecta controles tapados por otra capa.** `elementFromPoint` da falsos
   positivos con `backdrop-filter` y capas sticky, así que se descartó. Por eso el
   lugar que el shell le reserva a la navegación del pie se verifica a mano.

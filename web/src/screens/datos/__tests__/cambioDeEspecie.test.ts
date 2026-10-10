@@ -1,4 +1,4 @@
-import { arbolDetalle } from '../../../test/fabricas';
+import { arbolDetalle, especieDePlantacion } from '../../../test/fabricas';
 import {
   conNombreCientifico,
   arbolConEspecie,
@@ -35,8 +35,13 @@ describe('puedeCambiarEspecie', () => {
 });
 
 const ESPECIES = [
-  { id: 'sp-1', codigo: 'CEI', nombre: 'Ceibo', nombreCientifico: 'Erythrina crista-galli' },
-  { id: 'sp-2', codigo: 'TAL', nombre: 'Tala', nombreCientifico: null },
+  especieDePlantacion({
+    id: 'sp-1',
+    codigo: 'CEI',
+    nombre: 'Ceibo',
+    nombreCientifico: 'Erythrina crista-galli',
+  }),
+  especieDePlantacion({ id: 'sp-2', codigo: 'TAL', nombre: 'Tala', lugarColor: 1 }),
 ];
 
 test('las opciones muestran código y nombre, y el científico debajo', () => {

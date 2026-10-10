@@ -297,10 +297,16 @@ function especiePorId(id: string): Especie {
   return especie;
 }
 
-const PLANTACION_ESPECIES: FilaDemo[] = TOTALES_DE_ARBOLES.map(({ plantation_id, species_id }) => ({
-  plantation_id,
-  species_id,
-}));
+/** El lugar de color sigue el orden en que cada plantación habilitó sus especies,
+ *  no el del código (#845): en p2, GUA se habilitó después que IBI. */
+const PLANTACION_ESPECIES: FilaDemo[] = Object.entries(ARBOLES_POR_PLANTACION).flatMap(
+  ([plantation_id, porEspecie]) =>
+    Object.keys(porEspecie).map((species_id, lugar_color) => ({
+      plantation_id,
+      species_id,
+      lugar_color,
+    })),
+);
 
 /** Modelan especie y plantación, que es por lo que filtran los conteos grandes.
  *  Un filtro por parcela o grupo cuenta las filas de muestra, así el total de

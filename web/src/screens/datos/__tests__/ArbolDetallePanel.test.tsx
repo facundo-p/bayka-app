@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ArbolDetalle } from '../../../queries/dataExplorerQueries';
 import type { CodigoNombre } from '../../../queries/fichasQueries';
 import { ArbolDetallePanel } from '../ArbolDetallePanel';
-import { arbolDetalle } from '../../../test/fabricas';
+import { arbolDetalle, especieDePlantacion } from '../../../test/fabricas';
 import { obtenerUrlDescargaFoto, obtenerUrlFoto } from '../../../services/fotoService';
 import { descargarDesdeUrl } from '../../../services/descargas';
 import { listarEspeciesDePlantacion } from '../../../queries/especieQueries';
@@ -370,8 +370,19 @@ describe('foto', () => {
 
 describe('cambiar la especie (#679)', () => {
   const ESPECIES = [
-    { id: 'sp-qb', codigo: 'QB', nombre: 'Quebracho', nombreCientifico: 'Schinopsis balansae' },
-    { id: 'sp-tal', codigo: 'TAL', nombre: 'Tala', nombreCientifico: 'Celtis tala' },
+    especieDePlantacion({
+      id: 'sp-qb',
+      codigo: 'QB',
+      nombre: 'Quebracho',
+      nombreCientifico: 'Schinopsis balansae',
+    }),
+    especieDePlantacion({
+      id: 'sp-tal',
+      codigo: 'TAL',
+      nombre: 'Tala',
+      nombreCientifico: 'Celtis tala',
+      lugarColor: 1,
+    }),
   ];
 
   function edicion(): EdicionDeEspecie {

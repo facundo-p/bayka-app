@@ -15,8 +15,11 @@ export function useColumnasVisibles<T>(
   conPanel = false,
 ): Array<TableColumn<T>> {
   const movil = useMediaQuery(BP.movil);
-  if (!movil && !conPanel) return columnas;
+  const panelEnHoja = useMediaQuery(BP.tablet);
+  // A ≤900 el panel sale en una hoja: no le quita ancho a la tabla.
+  const panelAlCostado = conPanel && !panelEnHoja;
+  if (!movil && !panelAlCostado) return columnas;
   return columnas.filter(
-    (columna) => !(movil && columna.fueraEnMovil) && !(conPanel && columna.fueraConPanel),
+    (columna) => !(movil && columna.fueraEnMovil) && !(panelAlCostado && columna.fueraConPanel),
   );
 }

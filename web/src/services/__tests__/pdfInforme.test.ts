@@ -3,9 +3,11 @@ import * as motor from '../../pdf/informe/motorInforme';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { obtenerFuenteDashboard, type FuenteDashboard } from '../../queries/dashboardQueries';
 import { listarParcelasConStats, type ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
 import { leerNombreOrganizacion } from '../../queries/fichasQueries';
 import { listarPuntosGps } from '../../queries/mapaQueries';
-import { plantacion } from '../../test/fabricas';
+import { especieEnLugar, plantacion } from '../../test/fabricas';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { descargarBlob } from '../descargas';
 import { descargarInformePdf, nombreArchivoInforme } from '../pdfInforme';
 
@@ -14,6 +16,7 @@ vi.mock('../../queries/dashboardQueries', async (importOriginal) => ({
   obtenerFuenteDashboard: vi.fn(),
 }));
 vi.mock('../../queries/dataExplorerQueries', () => ({ listarParcelasConStats: vi.fn() }));
+vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
 vi.mock('../../queries/fichasQueries', () => ({ leerNombreOrganizacion: vi.fn() }));
 vi.mock('../../queries/mapaQueries', () => ({ listarPuntosGps: vi.fn() }));
 vi.mock('../descargas', async (importOriginal) => ({
@@ -57,6 +60,7 @@ beforeEach(() => {
   vi.mocked(listarParcelasConStats).mockResolvedValue(PARCELAS);
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue([]);
+  vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([especieEnLugar('LAP', 2)]);
   vi.mocked(motor.renderizarInforme).mockResolvedValue(BLOB);
 });
 
@@ -77,6 +81,20 @@ test('cubre la plantación entera, con la etiqueta del estado, y se descarga', a
   expect(pedido.objetivo).toBe(8000);
   expect(pedido.organizacion).toBe('Bayka');
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'informe-san-sebastian-2025-2026.pdf');
+});
+
+test('pinta cada especie con el color de su lugar en la plantación (#845)', async () => {
+  await descargarInformePdf(PLANTACION, new QueryClient());
+  expect(listarEspeciesDePlantacion).toHaveBeenCalledWith(PLANTACION.id);
+  expect(vi.mocked(motor.renderizarInforme).mock.calls[0][0].colorDe('LAP')).toBe('#3b7db5');
+});
+
+test('sin especies legibles, el informe sale igual con los colores por hash', async () => {
+  vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
+  await descargarInformePdf(PLANTACION, new QueryClient());
+  const { colorDe } = vi.mocked(motor.renderizarInforme).mock.calls[0][0];
+  expect(colorDe('LAP')).toBe(colorEspeciePorCodigo('LAP'));
+  expect(descargarBlob).toHaveBeenCalled();
 });
 
 test('reutiliza las lecturas vigentes que el dashboard dejó en caché', async () => {

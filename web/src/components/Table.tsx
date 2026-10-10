@@ -115,6 +115,9 @@ function FilaTabla<T>({ row, columns, abierta, onRowClick, seleccion }: FilaTabl
         abierta && styles.filaSeleccionada,
       )}
       onClick={onRowClick ? () => onRowClick(row) : undefined}
+      // Fuera del orden del Tab, pero enfocable: el clic la enfoca y la hoja de
+      // detalle le devuelve el foco al cerrar.
+      tabIndex={onRowClick ? -1 : undefined}
     >
       {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} marcada={marcada} />}
       {renderCells(columns, row)}

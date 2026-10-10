@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { cx } from '../lib/classNames';
 import { useCerrarConEscape } from '../hooks/useCerrarConEscape';
+import { BP, useMediaQuery } from '../hooks/useMediaQuery';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
+import { Modal } from './Modal';
 import styles from './PanelLateral.module.css';
 
 interface PanelLateralProps {
@@ -18,15 +20,10 @@ interface PanelLateralProps {
   children: ReactNode;
 }
 
-/**
- * Columna de detalle al costado de un listado. No es un modal: no tiene
- * overlay, no atrapa el foco y no cierra al clickear afuera — clickear otra
- * fila cambia el panel en vez de cerrarlo. Cierra con Escape o con la X.
- */
-export function PanelLateral({ cabecera, pie, etiqueta, onCerrar, children }: PanelLateralProps) {
-  useCerrarConEscape(true, onCerrar);
+/** Encabezado con la X, cuerpo con scroll y pie: igual en la columna y en la hoja. */
+function PartesPanel({ cabecera, pie, etiqueta, onCerrar, children }: PanelLateralProps) {
   return (
-    <aside className={styles.panel} aria-label={etiqueta}>
+    <>
       <div className={styles.cabecera}>
         <div className={styles.identidad}>{cabecera}</div>
         <BotonIcono
@@ -40,6 +37,42 @@ export function PanelLateral({ cabecera, pie, etiqueta, onCerrar, children }: Pa
       </div>
       <div className={styles.cuerpo}>{children}</div>
       {pie && <div className={styles.pie}>{pie}</div>}
+    </>
+  );
+}
+
+/**
+ * Detalle de la fila elegida en un listado. Al costado del listado no es un
+ * modal: no tiene overlay, no atrapa el foco y no cierra al clickear afuera —
+ * clickear otra fila cambia el panel en vez de cerrarlo. Cierra con Escape o
+ * con la X.
+ *
+ * A 900px o menos no hay lugar al costado y sale en una hoja modal (#823):
+ * cierra también con el fondo, y al cerrar el foco vuelve a la fila. La
+ * selección vive en la pantalla, así que cruzar el umbral no la pierde.
+ */
+export function PanelLateral(props: PanelLateralProps) {
+  const { etiqueta, onCerrar } = props;
+  const enHoja = useMediaQuery(BP.tablet);
+  // En la hoja el Escape lo atiende el Modal.
+  useCerrarConEscape(!enHoja, onCerrar);
+  if (enHoja) {
+    return (
+      <Modal
+        open
+        title={etiqueta}
+        onClose={onCerrar}
+        posicion="hoja"
+        capa="detalle"
+        encabezadoPropio
+      >
+        <PartesPanel {...props} />
+      </Modal>
+    );
+  }
+  return (
+    <aside className={styles.panel} aria-label={etiqueta}>
+      <PartesPanel {...props} />
     </aside>
   );
 }
@@ -132,7 +165,8 @@ export function PanelListaEnlaces({
 
 /**
  * Grilla listado + panel: el listado ocupa todo el ancho hasta que hay panel.
- * Acá y no en cada pantalla, para no repetir la misma grilla en las tres.
+ * Acá y no en cada pantalla, para no repetir la misma grilla en las tres. A
+ * 900px o menos el panel sale en una hoja y el listado no le deja lugar.
  */
 export function LayoutConPanel({ panel, children }: { panel?: ReactNode; children: ReactNode }) {
   return (

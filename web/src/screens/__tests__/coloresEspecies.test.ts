@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import type { DistribucionEspecie } from '../../queries/dashboardQueries';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
-import { coloresDeEspecies } from '../../theme/coloresEspecie';
+import { coloresEnOrden } from '../../test/fabricas';
 import { asignarColoresEspecies } from '../dashboard/coloresEspecies';
 
 const NN: DistribucionEspecie = { codigo: 'NN', nombre: 'Sin identificar', cantidad: 10 };
 const QB: DistribucionEspecie = { codigo: 'QB', nombre: 'Quebracho', cantidad: 30 };
 const AL: DistribucionEspecie = { codigo: 'AL', nombre: 'Algarrobo', cantidad: 20 };
 
-const colorDe = coloresDeEspecies(['QB', 'AL']);
+const colorDe = coloresEnOrden('AL', 'QB');
 
 function colorDeCodigo(coloreadas: { codigo: string; color: string }[], codigo: string) {
   return coloreadas.find((especie) => especie.codigo === codigo)?.color;

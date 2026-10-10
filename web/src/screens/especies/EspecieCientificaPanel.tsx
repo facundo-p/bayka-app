@@ -7,7 +7,6 @@ import {
   PanelBloque,
   PanelIdentidad,
   PanelLateral,
-  PuntoColor,
 } from '../../components';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
 import type { EspecieCientificaConEspecies } from '../../queries/especieCientificaQueries';
@@ -15,7 +14,6 @@ import {
   eliminarEspecieCientifica,
   MENSAJE_NOMBRE_CIENTIFICO_DUPLICADO,
 } from '../../repositories/especieCientificaRepository';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import { sinEspecies } from './filtrosCientificas';
 import { useFormularioCientifica } from './useFormularioCientifica';
@@ -28,13 +26,13 @@ const AYUDA_ELIMINAR = 'Para eliminarla, primero desvinculá sus especies.';
 function CabeceraCientifica({ cientifica }: { cientifica: EspecieCientificaConEspecies | null }) {
   return (
     <PanelIdentidad
-      marca={<Microscope size={TAMANO_ICONO.lg} className={styles.marcaCientifica} aria-hidden />}
+      marca={<Microscope size={TAMANO_ICONO.lg} className={styles.marcaPanel} aria-hidden />}
       titulo={cientifica ? 'Editar especie científica' : 'Nueva especie científica'}
     />
   );
 }
 
-/** Las especies que agrupa, con su color y su código. */
+/** Las especies que agrupa, con su código. */
 function BloqueAgrupa({ cientifica }: { cientifica: EspecieCientificaConEspecies }) {
   return (
     <PanelBloque titulo="Agrupa" contador={cientifica.especies.length}>
@@ -44,7 +42,6 @@ function BloqueAgrupa({ cientifica }: { cientifica: EspecieCientificaConEspecies
         <ul className={styles.listaAgrupadas}>
           {cientifica.especies.map((especie) => (
             <li key={especie.id} className={styles.agrupada}>
-              <PuntoColor color={colorEspeciePorCodigo(especie.codigo)} />
               <span className={styles.codigoAgrupada}>{especie.codigo}</span>
               {especie.nombre}
             </li>

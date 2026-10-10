@@ -1,6 +1,5 @@
-import { arbolParaFicha } from '../../../test/fabricas';
+import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
-import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
 import { datosFicha, documentoDeFichas, hojasConSatelite } from '../datosFicha';
@@ -29,7 +28,7 @@ const COMPLETO = arbolParaFicha({
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 4.4 },
 });
 
-const COLOR_DE = coloresDeEspecies(['ANC', 'TIM']);
+const COLOR_DE = coloresEnOrden('ANC', 'TIM');
 const CONTEXTO = { tecnico: 'Lucía Ferreyra', foto: FOTO, mapa: MAPA, colorDe: COLOR_DE };
 
 test('ficha completa: todo formateado para pintar', () => {

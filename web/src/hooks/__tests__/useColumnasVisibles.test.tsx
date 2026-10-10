@@ -39,6 +39,12 @@ describe('useColumnasVisibles', () => {
     expect(claves(result.current)).toEqual(['id', 'fecha', 'acciones']);
   });
 
+  it('a ≤900 el panel va en una hoja: la tabla conserva las que el panel repite', () => {
+    simularAncho(ANCHO.tablet);
+    const { result } = renderHook(() => useColumnasVisibles(COLUMNAS, true));
+    expect(claves(result.current)).toEqual(['id', 'fecha', 'gps', 'acciones']);
+  });
+
   it('en móvil con el panel abierto saca las dos clases', () => {
     simularAncho(ANCHO.movil);
     const { result } = renderHook(() => useColumnasVisibles(COLUMNAS, true));

@@ -34,8 +34,7 @@ function useDescargaKml(plantacion: Plantacion) {
   return useDescarga(async () => {
     const puntos = await listarPuntosGps(plantacion.id);
     if (puntos.length === 0) return MENSAJE_SIN_PUNTOS;
-    const codigos = puntos.map((punto) => punto.codigo);
-    const colorDe = await leerColoresEspecie(queryClient, plantacion.id, codigos);
+    const colorDe = await leerColoresEspecie(queryClient, plantacion.id);
     const nombreDocumento = `Puntos GPS – ${plantacion.lugar} (${plantacion.periodo})`;
     const kml = construirKml(puntos, { nombreDocumento, colorDe });
     descargarTexto(kml, nombreArchivoKml(plantacion.lugar, plantacion.periodo), TIPO_MIME_KML);
