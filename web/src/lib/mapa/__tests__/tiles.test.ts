@@ -30,6 +30,11 @@ test('el tilemap de Esri pide fila, columna, ancho y alto de la zona', () => {
 });
 
 describe('partirEnPaquetes', () => {
+  test('una zona con NaN queda entera en vez de recursar', () => {
+    const zona = { z: 17, x: { primero: NaN, ultimo: NaN }, y: { primero: 5, ultimo: 9 } };
+    expect(partirEnPaquetes(zona)).toEqual([zona]);
+  });
+
   test('una zona dentro de un paquete de 128 × 128 queda entera', () => {
     const zona = { z: 17, x: { primero: 0, ultimo: 127 }, y: { primero: 5, ultimo: 9 } };
     expect(partirEnPaquetes(zona)).toEqual([zona]);

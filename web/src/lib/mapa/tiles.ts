@@ -62,10 +62,10 @@ export function urlDeTile({ z, x, y }: TileXYZ): string {
   return rellenar(CAPA_SATELITE.url, { z, x, y });
 }
 
-/** El rango cortado donde empieza un paquete nuevo. */
+/** El rango cortado donde empieza un paquete nuevo; uno con NaN queda entero en vez de recursar. */
 function partirRango({ primero, ultimo }: Rango): Rango[] {
   const corte = (Math.floor(primero / TILES_POR_PAQUETE) + 1) * TILES_POR_PAQUETE;
-  if (corte > ultimo) return [{ primero, ultimo }];
+  if (!(corte <= ultimo)) return [{ primero, ultimo }];
   return [{ primero, ultimo: corte - 1 }, ...partirRango({ primero: corte, ultimo })];
 }
 

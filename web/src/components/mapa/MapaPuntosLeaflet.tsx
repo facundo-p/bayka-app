@@ -33,6 +33,7 @@ function planDeEncuadre(map: L.Map, extremos: Extremos) {
   const limites = L.latLngBounds([extremos.sur, extremos.oeste], [extremos.norte, extremos.este]);
   const zoomQueEntra = map.getBoundsZoom(limites, false, MARGEN_AJUSTE.multiplyBy(2));
   const desde = zoomDePartida(zoomQueEntra, esPuntoUnico(extremos));
+  if (desde === null) return null;
   const caja = {
     min: map.project(limites.getNorthWest(), desde),
     max: map.project(limites.getSouthEast(), desde),
@@ -52,7 +53,9 @@ function AjustarVista({ puntos }: { puntos: PuntoGps[] }) {
   useEffect(() => {
     let vigente = true;
     map.invalidateSize();
-    const { limites, desde, area } = planDeEncuadre(map, { sur, oeste, norte, este });
+    const plan = planDeEncuadre(map, { sur, oeste, norte, este });
+    if (!plan) return;
+    const { limites, desde, area } = plan;
     const encuadrarHasta = (maxZoom: number) =>
       map.fitBounds(limites, { padding: MARGEN_AJUSTE, maxZoom });
     encuadrarHasta(zoomSinChequeo(desde));

@@ -35,8 +35,12 @@ export function extremosDe(puntos: readonly LatLng[]): Extremos {
 export const esPuntoUnico = ({ sur, oeste, norte, este }: Extremos) =>
   sur === norte && oeste === este;
 
-/** El zoom en que entran los puntos; un punto único arranca en el seguro en vez del máximo. */
-export function zoomDePartida(zoomQueEntra: number, puntoUnico: boolean): number {
+/**
+ * El zoom en que entran los puntos; un punto único arranca en el seguro en vez
+ * del máximo. Null si Leaflet no pudo calcularlo (contenedor más chico que el margen).
+ */
+export function zoomDePartida(zoomQueEntra: number, puntoUnico: boolean): number | null {
+  if (Number.isNaN(zoomQueEntra)) return null;
   const zoom = puntoUnico ? Math.min(zoomQueEntra, ZOOM_CON_IMAGEN_SEGURA) : zoomQueEntra;
   return Math.min(zoom, CAPA_SATELITE.zoomMaximo);
 }

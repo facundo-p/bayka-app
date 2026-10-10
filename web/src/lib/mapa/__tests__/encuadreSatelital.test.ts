@@ -53,6 +53,11 @@ describe('zoomDePartida', () => {
     expect(zoomDePartida(Infinity, true)).toBe(17);
   });
 
+  test('sin zoom calculable (NaN), no hay partida', () => {
+    expect(zoomDePartida(NaN, false)).toBeNull();
+    expect(zoomDePartida(NaN, true)).toBeNull();
+  });
+
   test('sin chequeo, el tope es 17', () => {
     expect(zoomSinChequeo(19)).toBe(17);
     expect(zoomSinChequeo(14)).toBe(14);
