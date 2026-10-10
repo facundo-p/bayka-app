@@ -32,7 +32,7 @@ test('firma solo las subidas, en una llamada, y reduce cada una', async () => {
   expect(fotos).toEqual([LISTA, SIN_FOTO, SIN_FOTO, LISTA]);
   expect(estadoMock.firmas.map((firma) => firma.path)).toEqual(['p/a.jpg', 'p/b.jpg']);
   expect(fetchFalso).toHaveBeenCalledWith('https://firmada.test/p/a.jpg');
-  expect(reducir).toHaveBeenCalledWith(expect.anything(), { ancho: 480, alto: 360, calidad: 0.75 });
+  expect(reducir).toHaveBeenCalledWith(expect.anything(), { ancho: 480, alto: 480, calidad: 0.75 });
 });
 
 test('una foto sin firma (sin permiso o inexistente) queda no disponible', async () => {

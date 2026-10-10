@@ -154,6 +154,19 @@ test('con fichas del peor caso siguen entrando tres por hoja y la nota cae en la
   );
 });
 
+test('la ficha no muestra el ID Global, generado o no', async () => {
+  const contexto = { tecnico: null, foto: LISTA, mapa: MAPA };
+  const fichas = [CON_TODO, { ...CON_TODO, idGlobal: null }].map((arbol) =>
+    datosFicha(arbol, contexto),
+  );
+  const pdf = await renderToBuffer(
+    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+  );
+  const textos = textosDelPdf(pdf).join(' ');
+  expect(textos).not.toMatch(/ID Global/i);
+  expect(textos).not.toContain('10479');
+});
+
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
   const renderizar = (arbol: typeof CON_TODO) =>
     renderizarEnSerie(FUENTES_NODE, () =>
