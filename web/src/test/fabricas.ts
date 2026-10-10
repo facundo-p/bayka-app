@@ -216,6 +216,11 @@ export function especieDePlantacion(
   };
 }
 
+/** Especie habilitada en el lugar dado; el código hace también de id y de nombre. */
+export function especieEnLugar(codigo: string, lugarColor: number): EspecieDePlantacion {
+  return especieDePlantacion({ id: codigo, codigo, nombre: codigo, lugarColor });
+}
+
 /** Colores de una plantación cuyas especies ocupan los lugares en el orden dado. */
 export function coloresEnOrden(...codigos: string[]): ColorEspecie {
   return coloresDeEspecies(codigos.map((codigo, lugarColor) => ({ codigo, lugarColor })));

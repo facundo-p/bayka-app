@@ -1,17 +1,11 @@
 import { QueryClient } from '@tanstack/react-query';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
+import { especieEnLugar as especie } from '../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { leerColoresEspecie } from '../coloresDePlantacion';
 
 vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
 
-const especie = (codigo: string, lugarColor: number) => ({
-  id: codigo,
-  codigo,
-  nombre: codigo,
-  nombreCientifico: null,
-  lugarColor,
-});
 const nuevoCliente = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 beforeEach(() => vi.clearAllMocks());

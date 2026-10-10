@@ -1,18 +1,11 @@
 import { waitFor } from '@testing-library/react';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
+import { especieEnLugar as especie } from '../../test/fabricas';
 import { renderHookConQuery } from '../../test/renderHookConQuery';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { useColoresEspecie } from '../useColoresEspecie';
 
 vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
-
-const especie = (codigo: string, lugarColor: number) => ({
-  id: codigo,
-  codigo,
-  nombre: codigo,
-  nombreCientifico: null,
-  lugarColor,
-});
 
 beforeEach(() => vi.clearAllMocks());
 

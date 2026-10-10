@@ -13,7 +13,7 @@ import { listarCatalogo, listarEspeciesDePlantacion } from '../../../queries/esp
 import { listarPerfiles } from '../../../queries/usuarioQueries';
 import { obtenerPlantacion } from '../../../queries/plantationQueries';
 import { descargarFichasPdf } from '../../../services/pdfFichas';
-import { arbolDetalle, especieDePlantacion, plantacion } from '../../../test/fabricas';
+import { arbolDetalle, especieEnLugar as especie, plantacion } from '../../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../../theme/coloresEspecie';
 
 vi.mock('../../../queries/dataExplorerQueries', async () => {
@@ -334,8 +334,6 @@ describe('generar fichas', () => {
 });
 
 describe('colores de especie (#777, #845)', () => {
-  const especie = (codigo: string, lugarColor: number) =>
-    especieDePlantacion({ id: codigo, codigo, nombre: codigo, lugarColor });
   const conEspecie = (numero: number, codigo: string) => ({
     ...arbolDe(numero),
     especieCodigo: codigo,

@@ -6,7 +6,7 @@ import { listarParcelasConStats, type ParcelaConStats } from '../../queries/data
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
 import { leerNombreOrganizacion } from '../../queries/fichasQueries';
 import { listarPuntosGps } from '../../queries/mapaQueries';
-import { plantacion } from '../../test/fabricas';
+import { especieEnLugar, plantacion } from '../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { descargarBlob } from '../descargas';
 import { descargarInformePdf, nombreArchivoInforme } from '../pdfInforme';
@@ -60,9 +60,7 @@ beforeEach(() => {
   vi.mocked(listarParcelasConStats).mockResolvedValue(PARCELAS);
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue([]);
-  vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([
-    { id: 'e1', codigo: 'LAP', nombre: 'Lapacho', nombreCientifico: null, lugarColor: 2 },
-  ]);
+  vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([especieEnLugar('LAP', 2)]);
   vi.mocked(motor.renderizarInforme).mockResolvedValue(BLOB);
 });
 

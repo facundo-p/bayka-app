@@ -5,7 +5,7 @@
 import type { EntradaInforme } from '../pdf/informe/datosInforme';
 import type { DashboardData, DistribucionEspecie } from '../queries/dashboardQueries';
 import type { PuntoGps } from '../queries/mapaQueries';
-import { coloresDeEspecies } from '../theme/coloresEspecie';
+import { coloresEnOrden } from './fabricas';
 
 const CODIGOS_ESPECIE = ['LAP', 'TIM', 'ANC', 'IBI', 'GUA', 'CED', 'URU', 'PET', 'ALG', 'CAN'];
 const CODIGOS_ESPECIE_EXTRA = ['ARA', 'YVY', 'KIR', 'PIN', 'TAT', 'CAÑ', 'GUY', 'LAU'];
@@ -47,7 +47,7 @@ function especies(cantidad: number, nn: number): DistribucionEspecie[] {
 /** Cada especie en el lugar de su orden en la lista; N/N no ocupa lugar. */
 function coloresDeLaLista(porEspecie: readonly DistribucionEspecie[]) {
   const identificadas = porEspecie.filter((especie) => especie.codigo !== CODIGO_NN);
-  return coloresDeEspecies(identificadas.map(({ codigo }, lugarColor) => ({ codigo, lugarColor })));
+  return coloresEnOrden(...identificadas.map(({ codigo }) => codigo));
 }
 
 function puntosDeParcela(indice: number, codigos: readonly string[]): PuntoGps[] {
