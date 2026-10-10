@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { Modal } from '../Modal';
+import styles from '../Modal.module.css';
 
 function renderModal(open = true) {
   const onClose = vi.fn();
@@ -60,4 +61,31 @@ test('al cerrar devuelve el foco a lo que lo abrió', () => {
   rerender(<ConDisparador open={false} />);
 
   expect(screen.getByRole('button', { name: 'Abrir' })).toHaveFocus();
+});
+
+test('con encabezadoPropio el título queda solo como nombre del dialog', () => {
+  render(
+    <Modal open title="Detalle de Anchico" onClose={() => {}} encabezadoPropio>
+      <h2>Anchico</h2>
+    </Modal>,
+  );
+  expect(screen.getByRole('dialog', { name: 'Detalle de Anchico' })).toBeInTheDocument();
+  expect(screen.getAllByRole('heading')).toHaveLength(1);
+  expect(screen.getByRole('heading', { name: 'Anchico' })).toBeInTheDocument();
+});
+
+test('capa detalle: el fondo va en su escalón, debajo de los diálogos', () => {
+  const { rerender } = render(
+    <Modal open title="Detalle" onClose={() => {}} capa="detalle">
+      <p>contenido</p>
+    </Modal>,
+  );
+  expect(screen.getByRole('dialog').parentElement!.className).toContain(styles.capaDetalle);
+
+  rerender(
+    <Modal open title="Detalle" onClose={() => {}}>
+      <p>contenido</p>
+    </Modal>,
+  );
+  expect(screen.getByRole('dialog').parentElement!.className).not.toContain(styles.capaDetalle);
 });

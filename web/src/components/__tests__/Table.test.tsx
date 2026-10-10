@@ -28,6 +28,16 @@ test('renderiza headers, celdas por defecto y celdas con render', () => {
   expect(onRowClick).toHaveBeenCalledWith(rows[0]);
 });
 
+test('las filas clickeables se enfocan por código, sin entrar al orden del Tab', () => {
+  const { rerender } = render(
+    <Table columns={columns} rows={rows} getRowKey={(row) => row.id} onRowClick={vi.fn()} />,
+  );
+  expect(screen.getByText('Lote Norte').closest('tr')).toHaveAttribute('tabindex', '-1');
+
+  rerender(<Table columns={columns} rows={rows} getRowKey={(row) => row.id} />);
+  expect(screen.getByText('Lote Norte').closest('tr')).not.toHaveAttribute('tabindex');
+});
+
 test('columnaChevron: última columna sin encabezado, decorativa y fuera en el teléfono', () => {
   const chevron = columnaChevron<Fila>();
   expect(chevron).toMatchObject({ header: '', align: 'right', fueraEnMovil: true });

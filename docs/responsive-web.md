@@ -24,7 +24,7 @@ La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 |---|---|---|
 | **1400** | notebook | La barra del detalle deja de entrar en un renglón (1366×768 real) |
 | **1200** | compacta | Grillas de 2 columnas → 1; las toolbars empiezan a envolver |
-| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento |
+| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento; el detalle de los listados sale en una hoja |
 | **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho; la navegación se va al pie y los filtros a una hoja |
 | **(max-height: 760)** | ventana baja | Fallback de alto, no de ancho |
 
@@ -71,6 +71,31 @@ Dos trampas que costaron caro:
   empujaba a los otros cuatro bloques a una fila cada uno; un `border-top`
   divisor quedaba flotando a media altura. Al tocar algo del sidebar, mirarlo
   también a ≤900.
+
+## El detalle de los listados sale en una hoja
+
+A ≤900 no hay lugar para el panel al costado de la tabla (`LayoutConPanel`).
+Apilado debajo, con 24 árboles arrancaba en y=1490 y el clic en la fila parecía
+no hacer nada (#823). Ahí `PanelLateral` se renderiza en un `Modal
+posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
+
+- Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
+  filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
+  orden del Tab.
+- Cruzar el umbral pasa de columna a hoja, o al revés, y remonta todo lo que
+  está adentro de `PanelLateral`. Se conserva lo que vive por encima: la
+  selección y los formularios de Especies, Científicas y Usuarios. Se descarta
+  lo de adentro: en Árboles el cambio de especie en curso, la foto ampliada, una
+  confirmación abierta desde el panel (Eliminar en Científicas) y el scroll del
+  panel.
+- Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
+  la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
+- La hoja va en su propia capa (`--z-detalle`), debajo de `--z-modal`: un
+  diálogo queda siempre adelante, sin depender del orden en el DOM. Vale para
+  los que abre el detalle (foto ampliada, confirmaciones) y para uno de la
+  pantalla que ya estaba abierto al cruzar el umbral (la confirmación de
+  «Desactivar» en Usuarios). En ese caso el foco queda en la hoja hasta que
+  se toca el diálogo. El selector de especie usa `--z-popover`, más arriba.
 
 ## Teléfono: lo que tiene forma propia
 

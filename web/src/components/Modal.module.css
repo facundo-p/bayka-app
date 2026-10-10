@@ -36,6 +36,12 @@
   font-size: var(--text-title);
 }
 
+/* Un escalón debajo de los diálogos: uno abierto antes o después queda
+   adelante sin depender del orden en el DOM. */
+.capaDetalle {
+  z-index: var(--z-detalle);
+}
+
 /* Hoja de teléfono: sube desde el borde de abajo, a ancho completo. El pulgar
    llega al pie del diálogo, que es donde están sus acciones. */
 .overlayHoja {
@@ -47,4 +53,11 @@
   max-width: 100%;
   max-height: 85vh;
   border-radius: var(--radius-round) var(--radius-round) 0 0;
+}
+
+/* El contenido pone su encabezado y sus márgenes, y reparte el alto: el
+   diálogo solo lo enmarca. */
+.encabezadoPropio {
+  gap: 0;
+  padding: 0;
 }

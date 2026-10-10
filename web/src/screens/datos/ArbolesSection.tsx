@@ -12,6 +12,7 @@ import {
 import { ColoresEspecieContext } from '../../hooks/useColoresEspecie';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { useEnfocarAlMontar } from '../../hooks/useEnfocarAlMontar';
+import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { formatearEntero } from '../../lib/formato';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
 import {
@@ -52,7 +53,7 @@ function rangoVisible(pagina: number, total: number): string {
 
 function pieTabla(pagina: number, datos: PaginaArboles): string | undefined {
   if (datos.total === 0) return undefined;
-  return `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle al costado`;
+  return `${rangoVisible(pagina, datos.total)} · ${AYUDA_FILA.detalle}`;
 }
 
 /** Con el panel abierto la tabla suelta las columnas que el panel repite. */

@@ -258,6 +258,7 @@
   --z-flotante: 10; /* menús y avisos anclados a un botón */
   --z-topbar: 20;
   --z-banner-entorno: 30;
+  --z-detalle: 90; /* detalle de un listado en hoja: debajo de cualquier diálogo */
   --z-modal: 100;
   --z-popover: 110; /* listas desplegables que se abren dentro de un modal */
 
@@ -278,17 +279,11 @@
   --alto-banner-entorno: 26px;
 }
 
-/* Anchos estructurales por escalón. No van con clamp(): entre "panel al
-   costado" y "panel apilado" no hay valores intermedios que tengan sentido. */
+/* Anchos estructurales por escalón. No van con clamp(): el panel al costado
+   tiene dos anchos y a ≤900 sale en una hoja, sin intermedios con sentido. */
 @media (max-width: 1200px) {
   :root {
     --ancho-panel-lateral: 340px;
-  }
-}
-
-@media (max-width: 900px) {
-  :root {
-    --ancho-panel-lateral: 100%;
   }
 }
 
