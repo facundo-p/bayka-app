@@ -67,7 +67,7 @@ function useOpcionesTecnico(todas: PlantacionConStats[] | undefined) {
 }
 
 /** Si el técnico elegido sale de las opciones, el Select mostraría «todos» con el filtro
- *  aplicado: se suelta. Vive en la barra y no en la hoja, que en teléfono se desmonta. */
+ *  aplicado: se suelta. Vive en la barra y no en el panel ni en la hoja, que se desmontan. */
 function useSoltarTecnicoAusente(
   controles: ControlesFiltros<FiltrosBarraPlantaciones>,
   todas: PlantacionConStats[] | undefined,
@@ -113,6 +113,22 @@ function FiltrosVisibilidad({ controles, tecnicos }: FiltrosVisibilidadProps) {
   );
 }
 
+function OrdenPlantaciones({
+  controles,
+}: {
+  controles: ControlesFiltros<FiltrosBarraPlantaciones>;
+}) {
+  return (
+    <Select
+      label="Ordenar plantaciones"
+      labelOculto
+      value={controles.filtros.orden}
+      onChange={(evento) => controles.onFiltro('orden', evento.target.value as OrdenPlantacion)}
+      opciones={OPCIONES_ORDEN}
+    />
+  );
+}
+
 interface PlantacionesToolbarProps {
   controles: ControlesFiltros<FiltrosBarraPlantaciones>;
   /** El listado completo: de él salen las temporadas del Select. */
@@ -136,6 +152,7 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
           onChange={onBuscar}
         />
       }
+      orden={<OrdenPlantaciones controles={controles} />}
       tituloFiltros="Filtros de plantaciones"
       filtrosActivos={controles.activos}
       onLimpiar={controles.limpiar}
@@ -166,13 +183,6 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
         </Select>
       )}
       <FiltrosVisibilidad controles={controles} tecnicos={tecnicos} />
-      <Select
-        label="Ordenar plantaciones"
-        labelOculto
-        value={filtros.orden}
-        onChange={(evento) => onFiltro('orden', evento.target.value as OrdenPlantacion)}
-        opciones={OPCIONES_ORDEN}
-      />
     </BarraHerramientas>
   );
 }

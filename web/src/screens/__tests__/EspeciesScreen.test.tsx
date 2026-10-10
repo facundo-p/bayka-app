@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
 import { textoCompleto } from '../../test/textoCompleto';
 
@@ -167,11 +168,12 @@ test('el filtro de uso separa las especies usadas de las que no', async () => {
   await screen.findByText('Anchico');
 
   // Ibirá Pitá no está en ninguna plantación y no tiene árboles.
-  await usuario.click(enMain().getByRole('radio', { name: 'Sin uso' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Sin uso' }));
   await waitFor(() => expect(enMain().queryByText('Anchico')).not.toBeInTheDocument());
   expect(enMain().getByText('Ibirá Pitá')).toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'En uso' }));
   await waitFor(() => expect(enMain().queryByText('Ibirá Pitá')).not.toBeInTheDocument());
   expect(enMain().getByText('Anchico')).toBeInTheDocument();
 });
@@ -217,6 +219,7 @@ test('el recuento de la barra concuerda en singular', async () => {
   await screen.findByText('Anchico');
 
   expect(enMain().getByText(textoCompleto('2 especies · 1.234 árboles'))).toBeInTheDocument();
-  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  await usuario.click((await abrirFiltros(usuario)).getByRole('radio', { name: 'En uso' }));
+  await usuario.keyboard('{Escape}');
   expect(await enMain().findByText(textoCompleto('1 especie · 1.234 árboles'))).toBeInTheDocument();
 });

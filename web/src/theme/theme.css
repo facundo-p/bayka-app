@@ -222,11 +222,9 @@
   --ancho-buscador: 18rem;
   --ancho-buscador-min: 10rem;
   --ancho-buscador-compacto: 220px;
-  /* Filtros de Datos: el más informativo (parcela) es el más ancho. */
-  --ancho-filtro-lg: 180px;
-  --ancho-filtro-md: 150px;
-  --ancho-filtro-sm: 130px;
-  --ancho-filtro-xs: 120px;
+  /* Panel de filtros de las barras: piso para los selects, techo para la ventana. */
+  --ancho-panel-filtros-min: 20rem;
+  --ancho-panel-filtros-max: 28rem;
   --alto-min-mapa: 320px; /* mapa del dashboard */
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { BarraHerramientas, RecuentoItem } from '../BarraHerramientas';
 
@@ -30,13 +31,20 @@ test.each([
   expect(screen.getByText(String(cantidad)).parentElement).toHaveTextContent(texto);
 });
 
-function renderBarra(props: { filtrosActivos?: number; onLimpiar?: () => void } = {}) {
+interface PropsBarra {
+  filtrosActivos?: number;
+  onLimpiar?: () => void;
+  orden?: React.ReactNode;
+}
+
+function renderBarra(props: PropsBarra = {}) {
   render(
     <BarraHerramientas
       tituloFiltros="Filtros de prueba"
       filtrosActivos={props.filtrosActivos ?? 0}
       onLimpiar={props.onLimpiar}
       encabezado={<input aria-label="Buscar" />}
+      orden={props.orden}
       recuento={<RecuentoItem cantidad={12} sustantivo={ARBOL} />}
     >
       <button type="button">Solo activas</button>
@@ -44,10 +52,87 @@ function renderBarra(props: { filtrosActivos?: number; onLimpiar?: () => void } 
   );
 }
 
-test('en escritorio los filtros van en la fila y no hay hoja', () => {
+const ORDEN = <select aria-label="Ordenar" />;
+
+test('en escritorio los filtros van a un panel detrás de un botón; buscador y recuento quedan', async () => {
   renderBarra();
-  expect(screen.getByRole('button', { name: 'Solo activas' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Filtros/ })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Buscar')).toBeInTheDocument();
+  expect(screen.getByText('12')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Solo activas' })).not.toBeInTheDocument();
+
+  const panel = await abrirFiltros(userEvent.setup());
+  expect(panel.getByRole('button', { name: 'Solo activas' })).toBeInTheDocument();
+});
+
+test('el pie del panel limpia los filtros y repite el recuento', async () => {
+  const onLimpiar = vi.fn();
+  renderBarra({ filtrosActivos: 1, onLimpiar });
+  const usuario = userEvent.setup();
+
+  const panel = await abrirFiltros(usuario);
+  expect(panel.getByText('12').parentElement).toHaveTextContent('12 árboles');
+  await usuario.click(panel.getByRole('button', { name: 'Limpiar' }));
+  expect(onLimpiar).toHaveBeenCalledOnce();
+});
+
+describe('orden', () => {
+  test('en escritorio queda a la vista, fuera del panel', async () => {
+    renderBarra({ orden: ORDEN });
+    expect(screen.getByLabelText('Ordenar')).toBeInTheDocument();
+    const panel = await abrirFiltros(userEvent.setup());
+    expect(panel.queryByLabelText('Ordenar')).not.toBeInTheDocument();
+  });
+
+  test('en teléfono va a la hoja, después de los filtros', async () => {
+    simularAncho(ANCHO.movil);
+    renderBarra({ orden: ORDEN });
+    expect(screen.queryByLabelText('Ordenar')).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Filtros' }));
+    const hoja = within(screen.getByRole('dialog', { name: 'Filtros de prueba' }));
+    const filtro = hoja.getByRole('button', { name: 'Solo activas' });
+    const orden = hoja.getByLabelText('Ordenar');
+    expect(filtro.compareDocumentPosition(orden) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('busqueda, cuando el encabezado es otra cosa', () => {
+  function renderConBusqueda(filtros?: React.ReactNode) {
+    render(
+      <BarraHerramientas
+        tituloFiltros="Filtros de prueba"
+        filtrosActivos={0}
+        encabezado={<button type="button">Sección</button>}
+        busqueda={<input aria-label="Buscar" />}
+      >
+        {filtros}
+      </BarraHerramientas>,
+    );
+  }
+
+  test('en escritorio queda a la vista; sin filtros no hay botón', () => {
+    renderConBusqueda();
+    expect(screen.getByLabelText('Buscar')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Filtros/ })).not.toBeInTheDocument();
+  });
+
+  test('en teléfono va a la hoja con los filtros, y la fila queda en el encabezado', async () => {
+    simularAncho(ANCHO.movil);
+    renderConBusqueda(<input aria-label="Filtro" />);
+    expect(screen.getByRole('button', { name: 'Sección' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Buscar')).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Filtros' }));
+    const hoja = screen.getByRole('dialog', { name: 'Filtros de prueba' });
+    expect(within(hoja).getByLabelText('Buscar')).toBeInTheDocument();
+    expect(within(hoja).getByLabelText('Filtro')).toBeInTheDocument();
+  });
+
+  test('en teléfono el botón está aunque la búsqueda sea lo único que hay', () => {
+    simularAncho(ANCHO.movil);
+    renderConBusqueda();
+    expect(screen.getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+  });
 });
 
 test('en teléfono los filtros se guardan detrás de un botón, y el buscador queda', () => {
@@ -111,10 +196,11 @@ describe('acciones', () => {
   }
   const accion = <button type="button">Seleccionar</button>;
 
-  test('en escritorio van en la fila, junto a los filtros', () => {
+  test('en escritorio van en la fila y no al panel', async () => {
     renderConAcciones(accion);
     expect(screen.getByRole('button', { name: 'Seleccionar' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Filtro')).toBeInTheDocument();
+    const panel = await abrirFiltros(userEvent.setup());
+    expect(panel.queryByRole('button', { name: 'Seleccionar' })).not.toBeInTheDocument();
   });
 
   test('en teléfono quedan en la fila y no van a la hoja de filtros', async () => {
@@ -126,9 +212,10 @@ describe('acciones', () => {
     expect(within(hoja).queryByRole('button', { name: 'Seleccionar' })).not.toBeInTheDocument();
   });
 
-  test('con acciones={false} no se dibujan y los filtros no se remontan', () => {
+  test('con acciones={false} no se dibujan y el panel abierto no se remonta', async () => {
     const { rerender } = renderConAcciones(accion);
-    const filtro = screen.getByLabelText('Filtro');
+    const panel = await abrirFiltros(userEvent.setup());
+    const filtro = panel.getByLabelText('Filtro');
     rerender(
       <BarraHerramientas tituloFiltros="Filtros de prueba" filtrosActivos={0} acciones={false}>
         <input aria-label="Filtro" />

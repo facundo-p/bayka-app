@@ -43,16 +43,6 @@
   color: var(--color-text-heading);
 }
 
-/* Sin envolver: los filtros se angostan y envuelven adentro, y las acciones
-   quedan abajo a la derecha, alineadas con la última fila de filtros. */
-.filtrosConAcciones {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: flex-end;
-  gap: var(--space-lg);
-  min-width: 0;
-}
-
 .acciones {
   display: flex;
   gap: var(--space-md);
@@ -60,20 +50,13 @@
   flex-shrink: 0;
 }
 
-/* Cuántos filtros están puestos, sobre el botón que abre la hoja. */
-.cuenta {
-  min-width: var(--space-3xl);
-  padding: 0 var(--space-sm);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
-  color: var(--color-white);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--space-3xl);
-  text-align: center;
+/* Con recuento, ese ya empuja a la derecha: dos márgenes automáticos se
+   repartirían el hueco y las acciones quedarían en el medio. */
+.recuento + .acciones {
+  margin-left: 0;
 }
 
-/* Los filtros adentro de la hoja: uno abajo del otro y a ancho completo. */
+/* Lo que va a la hoja: uno abajo del otro y a ancho completo. */
 .hoja {
   display: flex;
   flex-direction: column;

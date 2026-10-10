@@ -1,0 +1,86 @@
+.ancla {
+  composes: ancla from './flotanteAnclado.module.css';
+}
+
+/* Abierto, el botón queda marcado: dice de dónde salió el panel. */
+.disparador[aria-expanded='true'] {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-bg);
+  color: var(--color-text-heading);
+}
+
+/* Ancho del contenido, así el segmentado más largo entra en un renglón; con un
+   piso para que los selects no queden angostos y un techo para la ventana. */
+.panel {
+  composes: panel from './flotanteAnclado.module.css';
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: var(--ancho-panel-filtros-min);
+  max-width: min(var(--ancho-panel-filtros-max), calc(100vw - 2 * var(--page-pad-x)));
+  border-radius: var(--radius-card-sm);
+}
+
+.izquierda {
+  composes: izquierda from './flotanteAnclado.module.css';
+}
+
+.derecha {
+  composes: derecha from './flotanteAnclado.module.css';
+}
+
+.cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin: 0;
+  padding: var(--space-xl) var(--space-2xl) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.titulo {
+  color: var(--color-text-heading);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Uno abajo del otro y a lo ancho del panel, como en la hoja del teléfono. */
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-2xl) var(--space-2xl);
+}
+
+.pie {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-2xl);
+  border-top: var(--border-thin) solid var(--color-divider);
+  border-radius: 0 0 var(--radius-card-sm) var(--radius-card-sm);
+  background-color: var(--color-surface-sunken);
+}
+
+.recuento {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+/* Cuántos filtros están puestos, sobre el botón que abre el panel o la hoja. */
+.cuenta {
+  min-width: var(--space-3xl);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--space-3xl);
+  text-align: center;
+}

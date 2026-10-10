@@ -8,6 +8,7 @@ import {
 } from '../../test/supabaseMock';
 import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { textoCompleto } from '../../test/textoCompleto';
 
@@ -151,17 +152,18 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
 
   // Inactivos: queda sólo Teo.
-  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Inactivos' }));
   expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
 
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
-  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
-  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Activos' }));
   expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
@@ -172,7 +174,8 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Técnicos' }));
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -556,7 +559,8 @@ test('los eliminados se ocultan salvo con su filtro, y no ofrecen acciones ni ed
   await screen.findByText('Ana Admin');
   expect(tablaUsuarios().queryByText('Elsa Eliminada')).not.toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('radio', { name: 'Eliminados' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Eliminados' }));
   expect(tablaUsuarios().getByText('Elsa Eliminada')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Eliminado')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -639,6 +643,8 @@ test('el recuento de la barra sigue a los filtros y concuerda en singular', asyn
   await screen.findByText('Ana Admin');
 
   expect(screen.getByText(textoCompleto('3 personas · 2 activas'))).toBeInTheDocument();
-  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Inactivos' }));
+  await usuario.keyboard('{Escape}');
   expect(screen.getByText(textoCompleto('1 persona · 0 activas'))).toBeInTheDocument();
 });

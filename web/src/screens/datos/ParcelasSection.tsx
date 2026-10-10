@@ -48,8 +48,7 @@ export function ParcelasSection() {
       columnas={COLUMNAS_PARCELAS}
       onRowClick={seccion.verGrupos}
       filtros={seccion.filtros}
-    >
-      <BuscadorCodigoNombre value={seccion.busqueda} onChange={seccion.buscar} />
-    </SeccionTablaDatos>
+      busqueda={<BuscadorCodigoNombre value={seccion.busqueda} onChange={seccion.buscar} />}
+    />
   );
 }

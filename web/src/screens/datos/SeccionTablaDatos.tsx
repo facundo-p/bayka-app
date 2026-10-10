@@ -45,7 +45,9 @@ interface SeccionTablaDatosProps<T> extends Omit<TablaSeccionProps<T>, 'filtrosV
   /** Todas las queries de la sección: si una falla, falla la sección. */
   consultas: EstadoConsulta[];
   filas: T[] | undefined;
-  /** Filtros de la sección, en línea dentro de la toolbar. */
+  /** Buscador de la sección, a la vista en la toolbar. */
+  busqueda?: ReactNode;
+  /** Filtros de la sección, en el panel de filtros de la toolbar. */
   children?: ReactNode;
 }
 
@@ -70,7 +72,7 @@ function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { 
 
 /** Toolbar + tabla de una sección de Datos, con sus estados de carga, error y vacío. */
 export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaDatosProps<T>) {
-  const { segmento, consultas, filas, children, filtros, filtrosVacio, ...tabla } = props;
+  const { segmento, consultas, filas, busqueda, children, filtros, filtrosVacio, ...tabla } = props;
   if (algunaConError(consultas)) {
     return (
       <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />
@@ -84,6 +86,7 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
     <>
       <DatosToolbar
         segmento={segmento}
+        busqueda={busqueda}
         recuento={recuento}
         filtrosActivos={filtros.activos}
         onLimpiar={filtros.onLimpiar}

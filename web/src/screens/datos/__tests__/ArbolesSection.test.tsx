@@ -14,6 +14,7 @@ import { listarPerfiles } from '../../../queries/usuarioQueries';
 import { obtenerPlantacion } from '../../../queries/plantationQueries';
 import { descargarFichasPdf } from '../../../services/pdfFichas';
 import { arbolDetalle, plantacion } from '../../../test/fabricas';
+import { abrirFiltros } from '../../../test/panelFiltros';
 
 vi.mock('../../../queries/dataExplorerQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/dataExplorerQueries')>(
@@ -257,7 +258,8 @@ describe('la selección vale para la página actual', () => {
   test('cambiar un filtro la limpia', async () => {
     const usuario = await entrarAlModo();
     await usuario.click(casilla(1));
-    await usuario.selectOptions(screen.getByRole('combobox', { name: 'GPS' }), 'Con GPS');
+    const filtros = await abrirFiltros(usuario);
+    await usuario.selectOptions(filtros.getByRole('combobox', { name: 'GPS' }), 'Con GPS');
     await waitFor(() => expect(barra()).toHaveTextContent('0 árboles seleccionados'));
     expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
   });

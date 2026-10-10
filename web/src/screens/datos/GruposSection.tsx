@@ -9,6 +9,7 @@ import { filtrosAParams } from './filtrosUrl';
 import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
 import { SelectParcela } from './SelectParcela';
 import { useBusquedaDatos } from './useFiltrosDatos';
+import { useSoltarParcelaFantasma } from './useSoltarParcelaFantasma';
 import { useIrASeccion } from './useIrASeccion';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
@@ -29,6 +30,8 @@ function useGruposSection() {
     useBusquedaDatos();
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
+  const elegirParcela = (valor: string) => setFiltro('parcelaId', valor);
+  useSoltarParcelaFantasma(parcelas.data ?? [], filtros.parcelaId, elegirParcela);
   const verArboles = (grupo: GrupoConDetalle) =>
     irA(
       SEGMENTO_DATOS.arboles,
@@ -40,7 +43,7 @@ function useGruposSection() {
     grupos,
     visibles: filtrarPorCodigoNombre(grupos.data, filtros.busqueda),
     verArboles,
-    elegirParcela: (valor: string) => setFiltro('parcelaId', valor),
+    elegirParcela,
     buscar,
     filtrosToolbar: { activos: filtrosActivos, onLimpiar: limpiar },
     filtrosVacio: filtrosBusqueda,
@@ -60,8 +63,8 @@ export function GruposSection() {
       onRowClick={seccion.verArboles}
       filtros={seccion.filtrosToolbar}
       filtrosVacio={seccion.filtrosVacio}
+      busqueda={<BuscadorCodigoNombre value={seccion.filtros.busqueda} onChange={seccion.buscar} />}
     >
-      <BuscadorCodigoNombre value={seccion.filtros.busqueda} onChange={seccion.buscar} />
       <SelectParcela
         parcelas={seccion.parcelas.data ?? []}
         value={seccion.filtros.parcelaId}
