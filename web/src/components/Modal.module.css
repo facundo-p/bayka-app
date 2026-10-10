@@ -23,6 +23,11 @@
   box-shadow: var(--shadow-modal);
 }
 
+/* Ocupa lo que da la ventana: la usa la foto ampliada de un árbol. */
+.amplio {
+  max-width: var(--modal-max-width-amplio);
+}
+
 .dialog:focus {
   outline: none;
 }

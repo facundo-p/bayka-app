@@ -13,7 +13,8 @@
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  /* Una clase que la compone cambia el tono con --color-overline. */
+  color: var(--color-overline, var(--color-text-faint));
 }
 
 .overlineRegular {
