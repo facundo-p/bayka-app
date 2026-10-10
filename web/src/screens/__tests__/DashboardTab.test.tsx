@@ -13,18 +13,20 @@ vi.mock('../../lib/supabase', async () => {
 
 // Leaflet usa APIs de layout que jsdom no implementa: se reemplaza el mapa por
 // un contenedor tonto que expone lo que recibe, para poder afirmar sobre el filtro.
-type PropsMapaMock = {
+interface MapaFalsoProps {
   puntos: unknown[];
   parcelaFiltro?: string;
+  especieFiltro?: string;
   leyenda: { codigo: string; color: string }[];
-};
+}
 
 vi.mock('../../components/PlantationMap', () => ({
-  PlantationMap: ({ puntos, parcelaFiltro, leyenda }: PropsMapaMock) => (
+  PlantationMap: ({ puntos, parcelaFiltro, especieFiltro, leyenda }: MapaFalsoProps) => (
     <div>
       Mapa de la plantación
       <span data-testid="puntos-en-mapa">{puntos.length}</span>
       <span data-testid="parcela-filtro">{parcelaFiltro ?? '-'}</span>
+      <span data-testid="especie-filtro">{especieFiltro ?? '-'}</span>
       <span data-testid="colores-mapa">
         {leyenda.map(({ codigo, color }) => `${codigo}:${color}`).join(' ')}
       </span>
@@ -107,6 +109,10 @@ function resumen(): HTMLElement {
 /** Fila del número grande: lo separa del N/N, que también puede valer 0. */
 function totalResumen(): HTMLElement {
   return within(resumen()).getByText(/Meta/).parentElement as HTMLElement;
+}
+
+function filaEspecie(nombre: string): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(nombre) });
 }
 
 /** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
@@ -321,5 +327,61 @@ describe('DashboardTab', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Por especie')).not.toBeInTheDocument();
     expect(screen.queryByText('Con GPS')).not.toBeInTheDocument();
+  });
+
+  test('elegir una especie filtra resumen, mapa y tira; re-click la suelta', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /Algarrobo/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'true');
+    expect(within(totalResumen()).getByText('1')).toBeInTheDocument();
+    expect(within(resumen()).getByText('AL')).toBeInTheDocument();
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('1');
+    expect(screen.getByTestId('especie-filtro')).toHaveTextContent('Algarrobo');
+    // «Por especie» es el selector: sigue mostrando todas las especies.
+    expect(filaEspecie('Quebracho')).toBeInTheDocument();
+    // La tira cuenta solo algarrobos: ninguno en Norte.
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveTextContent(/^P1.*0Norte$/);
+
+    await usuario.click(filaEspecie('Algarrobo'));
+
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('3');
+    expect(within(totalResumen()).getByText('5')).toBeInTheDocument();
+  });
+
+  test('parcela y especie se cruzan; la especie ausente queda en 0 y "Ver todos" suelta las dos', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /Norte/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+    await usuario.click(filaEspecie('Quebracho'));
+
+    expect(within(totalResumen()).getByText('2')).toBeInTheDocument();
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('2');
+
+    // Algarrobo no está en Norte: su fila vuelve en 0 para poder soltarla.
+    await usuario.click(filaEspecie('Quebracho'));
+    expect(screen.queryByRole('button', { name: /Algarrobo/ })).not.toBeInTheDocument();
+    await usuario.click(screen.getByRole('button', { name: /Sur/ }));
+    await usuario.click(filaEspecie('Algarrobo'));
+    await usuario.click(screen.getByRole('button', { name: /Norte/ }));
+
+    expect(filaEspecie('Algarrobo')).toHaveTextContent(/0%0$/);
+    expect(within(totalResumen()).getByText('0')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver todos' }));
+
+    expect(within(totalResumen()).getByText('5')).toBeInTheDocument();
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
   });
 });

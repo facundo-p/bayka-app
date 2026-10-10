@@ -1,7 +1,7 @@
 /*
  * Datos del dashboard de una plantación. El server agrupa los árboles por parcela,
  * especie, mes, GPS y foto (RPC `dashboard_arboles`, #684); acá se suman esos grupos
- * con funciones puras, así el filtro por parcela no vuelve a pedir nada.
+ * con funciones puras, así los filtros por parcela y especie no vuelven a pedir nada.
  */
 import { porcentaje } from '../lib/formato';
 import { supabase } from '../lib/supabase';
@@ -88,21 +88,37 @@ export function calcularKpis(arboles: ConteoArboles[]): KpisArboles {
   };
 }
 
+type EspecieVisible = Pick<DistribucionEspecie, 'codigo' | 'nombre'>;
+
+const ESPECIE_NN: EspecieVisible = {
+  codigo: ESPECIE_SIN_IDENTIFICAR,
+  nombre: NOMBRE_SIN_IDENTIFICAR,
+};
+
+function indexarEspecies(especies: EspecieCatalogo[]): Map<string, EspecieCatalogo> {
+  return new Map(especies.map((especie) => [especie.id, especie]));
+}
+
+/** Sin especie o fuera del catálogo, el árbol se muestra como N/N. */
+function especieVisible(
+  speciesId: string | null,
+  porId: Map<string, EspecieCatalogo>,
+): EspecieVisible {
+  const especie = speciesId !== null ? porId.get(speciesId) : undefined;
+  return especie ? { codigo: especie.codigo, nombre: especie.nombre } : ESPECIE_NN;
+}
+
 /** Cantidad de árboles por especie, orden descendente; N/N van como "Sin identificar". */
 export function agruparPorEspecie(
   arboles: ConteoArboles[],
   especies: EspecieCatalogo[],
 ): DistribucionEspecie[] {
-  const porId = new Map(especies.map((especie) => [especie.id, especie]));
+  const porId = indexarEspecies(especies);
   const conteos = sumarPor(arboles, (conteo) => conteo.speciesId);
-  const distribucion = [...conteos].map(([speciesId, cantidad]) => {
-    const especie = speciesId !== null ? porId.get(speciesId) : undefined;
-    return {
-      codigo: especie?.codigo ?? ESPECIE_SIN_IDENTIFICAR,
-      nombre: especie?.nombre ?? NOMBRE_SIN_IDENTIFICAR,
-      cantidad,
-    };
-  });
+  const distribucion = [...conteos].map(([speciesId, cantidad]) => ({
+    ...especieVisible(speciesId, porId),
+    cantidad,
+  }));
   return distribucion.sort((primera, segunda) => segunda.cantidad - primera.cantidad);
 }
 
@@ -126,6 +142,33 @@ export function filtrarPorParcela(
   parcelaId: string | null,
 ): ConteoArboles[] {
   return parcelaId === null ? arboles : arboles.filter((conteo) => conteo.parcelaId === parcelaId);
+}
+
+/** Árboles de una especie, por el código que se muestra (N/N junta a los sin especie). */
+export function filtrarPorEspecie(
+  arboles: ConteoArboles[],
+  especieCodigo: string | null,
+  especies: EspecieCatalogo[],
+): ConteoArboles[] {
+  if (especieCodigo === null) return arboles;
+  const porId = indexarEspecies(especies);
+  return arboles.filter(
+    (conteo) => especieVisible(conteo.speciesId, porId).codigo === especieCodigo,
+  );
+}
+
+/** La especie elegida conserva su fila aunque no tenga árboles en la parcela:
+ *  sin ella no habría dónde clickear para soltarla. */
+export function conEspecieElegida(
+  distribucion: DistribucionEspecie[],
+  especieCodigo: string | null,
+  especies: EspecieCatalogo[],
+): DistribucionEspecie[] {
+  if (especieCodigo === null) return distribucion;
+  if (distribucion.some((especie) => especie.codigo === especieCodigo)) return distribucion;
+  const especie = especies.find((candidata) => candidata.codigo === especieCodigo);
+  const nombre = especie?.nombre ?? NOMBRE_SIN_IDENTIFICAR;
+  return [...distribucion, { codigo: especieCodigo, nombre, cantidad: 0 }];
 }
 
 export function agruparPorMes(arboles: ConteoArboles[]): RegistrosMes[] {
@@ -196,22 +239,46 @@ export async function obtenerFuenteDashboard(plantationId: string): Promise<Fuen
   return { arboles, especies, parcelas, totalGrupos };
 }
 
+/** Filtros combinables del dashboard; null es "sin filtro". */
+export type FiltrosDashboard = {
+  parcelaId: string | null;
+  especieCodigo: string | null;
+};
+
+export const SIN_FILTROS: FiltrosDashboard = { parcelaId: null, especieCodigo: null };
+
+/** Lo que mide el panel «Por especie»: la parcela elegida, sin el filtro de especie. */
+export type Composicion = Pick<KpisArboles, 'totalArboles' | 'especiesUsadas'>;
+
+export type DashboardFiltrado = DashboardData & { composicion: Composicion };
+
+function calcularComposicion(arboles: ConteoArboles[]): Composicion {
+  const { totalArboles, especiesUsadas } = calcularKpis(arboles);
+  return { totalArboles, especiesUsadas };
+}
+
 /**
- * Agregados del alcance elegido: toda la plantación (`parcelaId` null) o una parcela.
- * `totalGrupos` y `totalParcelas` describen el tamaño de la plantación, no el del
- * recorte, así que no se filtran.
+ * Agregados del alcance elegido. KPIs y meses cruzan parcela y especie; «Por especie»
+ * mira solo la parcela y «Por parcela» solo la especie, porque son los selectores
+ * del otro filtro. `totalGrupos` y `totalParcelas` describen el tamaño de la
+ * plantación, no el del recorte, así que no se filtran.
  */
 export function calcularDashboard(
   fuente: FuenteDashboard,
-  parcelaId: string | null,
-): DashboardData {
-  const arboles = filtrarPorParcela(fuente.arboles, parcelaId);
+  filtros: FiltrosDashboard = SIN_FILTROS,
+): DashboardFiltrado {
+  const { parcelaId, especieCodigo } = filtros;
+  const deParcela = filtrarPorParcela(fuente.arboles, parcelaId);
+  const deEspecie = filtrarPorEspecie(fuente.arboles, especieCodigo, fuente.especies);
+  const arboles = filtrarPorEspecie(deParcela, especieCodigo, fuente.especies);
+  const porEspecie = agruparPorEspecie(deParcela, fuente.especies);
   return {
     ...calcularKpis(arboles),
     totalGrupos: fuente.totalGrupos,
     totalParcelas: fuente.parcelas.length,
-    porEspecie: agruparPorEspecie(arboles, fuente.especies),
-    porParcela: agruparPorParcela(arboles, fuente.parcelas),
+    composicion: calcularComposicion(deParcela),
+    porEspecie: conEspecieElegida(porEspecie, especieCodigo, fuente.especies),
+    porParcela: agruparPorParcela(deEspecie, fuente.parcelas),
     porMes: agruparPorMes(arboles),
   };
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { PuntoGps } from '../../queries/mapaQueries';
 
 /** Contrato agnóstico del mapa: re-exportamos PuntoGps para que los callers y
@@ -16,4 +17,6 @@ export interface MapaPuntosProps {
   puntos: PuntoGps[];
   colorPorCodigo: Map<string, string>;
   variante?: VarianteMapa;
+  /** Contenido del popup al clickear un punto; sin esto los puntos no abren nada. */
+  popup?: (punto: PuntoGps) => ReactNode;
 }

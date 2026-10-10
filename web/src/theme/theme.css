@@ -121,9 +121,8 @@
   /* ─── Blancos sobre el azul de marca (card resumen del dashboard) ─── */
   --color-on-primary-strong: rgba(255, 255, 255, 0.7); /* overlines */
   --color-on-primary-soft: rgba(255, 255, 255, 0.75); /* texto secundario */
-  --color-on-primary-faint: rgba(255, 255, 255, 0.72); /* nombre en el chip de alcance */
   --color-on-primary-track: rgba(255, 255, 255, 0.18); /* fondo de barras de progreso */
-  --color-on-primary-chip: rgba(255, 255, 255, 0.14); /* fondo del chip de alcance */
+  --color-on-primary-chip: rgba(255, 255, 255, 0.14); /* hover translúcido sobre el azul */
   --color-on-primary-line: rgba(255, 255, 255, 0.14); /* divisores entre celdas */
   --color-on-primary-border: rgba(255, 255, 255, 0.42); /* borde del botón "Ver todos" */
 
