@@ -47,6 +47,20 @@ test('con filtro: el subtítulo y el vacío nombran la parcela', () => {
   expect(screen.getByText('Sin puntos GPS en la parcela P1')).toBeInTheDocument();
 });
 
+test.each([
+  [{ especieFiltro: 'Quebracho' }, /^Quebracho · imagen/, 'Sin puntos GPS de Quebracho'],
+  [
+    { parcelaFiltro: 'P1', especieFiltro: 'Quebracho' },
+    /Parcela P1 · Quebracho/,
+    'Sin puntos GPS de Quebracho en la parcela P1',
+  ],
+])('con especie: el subtítulo y el vacío la nombran (%o)', (filtros, subtitulo, vacio) => {
+  render(<PlantationMap puntos={[]} leyenda={LEYENDA} {...filtros} />);
+
+  expect(screen.getByText(subtitulo)).toBeInTheDocument();
+  expect(screen.getByText(vacio)).toBeInTheDocument();
+});
+
 test('el chip cuenta los puntos que recibe (ya filtrados)', () => {
   render(
     <PlantationMap

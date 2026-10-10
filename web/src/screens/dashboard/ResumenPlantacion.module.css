@@ -36,6 +36,9 @@
 
 .overline {
   composes: overline from '../../theme/utilidades.module.css';
+  /* Con dos filtros, los chips bajan de renglón; el overline no se parte. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Sobre el azul de marca el tono tenue no se lee. */
@@ -62,17 +65,21 @@
   color: var(--color-on-primary-soft);
 }
 
-/* ─── Fila de alcance (parcela seleccionada) ───────────────────────────── */
+/* ─── Fila de alcance (parcela y especie elegidas) ─────────────────────── */
 
+/* Con parcela y especie a la vez, en una columna angosta, baja de renglón
+   alineada a la derecha en vez de empujar el overline. */
 .alcance {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-md);
 }
 
 .chip {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-md);
   padding: 3px var(--space-lg);
   border-radius: var(--radius-full);

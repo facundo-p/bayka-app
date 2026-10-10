@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { KpisArboles } from '../../../queries/dashboardQueries';
-import { ResumenPlantacion } from '../ResumenPlantacion';
+import { ResumenPlantacion, type SeleccionAlcance } from '../ResumenPlantacion';
 
 const KPIS: KpisArboles = {
   totalArboles: 12480,
@@ -71,7 +71,10 @@ test('con alcance muestra la parcela y "Ver todos" la suelta', async () => {
     <ResumenPlantacion
       datos={KPIS}
       objetivo={20000}
-      alcance={{ codigo: 'P-04', nombre: 'El Chañar', onVerTodos }}
+      alcance={{
+        selecciones: [{ tipo: 'parcela', codigo: 'P-04', nombre: 'El Chañar' }],
+        onVerTodos,
+      }}
     />,
   );
 
@@ -81,4 +84,22 @@ test('con alcance muestra la parcela y "Ver todos" la suelta', async () => {
   await usuario.click(screen.getByRole('button', { name: 'Ver todos' }));
 
   expect(onVerTodos).toHaveBeenCalledTimes(1);
+});
+
+test('con parcela y especie muestra las dos selecciones', () => {
+  const selecciones: SeleccionAlcance[] = [
+    { tipo: 'parcela', codigo: 'P-04', nombre: 'El Chañar' },
+    { tipo: 'especie', codigo: 'QB', nombre: 'Quebracho', color: '#1a1a1a' },
+  ];
+  render(
+    <ResumenPlantacion
+      datos={KPIS}
+      objetivo={20000}
+      alcance={{ selecciones, onVerTodos: vi.fn() }}
+    />,
+  );
+
+  expect(within(card()).getByText('El Chañar')).toBeInTheDocument();
+  expect(within(card()).getByText('QB')).toBeInTheDocument();
+  expect(within(card()).getByText('Quebracho')).toBeInTheDocument();
 });

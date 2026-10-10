@@ -27,7 +27,7 @@ import { TEXTO_INFORME } from './textosInforme';
 export type ParcelaDelInforme = { id: string; grupos: number };
 
 export type EntradaInforme = {
-  /** `calcularDashboard(fuente, null)`: siempre la plantación entera. */
+  /** `calcularDashboard(fuente)`: siempre la plantación entera. */
   dashboard: DashboardData;
   /** null si no se pudieron leer: el informe sale con «Mapa no disponible». */
   puntos: readonly PuntoGps[] | null;
