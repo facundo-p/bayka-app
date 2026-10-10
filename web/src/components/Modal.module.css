@@ -48,3 +48,10 @@
   max-height: 85vh;
   border-radius: var(--radius-round) var(--radius-round) 0 0;
 }
+
+/* El contenido pone su encabezado y sus márgenes, y reparte el alto: el
+   diálogo solo lo enmarca. */
+.encabezadoPropio {
+  gap: 0;
+  padding: 0;
+}

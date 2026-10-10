@@ -61,3 +61,14 @@ test('al cerrar devuelve el foco a lo que lo abrió', () => {
 
   expect(screen.getByRole('button', { name: 'Abrir' })).toHaveFocus();
 });
+
+test('con encabezadoPropio el título queda solo como nombre del dialog', () => {
+  render(
+    <Modal open title="Detalle de Anchico" onClose={() => {}} encabezadoPropio>
+      <h2>Anchico</h2>
+    </Modal>,
+  );
+  expect(screen.getByRole('dialog', { name: 'Detalle de Anchico' })).toBeInTheDocument();
+  expect(screen.getAllByRole('heading')).toHaveLength(1);
+  expect(screen.getByRole('heading', { name: 'Anchico' })).toBeInTheDocument();
+});

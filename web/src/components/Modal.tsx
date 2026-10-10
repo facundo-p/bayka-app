@@ -14,7 +14,23 @@ interface ModalProps {
   posicion?: 'centro' | 'hoja';
   /** `amplio`: para mostrar una imagen grande, ej. la foto de un árbol. */
   ancho?: 'normal' | 'amplio';
+  /**
+   * El contenido trae su encabezado y sus márgenes (ej. el detalle de un
+   * listado): el título queda solo como nombre accesible del diálogo.
+   */
+  encabezadoPropio?: boolean;
   children: ReactNode;
+}
+
+type ClasesDialogo = Pick<ModalProps, 'posicion' | 'ancho' | 'encabezadoPropio'>;
+
+function clasesDialogo({ posicion, ancho = 'normal', encabezadoPropio }: ClasesDialogo) {
+  return cx(
+    styles.dialog,
+    posicion === 'hoja' && styles.dialogHoja,
+    styles[ancho],
+    encabezadoPropio && styles.encabezadoPropio,
+  );
 }
 
 /** Enfoca el dialog al abrir y, al cerrar, devuelve el foco a lo que lo tenía antes. */
@@ -38,33 +54,29 @@ function useTeclado(onClose: () => void, atraparFoco: (evento: KeyboardEvent) =>
   };
 }
 
-export function Modal({
-  open,
-  title,
-  onClose,
-  posicion = 'centro',
-  ancho = 'normal',
-  children,
-}: ModalProps) {
+export function Modal(props: ModalProps) {
+  const { open, title, onClose, encabezadoPropio, children } = props;
   const dialogRef = useFocusOnOpen(open);
   const alTeclear = useTeclado(onClose, useFocusTrap(dialogRef));
   useCerrarConEscape(open, onClose);
   if (!open) return null;
-  const esHoja = posicion === 'hoja';
   return createPortal(
-    <div className={cx(styles.overlay, esHoja && styles.overlayHoja)} onClick={onClose}>
+    <div
+      className={cx(styles.overlay, props.posicion === 'hoja' && styles.overlayHoja)}
+      onClick={onClose}
+    >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={cx(styles.dialog, esHoja && styles.dialogHoja, styles[ancho])}
+        className={clasesDialogo(props)}
         onKeyDown={alTeclear}
         /* El click dentro de la card no debe cerrar el modal. */
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className={styles.title}>{title}</h2>
+        {!encabezadoPropio && <h2 className={styles.title}>{title}</h2>}
         {children}
       </div>
     </div>,
