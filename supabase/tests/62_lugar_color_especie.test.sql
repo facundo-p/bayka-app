@@ -3,7 +3,7 @@
 -- lugar liberado se reutiliza, los escritores existentes conservan los lugares
 -- y el índice no deja repetir un lugar. N/N, el sentinela del contrato, no ocupa.
 begin;
-select plan(16);
+select plan(22);
 
 insert into organizations (id, nombre) values
   ('b6200000-0000-0000-0000-000000000001', 'Org Test 62');
@@ -198,6 +198,31 @@ select is(
 select is(pg_temp.lugares_62('b6200000-0000-0000-0000-000000000013'),
   'NN:-, T62A:1, T62D:3, T62E:2, T62b:0',
   'las que siguen conservan su lugar y la nueva toma el que dejó la quitada');
+
+-- ── Baja rechazada ───────────────────────────────────────────────────────────
+
+-- T62A tiene un árbol: su baja se deshace y su lugar no queda libre para la alta.
+select is(
+  (select aplicar_cambios_especies('b6200000-0000-0000-0000-000000000013',
+    array['b6200000-0000-0000-0000-0000000000e4']::uuid[],
+    array['b6200000-0000-0000-0000-0000000000e3']::uuid[]) -> 'rechazadas'),
+  jsonb_build_array(jsonb_build_object(
+    'species_id', 'b6200000-0000-0000-0000-0000000000e3', 'error', 'ESPECIE_CON_ARBOLES')),
+  'la baja de una especie con árboles se rechaza aunque venga con una alta');
+select is(pg_temp.lugares_62('b6200000-0000-0000-0000-000000000013'),
+  'NN:-, T62A:1, T62D:3, T62E:2, T62b:0, T62Ñ:4',
+  'la rechazada conserva su lugar y la alta toma el menor libre');
+
+-- ── Permisos ─────────────────────────────────────────────────────────────────
+
+select is(has_function_privilege('authenticated', 'public.bloquear_lugares_color(uuid)', 'execute'),
+  false, 'authenticated no puede tomar el lock de los lugares');
+select is(has_function_privilege('authenticated', 'public.menor_lugar_color_libre(uuid)', 'execute'),
+  false, 'authenticated no puede llamar a menor_lugar_color_libre');
+select is(has_function_privilege('authenticated', 'public.ocupa_lugar_color(uuid)', 'execute'),
+  false, 'authenticated no puede llamar a ocupa_lugar_color');
+select is(has_function_privilege('authenticated', 'public.rellenar_lugares_color()', 'execute'),
+  false, 'authenticated no puede rellenar los lugares');
 
 -- ── Restricciones ────────────────────────────────────────────────────────────
 

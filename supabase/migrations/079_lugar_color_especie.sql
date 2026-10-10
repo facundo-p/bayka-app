@@ -112,7 +112,8 @@ GRANT EXECUTE ON FUNCTION "public"."menor_lugar_color_libre"("uuid") TO "service
 
 -- El lugar lo asigna siempre el server: un cliente que reinserta una fila leída
 -- antes no arrastra un lugar que ya ocupó otra especie. En un upsert que choca
--- con la fila existente el valor se descarta y la fila conserva el suyo.
+-- con la fila existente, el valor calculado se descarta y la fila conserva el
+-- suyo, siempre que el `DO UPDATE` no setee `lugar_color` (ninguno lo hace).
 CREATE OR REPLACE FUNCTION "public"."asignar_lugar_color"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
