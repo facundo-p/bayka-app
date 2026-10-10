@@ -1,4 +1,5 @@
 import { entradaInforme } from '../../../test/informePdf';
+import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { datosInforme, notaCoordenadas } from '../datosInforme';
 
 describe('datosInforme', () => {
@@ -54,6 +55,19 @@ describe('datosInforme', () => {
       }),
       expect.objectContaining({ titulo: 'TIM · Especie TIM', fraccion: 0.5, porcentaje: '29%' }),
       expect.objectContaining({ titulo: 'N/N · Sin identificar', color: '#e0a83b' }),
+    ]);
+  });
+
+  test('por especie y el mapa usan los colores de la plantación, no el orden por cantidad (#845)', () => {
+    const colorDe = coloresDeEspecies([
+      { codigo: 'LAP', lugarColor: 3 },
+      { codigo: 'TIM', lugarColor: 0 },
+    ]);
+    const modelo = datosInforme({ ...entradaInforme({ parcelas: 1, especies: 2 }), colorDe });
+    expect(modelo.especies.filas.map((fila) => fila.color)).toEqual(['#6b8f3c', '#0a3760']);
+    expect(modelo.mapa.leyenda).toEqual([
+      { texto: 'LAP', color: '#6b8f3c' },
+      { texto: 'TIM', color: '#0a3760' },
     ]);
   });
 

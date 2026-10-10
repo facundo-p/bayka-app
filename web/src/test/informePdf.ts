@@ -5,6 +5,7 @@
 import type { EntradaInforme } from '../pdf/informe/datosInforme';
 import type { DashboardData, DistribucionEspecie } from '../queries/dashboardQueries';
 import type { PuntoGps } from '../queries/mapaQueries';
+import { coloresDeEspecies } from '../theme/coloresEspecie';
 
 const CODIGOS_ESPECIE = ['LAP', 'TIM', 'ANC', 'IBI', 'GUA', 'CED', 'URU', 'PET', 'ALG', 'CAN'];
 const CODIGOS_ESPECIE_EXTRA = ['ARA', 'YVY', 'KIR', 'PIN', 'TAT', 'CAÑ', 'GUY', 'LAU'];
@@ -41,6 +42,12 @@ function especies(cantidad: number, nn: number): DistribucionEspecie[] {
   return nn > 0
     ? [...lista, { codigo: CODIGO_NN, nombre: 'Sin identificar', cantidad: nn }]
     : lista;
+}
+
+/** Cada especie en el lugar de su orden en la lista; N/N no ocupa lugar. */
+function coloresDeLaLista(porEspecie: readonly DistribucionEspecie[]) {
+  const identificadas = porEspecie.filter((especie) => especie.codigo !== CODIGO_NN);
+  return coloresDeEspecies(identificadas.map(({ codigo }, lugarColor) => ({ codigo, lugarColor })));
 }
 
 function puntosDeParcela(indice: number, codigos: readonly string[]): PuntoGps[] {
@@ -98,5 +105,6 @@ export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
     plantacion: { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26', estado: 'Activa' },
     objetivo: opciones.objetivo === undefined ? 8000 : opciones.objetivo,
     organizacion: 'Bayka',
+    colorDe: coloresDeLaLista(porEspecie),
   };
 }

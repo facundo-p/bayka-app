@@ -10,51 +10,42 @@ import {
 /** Color de una especie por su código; null = sin especie. */
 export type ColorEspecie = (codigo: string | null) => string;
 
+/** Especie habilitada en una plantación con su lugar fijo en la paleta (#845). */
+export type LugarDeEspecie = { codigo: string; lugarColor: number | null };
+
 /** Los 8 de los gráficos y los 4 extra (#756): con 12 especies o menos no se repite ninguno. */
 export const PALETA_ESPECIES = [...COLORES_GRAFICOS, ...COLORES_GRAFICOS_EXTRA] as const;
 
-function esCodigoIdentificado(codigo: string): boolean {
-  return codigo !== '' && !esSinIdentificar(codigo);
-}
-
-/** Códigos identificados, sin repetidos y ordenados: el índice de cada uno es su color. */
-function ordenarCodigos(codigos: readonly string[]): string[] {
-  return [...new Set(codigos.filter(esCodigoIdentificado))].sort();
-}
-
 /**
- * Colores de las especies de UNA plantación (#777): cada código toma el color de
- * su posición en el catálogo de la plantación ordenado por código, así que dos
- * especies de la misma plantación no comparten color (hasta 12) y la misma
- * especie se ve igual en el dashboard, el mapa, Datos, el KML y la ficha.
- *
- * - Sin código o N/N → ámbar de "sin identificar".
- * - Código fuera del catálogo → gris: no le roba el color a una especie habilitada.
- * - Catálogo vacío (no se pudo leer o no hay especies habilitadas) → se usan los
- *   códigos `presentes` en la vista, con el mismo criterio, para no pintar todo igual.
- */
-export function coloresDeEspecies(
-  catalogo: readonly string[],
-  presentes: readonly string[] = [],
-): ColorEspecie {
-  const ordenados = ordenarCodigos(catalogo);
-  const codigos = ordenados.length > 0 ? ordenados : ordenarCodigos(presentes);
-  const colores = new Map(
-    codigos.map((codigo, indice) => [codigo, PALETA_ESPECIES[indice % PALETA_ESPECIES.length]]),
-  );
-  return (codigo) => {
-    if (codigo === null || esSinIdentificar(codigo)) return COLOR_GRAFICO_NN;
-    return colores.get(codigo) ?? COLOR_GRAFICO_OTRAS;
-  };
-}
-
-/**
- * Color de una especie fuera de una plantación (pantallas del catálogo de
- * Especies), donde no hay un conjunto de especies contra el cual distinguirla.
- * Sale de hashear el código, así que dos especies pueden coincidir.
+ * Respaldo para cuando no se pueden leer los lugares de la plantación: el color
+ * sale de hashear el código, así que dos especies pueden coincidir. No depende
+ * de qué especies muestre la vista, así que es el mismo en todas.
  */
 export function colorEspeciePorCodigo(codigo: string | null): string {
   if (!codigo || esSinIdentificar(codigo)) return COLOR_GRAFICO_NN;
   const hash = [...codigo].reduce((suma, caracter) => suma + caracter.charCodeAt(0), 0);
   return colorEspeciePorIndice(hash);
+}
+
+function colorDeHabilitada({ codigo, lugarColor }: LugarDeEspecie): string {
+  if (lugarColor === null) return colorEspeciePorCodigo(codigo);
+  return PALETA_ESPECIES[lugarColor % PALETA_ESPECIES.length];
+}
+
+/**
+ * Colores de las especies de UNA plantación (#845): cada especie habilitada
+ * guarda un lugar fijo en la paleta, que no cambia al habilitar o quitar otras.
+ * Así la misma especie se ve igual en el dashboard, el mapa, Datos, el KML, la
+ * ficha y el informe.
+ *
+ * - Sin código o N/N → ámbar de "sin identificar".
+ * - Habilitada sin lugar legible (la base todavía no tiene la columna) → hash.
+ * - Código que no está habilitado → gris: no le roba el color a una que sí.
+ */
+export function coloresDeEspecies(especies: readonly LugarDeEspecie[]): ColorEspecie {
+  const colores = new Map(especies.map((especie) => [especie.codigo, colorDeHabilitada(especie)]));
+  return (codigo) => {
+    if (codigo === null || esSinIdentificar(codigo)) return COLOR_GRAFICO_NN;
+    return colores.get(codigo) ?? COLOR_GRAFICO_OTRAS;
+  };
 }

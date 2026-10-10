@@ -16,11 +16,7 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { useParcelasDatos } from '../datos/useDatosQueries';
-import {
-  asignarColoresEspecies,
-  codigosConArboles,
-  type EspecieColoreada,
-} from './coloresEspecies';
+import { asignarColoresEspecies, type EspecieColoreada } from './coloresEspecies';
 import { armarAlcance, etiquetaEspecie, filtrarPuntos, parcelasDeTira } from './filtrosDashboard';
 import { ResumenPlantacion, type AlcanceMetrica } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
@@ -159,7 +155,7 @@ function useDatosDashboard(plantationId: string) {
     queryFn: () => listarPuntosGps(plantationId),
   });
   const parcelas = useParcelasDatos(plantationId);
-  const colores = useColoresEspecie(plantationId, codigosConArboles(dashboard.data));
+  const colores = useColoresEspecie(plantationId);
   const objetivoArboles = plantacion.data?.objetivoArboles ?? null;
   return {
     dashboard,

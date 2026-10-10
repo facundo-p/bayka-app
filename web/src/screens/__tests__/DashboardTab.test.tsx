@@ -5,6 +5,7 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { filaPlantacion } from '../../test/fabricas';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -144,15 +145,22 @@ function esConteo(consulta: ConsultaCapturada): boolean {
   return consulta.opciones?.head === true;
 }
 
-/** AA está habilitada sin árboles: corre a AL y QB un lugar en la paleta. */
+/** AA está habilitada sin árboles y ocupa el lugar 0: AL y QB pintan los suyos (#845). */
 const HABILITADAS = [
   {
     species_id: 'sp-0',
+    lugar_color: 0,
     species: { id: 'sp-0', codigo: 'AA', nombre: 'Aaa', nombre_cientifico: null },
   },
-  { species_id: 'sp-1', species: { ...CATALOGO[0] } },
-  { species_id: 'sp-2', species: { ...CATALOGO[1] } },
+  { species_id: 'sp-1', lugar_color: 2, species: { ...CATALOGO[0] } },
+  { species_id: 'sp-2', lugar_color: 1, species: { ...CATALOGO[1] } },
 ];
+
+/** Una base sin la columna del lugar: las filas llegan sin `lugar_color`. */
+const HABILITADAS_SIN_LUGAR = HABILITADAS.map(({ species_id, species }) => ({
+  species_id,
+  species,
+}));
 
 function crearResolver(conteos: RespuestaMock['data'], habilitadas: RespuestaMock['data'] = []) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
@@ -204,7 +212,7 @@ describe('DashboardTab', () => {
     expect(within(algarrobo).getByText('20%')).toBeInTheDocument();
   });
 
-  test('«Por especie» y el mapa usan los colores de la plantación (#777)', async () => {
+  test('«Por especie» y el mapa usan los colores de la plantación (#777, #845)', async () => {
     capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS));
     renderRutasEn('/plantaciones/plant-1');
 
@@ -216,13 +224,13 @@ describe('DashboardTab', () => {
     expect(barra.style.getPropertyValue('--color')).toBe('#3b7db5');
   });
 
-  test('sin especies habilitadas, los colores salen de las especies con árboles', async () => {
-    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+  test('si la base todavía no tiene el lugar, cada especie se pinta por su hash', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS_SIN_LUGAR));
     renderRutasEn('/plantaciones/plant-1');
 
     const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
-    expect(colores).toHaveTextContent('AL:#0a3760');
-    expect(colores).toHaveTextContent('QB:#99b95b');
+    expect(colores).toHaveTextContent(`AL:${colorEspeciePorCodigo('AL')}`);
+    expect(colores).toHaveTextContent(`QB:${colorEspeciePorCodigo('QB')}`);
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {

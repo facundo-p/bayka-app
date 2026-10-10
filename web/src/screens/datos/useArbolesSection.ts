@@ -90,11 +90,6 @@ function descargaFichaDe(contexto: ContextoFichasPdf | null) {
     contexto && (() => descargarFichaPdf(arbol.id, contexto));
 }
 
-/** Respaldo de los colores si la plantación no tiene especies habilitadas legibles. */
-function codigosDePagina(arboles: ArbolDetalle[] | undefined): string[] {
-  return (arboles ?? []).flatMap((arbol) => (arbol.especieCodigo ? [arbol.especieCodigo] : []));
-}
-
 function useSeleccionDeArboles(
   { arboles, clavePagina }: ReturnType<typeof usePaginaArboles>,
   contexto: ContextoFichasPdf | null,
@@ -124,7 +119,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
-  const colores = useColoresEspecie(id, codigosDePagina(paginaArboles.arboles.data?.arboles));
+  const colores = useColoresEspecie(id);
   const contextoFichas = useContextoFichas(plantacion, mapas);
   const seleccion = useSeleccionDeArboles(paginaArboles, contextoFichas);
   return {

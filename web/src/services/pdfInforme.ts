@@ -1,6 +1,7 @@
 /*
  * Informe PDF de la plantación (#756): reutiliza las lecturas cacheadas del
- * dashboard, del mapa y de las parcelas, y arma el documento en el navegador.
+ * dashboard, del mapa, de las parcelas y de las especies, y arma el documento en
+ * el navegador.
  * Todo lo de PDF se carga recién acá, con `import()`.
  */
 import type { QueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { listarParcelasConStats } from '../queries/dataExplorerQueries';
 import { leerNombreOrganizacion } from '../queries/fichasQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import { ETIQUETA_ESTADO_PLANTACION, type Plantacion } from '../queries/plantationQueries';
+import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 
 export type PlantacionDelInforme = Pick<
@@ -43,6 +45,8 @@ function leerInsumos(id: string, queryClient: QueryClient) {
       .catch(() => null),
     // Sin organización legible, el encabezado lleva solo el código.
     leerNombreOrganizacion(id).catch(() => null),
+    // Los colores del dashboard, el KML y la ficha; sin especies legibles, por hash.
+    leerColoresEspecie(queryClient, id),
     import('../pdf/informe/motorInforme'),
   ]);
 }
@@ -52,7 +56,7 @@ export async function generarPdfInforme(
   plantacion: PlantacionDelInforme,
   queryClient: QueryClient,
 ): Promise<Blob> {
-  const [fuente, puntos, parcelas, organizacion, motor] = await leerInsumos(
+  const [fuente, puntos, parcelas, organizacion, colorDe, motor] = await leerInsumos(
     plantacion.id,
     queryClient,
   );
@@ -63,6 +67,7 @@ export async function generarPdfInforme(
     plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },
     objetivo: plantacion.objetivoArboles,
     organizacion,
+    colorDe,
     emitido: formatearFechaCorta(new Date().toISOString()),
   });
 }

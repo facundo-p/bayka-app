@@ -18,8 +18,8 @@ import type {
 } from '../../queries/dashboardQueries';
 import { esSinIdentificar } from '../../queries/especiesConstantes';
 import type { PuntoGps } from '../../queries/mapaQueries';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
 import type { EtiquetaMapa, PuntoMapa } from '../mapa/planMapa';
-import { asignarColoresInforme, type ColoresInforme } from './coloresInforme';
 import { etiquetasDeParcelas } from './mapaInforme';
 import { TEXTO_INFORME } from './textosInforme';
 
@@ -36,6 +36,8 @@ export type EntradaInforme = {
   plantacion: { lugar: string; periodo: string; codigo: string; estado: string };
   objetivo: number | null;
   organizacion: string | null;
+  /** Los colores de la plantación, los mismos del dashboard (#845). */
+  colorDe: ColorEspecie;
 };
 
 export type Indicador = { valor: string; detalle: string };
@@ -164,7 +166,7 @@ function tituloEspecie({ codigo, nombre }: DistribucionEspecie): string {
   return etiquetaEspecie({ especieCodigo: codigo, especieNombre: nombre });
 }
 
-function filasEspecies(dashboard: DashboardData, colores: ColoresInforme): FilaEspecie[] {
+function filasEspecies(dashboard: DashboardData, colores: ColorEspecie): FilaEspecie[] {
   const maximo = dashboard.porEspecie[0]?.cantidad ?? 0;
   return dashboard.porEspecie.map((especie) => ({
     codigo: especie.codigo,
@@ -176,7 +178,7 @@ function filasEspecies(dashboard: DashboardData, colores: ColoresInforme): FilaE
   }));
 }
 
-function especies(dashboard: DashboardData, colores: ColoresInforme) {
+function especies(dashboard: DashboardData, colores: ColorEspecie) {
   const { especies: rotulo, separador, sinArboles } = TEXTO_INFORME;
   return {
     titulo: `${rotulo}${separador}${pluralizar(dashboard.especiesUsadas, SUSTANTIVO.especie)}`,
@@ -270,7 +272,7 @@ export function notaCoordenadas(conGps: number, total: number): string {
   return `${base}; ${t.restantesPrefijo} ${formatearEntero(restantes)} ${t.restantesSufijo}.`;
 }
 
-function leyenda(dashboard: DashboardData, colores: ColoresInforme): ItemLeyenda[] {
+function leyenda(dashboard: DashboardData, colores: ColorEspecie): ItemLeyenda[] {
   return dashboard.porEspecie.map(({ codigo }) => ({
     texto: esSinIdentificar(codigo) ? TEXTO_INFORME.nn : codigo,
     color: colores(codigo),
@@ -290,7 +292,7 @@ function puntosDeLasEspecies(dashboard: DashboardData, puntos: readonly PuntoGps
   return (puntos ?? []).filter((punto) => codigos.has(punto.codigo));
 }
 
-function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColoresInforme) {
+function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColorEspecie) {
   const puntos = puntosDeLasEspecies(dashboard, leidos);
   const vacio = vacioDelMapa(dashboard, puntos);
   return {
@@ -303,12 +305,11 @@ function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColoresInf
 }
 
 export function datosInforme(entrada: EntradaInforme): ModeloInforme {
-  const colores = asignarColoresInforme(entrada.dashboard.porEspecie);
   return {
     linea: lineaDelTitulo(entrada),
     indicadores: indicadores(entrada),
-    especies: especies(entrada.dashboard, colores),
+    especies: especies(entrada.dashboard, entrada.colorDe),
     parcelas: tablaParcelas(entrada),
-    mapa: mapa(entrada, colores),
+    mapa: mapa(entrada, entrada.colorDe),
   };
 }
