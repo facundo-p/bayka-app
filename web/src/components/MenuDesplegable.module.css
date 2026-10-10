@@ -29,7 +29,7 @@
 }
 
 .item:disabled {
-  color: var(--color-text-faint);
+  color: var(--color-text-disabled);
   cursor: not-allowed;
 }
 

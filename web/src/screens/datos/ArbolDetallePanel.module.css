@@ -16,11 +16,8 @@
   overflow-wrap: anywhere;
 }
 
-/* Rótulo de bloque con contraste AA; el `.overline` global sigue en faint
-   hasta #824. */
 .rotulo {
   composes: overline from '../../theme/utilidades.module.css';
-  --color-overline: var(--color-text-secondary);
 }
 
 .bloque {

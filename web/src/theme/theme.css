@@ -53,8 +53,10 @@
   --color-text-primary: #2a2d27; /* cuerpo (cálido) */
   --color-text-body: #3a3d36; /* celdas de tabla */
   --color-text-secondary: #6e6a5e; /* secundario cálido */
-  --color-text-muted: #9a927e; /* metadatos */
-  --color-text-faint: #a79f8c; /* overlines, sublabels */
+  /* Metadatos, rótulos y textos vacíos usan el secundario: un tono más claro no
+     llega a AA (4,5:1) sobre los fondos cálidos (#824). */
+  --color-text-muted: var(--color-text-secondary); /* metadatos */
+  --color-text-faint: var(--color-text-secondary); /* overlines, sublabels */
   --color-text-disabled: #bdb49d; /* placeholders, paginación inactiva */
 
   /* ─── Superficies cálidas ──────────────────────────────────────────── */

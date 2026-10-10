@@ -13,7 +13,7 @@ export const COLOR_PDF = {
   tinta: '#2a2d27',
   cuerpo: '#3a3d36',
   apagado: '#6e6a5e',
-  tenue: '#9a927e',
+  tenue: '#6e6a5e',
   linea: '#e7e1d4',
   // Más oscuro que --color-warn-fg-strong: el texto ámbar chico tiene que leerse impreso.
   ambarTexto: '#9a6b12',
