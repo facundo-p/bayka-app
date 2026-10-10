@@ -52,8 +52,10 @@ export type ArbolDetalle = {
   especieId: string | null;
   especieCodigo: string | null;
   especieNombre: string | null;
+  especieNombreCientifico: string | null;
   grupoId: string;
   grupoCodigo: string;
+  grupoNombre: string | null;
   parcelaId: string | null;
   fotoUrl: string | null;
   usuarioRegistro: string | null;
@@ -117,9 +119,10 @@ export type FilaArbol = {
   gps_accuracy?: number | null;
   gps_captured_at?: string | null;
   species_id: string | null;
-  species: { codigo: string; nombre: string } | null;
+  species: { codigo: string; nombre: string; nombre_cientifico: string | null } | null;
   groups: {
     codigo: string;
+    nombre: string;
     parcela_id: string | null;
     plantations: { codigo: string } | null;
   } | null;
@@ -204,7 +207,7 @@ function consultaBaseArboles(plantationId: string) {
   return supabase
     .from('trees')
     .select(
-      '*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id, plantations!inner(codigo))',
+      '*, species(codigo, nombre, nombre_cientifico), groups!inner(codigo, nombre, parcela_id, plantation_id, plantations!inner(codigo))',
       {
         count: 'exact',
       },
@@ -277,8 +280,10 @@ function mapearArbol(fila: FilaArbol): ArbolDetalle {
     especieId: fila.species_id,
     especieCodigo: fila.species?.codigo ?? null,
     especieNombre: fila.species?.nombre ?? null,
+    especieNombreCientifico: fila.species?.nombre_cientifico ?? null,
     grupoId: fila.group_id,
     grupoCodigo: fila.groups?.codigo ?? '',
+    grupoNombre: fila.groups?.nombre ?? null,
     parcelaId: fila.groups?.parcela_id ?? null,
     fotoUrl: fila.foto_url,
     usuarioRegistro: fila.usuario_registro,

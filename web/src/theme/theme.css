@@ -93,6 +93,7 @@
   --color-warn-dot: #e0a83b; /* punto N/N en mapa, leyenda */
   --color-warn-fg: #c79a3e; /* texto de alerta */
   --color-warn-fg-strong: #b97f1e; /* número de alerta */
+  --color-warn-fg-legible: #8a5a12; /* texto ámbar chico: AA sobre --color-warn-bg */
   --color-warn-bg: #fffaf0;
   --color-warn-border: #f0e0b8;
 
@@ -227,7 +228,6 @@
   --ancho-filtro-sm: 130px;
   --ancho-filtro-xs: 120px;
   --alto-min-mapa: 320px; /* mapa del dashboard */
-  --alto-mapa-compacto: 220px; /* mapa del panel lateral */
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
@@ -238,6 +238,8 @@
   --control-height-sm: 32px;
   --control-height-input: 36px; /* input del panel lateral */
   --modal-max-width: 420px;
+  --modal-max-width-amplio: 960px;
+  --alto-max-foto-ampliada: 70vh; /* deja lugar al título y al botón dentro del 90vh del modal */
   --alto-max-desplegable: 320px; /* lista de un selector con búsqueda */
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;

@@ -1,55 +1,93 @@
-/* El SubID es la identidad del árbol: mono, como en la tabla. */
+/* El ID Árbol es la identidad del árbol: mono, como en la tabla. */
+.identidad {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
 .titulo {
   margin: 0;
   font-family: var(--font-mono);
   font-size: var(--text-title);
+  font-weight: var(--font-weight-medium);
   line-height: var(--line-height-snug);
   color: var(--color-text-heading);
+  overflow-wrap: anywhere;
 }
 
-.etiqueta {
+/* Rótulo de bloque con contraste AA; el `.overline` global sigue en faint
+   hasta #824. */
+.rotulo {
   composes: overline from '../../theme/utilidades.module.css';
+  --color-overline: var(--color-text-secondary);
 }
 
-.foto {
-  max-width: 100%;
-  max-height: 320px;
-  object-fit: cover;
-  border-radius: var(--radius-card-sm);
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
-/* Coordenadas GPS en mono bajo el mapa del detalle. */
-.coordenadas {
+/* Rótulo a la izquierda y una acción chica a la derecha. */
+.rotuloFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: var(--space-3xl);
+}
+
+/* Franja de ubicación: tres celdas con el código en mono y el nombre debajo. */
+.ubicacion {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background-color: var(--color-surface-sunken);
+}
+
+.celdaUbicacion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.celdaUbicacion + .celdaUbicacion {
+  border-left: var(--border-thin) solid var(--color-border);
+}
+
+.codigoUbicacion {
+  margin: 0;
   font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-body);
+}
+
+.nombreUbicacion {
+  composes: truncar from '../../theme/utilidades.module.css';
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
-/* Texto tenue de ausencia (sin foto / sin GPS). */
-.tenue {
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-/* Grilla de metadatos: etiqueta tenue arriba, valor debajo. */
-.meta {
-  display: grid;
-  /* El dato más ancho mide 91px; con 140 quedan dos columnas en el panel y una
-     sola cuando se angosta, sin cortar ninguna etiqueta. */
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-xl) var(--space-2xl);
+.registro {
   margin: 0;
-}
-
-.metaDato {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.metaValor {
-  font-size: var(--text-md);
+  padding-top: var(--space-lg);
+  border-top: var(--border-thin) solid var(--color-divider);
+  font-size: var(--text-sm);
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
+}
+
+.registro strong {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-body);
 }
 
 /* Pie del detalle: la ficha PDF ocupa todo el ancho, con el error debajo. */

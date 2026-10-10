@@ -1,0 +1,149 @@
+/* Foto y mapa, dos cuadrados del mismo tamaño. */
+.dos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.celda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+/* Caja 1:1 reservada desde antes de que cargue la foto. */
+.cuadro {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+  background-color: var(--color-surface-sunken);
+}
+
+.botonFoto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
+.botonFoto:focus-visible {
+  outline: var(--border-medium) solid var(--color-primary-accent);
+  outline-offset: calc(-1 * var(--border-medium));
+}
+
+/* Una foto vieja no cuadrada se recorta solo al mostrarla. */
+.foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sobreFoto {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+}
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+  border-style: dashed;
+  border-color: var(--color-border-strong);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.iconoVacio {
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+
+.tituloVacio {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-body);
+}
+
+.detalleVacio {
+  font-size: var(--text-xs);
+  line-height: var(--line-height-snug);
+}
+
+/* La foto existe pero sigue en el celular: no es lo mismo que no tenerla. */
+.pendiente .iconoVacio {
+  color: var(--color-estado-pending);
+}
+
+.puntoPendiente {
+  display: inline-block;
+  width: var(--space-md);
+  height: var(--space-md);
+  margin-right: var(--space-xs);
+  border-radius: var(--radius-full);
+  background-color: var(--color-estado-pending);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.coordenadas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-body);
+}
+
+.precision {
+  color: var(--color-text-secondary);
+}
+
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.enlace:hover {
+  text-decoration: underline;
+}
+
+/* La foto entera, sin pasarse del alto de la ventana. */
+.fotoAmpliada {
+  display: block;
+  width: 100%;
+  max-height: var(--alto-max-foto-ampliada);
+  object-fit: contain;
+  border-radius: var(--radius-card-sm);
+  background-color: var(--color-surface-sunken);
+}
+
+.accionesModal {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.soloLectores {
+  composes: soloLectores from '../../theme/utilidades.module.css';
+}

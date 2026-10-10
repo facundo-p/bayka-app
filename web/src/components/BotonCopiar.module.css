@@ -1,0 +1,4 @@
+/* Anuncia «Copiado» a los lectores de pantalla; a la vista lo dice el ícono. */
+.anuncio {
+  composes: soloLectores from '../theme/utilidades.module.css';
+}

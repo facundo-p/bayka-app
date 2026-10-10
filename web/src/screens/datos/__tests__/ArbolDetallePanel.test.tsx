@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ArbolDetalle } from '../../../queries/dataExplorerQueries';
+import type { CodigoNombre } from '../../../queries/fichasQueries';
 import { ArbolDetallePanel } from '../ArbolDetallePanel';
 import { arbolDetalle } from '../../../test/fabricas';
 import { obtenerUrlDescargaFoto, obtenerUrlFoto } from '../../../services/fotoService';
@@ -46,11 +47,14 @@ function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
   return arbolDetalle({
     subId: 'A-001',
     idArbol: 'A-001-SS26',
+    especieId: 'sp-qb',
     especieCodigo: 'QB',
     especieNombre: 'Quebracho',
+    especieNombreCientifico: 'Schinopsis balansae',
     parcelaId: 'par-1',
     grupoId: 'grupo-1',
     grupoCodigo: 'G-01',
+    grupoNombre: 'Línea 1',
     posicion: 3,
     latitude: -27.123456,
     longitude: -55.654321,
@@ -71,10 +75,17 @@ function arbolSinGps(): ArbolDetalle {
   return resto;
 }
 
+const NN = {
+  especieId: null,
+  especieCodigo: null,
+  especieNombre: null,
+  especieNombreCientifico: null,
+};
+
 function renderPanel(
   datos: ArbolDetalle = arbol(),
   {
-    parcelaCodigo = 'P-01' as string | null,
+    parcela = { codigo: 'P-01', nombre: 'Loma Norte' } as CodigoNombre | null,
     tecnicoNombre = 'Lucía Ferreyra' as string | null,
     nombreFoto = 'foto-finca-2026-a-001.jpg' as string | null,
     descargarFicha = null as (() => Promise<void>) | null,
@@ -87,7 +98,7 @@ function renderPanel(
     <QueryClientProvider client={queryClient}>
       <ArbolDetallePanel
         arbol={datos}
-        parcelaCodigo={parcelaCodigo}
+        parcela={parcela}
         tecnicoNombre={tecnicoNombre}
         nombreFoto={nombreFoto}
         descargarFicha={descargarFicha}
@@ -99,57 +110,122 @@ function renderPanel(
   return onCerrar;
 }
 
-/** Valor del dato de la grilla de metadatos con esa etiqueta. */
-function metaDato(etiqueta: string): string | null | undefined {
-  return screen.getByText(etiqueta).nextElementSibling?.textContent;
+/** Los `dd` de la celda de ubicación con ese `dt`. */
+function ubicacion(etiqueta: string): string[] {
+  const termino = screen.getByText(etiqueta, { selector: 'dt' });
+  return [...termino.parentElement!.querySelectorAll('dd')].map((dd) => dd.textContent ?? '');
 }
 
-test('muestra especie, coordenadas con precisión y los metadatos', () => {
+test('muestra la especie con su código, el científico y el GPS con precisión', () => {
   renderPanel();
 
   expect(screen.getByRole('heading', { name: 'A-001-SS26' })).toBeInTheDocument();
-  expect(screen.getByText('QB · Quebracho')).toBeInTheDocument();
-  expect(screen.getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-  expect(screen.getByText(/±5m/)).toBeInTheDocument();
+  expect(screen.getByText('Quebracho')).toBeInTheDocument();
+  expect(screen.getByText('QB')).toBeInTheDocument();
+  expect(screen.getByText('Schinopsis balansae')).toBeInTheDocument();
+  expect(screen.getByText('-27.123456, -55.654321')).toBeInTheDocument();
+  expect(screen.getByText('± 5 m')).toBeInTheDocument();
   expect(screen.getByText('Mapa del árbol')).toBeInTheDocument();
-  expect(screen.getByText('P-01')).toBeInTheDocument();
-  expect(screen.getByText('Lucía Ferreyra')).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Google Maps (abre en una pestaña nueva)' }),
+  ).toHaveAttribute(
+    'href',
+    'https://www.google.com/maps/search/?api=1&query=-27.123456,-55.654321',
+  );
+});
+
+test('una especie sin científico no deja un renglón vacío', () => {
+  renderPanel(arbol({ especieNombreCientifico: null }));
+
+  const nombre = screen.getByText('Quebracho');
+  expect(nombre.parentElement?.children).toHaveLength(1);
+});
+
+describe('ubicación (#830)', () => {
+  test('parcela, grupo y posición van en una lista de dt/dd con código y nombre', () => {
+    renderPanel();
+
+    expect(screen.getByText('Parcela', { selector: 'dt' }).closest('dl')).not.toBeNull();
+    expect(ubicacion('Parcela')).toEqual(['P-01', 'Loma Norte']);
+    expect(ubicacion('Grupo')).toEqual(['G-01', 'Línea 1']);
+    expect(ubicacion('Posición')).toEqual(['3']);
+  });
+
+  test('sin parcela ni posición muestra la raya, sin nombre debajo', () => {
+    renderPanel(arbol({ parcelaId: null, posicion: null, grupoNombre: null }), { parcela: null });
+
+    expect(ubicacion('Parcela')).toEqual(['—']);
+    expect(ubicacion('Grupo')).toEqual(['G-01']);
+    expect(ubicacion('Posición')).toEqual(['—']);
+  });
+});
+
+test('el registro dice cuándo y quién, con la raya si no se sabe quién', () => {
+  renderPanel(arbol(), { tecnicoNombre: null });
+  expect(screen.getByText(/Registrado el/)).toHaveTextContent('Registrado el 10/02/2026 por —');
 });
 
 test('sin GPS avisa en vez de dibujar un mapa en 0,0', () => {
   renderPanel(arbolSinGps());
 
-  expect(screen.getByText('Sin coordenada GPS')).toBeInTheDocument();
+  expect(screen.getByText('Sin punto GPS')).toBeInTheDocument();
   expect(screen.queryByText('Mapa del árbol')).not.toBeInTheDocument();
-});
-
-test('sin foto subida lo dice, no deja el bloque vacío', () => {
-  renderPanel();
-  expect(screen.getByText('Sin foto')).toBeInTheDocument();
-});
-
-test('sin especie identificada cae a N/N', () => {
-  renderPanel(arbol({ especieCodigo: null, especieNombre: null }));
-  expect(screen.getByText('N/N · Sin identificar')).toBeInTheDocument();
-});
-
-test('sin técnico, parcela ni posición muestra la raya en cada dato', () => {
-  renderPanel(arbol({ usuarioRegistro: null, parcelaId: null, posicion: null }), {
-    parcelaCodigo: null,
-    tecnicoNombre: null,
-  });
-
-  expect(metaDato('Técnico')).toBe('—');
-  expect(metaDato('Parcela')).toBe('—');
-  expect(metaDato('Posición')).toBe('—');
-  expect(metaDato('Grupo')).toBe('G-01');
+  expect(screen.queryByRole('link', { name: /Google Maps/ })).not.toBeInTheDocument();
 });
 
 test('GPS sin precisión muestra solo las coordenadas', () => {
   renderPanel(arbol({ gpsAccuracy: undefined }));
 
-  expect(screen.getByText('-27.12346, -55.65432')).toBeInTheDocument();
+  expect(screen.getByText('-27.123456, -55.654321')).toBeInTheDocument();
   expect(screen.queryByText(/±/)).not.toBeInTheDocument();
+});
+
+describe('copiar al portapapeles', () => {
+  test('copia el ID Árbol y lo confirma', async () => {
+    const usuario = userEvent.setup();
+    renderPanel();
+
+    await usuario.click(screen.getByRole('button', { name: 'Copiar ID Árbol' }));
+
+    expect(await navigator.clipboard.readText()).toBe('A-001-SS26');
+    expect(screen.getAllByRole('status').map((region) => region.textContent)).toContain('Copiado');
+  });
+
+  test('copia las coordenadas', async () => {
+    const usuario = userEvent.setup();
+    renderPanel();
+
+    await usuario.click(screen.getByRole('button', { name: 'Copiar coordenadas' }));
+
+    expect(await navigator.clipboard.readText()).toBe('-27.123456, -55.654321');
+  });
+});
+
+describe('especie N/N', () => {
+  test('se marca sin identificar y no ofrece acción sin permiso', () => {
+    renderPanel(arbol(NN));
+
+    expect(screen.getByText('Sin identificar')).toBeInTheDocument();
+    expect(screen.getByText('N/N')).toBeInTheDocument();
+    expect(screen.getByText('Falta identificar la especie')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Identificar la especie' })).toBeNull();
+  });
+
+  test('con permiso, «Identificar» abre el mismo selector que «Cambiar»', async () => {
+    vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([]);
+    const usuario = userEvent.setup();
+    const edicionDeEspecie = {
+      plantationId: 'p1',
+      codigoPlantacion: 'SS26',
+      onActualizado: vi.fn(),
+    };
+    renderPanel(arbol(NN), { edicionDeEspecie });
+
+    expect(screen.queryByRole('button', { name: 'Cambiar la especie' })).toBeNull();
+    await usuario.click(screen.getByRole('button', { name: 'Identificar la especie' }));
+
+    expect(await screen.findByRole('button', { name: /^Especie nueva/ })).toBeInTheDocument();
+  });
 });
 
 test('la X cierra el panel', async () => {
@@ -202,17 +278,63 @@ describe('ficha PDF (#754)', () => {
   });
 });
 
-describe('descarga de la foto', () => {
+describe('foto', () => {
   const FOTO_SUBIDA = 'plantations/p1/trees/t1.jpg';
+  const FOTO_FIRMADA = 'https://firmada.test/foto.jpg';
+  const descargarFoto = () => screen.findByRole('button', { name: 'Descargar foto' });
 
   beforeEach(() => {
     vi.mocked(descargarDesdeUrl).mockClear();
-    vi.mocked(obtenerUrlFoto).mockResolvedValue('https://firmada.test/foto.jpg');
+    vi.mocked(obtenerUrlFoto).mockReset();
+    vi.mocked(obtenerUrlFoto).mockResolvedValue(FOTO_FIRMADA);
   });
 
-  test('sin foto subida no ofrece descargar', () => {
+  test('sin foto lo dice y no ofrece descargar', () => {
     renderPanel();
-    expect(screen.queryByRole('button', { name: 'Descargar' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sin foto')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Descargar foto' })).not.toBeInTheDocument();
+  });
+
+  test.each(['file:///data/foto.jpg', 'content://media/foto.jpg'])(
+    'una foto que sigue en el celular (%s) no se confunde con «Sin foto»',
+    (fotoUrl) => {
+      renderPanel(arbol({ fotoUrl }));
+
+      expect(screen.getByText('Foto sin subir')).toBeInTheDocument();
+      expect(screen.getByText(/Sigue en el celular/)).toBeInTheDocument();
+      expect(screen.queryByText('Sin foto')).not.toBeInTheDocument();
+      expect(obtenerUrlFoto).not.toHaveBeenCalled();
+    },
+  );
+
+  test('subida, el click la abre entera en un modal', async () => {
+    const usuario = userEvent.setup();
+    const onCerrar = renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ampliar foto' }));
+
+    const modal = screen.getByRole('dialog', { name: 'Foto del árbol A-001-SS26' });
+    expect(within(modal).getByRole('img')).toHaveAttribute('src', FOTO_FIRMADA);
+    await usuario.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // El Escape cierra el modal, no el panel de atrás.
+    expect(onCerrar).not.toHaveBeenCalled();
+  });
+
+  test('el modal también cierra con su botón', async () => {
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ampliar foto' }));
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('si no se puede firmar, lo dice', async () => {
+    vi.mocked(obtenerUrlFoto).mockResolvedValue(null);
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+    expect(await screen.findByText('No se pudo cargar la foto')).toBeInTheDocument();
   });
 
   test('descarga con la URL firmada y el nombre legible', async () => {
@@ -220,7 +342,7 @@ describe('descarga de la foto', () => {
     const usuario = userEvent.setup();
     renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
 
-    await usuario.click(screen.getByRole('button', { name: 'Descargar' }));
+    await usuario.click(await descargarFoto());
 
     expect(obtenerUrlDescargaFoto).toHaveBeenCalledWith(FOTO_SUBIDA, 'foto-finca-2026-a-001.jpg');
     expect(descargarDesdeUrl).toHaveBeenCalledWith(
@@ -229,17 +351,17 @@ describe('descarga de la foto', () => {
     );
   });
 
-  test('con la plantación sin cargar el botón está deshabilitado', () => {
+  test('con la plantación sin cargar el botón está deshabilitado', async () => {
     renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { nombreFoto: null });
-    expect(screen.getByRole('button', { name: 'Descargar' })).toBeDisabled();
+    expect(await descargarFoto()).toBeDisabled();
   });
 
-  test('si no se puede firmar avisa y no descarga', async () => {
+  test('si no se puede firmar la descarga avisa y no descarga', async () => {
     vi.mocked(obtenerUrlDescargaFoto).mockRejectedValue(new Error('sin red'));
     const usuario = userEvent.setup();
     renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
 
-    await usuario.click(screen.getByRole('button', { name: 'Descargar' }));
+    await usuario.click(await descargarFoto());
 
     expect(await screen.findByText('No se pudo descargar la foto')).toBeInTheDocument();
     expect(descargarDesdeUrl).not.toHaveBeenCalled();
@@ -307,6 +429,7 @@ describe('cambiar la especie (#679)', () => {
           especieId: 'sp-tal',
           especieCodigo: 'TAL',
           especieNombre: 'Tala',
+          especieNombreCientifico: 'Celtis tala',
           subId: 'P01G01TAL3',
           idArbol: 'P01G01TAL3-SS26',
         }),
@@ -323,6 +446,7 @@ describe('cambiar la especie (#679)', () => {
         especieId: 'sp-cei',
         especieCodigo: 'CEI',
         especieNombre: 'Ceibo',
+        especieNombreCientifico: null,
         subId: 'P01G01CEI3',
       }),
     );

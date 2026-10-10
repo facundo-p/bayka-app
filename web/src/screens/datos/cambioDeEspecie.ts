@@ -31,7 +31,7 @@ export function opcionesDeEspecie(especies: EspecieDePlantacion[]): OpcionConDet
   }));
 }
 
-/** La especie elegida como la muestra el árbol; sin código ni nombre si no está entre las cargadas. */
+/** La especie elegida como la muestra el árbol; sin código ni nombres si no está entre las cargadas. */
 export function especieElegida(
   especies: EspecieDePlantacion[] | undefined,
   especieId: string,
@@ -42,8 +42,18 @@ export function especieElegida(
     especieId,
     especieCodigo: especie?.codigo ?? null,
     especieNombre: especie?.nombre ?? null,
+    especieNombreCientifico: especie?.nombreCientifico ?? null,
     subId,
   };
+}
+
+/** La RPC no devuelve el científico de la especie que chocó: sale de la lista cargada, si está. */
+export function conNombreCientifico(
+  especie: EspecieDelArbol,
+  especies: EspecieDePlantacion[] | undefined,
+): EspecieDelArbol {
+  const cargada = especies?.find((candidata) => candidata.id === especie.especieId);
+  return { ...especie, especieNombreCientifico: cargada?.nombreCientifico ?? null };
 }
 
 /** El SubID lleva el código de la especie: el ID del árbol cambia con ella. */

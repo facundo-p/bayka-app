@@ -77,9 +77,10 @@ const ARBOL_COMPLETO = filaArbol({
   longitude: -55.654321,
   gps_accuracy: 4.6,
   gps_captured_at: '2026-06-03T12:00:05Z',
-  species: { codigo: 'QB', nombre: 'Quebracho' },
+  species: { codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
   groups: {
     codigo: 'L1',
+    nombre: 'Línea 1',
     parcela_id: 'parc-1',
     plantation_id: 'plant-1',
     plantations: { codigo: 'SS26' },
@@ -222,7 +223,7 @@ describe('sección Árboles', () => {
     const filaCompleta = filaDe('A-001-SS26');
     expect(within(filaCompleta).getByText('QB · Quebracho')).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-    expect(within(filaCompleta).getByText(/±5m/)).toBeInTheDocument();
+    expect(within(filaCompleta).getByText(/± 5 m/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText('Teo Técnico')).toBeInTheDocument();
     // Foto subida → check no interactivo (la foto se ve en el detalle de la fila).
     expect(within(filaCompleta).getByLabelText('Con foto')).toBeInTheDocument();
@@ -395,9 +396,11 @@ describe('sección Árboles', () => {
     await usuario.click(filaDe('A-001-SS26'));
 
     const panel = await screen.findByRole('complementary', PANEL_A001);
-    expect(within(panel).getByText('QB · Quebracho')).toBeInTheDocument();
-    expect(within(panel).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-    expect(within(panel).getByText(/±5m/)).toBeInTheDocument();
+    expect(within(panel).getByText('Quebracho')).toBeInTheDocument();
+    expect(within(panel).getByText('Schinopsis balansae')).toBeInTheDocument();
+    expect(within(panel).getByText('Línea 1')).toBeInTheDocument();
+    expect(within(panel).getByText('-27.123456, -55.654321')).toBeInTheDocument();
+    expect(within(panel).getByText('± 5 m')).toBeInTheDocument();
     // El mapa real está mockeado; basta su placeholder.
     expect(within(panel).getByText('Mapa del árbol')).toBeInTheDocument();
     // La tabla sigue visible al lado: el detalle no la tapa.

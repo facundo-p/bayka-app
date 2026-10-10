@@ -1,5 +1,6 @@
 import { arbolDetalle } from '../../../test/fabricas';
 import {
+  conNombreCientifico,
   arbolConEspecie,
   especieElegida,
   opcionesDeEspecie,
@@ -45,16 +46,18 @@ test('las opciones muestran código y nombre, y el científico debajo', () => {
   ]);
 });
 
-test('especieElegida toma código y nombre de la lista', () => {
-  expect(especieElegida(ESPECIES, 'sp-2', 'P1L1TAL3')).toEqual({
-    especieId: 'sp-2',
-    especieCodigo: 'TAL',
-    especieNombre: 'Tala',
-    subId: 'P1L1TAL3',
+test('especieElegida toma código y nombres de la lista', () => {
+  expect(especieElegida(ESPECIES, 'sp-1', 'P1L1CEI3')).toEqual({
+    especieId: 'sp-1',
+    especieCodigo: 'CEI',
+    especieNombre: 'Ceibo',
+    especieNombreCientifico: 'Erythrina crista-galli',
+    subId: 'P1L1CEI3',
   });
   expect(especieElegida(undefined, 'sp-9', 'X')).toMatchObject({
     especieCodigo: null,
     especieNombre: null,
+    especieNombreCientifico: null,
   });
 });
 
@@ -62,7 +65,13 @@ test('arbolConEspecie rearma el ID del árbol con el SubID nuevo', () => {
   const arbol = arbolDetalle({ subId: 'P1L1CEI3', idArbol: 'P1L1CEI3-SS26', especieId: 'sp-1' });
   const cambiado = arbolConEspecie(
     arbol,
-    { especieId: 'sp-2', especieCodigo: 'TAL', especieNombre: 'Tala', subId: 'P1L1TAL3' },
+    {
+      especieId: 'sp-2',
+      especieCodigo: 'TAL',
+      especieNombre: 'Tala',
+      especieNombreCientifico: null,
+      subId: 'P1L1TAL3',
+    },
     'SS26',
   );
   expect(cambiado).toMatchObject({
@@ -72,4 +81,22 @@ test('arbolConEspecie rearma el ID del árbol con el SubID nuevo', () => {
     subId: 'P1L1TAL3',
     idArbol: 'P1L1TAL3-SS26',
   });
+});
+
+test('conNombreCientifico completa el científico desde la lista, o lo deja en null', () => {
+  const chocada = {
+    especieId: 'sp-1',
+    especieCodigo: 'CEI',
+    especieNombre: 'Ceibo',
+    especieNombreCientifico: null,
+    subId: 'P1L1CEI3',
+  };
+  expect(conNombreCientifico(chocada, ESPECIES).especieNombreCientifico).toBe(
+    'Erythrina crista-galli',
+  );
+  expect(conNombreCientifico({ ...chocada, especieId: 'sp-9' }, ESPECIES)).toEqual({
+    ...chocada,
+    especieId: 'sp-9',
+  });
+  expect(conNombreCientifico(chocada, undefined).especieNombreCientifico).toBeNull();
 });

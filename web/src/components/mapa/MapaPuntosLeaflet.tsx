@@ -26,6 +26,15 @@ const MARGEN_AJUSTE = L.point(MARGEN_PX, MARGEN_PX);
 /** Borde blanco del punto: color JS de Leaflet (mismo caso que chartColors). */
 const BORDE_PUNTO = '#ffffff';
 
+/** Radio y aro del punto en px: miles de puntos chicos en el dashboard, uno
+ *  solo y bien visible en el detalle de árbol. */
+type EstiloPunto = { radio: number; aro: number };
+
+const ESTILO_PUNTO: Record<NonNullable<MapaPuntosProps['variante']>, EstiloPunto> = {
+  panel: { radio: 4, aro: 1 },
+  compacto: { radio: 7, aro: 2 },
+};
+
 /** Zoom de partida y área a chequear, con el mismo margen que usa `fitBounds`. */
 function planDeEncuadre(map: L.Map, extremos: Extremos) {
   const limites = L.latLngBounds([extremos.sur, extremos.oeste], [extremos.norte, extremos.este]);
@@ -75,10 +84,12 @@ type SeleccionarPunto = (punto: PuntoGps) => void;
 const CapaPuntos = memo(function CapaPuntos({
   puntos,
   colorPorCodigo,
+  estilo,
   onSeleccionar,
 }: {
   puntos: PuntoGps[];
   colorPorCodigo: Map<string, string>;
+  estilo: EstiloPunto;
   onSeleccionar?: SeleccionarPunto;
 }) {
   const renderer = useMemo(() => L.canvas(), []);
@@ -92,9 +103,9 @@ const CapaPuntos = memo(function CapaPuntos({
           key={claves[indice]}
           center={[punto.lat, punto.lng]}
           renderer={renderer}
-          radius={4}
+          radius={estilo.radio}
           pathOptions={{
-            weight: 1,
+            weight: estilo.aro,
             color: BORDE_PUNTO,
             fillColor: colorDePunto(punto, colorPorCodigo),
             fillOpacity: 1,
@@ -124,13 +135,19 @@ function PopupDePunto({ seleccion, onCerrar, children }: PopupDePuntoProps) {
   );
 }
 
-function PuntosConPopup({ puntos, colorPorCodigo, popup }: MapaPuntosProps) {
+function PuntosConPopup({
+  puntos,
+  colorPorCodigo,
+  variante = VARIANTE_MAPA_POR_DEFECTO,
+  popup,
+}: MapaPuntosProps) {
   const { seleccion, seleccionar, cerrar } = useSeleccionPunto(puntos);
   return (
     <>
       <CapaPuntos
         puntos={puntos}
         colorPorCodigo={colorPorCodigo}
+        estilo={ESTILO_PUNTO[variante]}
         onSeleccionar={popup && seleccionar}
       />
       {popup && seleccion && (
@@ -166,7 +183,12 @@ export function MapaPuntosLeaflet({
           attribution={CAPA_SATELITE.atribucion}
           maxZoom={CAPA_SATELITE.zoomMaximo}
         />
-        <PuntosConPopup puntos={puntos} colorPorCodigo={colorPorCodigo} popup={popup} />
+        <PuntosConPopup
+          puntos={puntos}
+          colorPorCodigo={colorPorCodigo}
+          variante={variante}
+          popup={popup}
+        />
         <AjustarVista puntos={puntos} />
       </MapContainer>
     </div>

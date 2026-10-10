@@ -4,7 +4,13 @@ import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { tieneFotoSubida } from '../../services/fotoService';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
-import { etiquetaEspecie, SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
+import {
+  etiquetaEspecie,
+  SIN_DATO,
+  textoCoordenadas,
+  textoPrecisionGps,
+  tieneGps,
+} from './arbolFormato';
 import styles from './SeccionesDatos.module.css';
 
 export function CeldaDescripcion({ descripcion }: { descripcion: string | null }) {
@@ -16,42 +22,32 @@ export function CeldaDescripcion({ descripcion }: { descripcion: string | null }
   );
 }
 
-/** Redondeo de coordenadas para mostrar (~1 m de precisión). */
-const DECIMALES_GPS = 5;
+/** En la tabla alcanza con ~1 m: la columna queda más angosta que en el detalle. */
+const DECIMALES_GPS_TABLA = 5;
 
 /** Lat/lng redondeadas y, si se conoce, la precisión en metros. */
-export function Coordenadas({ arbol, className }: { arbol: ArbolConGps; className: string }) {
+export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
+  if (!tieneGps(arbol)) return SIN_DATO;
+  const precision = textoPrecisionGps(arbol);
   return (
-    <span className={className}>
-      {arbol.latitude.toFixed(DECIMALES_GPS)}, {arbol.longitude.toFixed(DECIMALES_GPS)}
-      {arbol.gpsAccuracy != null && (
-        <span className={styles.precision}> ±{Math.round(arbol.gpsAccuracy)}m</span>
-      )}
+    <span className={styles.gps}>
+      {textoCoordenadas(arbol, DECIMALES_GPS_TABLA)}
+      {precision && <span className={styles.precision}> {precision}</span>}
     </span>
   );
 }
 
-export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
-  if (!tieneGps(arbol)) return SIN_DATO;
-  return <Coordenadas arbol={arbol} className={styles.gps} />;
-}
-
 interface EspecieConPuntoProps {
   arbol: ArbolDetalle;
-  tamano?: 'md' | 'lg';
   className: string;
 }
 
 /** Punto de color de la especie seguido de "código · nombre". */
-export function EspecieConPunto({ arbol, tamano, className }: EspecieConPuntoProps) {
+export function EspecieConPunto({ arbol, className }: EspecieConPuntoProps) {
   const colorDe = useColorEspecie();
   return (
     <span className={className}>
-      <PuntoColor
-        color={colorDe(arbol.especieCodigo)}
-        tamano={tamano}
-        className={styles.puntoEspecie}
-      />
+      <PuntoColor color={colorDe(arbol.especieCodigo)} className={styles.puntoEspecie} />
       {etiquetaEspecie(arbol)}
     </span>
   );

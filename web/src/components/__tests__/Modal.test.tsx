@@ -28,3 +28,36 @@ test('cierra con Escape y click en overlay, no con click en el contenido', () =>
   fireEvent.click(screen.getByRole('dialog').parentElement!);
   expect(onClose).toHaveBeenCalledTimes(2);
 });
+
+test('el Escape adentro cierra solo el modal: no le llega al panel de atrás', () => {
+  const deAtras = vi.fn();
+  document.addEventListener('keydown', deAtras);
+  const onClose = renderModal();
+
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(deAtras).not.toHaveBeenCalled();
+  document.removeEventListener('keydown', deAtras);
+});
+
+test('al cerrar devuelve el foco a lo que lo abrió', () => {
+  function ConDisparador({ open }: { open: boolean }) {
+    return (
+      <>
+        <button type="button">Abrir</button>
+        <Modal open={open} title="Foto" onClose={() => {}}>
+          <p>contenido</p>
+        </Modal>
+      </>
+    );
+  }
+  const { rerender } = render(<ConDisparador open={false} />);
+  screen.getByRole('button', { name: 'Abrir' }).focus();
+
+  rerender(<ConDisparador open />);
+  expect(screen.getByRole('dialog')).toHaveFocus();
+  rerender(<ConDisparador open={false} />);
+
+  expect(screen.getByRole('button', { name: 'Abrir' })).toHaveFocus();
+});

@@ -48,6 +48,7 @@ describe('cambiarEspecieDeArbol', () => {
       especieId: 'sp-3',
       especieCodigo: 'TAL',
       especieNombre: 'Tala',
+      especieNombreCientifico: null,
       subId: 'P1L1TAL3',
     });
     expect((error as Error).message).toMatch(/ahora es Tala/);

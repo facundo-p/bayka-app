@@ -13,7 +13,8 @@
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  /* Una clase que la compone cambia el tono con --color-overline. */
+  color: var(--color-overline, var(--color-text-faint));
 }
 
 .overlineRegular {
@@ -42,6 +43,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Fuera de la vista pero en el árbol de accesibilidad: lo leen los lectores de pantalla. */
+.soloLectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Texto que en teléfono deja de ocupar lugar pero sigue nombrando a su control:
