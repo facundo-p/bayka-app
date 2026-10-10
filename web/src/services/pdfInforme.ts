@@ -57,7 +57,7 @@ export async function generarPdfInforme(
     queryClient,
   );
   return motor.renderizarInforme({
-    dashboard: calcularDashboard(fuente, null),
+    dashboard: calcularDashboard(fuente),
     puntos,
     parcelas,
     plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },

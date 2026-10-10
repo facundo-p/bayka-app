@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { BarraProgreso, type RellenoBarra } from '../../components/BarraProgreso';
+import { PuntoColor } from '../../components/PuntoColor';
 import { cx } from '../../lib/classNames';
 import { concordar, formatearEntero, pluralizar, porcentajeDeObjetivo } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
@@ -7,10 +8,20 @@ import type { KpisArboles } from '../../queries/dashboardQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ResumenPlantacion.module.css';
 
-/** Parcela que acota la métrica, con la salida para volver a la plantación entera. */
-export interface AlcanceMetrica {
+export const TIPO_ALCANCE = { parcela: 'parcela', especie: 'especie' } as const;
+
+/** Parcela o especie elegida; la especie trae su color. */
+export interface SeleccionAlcance {
+  /** Un código de parcela puede coincidir con uno de especie. */
+  tipo: (typeof TIPO_ALCANCE)[keyof typeof TIPO_ALCANCE];
   codigo: string;
   nombre: string;
+  color?: string;
+}
+
+/** Lo que acota la métrica, con la salida para volver a la plantación entera. */
+export interface AlcanceMetrica {
+  selecciones: SeleccionAlcance[];
   onVerTodos: () => void;
 }
 
@@ -31,13 +42,22 @@ function textoMeta(objetivo: number | null, avance: number | null): string {
   return `de ${formatearEntero(objetivo)} · Meta de la temporada`;
 }
 
-function FilaAlcance({ codigo, nombre, onVerTodos }: AlcanceMetrica) {
+function ChipAlcance({ codigo, nombre, color }: SeleccionAlcance) {
+  return (
+    <span className={styles.chip}>
+      {color && <PuntoColor color={color} conAro />}
+      <span className={styles.chipCodigo}>{codigo}</span>
+      <span className={styles.chipNombre}>{nombre}</span>
+    </span>
+  );
+}
+
+function FilaAlcance({ selecciones, onVerTodos }: AlcanceMetrica) {
   return (
     <div className={styles.alcance}>
-      <span className={styles.chip}>
-        <span className={styles.chipCodigo}>{codigo}</span>
-        <span className={styles.chipNombre}>{nombre}</span>
-      </span>
+      {selecciones.map((seleccion) => (
+        <ChipAlcance key={`${seleccion.tipo}-${seleccion.codigo}`} {...seleccion} />
+      ))}
       <button type="button" className={styles.verTodos} onClick={onVerTodos}>
         Ver todos
       </button>

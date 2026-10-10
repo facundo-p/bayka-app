@@ -71,7 +71,7 @@ cambia.
 - El minimapa toma los puntos de `listarPuntosGps`, cacheados con `CLAVE_QUERY.mapa`, filtrados por parcela.
 - La organización sale de una lectura de `organizations.nombre`.
 - El técnico sale del `nombresUsuario` del listado.
-- El informe reutiliza `CLAVE_QUERY.dashboard` con `calcularDashboard(fuente, null)`, y `listarPuntosGps` para el mapa. No lee árboles por su cuenta.
+- El informe reutiliza `CLAVE_QUERY.dashboard` con `calcularDashboard(fuente)`, y `listarPuntosGps` para el mapa. No lee árboles por su cuenta.
 
 **Fuentes.** Linux Biolinum (OTF de `public/fonts`; si react-pdf no la lee, se
 convierte a TTF), Poppins e IBM Plex Mono en TTF o WOFF locales. Nada de CDN.

@@ -36,6 +36,9 @@
 
 .overline {
   composes: overline from '../../theme/utilidades.module.css';
+  /* Con dos filtros, los chips bajan de renglón; el overline no se parte. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Sobre el azul de marca el tono tenue no se lee. */
@@ -62,21 +65,28 @@
   color: var(--color-on-primary-soft);
 }
 
-/* ─── Fila de alcance (parcela seleccionada) ───────────────────────────── */
+/* ─── Fila de alcance (parcela y especie elegidas) ─────────────────────── */
 
+/* Con parcela y especie a la vez, en una columna angosta, baja de renglón
+   alineada a la derecha en vez de empujar el overline. */
 .alcance {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-md);
 }
 
+/* Chip claro: el color de la especie tiene que leerse aunque sea el azul de
+   la card. */
 .chip {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-md);
   padding: 3px var(--space-lg);
   border-radius: var(--radius-full);
-  background-color: var(--color-on-primary-chip);
+  background-color: var(--color-surface);
+  color: var(--color-text-heading);
   font-size: var(--text-sm);
 }
 
@@ -87,7 +97,7 @@
 }
 
 .chipNombre {
-  color: var(--color-on-primary-faint);
+  color: var(--color-text-secondary);
 }
 
 .verTodos {
@@ -116,9 +126,9 @@
 .celdas {
   position: relative;
   display: grid;
-  /* 140px es el min-content de la celda más ancha: con eso las tres siguen
-     entrando cuando la columna baja de 540 a 465, y recién se apilan cuando de
-     verdad no dan. `auto-fit` nunca abre más tracks que celdas hay. */
+  /* 140px deja las tres celdas en fila hasta columnas de ~465; si la etiqueta
+     y el valor no entran juntos, el valor baja de renglón (`.celdaFila`).
+     `auto-fit` nunca abre más tracks que celdas hay. */
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   border-top: var(--border-thin) solid var(--color-on-primary-line);
 }
@@ -137,9 +147,18 @@
 
 .celdaFila {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-md);
+  gap: var(--space-xs) var(--space-md);
+}
+
+/* Mismo corte que DashboardTab: con la columna angosta, menos padding para
+   que etiqueta y valor sigan en un renglón. */
+@media (max-width: 1400px) {
+  .celda {
+    padding-inline: var(--space-3xl);
+  }
 }
 
 .celdaValor {
