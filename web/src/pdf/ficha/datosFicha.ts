@@ -3,7 +3,7 @@
  * solo pinta. Puro y testeable sin react-pdf.
  */
 import { formatearFechaCorta } from '../../lib/fechas';
-import { etiquetaEspecie, pluralizar, SIN_DATO } from '../../lib/formato';
+import { DECIMALES_GPS, etiquetaEspecie, pluralizar, SIN_DATO } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import { ETIQUETA_SUBTIPO_ESPECIE, ETIQUETA_TIPO_ESPECIE } from '../../lib/tiposEspecie';
 import type {
@@ -16,8 +16,6 @@ import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { FotoPdf } from '../estadoFoto';
 import { esMapaSatelital, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
 import { TEXTO_FICHA } from './textosFicha';
-
-const DECIMALES_GPS = 6;
 
 export type EspecieFicha = {
   color: string;

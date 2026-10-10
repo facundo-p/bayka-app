@@ -102,6 +102,7 @@ test('arma los mapas de código de parcela y nombre de usuario', async () => {
 
   await waitFor(() => expect(result.current.arboles.isPending).toBe(false));
   expect(result.current.codigosParcela.get('parc-1')).toBe('P1');
+  expect(result.current.parcelasPorId.get('parc-1')).toMatchObject({ codigo: 'P1' });
   expect(result.current.nombresUsuario.get('user-1')).toBe('Ana');
 });
 

@@ -38,17 +38,15 @@ export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
 
 interface EspecieConPuntoProps {
   arbol: ArbolDetalle;
-  tamano?: 'md' | 'lg';
   className: string;
 }
 
 /** Punto de color de la especie seguido de "código · nombre". */
-export function EspecieConPunto({ arbol, tamano, className }: EspecieConPuntoProps) {
+export function EspecieConPunto({ arbol, className }: EspecieConPuntoProps) {
   return (
     <span className={className}>
       <PuntoColor
         color={colorEspeciePorCodigo(arbol.especieCodigo)}
-        tamano={tamano}
         className={styles.puntoEspecie}
       />
       {etiquetaEspecie(arbol)}

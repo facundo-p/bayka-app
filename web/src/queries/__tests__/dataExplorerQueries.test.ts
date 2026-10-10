@@ -45,9 +45,10 @@ const FILA_ARBOL = filaArbol({
   longitude: -55.654321,
   gps_accuracy: 4.6,
   gps_captured_at: '2026-06-03T12:00:05Z',
-  species: { codigo: 'QB', nombre: 'Quebracho' },
+  species: { codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
   groups: {
     codigo: 'L1',
+    nombre: 'Línea 1',
     parcela_id: 'parc-1',
     plantations: { codigo: 'SS26' },
   },
@@ -155,8 +156,10 @@ describe('listarArboles', () => {
       especieId: 'sp-1',
       especieCodigo: 'QB',
       especieNombre: 'Quebracho',
+      especieNombreCientifico: 'Schinopsis balansae',
       grupoId: 'gr-1',
       grupoCodigo: 'L1',
+      grupoNombre: 'Línea 1',
       parcelaId: 'parc-1',
       fotoUrl: 'plantations/p1/trees/tree-1.jpg',
       usuarioRegistro: 'user-9',
@@ -229,6 +232,13 @@ describe('listarArboles', () => {
     const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
     await listarArboles('plant-1');
     expect(consultas[0].columnas).toContain('plantations!inner(codigo)');
+  });
+
+  test('el select trae el científico de la especie y el nombre del grupo (#830)', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1');
+    expect(consultas[0].columnas).toContain('species(codigo, nombre, nombre_cientifico)');
+    expect(consultas[0].columnas).toContain('groups!inner(codigo, nombre, ');
   });
 
   test('el SubID parcial no consulta los códigos y busca como siempre', async () => {

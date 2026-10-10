@@ -7,7 +7,9 @@ const BUCKET_FOTOS_ARBOLES = 'tree-photos';
 /** Validez del enlace firmado: 1 hora. */
 const SEGUNDOS_VALIDEZ_URL = 3600;
 
-function esFotoLocal(fotoUrl: string): boolean {
+/** true si la foto sigue en el celular que la sacó (`file://`, `content://`): existe pero no se subió. */
+export function esFotoLocal(fotoUrl: string | null | undefined): fotoUrl is string {
+  if (!fotoUrl) return false;
   return ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema));
 }
 

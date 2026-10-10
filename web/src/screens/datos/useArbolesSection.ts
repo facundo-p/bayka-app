@@ -47,11 +47,14 @@ function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fil
   return new Map((filas ?? []).map((fila) => [fila.id, valor(fila)]));
 }
 
-/** Código de parcela y nombre de técnico por id, para las columnas y el panel. */
+/** Parcela y nombre de técnico por id, para las columnas y el panel. */
 function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
   const perfiles = usePerfiles();
   return {
     codigosParcela: mapaPorId(parcelas, (parcela) => parcela.codigo),
+    parcelasPorId: new Map(
+      (parcelas ?? []).map(({ id, codigo, nombre }) => [id, { codigo, nombre }]),
+    ),
     nombresUsuario: mapaPorId(perfiles.data, (perfil) => nombreVisible(perfil.nombre, perfil.id)),
     perfilesCargando: perfiles.isPending,
   };

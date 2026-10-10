@@ -23,7 +23,7 @@ import { TAMANO_ICONO } from '../../theme/iconos';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { BarraSeleccionFichas } from './BarraSeleccionFichas';
-import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
+import { nombreTecnicoDe, parcelaDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
 import { useArbolesSection } from './useArbolesSection';
@@ -111,7 +111,7 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
     <ArbolDetallePanel
       key={arbol.id}
       arbol={arbol}
-      parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
+      parcela={parcelaDe(arbol, seccion.parcelasPorId)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
       nombreFoto={nombreFotoDe(seccion, arbol)}
       descargarFicha={seccion.descargaFichaDe(arbol)}

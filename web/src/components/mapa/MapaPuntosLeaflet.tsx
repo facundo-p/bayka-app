@@ -14,6 +14,15 @@ const ZOOM_PUNTO_UNICO = 17;
 /** Borde blanco del punto: color JS de Leaflet (mismo caso que chartColors). */
 const BORDE_PUNTO = '#ffffff';
 
+/** Radio y aro del punto en px: miles de puntos chicos en el dashboard, uno
+ *  solo y bien visible en el detalle de árbol. */
+type EstiloPunto = { radio: number; aro: number };
+
+const ESTILO_PUNTO: Record<NonNullable<MapaPuntosProps['variante']>, EstiloPunto> = {
+  panel: { radio: 4, aro: 1 },
+  compacto: { radio: 7, aro: 2 },
+};
+
 function colorDePunto(punto: PuntoGps, colorPorCodigo: Map<string, string>): string {
   return colorPorCodigo.get(punto.codigo) ?? COLOR_GRAFICO_NN;
 }
@@ -41,9 +50,11 @@ function AjustarVista({ puntos }: { puntos: PuntoGps[] }) {
 function CapaPuntos({
   puntos,
   colorPorCodigo,
+  estilo,
 }: {
   puntos: PuntoGps[];
   colorPorCodigo: Map<string, string>;
+  estilo: EstiloPunto;
 }) {
   const renderer = useMemo(() => L.canvas(), []);
   return (
@@ -53,8 +64,8 @@ function CapaPuntos({
           key={indice}
           center={[punto.lat, punto.lng]}
           renderer={renderer}
-          radius={4}
-          weight={1}
+          radius={estilo.radio}
+          weight={estilo.aro}
           color={BORDE_PUNTO}
           fillColor={colorDePunto(punto, colorPorCodigo)}
           fillOpacity={1}
@@ -87,7 +98,11 @@ export function MapaPuntosLeaflet({
           attribution={CAPA_SATELITE.atribucion}
           maxZoom={CAPA_SATELITE.zoomMaximo}
         />
-        <CapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} />
+        <CapaPuntos
+          puntos={puntos}
+          colorPorCodigo={colorPorCodigo}
+          estilo={ESTILO_PUNTO[variante]}
+        />
         <AjustarVista puntos={puntos} />
       </MapContainer>
     </div>

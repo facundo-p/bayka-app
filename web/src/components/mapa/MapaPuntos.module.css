@@ -16,9 +16,20 @@
   min-height: var(--alto-min-mapa);
 }
 
-/* En el panel lateral de detalle de árbol, alto fijo compacto. */
+/* En el detalle de árbol, un cuadrado al lado de la foto. */
 .compacto {
-  height: var(--alto-mapa-compacto);
+  aspect-ratio: 1;
+}
+
+/* En el cuadrado chico la atribución tiene que entrar en un renglón: queda el
+   crédito de las imágenes y se va el prefijo de Leaflet, que no lo exige. */
+.compacto :global(.leaflet-control-attribution) {
+  font-size: var(--text-xs);
+}
+
+.compacto :global(.leaflet-control-attribution) > a:first-child,
+.compacto :global(.leaflet-control-attribution) > span:first-of-type {
+  display: none;
 }
 
 /* Contenedor del mapa: la clase se aplica sobre el div raíz del proveedor.

@@ -3,6 +3,9 @@ import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../queries/especies
 /** Dato ausente en tablas, paneles y documentos. */
 export const SIN_DATO = '—';
 
+/** Decimales de lat/lng en el detalle del árbol y en su ficha PDF (~10 cm). */
+export const DECIMALES_GPS = 6;
+
 /** Separador de «código · nombre» y de las partes de un rótulo. */
 export const SEPARADOR_PUNTO = ' · ';
 

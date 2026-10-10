@@ -127,6 +127,7 @@ export function filaArbol({ groups, ...overrides }: OverridesFilaArbol = {}): Fi
     ...overrides,
     groups: {
       codigo: IDS_FABRICA.codigoGrupo,
+      nombre: 'Línea 1',
       parcela_id: IDS_FABRICA.parcela,
       plantation_id: IDS_FABRICA.plantacion,
       plantations: { codigo: IDS_FABRICA.codigoPlantacion },
@@ -145,8 +146,10 @@ export function arbolDetalle(overrides: Partial<ArbolDetalle> = {}): ArbolDetall
     especieId: null,
     especieCodigo: null,
     especieNombre: null,
+    especieNombreCientifico: null,
     grupoId: IDS_FABRICA.grupo,
     grupoCodigo: IDS_FABRICA.codigoGrupo,
+    grupoNombre: 'Línea 1',
     parcelaId: IDS_FABRICA.parcela,
     fotoUrl: null,
     usuarioRegistro: null,

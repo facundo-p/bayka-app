@@ -36,6 +36,8 @@ export type EspecieDelArbol = {
   especieId: string | null;
   especieCodigo: string | null;
   especieNombre: string | null;
+  /** La RPC no lo devuelve: null en un conflicto. */
+  especieNombreCientifico: string | null;
   subId: string;
 };
 
@@ -63,6 +65,7 @@ function errorDeRespuesta(respuesta: RespuestaCambio): ErrorDeEdicion {
       especieId: respuesta.species_id ?? null,
       especieCodigo: respuesta.codigo ?? null,
       especieNombre: respuesta.nombre ?? null,
+      especieNombreCientifico: null,
       subId: respuesta.sub_id ?? '',
     });
   }
