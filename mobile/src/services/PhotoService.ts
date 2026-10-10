@@ -1,9 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { File, Directory, Paths } from 'expo-file-system';
 import { manipulateAsync, SaveFormat, Action } from 'expo-image-manipulator';
-import type { PixelCrop } from '../utils/cropGeometry';
+import { centeredSquareCrop, type PixelCrop } from '../utils/cropGeometry';
 
-const MAX_LONG_SIDE = 1600;
+/** Toda foto guardada es un JPEG cuadrado de este lado (#831). */
+export const PHOTO_SIDE = 1200;
+const PHOTO_JPEG_QUALITY = 0.85;
 
 export interface RawPhoto {
   uri: string;
@@ -94,9 +96,8 @@ export function borrarFotosLocales(uris: readonly string[]): void {
 }
 
 /**
- * Recorta (si `pixelCrop` no es null), redimensiona el lado mayor a
- * MAX_LONG_SIDE y guarda como JPEG permanente. Paso único: el recorte es
- * opcional y el guardado es atómico.
+ * Recorta el cuadrado (o el cuadrado centrado si no llega recorte), lo lleva a
+ * PHOTO_SIDE × PHOTO_SIDE y lo guarda como JPEG permanente.
  */
 export async function cropResizeAndSave(
   uri: string,
@@ -104,25 +105,21 @@ export async function cropResizeAndSave(
   origWidth: number,
   origHeight: number
 ): Promise<string> {
-  const actions: Action[] = [];
-  if (pixelCrop) actions.push({ crop: pixelCrop });
-  const w = pixelCrop ? pixelCrop.width : origWidth;
-  const h = pixelCrop ? pixelCrop.height : origHeight;
-  const isLandscape = w >= h;
-  actions.push({ resize: isLandscape ? { width: MAX_LONG_SIDE } : { height: MAX_LONG_SIDE } });
-  const result = await manipulateAsync(uri, actions, { compress: 0.85, format: SaveFormat.JPEG });
+  const actions: Action[] = [
+    { crop: pixelCrop ?? centeredSquareCrop(origWidth, origHeight) },
+    { resize: { width: PHOTO_SIDE, height: PHOTO_SIDE } },
+  ];
+  const result = await manipulateAsync(uri, actions, { compress: PHOTO_JPEG_QUALITY, format: SaveFormat.JPEG });
   return saveToPhotos(result.uri);
 }
 
-/** Selección de galería SIN procesar (para el paso de recorte). */
+/** Selección de galería sin procesar: el recorte cuadrado lo hace la app, no el picker. */
 export async function launchGalleryRaw(): Promise<RawPhoto | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    mediaTypes: ['images'],
     quality: 1,
-    // allowsEditing: permite recortar la imagen elegida antes de guardarla.
-    allowsEditing: true,
   });
   if (result.canceled || !result.assets?.[0]) return null;
   const asset = result.assets[0];
