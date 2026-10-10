@@ -15,17 +15,27 @@ export function consultaEspeciesHabilitadas(plantationId: string) {
   });
 }
 
-export function coloresDeHabilitadas(especies: readonly EspecieDePlantacion[]): ColorEspecie {
-  return coloresDeEspecies(especies.map((especie) => especie.codigo));
+/** Sin especies habilitadas legibles, los colores salen de los códigos `presentes`. */
+export function coloresDeHabilitadas(
+  especies: readonly EspecieDePlantacion[] | undefined,
+  presentes: readonly string[],
+): ColorEspecie {
+  const catalogo = (especies ?? []).map((especie) => especie.codigo);
+  return coloresDeEspecies(catalogo, presentes);
 }
 
-/** Para las descargas: si las especies no se leen, van todas en gris y la descarga sale igual. */
+/** Para las descargas: si las especies no se leen, la descarga sale igual (undefined). */
+export function leerEspeciesHabilitadas(
+  queryClient: QueryClient,
+  plantationId: string,
+): Promise<EspecieDePlantacion[] | undefined> {
+  return queryClient.fetchQuery(consultaEspeciesHabilitadas(plantationId)).catch(() => undefined);
+}
+
 export async function leerColoresEspecie(
   queryClient: QueryClient,
   plantationId: string,
+  presentes: readonly string[],
 ): Promise<ColorEspecie> {
-  const especies = await queryClient
-    .fetchQuery(consultaEspeciesHabilitadas(plantationId))
-    .catch(() => []);
-  return coloresDeHabilitadas(especies);
+  return coloresDeHabilitadas(await leerEspeciesHabilitadas(queryClient, plantationId), presentes);
 }

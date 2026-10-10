@@ -13,9 +13,13 @@ export type ColorEspecie = (codigo: string | null) => string;
 /** Los 8 de los gráficos y los 4 extra (#756): con 12 especies o menos no se repite ninguno. */
 export const PALETA_ESPECIES = [...COLORES_GRAFICOS, ...COLORES_GRAFICOS_EXTRA] as const;
 
+function esCodigoIdentificado(codigo: string): boolean {
+  return codigo !== '' && !esSinIdentificar(codigo);
+}
+
 /** Códigos identificados, sin repetidos y ordenados: el índice de cada uno es su color. */
 function ordenarCodigos(codigos: readonly string[]): string[] {
-  return [...new Set(codigos.filter((codigo) => !esSinIdentificar(codigo)))].sort();
+  return [...new Set(codigos.filter(esCodigoIdentificado))].sort();
 }
 
 /**
@@ -26,13 +30,17 @@ function ordenarCodigos(codigos: readonly string[]): string[] {
  *
  * - Sin código o N/N → ámbar de "sin identificar".
  * - Código fuera del catálogo → gris: no le roba el color a una especie habilitada.
+ * - Catálogo vacío (no se pudo leer o no hay especies habilitadas) → se usan los
+ *   códigos `presentes` en la vista, con el mismo criterio, para no pintar todo igual.
  */
-export function coloresDeEspecies(codigos: readonly string[]): ColorEspecie {
+export function coloresDeEspecies(
+  catalogo: readonly string[],
+  presentes: readonly string[] = [],
+): ColorEspecie {
+  const ordenados = ordenarCodigos(catalogo);
+  const codigos = ordenados.length > 0 ? ordenados : ordenarCodigos(presentes);
   const colores = new Map(
-    ordenarCodigos(codigos).map((codigo, indice) => [
-      codigo,
-      PALETA_ESPECIES[indice % PALETA_ESPECIES.length],
-    ]),
+    codigos.map((codigo, indice) => [codigo, PALETA_ESPECIES[indice % PALETA_ESPECIES.length]]),
   );
   return (codigo) => {
     if (codigo === null || esSinIdentificar(codigo)) return COLOR_GRAFICO_NN;

@@ -34,11 +34,10 @@ const MENSAJE_ERROR_INFORME = 'No se pudo generar el informe PDF.';
 function useDescargaKml(plantacion: Plantacion) {
   const queryClient = useQueryClient();
   return useDescarga(async () => {
-    const [puntos, colorDe] = await Promise.all([
-      listarPuntosGps(plantacion.id),
-      leerColoresEspecie(queryClient, plantacion.id),
-    ]);
+    const puntos = await listarPuntosGps(plantacion.id);
     if (puntos.length === 0) return MENSAJE_SIN_PUNTOS;
+    const codigos = puntos.map((punto) => punto.codigo);
+    const colorDe = await leerColoresEspecie(queryClient, plantacion.id, codigos);
     const nombreDocumento = `Puntos GPS – ${plantacion.lugar} (${plantacion.periodo})`;
     const kml = construirKml(puntos, { nombreDocumento, colorDe });
     descargarTexto(kml, nombreArchivoKml(plantacion.lugar, plantacion.periodo), TIPO_MIME_KML);

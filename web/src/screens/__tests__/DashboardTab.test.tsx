@@ -13,12 +13,21 @@ vi.mock('../../lib/supabase', async () => {
 
 // Leaflet usa APIs de layout que jsdom no implementa: se reemplaza el mapa por
 // un contenedor tonto que expone lo que recibe, para poder afirmar sobre el filtro.
+type PropsMapaMock = {
+  puntos: unknown[];
+  parcelaFiltro?: string;
+  leyenda: { codigo: string; color: string }[];
+};
+
 vi.mock('../../components/PlantationMap', () => ({
-  PlantationMap: ({ puntos, parcelaFiltro }: { puntos: unknown[]; parcelaFiltro?: string }) => (
+  PlantationMap: ({ puntos, parcelaFiltro, leyenda }: PropsMapaMock) => (
     <div>
       Mapa de la plantación
       <span data-testid="puntos-en-mapa">{puntos.length}</span>
       <span data-testid="parcela-filtro">{parcelaFiltro ?? '-'}</span>
+      <span data-testid="colores-mapa">
+        {leyenda.map(({ codigo, color }) => `${codigo}:${color}`).join(' ')}
+      </span>
     </div>
   ),
 }));
@@ -129,9 +138,20 @@ function esConteo(consulta: ConsultaCapturada): boolean {
   return consulta.opciones?.head === true;
 }
 
-function crearResolver(conteos: RespuestaMock['data']) {
+/** AA está habilitada sin árboles: corre a AL y QB un lugar en la paleta. */
+const HABILITADAS = [
+  {
+    species_id: 'sp-0',
+    species: { id: 'sp-0', codigo: 'AA', nombre: 'Aaa', nombre_cientifico: null },
+  },
+  { species_id: 'sp-1', species: { ...CATALOGO[0] } },
+  { species_id: 'sp-2', species: { ...CATALOGO[1] } },
+];
+
+function crearResolver(conteos: RespuestaMock['data'], habilitadas: RespuestaMock['data'] = []) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
     if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
+    if (consulta.tabla === 'plantation_species') return { data: habilitadas };
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'parcelas') return { data: FILAS_PARCELAS };
     if (consulta.tabla === 'groups') return esConteo(consulta) ? { count: 2 } : { count: 3 };
@@ -174,6 +194,27 @@ describe('DashboardTab', () => {
     expect(within(quebracho).getByText('60%')).toBeInTheDocument();
     const algarrobo = screen.getByText('Algarrobo').closest('li') as HTMLElement;
     expect(within(algarrobo).getByText('20%')).toBeInTheDocument();
+  });
+
+  test('«Por especie» y el mapa usan los colores de la plantación (#777)', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS));
+    renderRutasEn('/plantaciones/plant-1');
+
+    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
+    expect(colores).toHaveTextContent('QB:#3b7db5');
+    expect(colores).toHaveTextContent('AL:#99b95b');
+    const quebracho = screen.getByText('Quebracho').closest('li') as HTMLElement;
+    const barra = quebracho.querySelector('[style*="--color"]') as HTMLElement;
+    expect(barra.style.getPropertyValue('--color')).toBe('#3b7db5');
+  });
+
+  test('sin especies habilitadas, los colores salen de las especies con árboles', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    renderRutasEn('/plantaciones/plant-1');
+
+    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
+    expect(colores).toHaveTextContent('AL:#0a3760');
+    expect(colores).toHaveTextContent('QB:#99b95b');
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {

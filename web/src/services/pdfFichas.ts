@@ -16,7 +16,7 @@ import {
 import { listarPuntosGps, type PuntoGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { ColorEspecie } from '../theme/coloresEspecie';
-import { leerColoresEspecie } from './coloresDePlantacion';
+import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 
 export type ContextoFichasPdf = {
@@ -59,7 +59,7 @@ function leerInsumos(ids: readonly string[], contexto: ContextoFichasPdf) {
     listarArbolesParaFichas(id, ids),
     leerNombreOrganizacion(id).catch(() => null),
     leerPuntos(contexto),
-    leerColoresEspecie(contexto.queryClient, id),
+    leerEspeciesHabilitadas(contexto.queryClient, id),
     import('../pdf/ficha/motorFichas'),
   ]);
 }
@@ -95,13 +95,20 @@ async function prepararFichas(
   );
 }
 
+/** Respaldo de los colores si la plantación no tiene especies habilitadas legibles. */
+function codigosPresentes(arboles: ArbolParaFicha[], puntos: PuntoGps[]): string[] {
+  const deArboles = arboles.flatMap((arbol) => (arbol.especie ? [arbol.especie.codigo] : []));
+  return [...deArboles, ...puntos.map((punto) => punto.codigo)];
+}
+
 /** El PDF de las fichas, en el orden de `ids`. */
 export async function generarPdfFichas(
   ids: readonly string[],
   contexto: ContextoFichasPdf,
 ): Promise<FichasPdf> {
-  const [arboles, organizacion, puntos, colorDe, motor] = await leerInsumos(ids, contexto);
+  const [arboles, organizacion, puntos, especies, motor] = await leerInsumos(ids, contexto);
   if (arboles.length === 0) throw new Error(ERROR_FICHAS_SIN_ARBOLES);
+  const colorDe = coloresDeHabilitadas(especies, codigosPresentes(arboles, puntos));
   const nombres = contexto.nombresUsuario;
   const fichas = await prepararFichas(motor, arboles, { puntos, colorDe, nombres });
   const logo = motor.logoNavegador();

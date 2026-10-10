@@ -73,4 +73,19 @@ describe('coloresDeEspecies', () => {
   test('un código fuera del catálogo va en gris', () => {
     expect(coloresDeEspecies(['ANC'])('XYZ')).toBe(COLOR_GRAFICO_OTRAS);
   });
+
+  test('sin catálogo usa los códigos presentes, con el mismo criterio', () => {
+    const color = coloresDeEspecies([], ['TIM', 'ANC']);
+    expect(color('ANC')).toBe('#0a3760');
+    expect(color('TIM')).toBe('#99b95b');
+  });
+
+  test('con catálogo ignora los códigos presentes', () => {
+    expect(coloresDeEspecies(['TIM'], ['ANC'])('ANC')).toBe(COLOR_GRAFICO_OTRAS);
+  });
+
+  test('un código vacío no corre los colores ni cuenta como catálogo', () => {
+    expect(coloresDeEspecies(['', 'ANC'])('ANC')).toBe('#0a3760');
+    expect(coloresDeEspecies([''], ['TIM'])('TIM')).toBe('#0a3760');
+  });
 });

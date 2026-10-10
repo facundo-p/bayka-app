@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { Button, Cargando, MapaPuntos, PanelBloque, PanelLateral } from '../../components';
-import { useColoresEspecie } from '../../hooks/useColoresEspecie';
+import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { useDescarga } from '../../hooks/useDescarga';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -96,7 +96,7 @@ function BloqueFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: st
 
 /** El único punto del árbol, con el color de su especie. */
 function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
-  const colorDe = useColoresEspecie();
+  const colorDe = useColorEspecie();
   const codigo = arbol.especieCodigo ?? ESPECIE_SIN_IDENTIFICAR;
   const punto = {
     lat: arbol.latitude,

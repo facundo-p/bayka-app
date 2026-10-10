@@ -154,8 +154,13 @@ test('los colores de especie son los de la plantación, para la ficha y el minim
   expect(vi.mocked(motor.minimapaDeArbol).mock.lastCall![2]).toBe(colorDe);
 });
 
-test('sin especies legibles, la ficha sale igual', async () => {
+test('sin especies legibles, los colores salen de las especies de los puntos', async () => {
   vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
+  const punto = { lat: 0, lng: 0, nombre: '', idArbol: '', subId: '', parcelaId: null };
+  const puntos = ['TIM', 'ANC'].map((codigo) => ({ ...punto, codigo }));
+  vi.mocked(listarPuntosGps).mockResolvedValue(puntos);
   await descargarFichaPdf('t1', contexto());
+  expect(colorDeRecibido()('ANC')).toBe('#0a3760');
+  expect(colorDeRecibido()('TIM')).toBe('#99b95b');
   expect(descargarBlob).toHaveBeenCalled();
 });
