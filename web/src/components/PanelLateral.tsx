@@ -58,7 +58,14 @@ export function PanelLateral(props: PanelLateralProps) {
   useCerrarConEscape(!enHoja, onCerrar);
   if (enHoja) {
     return (
-      <Modal open title={etiqueta} onClose={onCerrar} posicion="hoja" encabezadoPropio>
+      <Modal
+        open
+        title={etiqueta}
+        onClose={onCerrar}
+        posicion="hoja"
+        capa="detalle"
+        encabezadoPropio
+      >
         <PartesPanel {...props} />
       </Modal>
     );

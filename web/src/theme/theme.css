@@ -256,6 +256,7 @@
   --z-flotante: 10; /* menús y avisos anclados a un botón */
   --z-topbar: 20;
   --z-banner-entorno: 30;
+  --z-detalle: 90; /* detalle de un listado en hoja: debajo de cualquier diálogo */
   --z-modal: 100;
   --z-popover: 110; /* listas desplegables que se abren dentro de un modal */
 

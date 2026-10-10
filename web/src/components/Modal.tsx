@@ -14,6 +14,8 @@ interface ModalProps {
   posicion?: 'centro' | 'hoja';
   /** `amplio`: para mostrar una imagen grande, ej. la foto de un árbol. */
   ancho?: 'normal' | 'amplio';
+  /** `detalle`: debajo de los diálogos, para el detalle de un listado en hoja. */
+  capa?: 'dialogo' | 'detalle';
   /**
    * El contenido trae su encabezado y sus márgenes (ej. el detalle de un
    * listado): el título queda solo como nombre accesible del diálogo.
@@ -62,6 +64,7 @@ export function Modal({
   onClose,
   posicion = 'centro',
   ancho = 'normal',
+  capa = 'dialogo',
   encabezadoPropio = false,
   children,
 }: ModalProps) {
@@ -71,7 +74,14 @@ export function Modal({
   if (!open) return null;
   const esHoja = posicion === 'hoja';
   return createPortal(
-    <div className={cx(styles.overlay, esHoja && styles.overlayHoja)} onClick={onClose}>
+    <div
+      className={cx(
+        styles.overlay,
+        esHoja && styles.overlayHoja,
+        capa === 'detalle' && styles.capaDetalle,
+      )}
+      onClick={onClose}
+    >
       <div
         ref={dialogRef}
         role="dialog"
