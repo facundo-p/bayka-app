@@ -82,14 +82,20 @@ posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
 - Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
   filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
   orden del Tab.
-- La selección y los formularios viven en la pantalla o en el componente del
-  panel, por encima de `PanelLateral`: cruzar el umbral pasa de columna a hoja,
-  o al revés, sin perderlos. Lo que vive más adentro se rearma (una
-  confirmación abierta, la foto ampliada, el scroll del panel).
+- Cruzar el umbral pasa de columna a hoja, o al revés, y remonta todo lo que
+  está adentro de `PanelLateral`. Se conserva lo que vive por encima: la
+  selección y los formularios de Especies, Científicas y Usuarios. Se descarta
+  lo de adentro: en Árboles el cambio de especie en curso, la foto ampliada, una
+  confirmación abierta desde el panel (Eliminar en Científicas) y el scroll del
+  panel.
 - Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
   la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
-- Los modales y listas que abre el detalle (foto ampliada, confirmaciones,
-  selector de especie) se montan después y quedan encima de la hoja.
+- La hoja va en su propia capa (`--z-detalle`), debajo de `--z-modal`: un
+  diálogo queda siempre adelante, sin depender del orden en el DOM. Vale para
+  los que abre el detalle (foto ampliada, confirmaciones) y para uno de la
+  pantalla que ya estaba abierto al cruzar el umbral (la confirmación de
+  «Desactivar» en Usuarios). En ese caso el foco queda en la hoja hasta que
+  se toca el diálogo. El selector de especie usa `--z-popover`, más arriba.
 
 ## Teléfono: lo que tiene forma propia
 
