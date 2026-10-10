@@ -82,8 +82,10 @@ posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
 - Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
   filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
   orden del Tab.
-- La selección y lo que se está editando viven en la pantalla, no en el panel:
-  cruzar el umbral pasa de columna a hoja, o al revés, sin perder nada.
+- La selección y los formularios viven en la pantalla o en el componente del
+  panel, por encima de `PanelLateral`: cruzar el umbral pasa de columna a hoja,
+  o al revés, sin perderlos. Lo que vive más adentro se rearma (una
+  confirmación abierta, la foto ampliada, el scroll del panel).
 - Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
   la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
 - Los modales y listas que abre el detalle (foto ampliada, confirmaciones,
