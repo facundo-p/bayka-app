@@ -19,8 +19,9 @@ export const ALTO_VENTANA = 900;
 
 /**
  * Pantallas reales: al menos una por banda de la escala, más los extremos. 390
- * es el teléfono más común, y ahí las tabs del detalle tapaban la miga
- * mientras 430 y 360 salían limpios (#825).
+ * es el teléfono más común, y ahí la auditoría vio las tabs del detalle encima
+ * de la miga. A 430 la miga ya estaba aplastada en 66px, pero sin texto encima
+ * de otro texto, y la celda salía limpia (#825).
  */
 const PANTALLAS = [1920, 1440, 1280, 1024, 768, 430, 390, 360];
 
@@ -41,6 +42,9 @@ export const claveCelda = (pantalla, ancho) => `${pantalla}@${ancho}`;
 export const claseModulo = (nombre) => `[class*="_${nombre}_"]`;
 
 export const SELECTOR_DIALOGO = '[role="dialog"]';
+
+/** La miga de la topbar, por el nombre accesible que le ponen `Breadcrumb` y `CabeceraSeccion`. */
+export const SELECTOR_MIGA = 'nav[aria-label="Migas de navegación"]';
 
 /** Contenedores que pueden quedar en 0px al perder el contexto flex (`H`). */
 export const SELECTOR_CARDS = [

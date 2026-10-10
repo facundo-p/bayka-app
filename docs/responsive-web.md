@@ -108,10 +108,12 @@ botón «PDF» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
 22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
-Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
-crece, no con una base grande que después se achica. Lo mismo con un botón detrás
-de un bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la
-base del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
+Para que un control comparta renglón en teléfono, su vecino va con una base chica
+y crece, no con una base grande que después se achica. Chica no quiere decir 0:
+con 0, lo que entra al lado puede dejar al vecino en nada (ver abajo). La base es
+lo mínimo que el vecino necesita para leerse. Lo mismo con un botón detrás de un
+bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la base
+del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
 `BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
 bloque se angosta y el botón queda en su última fila.
 
@@ -119,8 +121,10 @@ La base en 0 tiene su propia trampa: lo que comparte renglón puede exprimir al
 vecino hasta dejarlo en nada. Con `.left` en 0, entre 370 y 550 las tabs del
 detalle de la plantación entraban al lado de la miga y la aplastaban —a 370,
 6px de ancho—, con el título en «San S…» y, a 390, el badge de estado debajo
-de las tabs (#825). En teléfono la base es 12rem: el "+" del alta entra al lado
-del título hasta en 320, y lo que no le deja 12rem a la miga baja de renglón.
+de las tabs (#825). En teléfono la base es 192px: el "+" del alta entra al lado
+del título hasta en 320, y lo que no le deja 192px a la miga baja de renglón.
+Va en px y no en rem porque el texto de la app está en px: con una fuente raíz
+de 20px, una base de 12rem crecía sola y el "+" bajaba de renglón a 320.
 
 ## Columnas de tabla en teléfono
 
@@ -274,8 +278,9 @@ Para no leer de más en un `·`:
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
   se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
   temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
-  común: ahí las tabs del detalle tapaban la miga y 430 y 360 salían limpios
-  (#825).
+  común: ahí la auditoría vio las tabs del detalle encima de la miga. A 430 la
+  celda salía limpia con la miga ya aplastada en 66px: limpia quiere decir sin
+  texto encima de otro texto, no sin defecto (#825).
 - **No detecta controles tapados por otra capa.** `elementFromPoint` da falsos
   positivos con `backdrop-filter` y capas sticky, así que se descartó. Por eso el
   lugar que el shell le reserva a la navegación del pie se verifica a mano.

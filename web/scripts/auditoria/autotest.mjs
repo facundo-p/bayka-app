@@ -9,6 +9,7 @@ import {
   MODAL_NUEVA_PLANTACION,
   RUTA,
   SELECTOR_DIALOGO,
+  SELECTOR_MIGA,
   TODOS_LOS_DETAILS,
   claseModulo,
 } from './config.mjs';
@@ -17,9 +18,6 @@ import { conPagina, medirPagina } from './navegacion.mjs';
 /** Lo que tarda en aplicarse el CSS inyectado. */
 const ESPERA_ESTILO_MS = 300;
 const ANCHO_COBERTURA = 1440;
-
-/** La miga de la topbar, por su nombre accesible. */
-const SELECTOR_MIGA = 'nav[aria-label="Migas de navegación"]';
 
 /** Apretón que recorta el recuento de Especies sin ellipsis. */
 const RECUENTO_RECORTADO =
@@ -217,6 +215,18 @@ const CASOS_AUTOTEST = [
     esperaLimpio: (r) => r.nSolapes === 0,
   },
   {
+    nombre: 'O · tabs del detalle encima de la miga aplastada',
+    ruta: RUTA.dashboardArchivada,
+    ancho: 390,
+    // El defecto de #825 en la fila que lo ve: con la base de la miga en 0, el
+    // badge de estado queda bajo las tabs. Solo pasa en una ventana angosta
+    // (370–390); si badges o tipografía la corren, esto falla en vez de pasar
+    // la fila a verde sin ejercer.
+    css: `${claseModulo('left')}{flex-basis:0 !important}`,
+    espera: (r) => r.nSolapes > 0,
+    esperaLimpio: (r) => r.nSolapes === 0,
+  },
+  {
     nombre: 'D · control más alto que su vecino de fila',
     ruta: RUTA.especies,
     ancho: 1920,
@@ -290,7 +300,7 @@ const CASOS_AUTOTEST = [
  */
 const COBERTURA = [
   {
-    nombre: 'dashboard-archivada · la miga lleva el badge «Archivada», además del estado',
+    nombre: 'dashboard-archivada · la miga lleva el badge «Archivada»',
     ruta: RUTA.dashboardArchivada,
     vale: async (pagina) =>
       (await pagina.locator(SELECTOR_MIGA).getByText('Archivada', { exact: true }).count()) > 0,
