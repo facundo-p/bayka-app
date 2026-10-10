@@ -394,12 +394,20 @@ Los botones se ordenan alfabéticamente por nombre; cada técnico puede tener su
 propio orden. `orden_visual` lo mantiene el servidor con ese mismo criterio,
 para los APKs que todavía ordenan por esa columna (#635).
 
+`lugar_color` es el lugar fijo de la especie en la paleta de colores de la
+plantación: la web la pinta con `paleta[lugar % 12]` en el dashboard, el mapa,
+Datos, el KML, la ficha y el informe (#845). Al habilitarla, el servidor le
+asigna el menor lugar libre de la plantación; quitarla lo libera. Habilitar o
+quitar otra especie no le cambia el color. N/N no ocupa lugar (va en ámbar).
+Mobile no lo usa.
+
 ### Atributos
 
 ```
 plantacion_id
 especie_id
 orden_visual
+lugar_color
 ```
 
 ### Relaciones
