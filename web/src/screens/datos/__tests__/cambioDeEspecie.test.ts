@@ -1,5 +1,6 @@
 import { arbolDetalle } from '../../../test/fabricas';
 import {
+  conNombreCientifico,
   arbolConEspecie,
   especieElegida,
   opcionesDeEspecie,
@@ -80,4 +81,22 @@ test('arbolConEspecie rearma el ID del árbol con el SubID nuevo', () => {
     subId: 'P1L1TAL3',
     idArbol: 'P1L1TAL3-SS26',
   });
+});
+
+test('conNombreCientifico completa el científico desde la lista, o lo deja en null', () => {
+  const chocada = {
+    especieId: 'sp-1',
+    especieCodigo: 'CEI',
+    especieNombre: 'Ceibo',
+    especieNombreCientifico: null,
+    subId: 'P1L1CEI3',
+  };
+  expect(conNombreCientifico(chocada, ESPECIES).especieNombreCientifico).toBe(
+    'Erythrina crista-galli',
+  );
+  expect(conNombreCientifico({ ...chocada, especieId: 'sp-9' }, ESPECIES)).toEqual({
+    ...chocada,
+    especieId: 'sp-9',
+  });
+  expect(conNombreCientifico(chocada, undefined).especieNombreCientifico).toBeNull();
 });

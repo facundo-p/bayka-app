@@ -2,6 +2,7 @@ import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import {
   esFotoLocal,
   firmarFotos,
+  fotoSubida,
   obtenerUrlDescargaFoto,
   obtenerUrlFoto,
   tieneFotoSubida,
@@ -39,6 +40,15 @@ describe('esFotoLocal', () => {
     expect(esFotoLocal(URL_COMPLETA)).toBe(false);
     expect(esFotoLocal(null)).toBe(false);
     expect(esFotoLocal('')).toBe(false);
+  });
+});
+
+describe('fotoSubida', () => {
+  test('devuelve la URL solo si la foto está en el bucket', () => {
+    expect(fotoSubida(PATH_FOTO)).toBe(PATH_FOTO);
+    expect(fotoSubida('file:///data/foto.jpg')).toBeNull();
+    expect(fotoSubida(null)).toBeNull();
+    expect(fotoSubida('')).toBeNull();
   });
 });
 

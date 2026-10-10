@@ -5,7 +5,7 @@ import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { listarEspeciesDePlantacion, type EspecieDePlantacion } from '../../queries/especieQueries';
 import { mensajeDeErrorDeEdicion } from '../../repositories/edicionDePlantacion';
 import { cambiarEspecieDeArbol, ConflictoDeEspecieError } from '../../repositories/especieDeArbol';
-import { arbolConEspecie, especieElegida } from './cambioDeEspecie';
+import { arbolConEspecie, conNombreCientifico, especieElegida } from './cambioDeEspecie';
 
 const ACCION_CAMBIAR_ESPECIE = 'cambiar la especie';
 
@@ -61,7 +61,8 @@ function useGuardarEspecie({ arbol, edicion, elegida, especies, alGuardar, alCho
     },
     onError: (error) => {
       if (!(error instanceof ConflictoDeEspecieError)) return;
-      onActualizado(arbolConEspecie(arbol, error.vigente, codigoPlantacion));
+      const vigente = conNombreCientifico(error.vigente, especies);
+      onActualizado(arbolConEspecie(arbol, vigente, codigoPlantacion));
       alChocar(error.vigente.especieId);
     },
     onSettled: () =>

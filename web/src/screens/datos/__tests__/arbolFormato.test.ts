@@ -63,6 +63,7 @@ describe('GPS del detalle (#830)', () => {
 
   test('coordenadas con 6 decimales, como la ficha', () => {
     expect(textoCoordenadas(CON_GPS)).toBe('-27.360120, -55.897440');
+    expect(textoCoordenadas(CON_GPS, 5)).toBe('-27.36012, -55.89744');
   });
 
   test('precisión redondeada en metros, o null si no se informó', () => {

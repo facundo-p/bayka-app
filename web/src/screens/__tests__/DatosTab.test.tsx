@@ -223,7 +223,7 @@ describe('sección Árboles', () => {
     const filaCompleta = filaDe('A-001-SS26');
     expect(within(filaCompleta).getByText('QB · Quebracho')).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-    expect(within(filaCompleta).getByText(/±5m/)).toBeInTheDocument();
+    expect(within(filaCompleta).getByText(/± 5 m/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText('Teo Técnico')).toBeInTheDocument();
     // Foto subida → check no interactivo (la foto se ve en el detalle de la fila).
     expect(within(filaCompleta).getByLabelText('Con foto')).toBeInTheDocument();

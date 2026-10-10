@@ -47,6 +47,15 @@ export function especieElegida(
   };
 }
 
+/** La RPC no devuelve el científico de la especie que chocó: sale de la lista cargada, si está. */
+export function conNombreCientifico(
+  especie: EspecieDelArbol,
+  especies: EspecieDePlantacion[] | undefined,
+): EspecieDelArbol {
+  const cargada = especies?.find((candidata) => candidata.id === especie.especieId);
+  return { ...especie, especieNombreCientifico: cargada?.nombreCientifico ?? null };
+}
+
 /** El SubID lleva el código de la especie: el ID del árbol cambia con ella. */
 export function arbolConEspecie(
   arbol: ArbolDetalle,

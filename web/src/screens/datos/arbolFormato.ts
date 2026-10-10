@@ -20,9 +20,9 @@ export function codigoParcelaDe(arbol: ArbolDetalle, codigos: Map<string, string
   return parcelaDe(arbol, codigos);
 }
 
-/** «-27.360120, -55.897440», con los mismos decimales que la ficha PDF. */
-export function textoCoordenadas(arbol: ArbolConGps): string {
-  return `${arbol.latitude.toFixed(DECIMALES_GPS)}, ${arbol.longitude.toFixed(DECIMALES_GPS)}`;
+/** «-27.360120, -55.897440»; por defecto con los mismos decimales que la ficha PDF. */
+export function textoCoordenadas(arbol: ArbolConGps, decimales: number = DECIMALES_GPS): string {
+  return `${arbol.latitude.toFixed(decimales)}, ${arbol.longitude.toFixed(decimales)}`;
 }
 
 /** «± 4 m»; null si el celular no informó la precisión. */

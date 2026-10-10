@@ -17,10 +17,14 @@ interface ModalProps {
   children: ReactNode;
 }
 
+/** Enfoca el dialog al abrir y, al cerrar, devuelve el foco a lo que lo tenía antes. */
 function useFocusOnOpen(open: boolean): RefObject<HTMLDivElement | null> {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (open) ref.current?.focus();
+    if (!open) return;
+    const previo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    ref.current?.focus();
+    return () => previo?.focus();
   }, [open]);
   return ref;
 }

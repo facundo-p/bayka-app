@@ -4,7 +4,13 @@ import { tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
-import { etiquetaEspecie, SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
+import {
+  etiquetaEspecie,
+  SIN_DATO,
+  textoCoordenadas,
+  textoPrecisionGps,
+  tieneGps,
+} from './arbolFormato';
 import styles from './SeccionesDatos.module.css';
 
 export function CeldaDescripcion({ descripcion }: { descripcion: string | null }) {
@@ -16,24 +22,19 @@ export function CeldaDescripcion({ descripcion }: { descripcion: string | null }
   );
 }
 
-/** Redondeo de coordenadas para mostrar (~1 m de precisión). */
-const DECIMALES_GPS = 5;
+/** En la tabla alcanza con ~1 m: la columna queda más angosta que en el detalle. */
+const DECIMALES_GPS_TABLA = 5;
 
 /** Lat/lng redondeadas y, si se conoce, la precisión en metros. */
-export function Coordenadas({ arbol, className }: { arbol: ArbolConGps; className: string }) {
-  return (
-    <span className={className}>
-      {arbol.latitude.toFixed(DECIMALES_GPS)}, {arbol.longitude.toFixed(DECIMALES_GPS)}
-      {arbol.gpsAccuracy != null && (
-        <span className={styles.precision}> ±{Math.round(arbol.gpsAccuracy)}m</span>
-      )}
-    </span>
-  );
-}
-
 export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
   if (!tieneGps(arbol)) return SIN_DATO;
-  return <Coordenadas arbol={arbol} className={styles.gps} />;
+  const precision = textoPrecisionGps(arbol);
+  return (
+    <span className={styles.gps}>
+      {textoCoordenadas(arbol, DECIMALES_GPS_TABLA)}
+      {precision && <span className={styles.precision}> {precision}</span>}
+    </span>
+  );
 }
 
 interface EspecieConPuntoProps {

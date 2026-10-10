@@ -8,15 +8,20 @@ const BUCKET_FOTOS_ARBOLES = 'tree-photos';
 const SEGUNDOS_VALIDEZ_URL = 3600;
 
 /** true si la foto sigue en el celular que la sacó (`file://`, `content://`): existe pero no se subió. */
-export function esFotoLocal(fotoUrl: string | null | undefined): fotoUrl is string {
+export function esFotoLocal(fotoUrl: string | null | undefined): boolean {
   if (!fotoUrl) return false;
   return ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema));
 }
 
+/** La URL si la foto está subida al bucket; null si está vacía o sigue en el celular. */
+export function fotoSubida(fotoUrl: string | null | undefined): string | null {
+  if (!fotoUrl || esFotoLocal(fotoUrl)) return null;
+  return fotoUrl;
+}
+
 /** true si el árbol tiene una foto subida al bucket (no local ni vacía). */
-export function tieneFotoSubida(fotoUrl: string | null | undefined): fotoUrl is string {
-  if (!fotoUrl) return false;
-  return !esFotoLocal(fotoUrl);
+export function tieneFotoSubida(fotoUrl: string | null | undefined): boolean {
+  return fotoSubida(fotoUrl) !== null;
 }
 
 /** De una URL completa del bucket extrae el path interno; un path directo queda igual. */
@@ -44,8 +49,8 @@ async function firmarFoto(fotoUrl: string, download?: string): Promise<string | 
  * subida (campo vacío o archivo local del dispositivo móvil sin sincronizar).
  */
 export async function obtenerUrlFoto(fotoUrl: string | null | undefined): Promise<string | null> {
-  if (!tieneFotoSubida(fotoUrl)) return null;
-  return firmarFoto(fotoUrl);
+  const subida = fotoSubida(fotoUrl);
+  return subida && firmarFoto(subida);
 }
 
 /** Como `obtenerUrlFoto`, pero la URL baja la foto como archivo con ese nombre. */
@@ -53,8 +58,8 @@ export async function obtenerUrlDescargaFoto(
   fotoUrl: string | null | undefined,
   nombreArchivo: string,
 ): Promise<string | null> {
-  if (!tieneFotoSubida(fotoUrl)) return null;
-  return firmarFoto(fotoUrl, nombreArchivo);
+  const subida = fotoSubida(fotoUrl);
+  return subida && firmarFoto(subida, nombreArchivo);
 }
 
 /**

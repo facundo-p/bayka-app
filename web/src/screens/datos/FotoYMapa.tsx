@@ -10,9 +10,9 @@ import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/e
 import { descargarDesdeUrl } from '../../services/descargas';
 import {
   esFotoLocal,
+  fotoSubida,
   obtenerUrlDescargaFoto,
   obtenerUrlFoto,
-  tieneFotoSubida,
 } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { TAMANO_ICONO } from '../../theme/iconos';
@@ -37,6 +37,7 @@ export const TEXTO_FOTO_Y_MAPA = {
   errorDescarga: 'No se pudo descargar la foto',
   sinGps: 'Sin punto GPS',
   googleMaps: 'Google Maps',
+  pestanaNueva: ' (abre en una pestaña nueva)',
   copiarCoordenadas: 'Copiar coordenadas',
   cerrar: 'Cerrar',
 } as const;
@@ -206,10 +207,11 @@ function FotoSubida(props: FotoProps) {
 
 /** Subida, sin subir (sigue en el celular) o sin foto. */
 function CeldaFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: string | null }) {
-  if (tieneFotoSubida(arbol.fotoUrl)) {
+  const subida = fotoSubida(arbol.fotoUrl);
+  if (subida) {
     return (
       <FotoSubida
-        fotoUrl={arbol.fotoUrl}
+        fotoUrl={subida}
         alt={`Foto del árbol ${arbol.idArbol}`}
         nombreFoto={nombreFoto}
       />
@@ -244,6 +246,7 @@ function EnlaceGoogleMaps({ arbol }: { arbol: ArbolConGps }) {
       rel="noopener noreferrer"
     >
       {T.googleMaps}
+      <span className={styles.soloLectores}>{T.pestanaNueva}</span>
       <ExternalLink size={TAMANO_ICONO.sm} aria-hidden />
     </a>
   );

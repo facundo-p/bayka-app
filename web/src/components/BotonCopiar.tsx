@@ -2,6 +2,7 @@ import { Check, Copy } from 'lucide-react';
 import { useCopiar } from '../hooks/useCopiar';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
+import styles from './BotonCopiar.module.css';
 
 export const ETIQUETA_COPIADO = 'Copiado';
 
@@ -14,11 +15,20 @@ interface BotonCopiarProps {
 /** Copia `texto` al portapapeles; el ícono pasa a un check mientras dura la confirmación. */
 export function BotonCopiar({ texto, etiqueta }: BotonCopiarProps) {
   const { copiado, copiar } = useCopiar();
-  const nombre = copiado ? ETIQUETA_COPIADO : etiqueta;
   const Icono = copiado ? Check : Copy;
   return (
-    <BotonIcono variante="fantasma" etiqueta={nombre} title={nombre} onClick={() => copiar(texto)}>
-      <Icono size={TAMANO_ICONO.sm} aria-hidden />
-    </BotonIcono>
+    <>
+      <BotonIcono
+        variante="fantasma"
+        etiqueta={etiqueta}
+        title={copiado ? ETIQUETA_COPIADO : etiqueta}
+        onClick={() => copiar(texto)}
+      >
+        <Icono size={TAMANO_ICONO.sm} aria-hidden />
+      </BotonIcono>
+      <span role="status" className={styles.anuncio}>
+        {copiado ? ETIQUETA_COPIADO : ''}
+      </span>
+    </>
   );
 }

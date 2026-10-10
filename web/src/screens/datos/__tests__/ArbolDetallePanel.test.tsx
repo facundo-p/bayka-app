@@ -126,10 +126,19 @@ test('muestra la especie con su código, el científico y el GPS con precisión'
   expect(screen.getByText('-27.123456, -55.654321')).toBeInTheDocument();
   expect(screen.getByText('± 5 m')).toBeInTheDocument();
   expect(screen.getByText('Mapa del árbol')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Google Maps' })).toHaveAttribute(
+  expect(
+    screen.getByRole('link', { name: 'Google Maps (abre en una pestaña nueva)' }),
+  ).toHaveAttribute(
     'href',
     'https://www.google.com/maps/search/?api=1&query=-27.123456,-55.654321',
   );
+});
+
+test('una especie sin científico no deja un renglón vacío', () => {
+  renderPanel(arbol({ especieNombreCientifico: null }));
+
+  const nombre = screen.getByText('Quebracho');
+  expect(nombre.parentElement?.children).toHaveLength(1);
 });
 
 describe('ubicación (#830)', () => {
@@ -161,7 +170,7 @@ test('sin GPS avisa en vez de dibujar un mapa en 0,0', () => {
 
   expect(screen.getByText('Sin punto GPS')).toBeInTheDocument();
   expect(screen.queryByText('Mapa del árbol')).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'Google Maps' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Google Maps/ })).not.toBeInTheDocument();
 });
 
 test('GPS sin precisión muestra solo las coordenadas', () => {
@@ -179,7 +188,7 @@ describe('copiar al portapapeles', () => {
     await usuario.click(screen.getByRole('button', { name: 'Copiar ID Árbol' }));
 
     expect(await navigator.clipboard.readText()).toBe('A-001-SS26');
-    expect(screen.getByRole('button', { name: 'Copiado' })).toBeInTheDocument();
+    expect(screen.getAllByRole('status').map((region) => region.textContent)).toContain('Copiado');
   });
 
   test('copia las coordenadas', async () => {

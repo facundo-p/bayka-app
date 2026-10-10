@@ -4,7 +4,7 @@
  * nunca corta el documento.
  */
 import { mapearConConcurrencia } from '../lib/concurrencia';
-import { firmarFotos, tieneFotoSubida } from '../services/fotoService';
+import { firmarFotos, fotoSubida } from '../services/fotoService';
 import { ESTADO_FOTO, type FotoPdf } from './estadoFoto';
 import { reducirImagen, type MedidaImagen } from './reducirImagen';
 
@@ -39,9 +39,10 @@ async function bajarYReducir(url: string | null): Promise<FotoPdf> {
 
 /** Una foto por árbol, en el mismo orden que `fotoUrls`. */
 export async function cargarFotos(fotoUrls: ReadonlyArray<string | null>): Promise<FotoPdf[]> {
-  const conFoto = fotoUrls.flatMap((url, indice) =>
-    tieneFotoSubida(url) ? [{ url, indice }] : [],
-  );
+  const conFoto = fotoUrls.flatMap((fotoUrl, indice) => {
+    const url = fotoSubida(fotoUrl);
+    return url ? [{ url, indice }] : [];
+  });
   const firmadas = await firmarSinFallar(conFoto.map(({ url }) => url));
   const cargadas = await mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, bajarYReducir);
   const fotos = fotoUrls.map(() => SIN_FOTO);

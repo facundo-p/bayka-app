@@ -143,3 +143,7 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.soloLectores {
+  composes: soloLectores from '../../theme/utilidades.module.css';
+}
