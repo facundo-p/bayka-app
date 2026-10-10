@@ -24,7 +24,7 @@ La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 |---|---|---|
 | **1400** | notebook | La barra del detalle deja de entrar en un renglón (1366×768 real) |
 | **1200** | compacta | Grillas de 2 columnas → 1; las toolbars empiezan a envolver |
-| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento |
+| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento; el detalle de los listados sale en una hoja |
 | **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho; la navegación se va al pie y los filtros a una hoja |
 | **(max-height: 760)** | ventana baja | Fallback de alto, no de ancho |
 
@@ -71,6 +71,23 @@ Dos trampas que costaron caro:
   empujaba a los otros cuatro bloques a una fila cada uno; un `border-top`
   divisor quedaba flotando a media altura. Al tocar algo del sidebar, mirarlo
   también a ≤900.
+
+## El detalle de los listados sale en una hoja
+
+A ≤900 no hay lugar para el panel al costado de la tabla (`LayoutConPanel`).
+Apilado debajo, con 24 árboles arrancaba en y=1490 y el clic en la fila parecía
+no hacer nada (#823). Ahí `PanelLateral` se renderiza en un `Modal
+posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
+
+- Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
+  filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
+  orden del Tab.
+- La selección y lo que se está editando viven en la pantalla, no en el panel:
+  cruzar el umbral pasa de columna a hoja, o al revés, sin perder nada.
+- Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
+  la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
+- Los modales y listas que abre el detalle (foto ampliada, confirmaciones,
+  selector de especie) se montan después y quedan encima de la hoja.
 
 ## Teléfono: lo que tiene forma propia
 
