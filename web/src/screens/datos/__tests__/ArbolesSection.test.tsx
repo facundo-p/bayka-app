@@ -356,13 +356,22 @@ describe('colores de especie (#777, #845)', () => {
     expect(colorDeFila('A2-SS26')).toBe('#99b95b');
   });
 
-  test('si las especies no se leen, cada especie se pinta por su hash, sin mirar la página', async () => {
+  test('si las especies no se leen, una especie tiene el mismo color en todas las páginas', async () => {
     vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
-    const arboles = [conEspecie(1, 'TIM'), conEspecie(2, 'ANC')];
-    vi.mocked(listarArboles).mockResolvedValue({ arboles, total: 2, totalPaginas: 1 });
+    // Ordenando los códigos de cada página, TIM sería el segundo en la 1 y el primero en la 2.
+    vi.mocked(listarArboles).mockImplementation(async (_id, _filtros, pagina) => ({
+      arboles: pagina === 1 ? [conEspecie(1, 'ANC'), conEspecie(2, 'TIM')] : [conEspecie(3, 'TIM')],
+      total: 3,
+      totalPaginas: 2,
+    }));
+    const usuario = userEvent.setup();
     renderSeccion();
-    await screen.findByText('A1-SS26');
-    expect(colorDeFila('A1-SS26')).toBe(colorEspeciePorCodigo('TIM'));
-    expect(colorDeFila('A2-SS26')).toBe(colorEspeciePorCodigo('ANC'));
+    await screen.findByText('A2-SS26');
+    expect(colorDeFila('A2-SS26')).toBe(colorEspeciePorCodigo('TIM'));
+    expect(colorDeFila('A1-SS26')).toBe(colorEspeciePorCodigo('ANC'));
+
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
+    await screen.findByText('A3-SS26');
+    expect(colorDeFila('A3-SS26')).toBe(colorEspeciePorCodigo('TIM'));
   });
 });

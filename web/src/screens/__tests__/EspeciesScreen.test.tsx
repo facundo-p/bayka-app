@@ -141,6 +141,17 @@ test('click en una fila abre el panel de edición precargado con esa especie', a
   );
 });
 
+test('el catálogo no pinta colores: fuera de una plantación la especie no tiene uno (#845)', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await usuario.click(await screen.findByText('Anchico'));
+  await screen.findByRole('heading', { name: 'Editar especie' });
+
+  expect(document.querySelector('[style*="--color"]')).toBeNull();
+});
+
 test('la pestaña Científicas lista cada especie científica con las especies que agrupa (#753)', async () => {
   configurarEspeciesMock();
   const usuario = userEvent.setup();

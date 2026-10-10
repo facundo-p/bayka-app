@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { coloresDeHabilitadas, consultaEspeciesHabilitadas } from '../services/coloresDePlantacion';
-import { coloresDeEspecies, type ColorEspecie } from '../theme/coloresEspecie';
+import { colorEspeciePorCodigo, type ColorEspecie } from '../theme/coloresEspecie';
 
 export type ColoresEspecie = {
   colorDe: ColorEspecie;
@@ -20,8 +20,8 @@ export function useColoresEspecie(plantationId: string): ColoresEspecie {
   return { colorDe, listo: !conPlantacion || !isPending };
 }
 
-/** Colores de la vista para las celdas y paneles que la componen. */
-export const ColoresEspecieContext = createContext<ColorEspecie>(coloresDeEspecies([]));
+/** Colores de la vista para las celdas y paneles que la componen; sin provider, por hash. */
+export const ColoresEspecieContext = createContext<ColorEspecie>(colorEspeciePorCodigo);
 
 export function useColorEspecie(): ColorEspecie {
   return useContext(ColoresEspecieContext);

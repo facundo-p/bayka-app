@@ -22,17 +22,10 @@ export type PlantacionDelInforme = Pick<
 
 const PREFIJO_ARCHIVO_INFORME = 'informe';
 
-/**
- * Las mismas claves y funciones que el dashboard: lo que ya leyó y sigue
- * vigente no se vuelve a pedir, y lo que se relee le llega también al dashboard.
- */
-function leerInsumos(id: string, queryClient: QueryClient) {
+/** Lo que puede faltar: el informe sale igual, sin esa parte. */
+function leerAccesorios(id: string, queryClient: QueryClient) {
   return Promise.all([
-    queryClient.fetchQuery({
-      queryKey: CLAVE_QUERY.dashboard(id),
-      queryFn: () => obtenerFuenteDashboard(id),
-    }),
-    // El mapa es accesorio: si no se lee, el informe sale con «Mapa no disponible».
+    // Sin mapa, el informe sale con «Mapa no disponible».
     queryClient
       .fetchQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) })
       .catch(() => null),
@@ -45,6 +38,20 @@ function leerInsumos(id: string, queryClient: QueryClient) {
       .catch(() => null),
     // Sin organización legible, el encabezado lleva solo el código.
     leerNombreOrganizacion(id).catch(() => null),
+  ]);
+}
+
+/**
+ * Las mismas claves y funciones que el dashboard: lo que ya leyó y sigue
+ * vigente no se vuelve a pedir, y lo que se relee le llega también al dashboard.
+ */
+function leerInsumos(id: string, queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.fetchQuery({
+      queryKey: CLAVE_QUERY.dashboard(id),
+      queryFn: () => obtenerFuenteDashboard(id),
+    }),
+    leerAccesorios(id, queryClient),
     // Los colores del dashboard, el KML y la ficha; sin especies legibles, por hash.
     leerColoresEspecie(queryClient, id),
     import('../pdf/informe/motorInforme'),
@@ -56,7 +63,7 @@ export async function generarPdfInforme(
   plantacion: PlantacionDelInforme,
   queryClient: QueryClient,
 ): Promise<Blob> {
-  const [fuente, puntos, parcelas, organizacion, colorDe, motor] = await leerInsumos(
+  const [fuente, [puntos, parcelas, organizacion], colorDe, motor] = await leerInsumos(
     plantacion.id,
     queryClient,
   );

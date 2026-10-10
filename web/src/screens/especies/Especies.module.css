@@ -22,6 +22,12 @@
 
 /* ─── Panel lateral ──────────────────────────────────────────────────── */
 
+/* Ícono del encabezado de los dos paneles. */
+.marcaPanel {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
 /* Chip con el código actual de la especie, junto al título. */
 .chipCodigo {
   padding: var(--space-xs) var(--space-md);
@@ -105,11 +111,6 @@ input.campoCodigo {
 }
 
 /* ─── Panel de especie científica ────────────────────────────────────── */
-
-.marcaPanel {
-  flex-shrink: 0;
-  color: var(--color-text-secondary);
-}
 
 /* Sin especies agrupadas: explica cómo se vincula una. */
 .textoBloque {

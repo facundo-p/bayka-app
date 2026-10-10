@@ -11,7 +11,7 @@ import {
 export type ColorEspecie = (codigo: string | null) => string;
 
 /** Especie habilitada en una plantación con su lugar fijo en la paleta (#845). */
-export type LugarDeEspecie = { codigo: string; lugarColor: number | null };
+type LugarDeEspecie = { codigo: string; lugarColor: number | null };
 
 /** Los 8 de los gráficos y los 4 extra (#756): con 12 especies o menos no se repite ninguno. */
 export const PALETA_ESPECIES = [...COLORES_GRAFICOS, ...COLORES_GRAFICOS_EXTRA] as const;
