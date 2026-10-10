@@ -1,9 +1,9 @@
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
-import { coloresDeEspecies } from '../../theme/coloresEspecie';
+import { coloresEnOrden } from '../../test/fabricas';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { construirKml, nombreArchivoKml } from '../exportarKml';
 
-const COLOR_DE = coloresDeEspecies(['QB', 'AL']);
+const COLOR_DE = coloresEnOrden('AL', 'QB');
 const OPCIONES = { nombreDocumento: 'Puntos GPS – Sitio (2025)', colorDe: COLOR_DE };
 
 function punto(parcial: Partial<PuntoGps>): PuntoGps {

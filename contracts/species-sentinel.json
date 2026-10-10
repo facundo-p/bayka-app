@@ -1,4 +1,4 @@
 {
-  "_comment": "Fuente de verdad del código sentinela de especie no identificada. Cambiar esto implica actualizar las copias runtime (mobile/src/utils/speciesHelpers.ts UNKNOWN_SPECIES_CODE, web/src/queries/especiesConstantes.ts ESPECIE_SIN_IDENTIFICAR) y sus contract tests en el mismo cambio.",
+  "_comment": "Fuente de verdad del código sentinela de especie no identificada. Cambiar esto implica actualizar las copias runtime (mobile/src/utils/speciesHelpers.ts UNKNOWN_SPECIES_CODE, web/src/queries/especiesConstantes.ts ESPECIE_SIN_IDENTIFICAR, y `ocupa_lugar_color` de supabase/migrations/079_lugar_color_especie.sql, con una migración nueva) y sus contract tests en el mismo cambio (supabase/tests/62_lugar_color_especie.test.sql para el server).",
   "code": "NN"
 }
