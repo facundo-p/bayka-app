@@ -108,12 +108,13 @@ proyecto son `trg_add_admin_memberships`, `trg_protect_profile_fields`,
 **Un watermark sobre `created_at` sería incorrecto**, no solo incompleto: hay tres
 caminos que mutan árboles existentes sin tocar ninguna columna de tiempo.
 
-1. `sync_subgroup` actualiza `species_id`, `sub_id`, `foto_url`, `global_id` y los
-   cuatro campos de GPS (`supabase/baseline_schema.sql:318-327`).
+1. `sync_subgroup` actualiza `species_id`, `sub_id`, `foto_url` y los cuatro
+   campos de GPS (`supabase/baseline_schema.sql:318-327`; hasta #822, también
+   `global_id`).
 2. La subida de foto hace `UPDATE trees SET foto_url`
    (`mobile/src/services/sync/photoService.ts:30-33`).
-3. `generate_tree_ids` actualiza `global_id`/`plantacion_id`
-   (`supabase/migrations/032_ids_helpers.sql:78`).
+3. `generate_tree_ids` actualizaba `global_id`/`plantacion_id`
+   (`supabase/migrations/032_ids_helpers.sql:78`); sin uso desde #822.
 
 Un device filtrando por `created_at` no vería ninguna de las tres. La resolución
 de especie de otro técnico, por ejemplo, no llegaría nunca.

@@ -83,7 +83,6 @@ Puede hacer todo lo que hace el usuario Técnico, más:
 - Configurar las especies disponibles en una plantación
 - Asignar técnicos a plantaciones
 - Finalizar plantaciones
-- Generar IDs finales
 - Exportar datos de plantaciones
 
 ---
@@ -621,14 +620,13 @@ usuario y resolverlos él mismo.
 
 Los administradores finalizan la plantación cuando todos los Grupos están sincronizados, y todos los N/N resueltos.
 
-Esto habilita la generación de IDs finales.
+Con la plantación finalizada, la app ofrece las exportaciones.
 
 ---
 
-# 4.17 Generación de IDs Finales
+# 4.17 Identificadores de Árbol
 
-Se generan dos identificadores numéricos. Además, cada árbol tiene desde que se
-registra su **ID de Árbol**, que no se genera: se arma.
+Cada árbol tiene dos identificadores. Ninguno se genera con una acción aparte.
 
 ---
 
@@ -650,7 +648,11 @@ cambian antes de guardar.
 
 ## ID Parcial de Plantación
 
-Secuencial dentro de la plantación.
+Número del árbol dentro de la plantación, desde 1. No se guarda: la web y la app
+lo calculan al exportar con la misma función (`shared/idParcial.ts`):
+
+- Ordena por alta del grupo y después por posición del árbol en el grupo.
+- Con la misma alta desempata el id del grupo, y después el del árbol.
 
 Ejemplo:
 
@@ -661,67 +663,33 @@ Ejemplo:
 4
 ```
 
----
-
-## ID Global de Organización
-
-Secuencial entre todas las plantaciones.
-
-El administrador define un valor inicial. El sistema sugiere el mayor ID global
-existente en el servidor + 1 (1 si todavía no hay ninguno). Ese máximo se toma
-sobre todos los árboles del servidor, no solo los de la organización.
-
-Ejemplo:
-
-```
-Seed inicial: 10456
-```
-
-Los IDs incrementan desde ese valor.
+Si se agregan árboles a un grupo existente (por ejemplo, al reabrir la
+plantación), los números de los que siguen se corren.
 
 ---
 
-## Persistencia
+## ID Global (dado de baja)
 
-Los IDs se generan **solo desde la web de gestión**, server-side. La app no los
-genera ni los sube: los recibe con el pull normal de la sincronización.
+Hasta #822 cada árbol tenía además un ID numérico secuencial entre todas las
+plantaciones, que la web generaba con "Generar IDs". Se sacó de la app y de las
+exportaciones, sin reemplazo: el ID de Árbol cumple ese papel.
 
-"Generar IDs" pide confirmación del ID global inicial y llama al RPC
-`generate_tree_ids`, que:
-
-- Solo acepta admin o superadmin (`NOT_AUTHORIZED`).
-- Numera y guarda `plantacion_id`/`global_id` de todos los árboles de la
-  plantación en **una sola transacción**. Si falla, no queda nada escrito y no
-  hay reversión del lado del cliente.
-- Ordena los árboles por fecha de creación del grupo y posición del árbol.
-- Serializa las generaciones concurrentes, para que dos corridas no repartan el
-  mismo rango de IDs globales.
-- Es idempotente: si todos los árboles ya tienen `global_id`, responde
-  `ALREADY_GENERATED` sin tocar nada. Un set parcial se regenera completo.
-- Rechaza una plantación sin árboles (`NO_TREES`) o un ID inicial menor a 1
-  (`INVALID_SEED`).
-
-Los IDs quedan generados cuando **todos** los árboles de la plantación tienen
-`global_id`. Hasta entonces:
-
-- La web ofrece "Generar IDs" y deshabilita las planillas (CSV/Excel). El KML
-  no depende de los IDs.
-- En una plantación finalizada, la app avisa que los IDs se generan desde la
-  web y no muestra las exportaciones. Aparecen cuando el pull trae los IDs.
+La base todavía tiene `trees.global_id`, `trees.plantacion_id` y el RPC
+`generate_tree_ids`, sin uso: ningún cliente los escribe y la sincronización
+ignora los que mande un APK viejo. Se dropean cuando ningún APK de prod los lea.
 
 ---
 
 # 4.18 Exportación de Datos
 
-Los administradores pueden exportar la plantación a CSV o Excel.
-Funcionalidad disponible para plantaciones finalizadas.
+Los administradores pueden exportar la plantación a CSV o Excel: desde la web,
+cualquier plantación; desde la app, las finalizadas.
 
 Columnas exportadas, en este orden (contrato: `contracts/export-columns.json`):
 
 ```
 ID Árbol (SubID-código de plantación)
-ID Global
-ID Parcial
+ID Parcial (calculado al exportar)
 Zona (Lugar)
 Plantación (Lugar)
 Parcela
@@ -730,6 +698,8 @@ SubID
 Periodo
 Especie
 ```
+
+Las filas salen en orden de ID Parcial.
 
 ---
 

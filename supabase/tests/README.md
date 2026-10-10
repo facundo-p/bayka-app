@@ -81,7 +81,7 @@ cambiar una regla de un solo lado rompe el test de los otros (#735).
 ## Tests
 
 `01`-`02` membresía en INSERT (groups/parcelas), `03` guard de
-`sync_subgroup`, `04` gate por rol, organización y archivado de `generate_tree_ids` (042), `05`
+`sync_subgroup`, `04` gate por rol, organización y archivado de `generate_tree_ids` (042, sin uso desde #822), `05`
 `update_tree_ids` removida, `06` resto de 030, `07` mismo fix en `trees`
 INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
 scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
@@ -165,7 +165,7 @@ la base, rearma el SubID con su código, no deshace un N/N resuelto, devuelve en
 (también uno sin tocar), y sin base pisa como antes
 (065, #679). `44` ramas de `sync_subgroup`
 sin otro test: el re-sync de un árbol pisa especie y SubID pero no la posición,
-y conserva foto, ids y GPS que no vienen; una especie vacía queda N/N; sin
+y conserva foto y GPS que no vienen; una especie vacía queda N/N; sin
 especies que habilitar no reordena; con código y nombre repetidos gana
 DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
 deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
@@ -215,6 +215,9 @@ admin, superadmin y el creador sí lo borran; EXECUTE solo para `authenticated` 
 lo sube y no se crea, admin y superadmin sí y queda con el creador real; a
 nombre propio lo suben todos, sin creador nadie, y el rechazo del creador gana
 sobre DUPLICATE_CODE; un grupo que ya existe sigue la regla de 072 (074, #798).
+`63` `sync_subgroup` no escribe `plantacion_id` ni `global_id`: un payload viejo
+que los trae sincroniza y el árbol queda sin ids, y uno ya numerado los conserva
+al re-sincronizar con o sin esas claves (080, #822).
 
 ## Hallazgo fuera de alcance (no corregido)
 
