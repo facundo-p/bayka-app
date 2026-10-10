@@ -3,7 +3,7 @@
 -- lugar liberado se reutiliza, los escritores existentes conservan los lugares
 -- y el índice no deja repetir un lugar. N/N, el sentinela del contrato, no ocupa.
 begin;
-select plan(15);
+select plan(16);
 
 insert into organizations (id, nombre) values
   ('b6200000-0000-0000-0000-000000000001', 'Org Test 62');
@@ -133,6 +133,14 @@ select aplicar_cambios_especies('b6200000-0000-0000-0000-000000000013',
 select is(pg_temp.lugares_62('b6200000-0000-0000-0000-000000000013'),
   'NN:-, T62D:1, T62E:2, T62b:0, T62Ñ:3',
   'reenviar especies ya habilitadas no les cambia el lugar');
+
+-- Una plantación que sube varias especies juntas las ordena como el relleno.
+select aplicar_cambios_especies('b6200000-0000-0000-0000-000000000012',
+  array['b6200000-0000-0000-0000-0000000000e4', 'b6200000-0000-0000-0000-0000000000e5',
+        'b6200000-0000-0000-0000-0000000000e3']::uuid[], '{}');
+select is(pg_temp.lugares_62('b6200000-0000-0000-0000-000000000012'),
+  'T62A:2, T62C:0, T62D:3, T62b:1, T62Ñ:4',
+  'varias altas juntas toman los lugares libres en orden de código');
 
 select ok(exists (
     select 1 from pg_locks

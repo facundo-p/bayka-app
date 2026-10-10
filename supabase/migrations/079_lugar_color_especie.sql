@@ -13,10 +13,20 @@
 --    escritores hacen upsert o update, así que una especie que sigue habilitada
 --    conserva su lugar.
 -- C. `aplicar_cambios_especies` quita antes de habilitar: en un mismo cambio,
---    la especie nueva toma el lugar que liberó la quitada.
+--    la especie nueva toma el lugar que liberó la quitada. Ella y
+--    `reemplazar_especies_plantacion` toman el lock de los lugares antes de
+--    borrar, en el mismo orden que `sync_subgroup`.
 --
 -- N/N no ocupa lugar: se pinta en ámbar. Su código es el sentinela de
 -- contracts/species-sentinel.json.
+--
+-- Rollback: DROP TRIGGER trg_asignar_lugar_color ON plantation_species; DROP
+-- INDEX plantation_species_lugar_color_key; ALTER TABLE plantation_species DROP
+-- COLUMN lugar_color; recrear aplicar_cambios_especies como en 058 y
+-- reemplazar_especies_plantacion como en 055; DROP FUNCTION de
+-- asignar_lugar_color(), menor_lugar_color_libre(uuid),
+-- bloquear_lugares_color(uuid), rellenar_lugares_color() y
+-- ocupa_lugar_color(uuid).
 
 -- ── A. Columna, relleno e índice ─────────────────────────────────────────────
 
@@ -126,9 +136,10 @@ CREATE TRIGGER "trg_asignar_lugar_color"
 
 -- ── C. Altas y bajas: primero las bajas ──────────────────────────────────────
 
--- Igual a 058 salvo el lock y el orden: las bajas antes que las altas. El lock
--- va antes del DELETE para que el orden sea el de `sync_subgroup` (lugares →
--- filas de plantation_species); si no, las dos se pueden trabar.
+-- Igual a 058 salvo el lock y el orden: las bajas antes que las altas, y las
+-- altas por código como el relleno. El lock va antes del DELETE para que el
+-- orden sea el de `sync_subgroup` (lugares → filas de plantation_species); si
+-- no, las dos se pueden trabar.
 CREATE OR REPLACE FUNCTION "public"."aplicar_cambios_especies"("p_plantacion" "uuid", "p_altas" "uuid"[], "p_bajas" "uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -165,9 +176,10 @@ BEGIN
   END LOOP;
 
   INSERT INTO plantation_species (plantation_id, species_id, orden_visual)
-  SELECT DISTINCT p_plantacion, a.id, 0
-    FROM unnest(v_altas) AS a(id)
-   WHERE EXISTS (SELECT 1 FROM species s WHERE s.id = a.id)
+  SELECT p_plantacion, s.id, 0
+    FROM species s
+   WHERE s.id = ANY (v_altas)
+   ORDER BY s.codigo COLLATE "C"
   ON CONFLICT (plantation_id, species_id) DO NOTHING;
 
   PERFORM ordenar_especies_plantacion(p_plantacion);
@@ -179,3 +191,60 @@ $$;
 ALTER FUNCTION "public"."aplicar_cambios_especies"("uuid", "uuid"[], "uuid"[]) OWNER TO "postgres";
 REVOKE ALL ON FUNCTION "public"."aplicar_cambios_especies"("uuid", "uuid"[], "uuid"[]) FROM PUBLIC, "anon";
 GRANT EXECUTE ON FUNCTION "public"."aplicar_cambios_especies"("uuid", "uuid"[], "uuid"[]) TO "authenticated", "service_role";
+
+-- Igual a 055 salvo el lock antes del DELETE, por el mismo motivo. Ningún
+-- cliente actual la llama, pero un APK viejo sí puede.
+CREATE OR REPLACE FUNCTION "public"."reemplazar_especies_plantacion"("p_plantacion" "uuid", "p_especies" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_especies JSONB := coalesce(p_especies, '[]');
+  v_ids UUID[];
+  v_rechazo TEXT;
+BEGIN
+  PERFORM 1 FROM plantations WHERE id = p_plantacion FOR SHARE;
+
+  v_rechazo := rechazo_configuracion_plantacion(p_plantacion, plantacion_escribible(p_plantacion));
+  IF v_rechazo IS NOT NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', v_rechazo);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(v_especies) AS e(valor)
+    LEFT JOIN species s ON s.id = (e.valor->>'species_id')::UUID
+    WHERE s.id IS NULL
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ESPECIE_INEXISTENTE');
+  END IF;
+
+  SELECT coalesce(array_agg((e.valor->>'species_id')::UUID), '{}')
+    INTO v_ids FROM jsonb_array_elements(v_especies) AS e(valor);
+
+  IF EXISTS (
+    SELECT 1 FROM plantation_species ps
+    WHERE ps.plantation_id = p_plantacion
+      AND NOT (ps.species_id = ANY (v_ids))
+      AND especie_tiene_arboles(p_plantacion, ps.species_id)
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ESPECIE_CON_ARBOLES');
+  END IF;
+
+  PERFORM bloquear_lugares_color(p_plantacion);
+
+  -- Un árbol que entra entre el chequeo y el DELETE lo frena el trigger: mismo rechazo.
+  BEGIN
+    DELETE FROM plantation_species
+    WHERE plantation_id = p_plantacion AND NOT (species_id = ANY (v_ids));
+  EXCEPTION WHEN restrict_violation THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ESPECIE_CON_ARBOLES');
+  END;
+
+  INSERT INTO plantation_species (plantation_id, species_id, orden_visual)
+  SELECT p_plantacion, (e.valor->>'species_id')::UUID, coalesce((e.valor->>'orden_visual')::INTEGER, 0)
+  FROM jsonb_array_elements(v_especies) AS e(valor)
+  ON CONFLICT (plantation_id, species_id) DO UPDATE SET orden_visual = EXCLUDED.orden_visual;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
