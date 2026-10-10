@@ -6,6 +6,8 @@ const SELECTOR_TABULABLE = [
   'button:not([disabled])',
   'input:not([disabled])',
   'select:not([disabled])',
+  'textarea:not([disabled])',
+  'a[href]',
   '[tabindex]',
 ]
   .map((selector) => `${selector}:not([tabindex="-1"])`)

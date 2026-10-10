@@ -52,8 +52,8 @@
   white-space: nowrap;
 }
 
+/* Sin opacidad: atenuado sobre el riel no llegaba a AA (#824). */
 .sublabel {
   font-size: var(--text-xs);
   font-weight: var(--font-weight-regular);
-  opacity: 0.85;
 }

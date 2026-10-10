@@ -10,6 +10,7 @@ import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import { abrirFiltros } from '../../test/panelFiltros';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
@@ -120,6 +121,9 @@ test('un superadmin ve el link, la meta con conteos y la tabla con roles', async
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
   // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
   expect(screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico')).toBeInTheDocument();
+  expect(
+    screen.getByText('3 personas · clic en una fila abre el detalle · ⋯ para acciones rápidas'),
+  ).toBeInTheDocument();
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
@@ -421,6 +425,26 @@ test('editar con email fallido igual refresca la lista (invalidación en onSettl
     );
     expect(listados.length).toBeGreaterThan(1);
   });
+});
+
+test('a ≤900 una acción de la hoja abre su modal encima, y su Escape no cierra la hoja', async () => {
+  simularAncho(ANCHO.tablet);
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+
+  await screen.findByText('Ana Admin');
+  await usuario.click(tablaUsuarios().getByText('Ana Admin'));
+  const hoja = screen.getByRole('dialog', { name: 'Detalle de Ana Admin' });
+  await usuario.click(within(hoja).getByRole('button', { name: 'Cambiar contraseña' }));
+  const accion = screen.getByRole('dialog', { name: 'Cambiar contraseña de Ana Admin' });
+  expect(accion).toHaveFocus();
+  // Montado después: en el DOM va detrás de la hoja, que es como se apila encima.
+  expect(hoja.compareDocumentPosition(accion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  await usuario.keyboard('{Escape}');
+  expect(accion).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Detalle de Ana Admin' })).toBeInTheDocument();
 });
 
 test('cambiar contraseña valida y llama a la edge function', async () => {
