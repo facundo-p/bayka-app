@@ -1,6 +1,6 @@
--- contracts/foto-local.json contra dashboard_arboles (#762): un árbol con foto
--- de cada esquema local del contrato no cuenta como foto. La web y mobile
--- recorren el mismo contrato.
+-- contracts/foto-local.json contra dashboard_arboles (#762) y foto_subida (#826):
+-- un árbol con foto de cada esquema local del contrato no cuenta como foto. La
+-- web y mobile recorren el mismo contrato.
 begin;
 
 -- Un mes por esquema, para leer cada árbol en su propia fila del dashboard.
@@ -9,7 +9,7 @@ select n, esquema, '2026-01-15'::timestamptz + (n - 1) * interval '1 month' as c
   from jsonb_array_elements_text(tests.contrato('foto-local.json') -> 'esquemas')
        with ordinality as e(esquema, n);
 
-select plan(2 + (select count(*)::int from esquemas_54));
+select plan(2 + 2 * (select count(*)::int from esquemas_54));
 
 select ok((select count(*) from esquemas_54) > 0, 'el contrato trae esquemas');
 
@@ -53,6 +53,11 @@ select is(pg_temp.con_foto_54('2025-12'), true, 'una foto subida cuenta como fot
 
 select is(pg_temp.con_foto_54(to_char(creado at time zone 'UTC', 'YYYY-MM')), false,
           format('una foto %s no cuenta como foto', esquema))
+  from esquemas_54;
+
+reset role;
+
+select ok(not foto_subida(esquema || 'foto.jpg'), format('foto_subida descarta %s', esquema))
   from esquemas_54;
 
 select * from finish();
