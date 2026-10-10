@@ -58,12 +58,14 @@
   }
 }
 
-/* Con el alta reducida al "+", lo único que la bajaba de renglón era la base de
-   22rem: para repartir en líneas, flex mira el tamaño base, no el mínimo. Con
-   base 0 el "+" entra en la fila del título y el título se achica hasta su
-   propio mínimo, que ya trunca. */
+/* Para repartir en líneas, flex mira el tamaño base, no el mínimo. Con 22rem
+   el "+" del alta bajaba a un renglón propio; con 0, las tabs del detalle
+   entraban al lado de la miga y la dejaban en 6px, pisada por las tabs (#825).
+   Con 192px el "+" entra al lado del título hasta en 320, y lo que no deja
+   esos 192px a la miga baja de renglón. En px y no en rem, como el texto: con
+   una fuente raíz más grande, una base en rem crecía sola y bajaba el "+". */
 @media (max-width: 600px) {
   .left {
-    flex-basis: 0;
+    flex-basis: 192px;
   }
 }
