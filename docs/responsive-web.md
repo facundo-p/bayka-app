@@ -102,10 +102,15 @@ vista el buscador, el orden, el recuento y las acciones (el «PDF» de Árboles)
 todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los puestos.
 En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
 abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
-en la ventana; a ≤600, un `Modal posicion="hoja"` al que también van el orden y,
-en Datos, el buscador, porque la fila queda en el encabezado y el botón. En los
-dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar». El
-orden no es un filtro: no suma a la cuenta y «Limpiar» no lo toca. Elegir entre
+en la ventana; a ≤600, un `Modal posicion="hoja"` al que también va el orden. En
+los dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar».
+El buscador queda a la vista en todos los anchos y en los cinco listados; en
+teléfono, si la barra abre con otra cosa (el selector de sección de Datos), esa
+va en su propio renglón y el buscador crece en el de abajo. Ni el buscador ni el
+orden son filtros del panel: no suman a la cuenta y «Limpiar» no los toca. La
+regla vive en un solo lugar, `contarFiltrosActivos` y `limpiarFiltros`
+(`lib/filtros.ts`). El vacío de una tabla de Datos sí cuenta la búsqueda: es lo
+que la dejó vacía, y su «Limpiar filtros» la borra. Elegir entre
 popover y hoja es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
 autoriza: el layout sigue yendo en `@media`.

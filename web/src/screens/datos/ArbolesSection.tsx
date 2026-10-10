@@ -126,8 +126,8 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
 function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   const { arboles, arbolSeleccionado: arbol } = seccion;
   if (!arboles.data || !seccion.colores.listo) return <Cargando label="Cargando árboles…" />;
-  if (arboles.data.total === 0 && seccion.hayFiltro) {
-    return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiar} />;
+  if (arboles.data.total === 0 && seccion.hayFiltroOBusqueda) {
+    return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiarTodo} />;
   }
   const panel = arbol && <PanelArbolSeleccionado seccion={seccion} arbol={arbol} />;
   return (

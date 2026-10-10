@@ -3,7 +3,8 @@ import {
   conFiltro,
   filtrosAlCambiarDeSeccion,
   filtrosAParams,
-  hayFiltroActivo,
+  contarFiltros,
+  hayFiltroOBusqueda,
   leerFiltrosDeUrl,
 } from '../filtrosUrl';
 
@@ -44,10 +45,16 @@ test('filtrosAParams omite los campos vacíos y usa las claves de URL', () => {
   expect(params.has('grupo')).toBe(false);
 });
 
-test('hayFiltroActivo distingue el estado inicial de uno con filtro', () => {
-  expect(hayFiltroActivo(FILTROS_INICIALES)).toBe(false);
-  expect(hayFiltroActivo({ ...FILTROS_INICIALES, parcelaId: 'p1' })).toBe(true);
-  expect(hayFiltroActivo({ ...FILTROS_INICIALES, gps: 'sin' })).toBe(true);
+test('la búsqueda no cuenta como filtro del panel', () => {
+  expect(contarFiltros({ ...FILTROS_INICIALES, busqueda: 'A-12' })).toBe(0);
+  expect(contarFiltros({ ...FILTROS_INICIALES, busqueda: 'A-12', parcelaId: 'p1' })).toBe(1);
+});
+
+test('hayFiltroOBusqueda distingue el estado inicial de uno acotado, búsqueda incluida', () => {
+  expect(hayFiltroOBusqueda(FILTROS_INICIALES)).toBe(false);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, parcelaId: 'p1' })).toBe(true);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, gps: 'sin' })).toBe(true);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, busqueda: 'A-12' })).toBe(true);
 });
 
 test('roundtrip: filtrosAParams → leerFiltrosDeUrl preserva los valores', () => {

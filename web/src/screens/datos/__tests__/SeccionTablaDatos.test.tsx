@@ -38,7 +38,7 @@ test.each([
         textos={TEXTOS}
         columnas={COLUMNAS}
         onRowClick={vi.fn()}
-        filtros={SIN_FILTROS}
+        filtrosVacio={SIN_FILTROS}
       />
     </MemoryRouter>,
   );
@@ -49,7 +49,7 @@ test.each([
 test.each([
   { activos: 0, vacio: 'Sin parcelas' },
   { activos: 1, vacio: 'Ninguna parcela coincide con la búsqueda' },
-])('sin filas y con $activos filtros la tabla dice "$vacio"', ({ activos, vacio }) => {
+])('sin filas y con $activos búsquedas la tabla dice "$vacio"', ({ activos, vacio }) => {
   render(
     <MemoryRouter>
       <SeccionTablaDatos
@@ -59,7 +59,7 @@ test.each([
         textos={TEXTOS}
         columnas={COLUMNAS}
         onRowClick={vi.fn()}
-        filtros={{ activos, onLimpiar: vi.fn() }}
+        filtrosVacio={{ activos, onLimpiar: vi.fn() }}
       />
     </MemoryRouter>,
   );

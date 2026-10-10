@@ -1,12 +1,21 @@
 /**
- * Clave del orden en los filtros de un listado. Viaja con ellos porque cambia
- * las filas visibles, pero no descarta ninguna: no cuenta como filtro puesto y
- * «Limpiar» no lo toca (#844).
+ * Claves que pueden viajar con los filtros de un listado pero que la barra deja
+ * a la vista, fuera del panel: el buscador y el orden. No cuentan en el botón
+ * «Filtros» y «Limpiar» no las toca (#844).
  */
-export const CLAVE_ORDEN = 'orden';
+export const CLAVE_A_LA_VISTA = {
+  busqueda: 'busqueda',
+  orden: 'orden',
+} as const;
+
+const CLAVES_A_LA_VISTA: readonly string[] = Object.values(CLAVE_A_LA_VISTA);
+
+function esFiltroDelPanel(clave: PropertyKey): boolean {
+  return !CLAVES_A_LA_VISTA.includes(String(clave));
+}
 
 function clavesDeFiltro<F extends object>(iniciales: F): (keyof F)[] {
-  return (Object.keys(iniciales) as (keyof F)[]).filter((clave) => clave !== CLAVE_ORDEN);
+  return (Object.keys(iniciales) as (keyof F)[]).filter(esFiltroDelPanel);
 }
 
 /**
@@ -18,9 +27,9 @@ export function contarFiltrosActivos<F extends object>(actuales: F, iniciales: F
   return clavesDeFiltro(iniciales).filter((clave) => actuales[clave] !== iniciales[clave]).length;
 }
 
-/** Los filtros a su valor inicial, con el orden que el usuario haya elegido. */
+/** Los filtros a su valor inicial, con la búsqueda y el orden como estaban. */
 export function limpiarFiltros<F extends object>(actuales: F, iniciales: F): F {
-  if (!(CLAVE_ORDEN in actuales)) return iniciales;
-  const orden = CLAVE_ORDEN as keyof F;
-  return { ...iniciales, [orden]: actuales[orden] };
+  const limpios = { ...actuales };
+  for (const clave of clavesDeFiltro(iniciales)) limpios[clave] = iniciales[clave];
+  return limpios;
 }

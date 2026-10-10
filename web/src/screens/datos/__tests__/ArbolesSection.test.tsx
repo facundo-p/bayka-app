@@ -15,6 +15,7 @@ import { obtenerPlantacion } from '../../../queries/plantationQueries';
 import { descargarFichasPdf } from '../../../services/pdfFichas';
 import { arbolDetalle, plantacion } from '../../../test/fabricas';
 import { abrirFiltros } from '../../../test/panelFiltros';
+import { ANCHO, simularAncho } from '../../../test/simularAncho';
 
 vi.mock('../../../queries/dataExplorerQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/dataExplorerQueries')>(
@@ -262,6 +263,26 @@ describe('la selección vale para la página actual', () => {
     await usuario.selectOptions(filtros.getByRole('combobox', { name: 'GPS' }), 'Con GPS');
     await waitFor(() => expect(barra()).toHaveTextContent('0 árboles seleccionados'));
     expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
+  });
+});
+
+describe.each([ANCHO.desktop, ANCHO.movil])('la búsqueda, a %ipx', (ancho) => {
+  const botonFiltros = () => screen.getByRole('button', { name: /^Filtros/ });
+
+  test('queda a la vista, no suma en «Filtros» y «Limpiar» no la borra', async () => {
+    simularAncho(ancho);
+    const usuario = renderSeccion();
+    await screen.findByRole('button', { name: BOTON_PDF });
+    await usuario.type(screen.getByLabelText(BUSCADOR), 'A1');
+    expect(botonFiltros()).toHaveTextContent(/^Filtros$/);
+
+    const filtros = await abrirFiltros(usuario);
+    expect(filtros.queryByLabelText(BUSCADOR)).not.toBeInTheDocument();
+    await usuario.selectOptions(filtros.getByRole('combobox', { name: 'GPS' }), 'Con GPS');
+    expect(botonFiltros()).toHaveTextContent(/^Filtros1$/);
+    await usuario.click(filtros.getByRole('button', { name: 'Limpiar' }));
+    expect(botonFiltros()).toHaveTextContent(/^Filtros$/);
+    expect(screen.getByLabelText(BUSCADOR)).toHaveValue('A1');
   });
 });
 

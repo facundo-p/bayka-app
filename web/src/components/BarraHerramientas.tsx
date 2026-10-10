@@ -12,8 +12,8 @@ interface BarraHerramientasProps {
   encabezado?: ReactNode;
   /**
    * Buscador, cuando el encabezado es otra cosa (en Datos, el selector de
-   * sección). Un divisor lo separa del encabezado. En teléfono va a la hoja:
-   * la fila ya tiene el encabezado y el botón de filtros.
+   * sección). Queda a la vista en todos los anchos, como el buscador que abre
+   * la barra en los demás listados.
    */
   busqueda?: ReactNode;
   /** Filtros propios de la pantalla: van al panel, o a la hoja en teléfono. */
@@ -43,19 +43,39 @@ interface BarraHerramientasProps {
  */
 export function BarraHerramientas(props: BarraHerramientasProps) {
   const enMovil = useMediaQuery(BP.movil);
-  const { busqueda, children, orden } = props;
-  if (enMovil && (busqueda || children || orden)) return <BarraMovil {...props} />;
-  return <BarraEscritorio {...props} />;
+  const { children, orden } = props;
+  if (enMovil && (children || orden)) return <BarraMovil {...props} />;
+  return <BarraEscritorio {...props} enMovil={enMovil} />;
+}
+
+interface CabezaProps {
+  encabezado?: ReactNode;
+  busqueda?: ReactNode;
+  enMovil: boolean;
+}
+
+/**
+ * Encabezado y buscador. En teléfono el encabezado va en su propio renglón: el
+ * buscador crece desde cero y, al lado del selector de sección de Datos, se
+ * quedaba en la lupa sola.
+ */
+function Cabeza({ encabezado, busqueda, enMovil }: CabezaProps) {
+  const ambos = Boolean(encabezado && busqueda);
+  return (
+    <>
+      {ambos && enMovil ? <div className={styles.renglonPropio}>{encabezado}</div> : encabezado}
+      {ambos && !enMovil && <Divisor />}
+      {busqueda}
+    </>
+  );
 }
 
 /** Buscador, botón de filtros con su panel, orden, recuento y acciones, en ese orden. */
-function BarraEscritorio(props: BarraHerramientasProps) {
+function BarraEscritorio(props: BarraHerramientasProps & { enMovil: boolean }) {
   const { encabezado, busqueda, children, orden, recuento, acciones } = props;
   return (
     <div className={styles.barra}>
-      {encabezado}
-      {encabezado && busqueda && <Divisor />}
-      {busqueda}
+      <Cabeza encabezado={encabezado} busqueda={busqueda} enMovil={props.enMovil} />
       {children && (
         <PanelFiltros
           titulo={props.tituloFiltros}
@@ -74,16 +94,16 @@ function BarraEscritorio(props: BarraHerramientasProps) {
 }
 
 /**
- * En teléfono la fila queda en el encabezado más el botón, y todo lo demás va a
- * una hoja: envolviendo ocupaban tres o cuatro renglones. El recuento viaja al
- * botón que la cierra.
+ * En teléfono la fila queda en el encabezado, el buscador y el botón, y los
+ * filtros y el orden van a una hoja: envolviendo ocupaban tres o cuatro
+ * renglones. El recuento viaja al botón que la cierra.
  */
 function BarraMovil(props: BarraHerramientasProps) {
-  const { encabezado, acciones, tituloFiltros, filtrosActivos } = props;
+  const { encabezado, busqueda, acciones, tituloFiltros, filtrosActivos } = props;
   const [abierta, setAbierta] = useState(false);
   return (
     <div className={styles.barra}>
-      {encabezado}
+      <Cabeza encabezado={encabezado} busqueda={busqueda} enMovil />
       <BotonFiltros activos={filtrosActivos} onClick={() => setAbierta(true)} />
       {acciones && <div className={styles.acciones}>{acciones}</div>}
       <Modal open={abierta} title={tituloFiltros} posicion="hoja" onClose={() => setAbierta(false)}>
@@ -94,11 +114,10 @@ function BarraMovil(props: BarraHerramientasProps) {
 }
 
 function HojaFiltros(props: BarraHerramientasProps & { onCerrar: () => void }) {
-  const { busqueda, children, orden, recuento, filtrosActivos, onLimpiar } = props;
+  const { children, orden, recuento, filtrosActivos, onLimpiar } = props;
   return (
     <>
       <div className={styles.hoja}>
-        {busqueda}
         {children}
         {orden}
       </div>

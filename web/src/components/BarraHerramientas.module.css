@@ -56,6 +56,12 @@
   margin-left: 0;
 }
 
+/* El encabezado solo en su renglón, a su ancho: el buscador pasa al de abajo. */
+.renglonPropio {
+  display: flex;
+  flex-basis: 100%;
+}
+
 /* Lo que va a la hoja: uno abajo del otro y a ancho completo. */
 .hoja {
   display: flex;
@@ -92,13 +98,15 @@
   color: inherit;
 }
 
-/* Con los filtros en la hoja, lo que queda en la fila es el buscador y un
-   botón: hay lugar de sobra para darles el alto táctil completo. El segmentado
-   entra por su rol —el selector de sección de Datos abre la fila— porque su
-   clase vive en otro módulo. */
+/* Con los filtros en la hoja, lo que queda en la fila es el buscador y un par
+   de botones: hay lugar de sobra para darles el alto táctil completo, también a
+   una acción compacta como «PDF» de Árboles, que si no queda más baja que sus
+   vecinos. El segmentado entra por su rol —el selector de sección de Datos abre
+   la barra— porque su clase vive en otro módulo. */
 @media (max-width: 600px) {
   .barra :is(input, select),
-  .barra [role='radio'] {
+  .barra [role='radio'],
+  .acciones > button {
     min-height: var(--control-height);
   }
 }

@@ -19,7 +19,7 @@ export interface TextosSeccion {
   vacioConFiltros: string;
 }
 
-/** Filtros puestos en la sección, con cuántos hay y cómo limpiarlos. */
+/** Lo que acota la sección, con cuánto hay puesto y cómo limpiarlo. */
 export interface FiltrosSeccion {
   activos: number;
   onLimpiar: () => void;
@@ -29,19 +29,17 @@ interface TablaSeccionProps<T> {
   textos: TextosSeccion;
   columnas: Array<TableColumn<T>>;
   onRowClick: (fila: T) => void;
-  /** Los que explican una tabla vacía y ofrece limpiar. */
+  /**
+   * Lo que explica una tabla vacía y ofrece limpiar: la búsqueda, que en Grupos
+   * se limpia sin soltar la parcela en scope.
+   */
   filtrosVacio: FiltrosSeccion;
 }
 
-interface SeccionTablaDatosProps<T> extends Omit<TablaSeccionProps<T>, 'filtrosVacio'> {
+interface SeccionTablaDatosProps<T> extends TablaSeccionProps<T> {
   segmento: SegmentoDatos;
-  /** Los que cuenta y limpia la toolbar. */
-  filtros: FiltrosSeccion;
-  /**
-   * Los de la tabla vacía, si son otros: en Grupos el vacío es por la búsqueda
-   * y limpiarlo no debe soltar la parcela en scope. Por defecto, `filtros`.
-   */
-  filtrosVacio?: FiltrosSeccion;
+  /** Los filtros del panel, que cuenta y limpia la toolbar. */
+  filtros?: FiltrosSeccion;
   /** Todas las queries de la sección: si una falla, falla la sección. */
   consultas: EstadoConsulta[];
   filas: T[] | undefined;
@@ -72,24 +70,22 @@ function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { 
 
 /** Toolbar + tabla de una sección de Datos, con sus estados de carga, error y vacío. */
 export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaDatosProps<T>) {
-  const { segmento, consultas, filas, busqueda, children, filtros, filtrosVacio, ...tabla } = props;
+  const { segmento, consultas, filas, busqueda, children, filtros, ...tabla } = props;
   if (algunaConError(consultas)) {
     return (
       <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />
     );
   }
   const recuento = filas && pluralizar(filas.length, tabla.textos.unidad);
-  const cuerpo = filas ? (
-    <TablaSeccion filas={filas} filtrosVacio={filtrosVacio ?? filtros} {...tabla} />
-  ) : null;
+  const cuerpo = filas ? <TablaSeccion filas={filas} {...tabla} /> : null;
   return (
     <>
       <DatosToolbar
         segmento={segmento}
         busqueda={busqueda}
         recuento={recuento}
-        filtrosActivos={filtros.activos}
-        onLimpiar={filtros.onLimpiar}
+        filtrosActivos={filtros?.activos}
+        onLimpiar={filtros?.onLimpiar}
       >
         {children}
       </DatosToolbar>

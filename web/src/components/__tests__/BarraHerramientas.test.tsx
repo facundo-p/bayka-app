@@ -116,22 +116,23 @@ describe('busqueda, cuando el encabezado es otra cosa', () => {
     expect(screen.queryByRole('button', { name: /Filtros/ })).not.toBeInTheDocument();
   });
 
-  test('en teléfono va a la hoja con los filtros, y la fila queda en el encabezado', async () => {
+  test('en teléfono también queda a la vista: la hoja solo lleva los filtros', async () => {
     simularAncho(ANCHO.movil);
     renderConBusqueda(<input aria-label="Filtro" />);
     expect(screen.getByRole('button', { name: 'Sección' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Buscar')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Buscar')).toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Filtros' }));
     const hoja = screen.getByRole('dialog', { name: 'Filtros de prueba' });
-    expect(within(hoja).getByLabelText('Buscar')).toBeInTheDocument();
+    expect(within(hoja).queryByLabelText('Buscar')).not.toBeInTheDocument();
     expect(within(hoja).getByLabelText('Filtro')).toBeInTheDocument();
   });
 
-  test('en teléfono el botón está aunque la búsqueda sea lo único que hay', () => {
+  test('en teléfono, sin filtros, no hay botón: la hoja quedaría vacía', () => {
     simularAncho(ANCHO.movil);
     renderConBusqueda();
-    expect(screen.getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Buscar')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Filtros/ })).not.toBeInTheDocument();
   });
 });
 
