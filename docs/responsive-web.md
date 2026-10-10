@@ -97,23 +97,28 @@ vista y los deja en el árbol de accesibilidad. Con `display: none` el control s
 queda sin nombre accesible — que es lo que lee el lector de pantalla, y por donde
 lo encuentran los tests y la auditoría.
 
-**Los filtros se guardan en una hoja.** `BarraHerramientas` a ≤600 deja el
-buscador y un botón con el contador de filtros puestos; el resto va a un
-`Modal posicion="hoja"`. Se aplican al toque, sin "Aplicar", y el recuento se muda
-al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
+**Los filtros viven detrás de un botón** (#844). `BarraHerramientas` deja a la
+vista el buscador, el orden, el recuento y las acciones (el «PDF» de Árboles);
+todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los puestos.
+En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
+abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
+en la ventana; a ≤600, un `Modal posicion="hoja"` al que también van el orden y,
+en Datos, el buscador, porque la fila queda en el encabezado y el botón. En los
+dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar». El
+orden no es un filtro: no suma a la cuenta y «Limpiar» no lo toca. Elegir entre
+popover y hoja es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
-autoriza: el layout sigue yendo en `@media`. Las `acciones` de la barra (el
-botón «PDF» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
+autoriza: el layout sigue yendo en `@media`.
+
+Lo que va en el panel o en la hoja solo está montado con ellos abiertos. Un
+efecto que tiene que correr siempre, como soltar una parcela o un técnico que ya
+no existen, va en la sección o en la barra, no en el filtro.
 
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
 22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
 Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
-crece, no con una base grande que después se achica. Lo mismo con un botón detrás
-de un bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la
-base del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
-`BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
-bloque se angosta y el botón queda en su última fila.
+crece, no con una base grande que después se achica.
 
 ## Columnas de tabla en teléfono
 
@@ -201,8 +206,10 @@ mide. `/novedades` se mide plegada y además desplegada (`novedades-pasos`),
 porque los pasos de prueba solo se ven así.
 
 Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja de
-filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
-botón que no está. Esas celdas salen `–` en la matriz.
+filtros (`modal-filtros`) solo existe a ≤600, y medirla a 1920 sería esperar diez
+segundos a un botón que no está. Arriba de 600 el mismo botón abre el panel
+anclado (`panel-filtros`), que se mide igual que un modal: es un diálogo, y la
+`raiz` lo acota. Esas celdas salen `–` en la matriz.
 
 ### Baseline
 
@@ -245,8 +252,8 @@ redirige— y sus celdas eran un duplicado exacto de las de `plantaciones`.
 Para no leer de más en un `·`:
 
 - **Solo la carga inicial.** No cubre estados de error ni de vacío, los demás
-  modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
-  acotada no tiene noción de capa flotante. De los `<details>`, solo los de
+  modales, ni popovers salvo el panel de filtros: con uno abierto O da ruido,
+  porque fuera de una `raiz` acotada no tiene noción de capa flotante. De los `<details>`, solo los de
   `/novedades` se miden desplegados.
 - **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
   pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
