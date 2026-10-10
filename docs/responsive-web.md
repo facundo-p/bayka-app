@@ -115,6 +115,13 @@ base del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
 `BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
 bloque se angosta y el botón queda en su última fila.
 
+La base en 0 tiene su propia trampa: lo que comparte renglón puede exprimir al
+vecino hasta dejarlo en nada. Con `.left` en 0, entre 370 y 550 las tabs del
+detalle de la plantación entraban al lado de la miga y la aplastaban —a 370,
+6px de ancho—, con el título en «San S…» y, a 390, el badge de estado debajo
+de las tabs (#825). En teléfono la base es 12rem: el "+" del alta entra al lado
+del título hasta en 320, y lo que no le deja 12rem a la miga baja de renglón.
+
 ## Columnas de tabla en teléfono
 
 A ≤600 las tablas sueltan sus columnas secundarias. La marca vive en la columna
@@ -204,6 +211,12 @@ Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja d
 filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
 botón que no está. Esas celdas salen `–` en la matriz.
 
+`dashboard-archivada` mide el detalle de la plantación archivada, solo en
+teléfono. Con estado y «Archivada», su miga es la más ancha del demo: cuando las
+tabs la aplastan, el badge queda debajo de ellas y O lo ve. Con el badge solo de
+`dashboard` la miga se aplastaba igual, pero sin texto encima de otro texto, y la
+fila salía limpia (#825).
+
 ### Baseline
 
 Cada corrida se compara contra `web/scripts/auditoria/baseline.json` y sale con
@@ -260,7 +273,9 @@ Para no leer de más en un `·`:
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
   se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
-  temporada.
+  temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
+  común: ahí las tabs del detalle tapaban la miga y 430 y 360 salían limpios
+  (#825).
 - **No detecta controles tapados por otra capa.** `elementFromPoint` da falsos
   positivos con `backdrop-filter` y capas sticky, así que se descartó. Por eso el
   lugar que el shell le reserva a la navegación del pie se verifica a mano.
