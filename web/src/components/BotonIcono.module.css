@@ -34,7 +34,7 @@
 .fantasma:hover:not(:disabled),
 .fantasma[aria-expanded='true'] {
   background-color: var(--color-surface-sunken);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .contorno {
