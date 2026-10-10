@@ -1,9 +1,6 @@
 /* ─── Celdas de la tabla ─────────────────────────────────────────────── */
 
 .codigoCelda {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
   white-space: nowrap;
 }
 
@@ -109,7 +106,7 @@ input.campoCodigo {
 
 /* ─── Panel de especie científica ────────────────────────────────────── */
 
-.marcaCientifica {
+.marcaPanel {
   flex-shrink: 0;
   color: var(--color-text-secondary);
 }
