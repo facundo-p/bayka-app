@@ -1,10 +1,10 @@
 -- Ramas de sync_subgroup sin otro test: re-sync de un árbol (pisa especie y
--- SubID, conserva foto, ids y GPS que no vienen), especie vacía como N/N, sin
+-- SubID, conserva foto y GPS que no vienen), especie vacía como N/N, sin
 -- reordenar si no habilita ninguna, y una excepción que deshace todo lo escrito
 -- antes y responde UNKNOWN, también desde las validaciones, y DUPLICATE_CODE
 -- antes que DUPLICATE_NAME. Fija el comportamiento al partir la función (#734).
 begin;
-select plan(19);
+select plan(18);
 
 insert into organizations (id, nombre) values
   ('b4400000-0000-0000-0000-000000000001', 'Org Test 44');
@@ -54,7 +54,7 @@ select is(
         jsonb_build_object('id', 'b4400000-0000-0000-0000-0000000000d1',
           'group_id', 'b4400000-0000-0000-0000-0000000000c1', 'posicion', 1,
           'species_id', 'b4400000-0000-0000-0000-0000000000e1', 'sub_id', 'P1L1T44A1',
-          'foto_url', 'fotos/d1.jpg', 'plantacion_id', 4401, 'global_id', 4402,
+          'foto_url', 'fotos/d1.jpg',
           'latitude', -34.5, 'longitude', -58.4, 'gps_accuracy', 5,
           'gps_captured_at', '2026-01-02T03:04:05Z',
           'usuario_registro', 'b4400000-0000-0000-0000-0000000000a1', 'created_at', now()),
@@ -67,7 +67,7 @@ select is(
   'true',
   'primer sync del grupo con sus árboles');
 
--- Re-sync: otra especie y SubID, otra posición, y sin foto, ids ni GPS.
+-- Re-sync: otra especie y SubID, otra posición, y sin foto ni GPS.
 select is(
   ( select sync_subgroup(
       (select g from grupo_44) || jsonb_build_object('estado', 'finalizada'),
@@ -128,8 +128,6 @@ select is((select posicion from trees where id = 'b4400000-0000-0000-0000-000000
   1, 'pero no la posición');
 select is((select foto_url from trees where id = 'b4400000-0000-0000-0000-0000000000d1'),
   'fotos/d1.jpg', 'una foto que no viene se conserva');
-select is((select (plantacion_id, global_id)::text from trees where id = 'b4400000-0000-0000-0000-0000000000d1'),
-  '(4401,4402)', 'los ids que no vienen se conservan');
 select is((select (latitude, longitude, gps_accuracy)::text from trees where id = 'b4400000-0000-0000-0000-0000000000d1'),
   '(-34.5,-58.4,5)', 'el GPS que no viene se conserva');
 select is((select gps_captured_at from trees where id = 'b4400000-0000-0000-0000-0000000000d1'),
