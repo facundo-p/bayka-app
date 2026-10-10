@@ -12,7 +12,6 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 | Dónde | Solo web. El PDF se arma en el navegador, sin servidor. |
 | Encabezado | Claro: logo horizontal a la izquierda, plantación a la derecha (lugar · período; código y organización debajo), filete oliva. |
 | Pie | `Bayka · <documento>` a la izquierda; `Emitido el DD/MM/AAAA · Página X de Y` a la derecha. Sin autor. |
-| ID Global sin generar | Los PDF se generan igual. La ficha marca «ID Global sin generar». |
 | Foto sin permiso de lectura | «Foto no disponible». Si la policy de Storage lo confirma, Issue aparte; esta épica no toca la DB. |
 | Fichas por hoja | 3 por hoja A4. La ficha suelta usa el mismo tamaño, sola arriba. |
 | Minimapa de la ficha | Toda la parcela del árbol, con el árbol resaltado. |
@@ -28,9 +27,9 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 
 **Ficha.** Arriba a la izquierda, la especie: color, `código · nombre común`,
 nombre científico en itálica y `tipo · subtipo` (Flora · Árbol). Arriba a la
-derecha, el ID Árbol (`SubID-código de plantación`) en mono grande; debajo,
-`ID Global N` o la marca «ID Global sin generar». En el cuerpo, de izquierda a
-derecha: foto de 120 × 90 pt (≈ 4,2 × 3,2 cm), datos (parcela y grupo con
+derecha, el ID Árbol (`SubID-código de plantación`) en mono grande; sin ID
+Global desde #832. En el cuerpo, de izquierda a derecha: foto cuadrada de
+120 × 120 pt (≈ 4,2 cm; las 4:3 viejas se recortan al centro, #832), datos (parcela y grupo con
 código y nombre, posición, fecha de registro, técnico, GPS con precisión) y
 minimapa de 128 × 128 pt (≈ 4,5 cm), con las medidas del mockup aprobado.
 
