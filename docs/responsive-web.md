@@ -127,7 +127,9 @@ vista el buscador, el orden, el recuento y las acciones (el «PDF» de Árboles)
 todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los puestos.
 En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
 abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
-en la ventana; a ≤600, un `Modal posicion="hoja"` al que también va el orden. En
+en la ventana y, si no entra en ninguno, se corre lo justo para dejar el margen:
+el de Usuarios, con dos segmentados, se salía por la izquierda entre 601 y 741.
+A ≤600, un `Modal posicion="hoja"` al que también va el orden. En
 los dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar».
 El buscador queda a la vista en todos los anchos y en los cinco listados; en
 teléfono, si la barra abre con otra cosa (el selector de sección de Datos), esa
@@ -209,7 +211,7 @@ que muestrean la escala y marca en cada celda de la matriz:
 | **S** | Scroll horizontal de documento |
 | **O** | Textos cuyas cajas pintadas se pisan |
 | **R** | Texto recortado sin aviso |
-| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea |
+| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea. También un diálogo que se sale de costado: con el padding de por medio, sus controles entran y su borde queda cortado |
 | **VACIA** | La vista no renderizó nada |
 | **D** | Controles de altos distintos en una misma fila |
 | **H** | Cards colapsadas: perdieron la mayor parte del tamaño que tenían en desktop y el contenido ya no entra |
@@ -249,8 +251,10 @@ porque los pasos de prueba solo se ven así.
 Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja de
 filtros (`modal-filtros`) solo existe a ≤600, y medirla a 1920 sería esperar diez
 segundos a un botón que no está. Arriba de 600 el mismo botón abre el panel
-anclado (`panel-filtros`), que se mide igual que un modal: es un diálogo, y la
-`raiz` lo acota. Esas celdas salen `–` en la matriz.
+anclado, que se mide igual que un modal: es un diálogo, y la `raiz` lo acota.
+Van dos, el de Plantaciones (`panel-filtros`), que tiene más filtros, y el de
+Usuarios (`panel-usuarios`), el más ancho, y los dos suman 601, el primer ancho
+que abre el popover. Esas celdas salen `–` en la matriz.
 
 `dashboard-archivada` mide el detalle de la plantación archivada, solo en
 teléfono. Con estado y «Archivada», su miga es la más ancha del demo: cuando las
@@ -313,7 +317,7 @@ Para no leer de más en un `·`:
 - **La ventana mide siempre 900px de alto**: el escalón `max-height: 760` no se
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
-  se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
+  se mide, salvo los paneles de filtros a 601, y ahí la barra superior mide más que a 768 porque vuelve la card de
   temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
   común: ahí la auditoría vio las tabs del detalle encima de la miga. A 430 la
   celda salía limpia con la miga ya aplastada en 66px: limpia quiere decir sin
