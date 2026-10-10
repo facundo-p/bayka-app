@@ -120,6 +120,9 @@ test('un superadmin ve el link, la meta con conteos y la tabla con roles', async
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
   // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
   expect(screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico')).toBeInTheDocument();
+  expect(
+    screen.getByText('3 personas · clic en una fila abre el detalle · ⋯ para acciones rápidas'),
+  ).toBeInTheDocument();
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
