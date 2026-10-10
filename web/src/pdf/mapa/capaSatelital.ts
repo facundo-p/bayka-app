@@ -2,29 +2,16 @@
  * El satélite como fondo del mapa (#757). Si falla cualquier tile, el mapa
  * sale liso y sin atribución: nunca un mosaico a medias.
  */
-import { fuenteSatelite, type FuenteTiles } from './cargaTiles';
+import { fuenteSatelite, type FuenteTiles } from '../../lib/mapa/fuenteTiles';
+import { zoomConImagen } from '../../lib/mapa/zoomConImagen';
 import type { CapaFondo } from './dibujarMapa';
 import type { Encuadre } from './proyeccion';
-import { elegirZoom, tilesDelZoom, zonaDelZoom, type TileUbicado } from './tiles';
+import { elegirZoom, tilesDelZoom, type TileUbicado } from './tiles';
 
-/**
- * Zooms que se baja si la zona no tiene imagen al elegido: en partes de Misiones
- * Esri llega a 17 aunque la capa llegue a 19. Más abajo la imagen ya no se lee.
- */
-const ZOOMS_SIN_IMAGEN = 3;
 /** Al achicar un tile grande, el suavizado alto evita el serrucho. */
 const SUAVIZADO = 'high';
 
 type Mosaico = { tiles: TileUbicado[]; imagenes: ImageBitmap[] };
-
-/** El zoom más alto, desde el elegido, en el que toda la zona tiene imagen; null si ninguno. */
-async function zoomConImagen(encuadre: Encuadre, tope: number, fuente: FuenteTiles) {
-  const elegido = elegirZoom(encuadre, tope);
-  for (let zoom = elegido; zoom >= Math.max(0, elegido - ZOOMS_SIN_IMAGEN); zoom--) {
-    if (await fuente.tieneImagen(zonaDelZoom(encuadre, zoom))) return zoom;
-  }
-  return null;
-}
 
 async function bajarMosaico(
   encuadre: Encuadre,
@@ -32,7 +19,7 @@ async function bajarMosaico(
   fuente: FuenteTiles,
 ): Promise<Mosaico | null> {
   try {
-    const zoom = await zoomConImagen(encuadre, tope, fuente);
+    const zoom = await zoomConImagen(encuadre, elegirZoom(encuadre, tope), fuente);
     if (zoom === null) return null;
     const tiles = tilesDelZoom(encuadre, zoom);
     // Un encuadre fuera del mundo no tiene tiles: sin imagen, tampoco atribución.

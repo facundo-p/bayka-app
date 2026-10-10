@@ -4,14 +4,12 @@
  */
 
 import { GRADOS_A_RADIANES, RADIO_TIERRA_M, type LatLng } from '../../../../shared/distancia';
+import { LADO_TILE, type Pixel } from '../../lib/mapa/tiles';
 
-/** Lado de un tile XYZ en px. */
-export const LADO_TILE = 256;
+export type { Pixel };
 
 /** Latitud donde Web Mercator corta el mundo en un cuadrado. */
 const LATITUD_MAXIMA = 85.05112878;
-
-export type Pixel = { x: number; y: number };
 
 /**
  * Lo que se ve del mundo en un rectángulo de `ancho` × `alto`. El zoom es

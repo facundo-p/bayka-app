@@ -1,12 +1,6 @@
 import type { LatLng } from '../../../../../shared/distancia';
-import {
-  aspectoDe,
-  LADO_TILE,
-  encuadrar,
-  metrosPorPixel,
-  pixelDelMundo,
-  proyectar,
-} from '../proyeccion';
+import { LADO_TILE } from '../../../lib/mapa/tiles';
+import { aspectoDe, encuadrar, metrosPorPixel, pixelDelMundo, proyectar } from '../proyeccion';
 
 const SAN_SEBASTIAN: LatLng = { lat: -27.36012, lng: -55.89744 };
 const OPCIONES = { margen: 10, minimoMetros: 60 };

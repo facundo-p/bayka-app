@@ -1,5 +1,5 @@
-import { senalConEspera } from '../../../lib/espera';
-import { crearFuenteTiles, type DependenciasTiles } from '../cargaTiles';
+import { senalConEspera } from '../../espera';
+import { crearFuenteTiles, type DependenciasTiles } from '../fuenteTiles';
 import type { TileXYZ, ZonaTiles } from '../tiles';
 
 const TILES: TileXYZ[] = [
