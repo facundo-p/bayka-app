@@ -3,6 +3,7 @@
  * sistema (Reintentar|Aceptar): captura y entrega la foto directo al recorte,
  * sin paso intermedio. La opción de "reintentar" vive en el modal de recorte.
  * Es el primer paso de toda foto (#749): la galería se elige desde acá.
+ * El marco cuadrado muestra lo que queda en la foto (#831).
  */
 import { useRef, useState, useEffect } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator, Linking } from 'react-native';
@@ -11,8 +12,9 @@ import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-g
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
-import { clamp } from '../utils/cropGeometry';
+import { CAMERA_PREVIEW, cameraFrame, clamp, type Size } from '../utils/cropGeometry';
 import type { RawPhoto } from '../services/PhotoService';
+import CropMask from './CropMask';
 import { cameraCaptureStyles as styles, CAMERA_ICON_SIZE } from './CameraCaptureView.styles';
 
 /** Sensibilidad del pinch → cuánto suma al zoom (0..1) por cada unidad de escala. */
@@ -131,6 +133,21 @@ function ShutterBar({ capturing, onCapture, onGallery }: ShutterBarProps) {
   );
 }
 
+/** No captura toques: el pinch y los botones siguen andando por encima. */
+function CameraFrameOverlay() {
+  const [view, setView] = useState<Size | null>(null);
+  return (
+    <View
+      testID="camera-frame-overlay"
+      style={styles.frameOverlay}
+      pointerEvents="none"
+      onLayout={(e) => setView({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+    >
+      {view && <CropMask box={cameraFrame(view.w, view.h)} stage={view} />}
+    </View>
+  );
+}
+
 function useTakePicture(onCapture: (raw: RawPhoto) => void) {
   const cameraRef = useRef<CameraView>(null);
   const [capturing, setCapturing] = useState(false);
@@ -180,7 +197,8 @@ export default function CameraCaptureView({ visible, optional, onCapture, onGall
           />
         ) : (
           <GestureDetector gesture={pinchGesture}>
-            <CameraView ref={cameraRef} style={styles.camera} facing="back" zoom={zoom}>
+            <CameraView ref={cameraRef} style={styles.camera} facing="back" zoom={zoom} ratio={CAMERA_PREVIEW.ratio}>
+              <CameraFrameOverlay />
               <CloseControl optional={optional} onCancel={onCancel} />
               <ShutterBar capturing={capturing} onCapture={takePicture} onGallery={onGallery} />
             </CameraView>

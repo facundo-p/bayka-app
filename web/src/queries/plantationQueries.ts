@@ -57,7 +57,11 @@ export type Plantacion = {
 export type PlantacionConStats = Plantacion & {
   arboles: number;
   parcelas: number;
-  usuarios: number;
+  puntosGps: number;
+  /** Solo las subidas: una foto local todavía no está en el bucket. */
+  fotos: number;
+  /** Ids de los técnicos asignados; los admins ven todas y no figuran. */
+  tecnicos: string[];
 };
 
 /** Campos del formulario de edición: null si la 024 no está aplicada. */
@@ -69,15 +73,23 @@ function camposFormulario(fila: FilaPlantacion) {
   };
 }
 
-/** Fila del RPC stats_plantaciones (migración 027). */
+/** Fila del RPC stats_plantaciones (migración 078). */
 type FilaStats = {
   plantation_id: string;
   arboles: number;
   parcelas: number;
-  usuarios: number;
+  puntos_gps: number;
+  fotos: number;
+  tecnicos: string[];
 };
 
-const SIN_STATS = { arboles: 0, parcelas: 0, usuarios: 0 };
+const SIN_STATS: Omit<FilaStats, 'plantation_id'> = {
+  arboles: 0,
+  parcelas: 0,
+  puntos_gps: 0,
+  fotos: 0,
+  tecnicos: [],
+};
 
 /** Una sola query agregada: counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
 async function statsPorPlantacion(): Promise<Map<string, FilaStats>> {
@@ -119,8 +131,8 @@ export function sinArchivadas<T extends Pick<Plantacion, 'archivadaEn'>>(plantac
 }
 
 function conStats(fila: FilaPlantacion, stats: Map<string, FilaStats>): PlantacionConStats {
-  const { arboles, parcelas, usuarios } = stats.get(fila.id) ?? SIN_STATS;
-  return { ...mapearPlantacion(fila), arboles, parcelas, usuarios };
+  const { arboles, parcelas, puntos_gps, fotos, tecnicos } = stats.get(fila.id) ?? SIN_STATS;
+  return { ...mapearPlantacion(fila), arboles, parcelas, puntosGps: puntos_gps, fotos, tecnicos };
 }
 
 /** Lista plantaciones ordenadas por lugar con sus contadores (2 requests). Incluye las

@@ -1,11 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { plantacionConStats } from '../../../test/fabricas';
+import { perfilResumen, plantacionConStats } from '../../../test/fabricas';
 import {
   contarArboles,
   FILTRO_ESTADO,
+  FILTRO_VISIBLES,
   filtrarPlantaciones,
   ORDEN_PLANTACION,
   resumenPlantaciones,
+  TECNICO_TODOS,
+  tecnicoElegible,
+  tecnicosAsignados,
   TEMPORADA_TODAS,
   temporadasDisponibles,
   type FiltrosPlantaciones,
@@ -18,6 +22,7 @@ const MENDOZA = plantacionConStats({
   estado: 'activa',
   createdAt: '2026-06-12T12:00:00Z',
   arboles: 120,
+  tecnicos: ['u1'],
 });
 
 const SALTA = plantacionConStats({
@@ -27,6 +32,8 @@ const SALTA = plantacionConStats({
   estado: 'finalizada',
   createdAt: '2025-01-15T12:00:00Z',
   arboles: 800,
+  tecnicos: ['u1', 'u2'],
+  visibleInApp: false,
 });
 
 const CORRIENTES = plantacionConStats({
@@ -44,6 +51,8 @@ const SIN_FILTROS: FiltrosPlantaciones = {
   busqueda: '',
   estado: FILTRO_ESTADO.todas,
   temporada: TEMPORADA_TODAS,
+  visiblePor: TECNICO_TODOS,
+  visibles: FILTRO_VISIBLES.todas,
   orden: ORDEN_PLANTACION.arboles,
 };
 
@@ -103,6 +112,50 @@ describe('estado y temporada', () => {
     expect(
       ids({ estado: FILTRO_ESTADO.activas, temporada: '2024-2025', busqueda: 'salta' }),
     ).toEqual([]);
+  });
+});
+
+describe('visible por y visibles', () => {
+  test('visible por acota a las plantaciones asignadas al técnico', () => {
+    expect(ids({ visiblePor: 'u1' })).toEqual(['p2', 'p1']);
+    expect(ids({ visiblePor: 'u2' })).toEqual(['p2']);
+    expect(ids({ visiblePor: 'u-sin-asignaciones' })).toEqual([]);
+  });
+
+  test('visibles separa las que se ven en la app de las ocultas', () => {
+    expect(ids({ visibles: FILTRO_VISIBLES.si })).toEqual(['p3', 'p1']);
+    expect(ids({ visibles: FILTRO_VISIBLES.no })).toEqual(['p2']);
+  });
+
+  test('técnico + visibles sí = lo que el técnico ve en la app', () => {
+    expect(ids({ visiblePor: 'u1', visibles: FILTRO_VISIBLES.si })).toEqual(['p1']);
+  });
+});
+
+describe('tecnicosAsignados', () => {
+  const PERFILES = [
+    perfilResumen({ id: 'u1', nombre: 'Ana' }),
+    perfilResumen({ id: 'u2', nombre: 'Bruno', activo: false }),
+    perfilResumen({ id: 'u3', nombre: 'Carla' }),
+  ];
+
+  test('lista los técnicos activos con al menos una asignación, en el orden de los perfiles', () => {
+    expect(tecnicosAsignados(PERFILES, TODAS).map((perfil) => perfil.id)).toEqual(['u1']);
+  });
+
+  test('sin plantaciones no hay técnicos', () => {
+    expect(tecnicosAsignados(PERFILES, [])).toEqual([]);
+  });
+});
+
+describe('tecnicoElegible', () => {
+  test('«todos» siempre es elegible', () => {
+    expect(tecnicoElegible(TECNICO_TODOS, [])).toBe(true);
+  });
+
+  test('un técnico lo es solo si sigue entre los elegibles', () => {
+    expect(tecnicoElegible('u1', ['u1', 'u2'])).toBe(true);
+    expect(tecnicoElegible('u3', ['u1', 'u2'])).toBe(false);
   });
 });
 

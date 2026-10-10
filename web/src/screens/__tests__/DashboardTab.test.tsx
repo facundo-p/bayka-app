@@ -163,6 +163,8 @@ describe('DashboardTab', () => {
     expect(within(card).getByText('60%')).toBeInTheDocument();
     expect(within(card).getByText('Con foto')).toBeInTheDocument();
     expect(within(card).getByText('40%')).toBeInTheDocument();
+    expect(within(card).getByText('3 puntos')).toBeInTheDocument();
+    expect(within(card).getByText('2 fotos')).toBeInTheDocument();
     expect(within(card).getByText('N/N')).toBeInTheDocument();
     expect(within(card).getByText('requiere atención')).toBeInTheDocument();
     // Paneles nuevos.
@@ -232,6 +234,8 @@ describe('DashboardTab', () => {
     expect(within(resumen()).getByText('Norte')).toBeInTheDocument();
     // GPS y foto quedan los dos en 67% con los 3 árboles de la parcela.
     expect(within(resumen()).getAllByText('67%')).toHaveLength(2);
+    expect(within(resumen()).getByText('2 puntos')).toBeInTheDocument();
+    expect(within(resumen()).getByText('2 fotos')).toBeInTheDocument();
     expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
     expect(screen.getByText('Composición de la parcela P1')).toBeInTheDocument();
   });
