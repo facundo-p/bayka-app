@@ -72,6 +72,35 @@ describe('numerarPorIdParcial', () => {
     ]);
   });
 
+  it('con la misma alta, la posición pesa antes que el id del grupo', () => {
+    const alta = '2026-03-01T10:00:00Z';
+    const arboles = [
+      arbol('g2p2', 'g2', alta, 2),
+      arbol('g1p2', 'g1', alta, 2),
+      arbol('g2p1', 'g2', alta, 1),
+      arbol('g1p1', 'g1', alta, 1),
+    ];
+    expect(ids(arboles)).toEqual([
+      ['g1p1', 1],
+      ['g2p1', 2],
+      ['g1p2', 3],
+      ['g2p2', 4],
+    ]);
+  });
+
+  it('con la misma alta, grupo y posición desempata el id del árbol, sin importar el orden de entrada', () => {
+    const arboles = [
+      arbol('arbol-b', 'g', '2026-03-01T10:00:00Z', 1),
+      arbol('arbol-a', 'g', '2026-03-01T10:00:00Z', 1),
+    ];
+    const esperado = [
+      ['arbol-a', 1],
+      ['arbol-b', 2],
+    ];
+    expect(ids(arboles)).toEqual(esperado);
+    expect(ids([...arboles].reverse())).toEqual(esperado);
+  });
+
   it('un alta ilegible va al final', () => {
     const arboles = [
       arbol('sin-fecha', 'g-a', 'no es fecha', 1),
