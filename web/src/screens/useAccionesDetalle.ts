@@ -9,6 +9,7 @@ import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { Perfil } from '../repositories/profileRepository';
+import { leerColoresEspecie } from '../services/coloresDePlantacion';
 import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
@@ -31,11 +32,14 @@ const MENSAJE_ERROR_INFORME = 'No se pudo generar el informe PDF.';
 
 /** Descarga los puntos GPS como KML (Google Maps/Earth); no descarga si no hay puntos. */
 function useDescargaKml(plantacion: Plantacion) {
+  const queryClient = useQueryClient();
   return useDescarga(async () => {
     const puntos = await listarPuntosGps(plantacion.id);
     if (puntos.length === 0) return MENSAJE_SIN_PUNTOS;
+    const codigos = puntos.map((punto) => punto.codigo);
+    const colorDe = await leerColoresEspecie(queryClient, plantacion.id, codigos);
     const nombreDocumento = `Puntos GPS – ${plantacion.lugar} (${plantacion.periodo})`;
-    const kml = construirKml(puntos, { nombreDocumento });
+    const kml = construirKml(puntos, { nombreDocumento, colorDe });
     descargarTexto(kml, nombreArchivoKml(plantacion.lugar, plantacion.periodo), TIPO_MIME_KML);
     return null;
   }, MENSAJE_ERROR_KML);

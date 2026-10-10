@@ -9,7 +9,7 @@ import {
   listarParcelasConStats,
   type ArbolDetalle,
 } from '../../../queries/dataExplorerQueries';
-import { listarCatalogo } from '../../../queries/especieQueries';
+import { listarCatalogo, listarEspeciesDePlantacion } from '../../../queries/especieQueries';
 import { listarPerfiles } from '../../../queries/usuarioQueries';
 import { obtenerPlantacion } from '../../../queries/plantationQueries';
 import { descargarFichasPdf } from '../../../services/pdfFichas';
@@ -30,7 +30,7 @@ vi.mock('../../../queries/especieQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/especieQueries')>(
     '../../../queries/especieQueries',
   );
-  return { ...real, listarCatalogo: vi.fn() };
+  return { ...real, listarCatalogo: vi.fn(), listarEspeciesDePlantacion: vi.fn() };
 });
 vi.mock('../../../queries/usuarioQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/usuarioQueries')>(
@@ -103,6 +103,7 @@ beforeEach(() => {
   vi.mocked(listarParcelasConStats).mockResolvedValue([]);
   vi.mocked(listarGrupos).mockResolvedValue([]);
   vi.mocked(listarCatalogo).mockResolvedValue([]);
+  vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([]);
   vi.mocked(listarPerfiles).mockResolvedValue([]);
   vi.mocked(obtenerPlantacion).mockResolvedValue(PLANTACION);
   vi.mocked(listarArboles).mockImplementation(async (_id, _filtros, pagina) => {
@@ -321,5 +322,46 @@ describe('generar fichas', () => {
     await waitFor(() => expect(generar()).toBeEnabled());
     await usuario.click(generar());
     expect(await within(barra()).findByText('No se pudieron generar las fichas')).toBeVisible();
+  });
+});
+
+describe('colores de especie (#777)', () => {
+  const especie = (codigo: string) => ({
+    id: codigo,
+    codigo,
+    nombre: codigo,
+    nombreCientifico: null,
+  });
+  const conEspecie = (numero: number, codigo: string) => ({
+    ...arbolDe(numero),
+    especieCodigo: codigo,
+    especieNombre: codigo,
+  });
+
+  /** Color del punto de la fila del árbol. */
+  function colorDeFila(idArbol: string): string {
+    const fila = screen.getByText(idArbol).closest('tr') as HTMLElement;
+    const punto = fila.querySelector('[style*="--color"]') as HTMLElement;
+    return punto.style.getPropertyValue('--color');
+  }
+
+  test('cada fila pinta su especie con el color que tiene en la plantación', async () => {
+    vi.mocked(listarEspeciesDePlantacion).mockResolvedValue(['TIM', 'LAP', 'ANC'].map(especie));
+    const arboles = [conEspecie(1, 'ANC'), conEspecie(2, 'TIM')];
+    vi.mocked(listarArboles).mockResolvedValue({ arboles, total: 2, totalPaginas: 1 });
+    renderSeccion();
+    await screen.findByText('A1-SS26');
+    expect(colorDeFila('A1-SS26')).toBe('#0a3760');
+    expect(colorDeFila('A2-SS26')).toBe('#3b7db5');
+  });
+
+  test('si las especies no se leen, los colores salen de las especies de la página', async () => {
+    vi.mocked(listarEspeciesDePlantacion).mockRejectedValue(new Error('rls'));
+    const arboles = [conEspecie(1, 'ANC'), conEspecie(2, 'TIM')];
+    vi.mocked(listarArboles).mockResolvedValue({ arboles, total: 2, totalPaginas: 1 });
+    renderSeccion();
+    await screen.findByText('A1-SS26');
+    expect(colorDeFila('A1-SS26')).toBe('#0a3760');
+    expect(colorDeFila('A2-SS26')).toBe('#99b95b');
   });
 });

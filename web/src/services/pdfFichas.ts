@@ -15,6 +15,8 @@ import {
 } from '../queries/fichasQueries';
 import { listarPuntosGps, type PuntoGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
+import type { ColorEspecie } from '../theme/coloresEspecie';
+import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 
 export type ContextoFichasPdf = {
@@ -57,23 +59,30 @@ function leerInsumos(ids: readonly string[], contexto: ContextoFichasPdf) {
     listarArbolesParaFichas(id, ids),
     leerNombreOrganizacion(id).catch(() => null),
     leerPuntos(contexto),
+    leerEspeciesHabilitadas(contexto.queryClient, id),
     import('../pdf/ficha/motorFichas'),
   ]);
 }
 
 type MotorFichas = typeof import('../pdf/ficha/motorFichas');
 
+/** Lo de la plantación que comparten todas las fichas. */
+type InsumosFichas = {
+  puntos: PuntoGps[];
+  colorDe: ColorEspecie;
+  nombres: ReadonlyMap<string, string>;
+};
+
 /** Modelos de las fichas con sus fotos y minimapas ya rasterizados. */
 async function prepararFichas(
   motor: MotorFichas,
   arboles: ArbolParaFicha[],
-  puntos: PuntoGps[],
-  nombres: ReadonlyMap<string, string>,
+  { puntos, colorDe, nombres }: InsumosFichas,
 ) {
   const [fotos, mapas] = await Promise.all([
     motor.cargarFotos(arboles.map((arbol) => arbol.fotoUrl)),
     mapearConConcurrencia(arboles, MINIMAPAS_SIMULTANEOS, (arbol) =>
-      motor.minimapaDeArbol(arbol, puntos),
+      motor.minimapaDeArbol(arbol, puntos, colorDe),
     ),
   ]);
   return arboles.map((arbol, indice) =>
@@ -81,8 +90,15 @@ async function prepararFichas(
       tecnico: nombreTecnicoDe(arbol, nombres),
       foto: fotos[indice],
       mapa: mapas[indice],
+      colorDe,
     }),
   );
+}
+
+/** Respaldo de los colores si la plantación no tiene especies habilitadas legibles. */
+function codigosPresentes(arboles: ArbolParaFicha[], puntos: PuntoGps[]): string[] {
+  const deArboles = arboles.flatMap((arbol) => (arbol.especie ? [arbol.especie.codigo] : []));
+  return [...deArboles, ...puntos.map((punto) => punto.codigo)];
 }
 
 /** El PDF de las fichas, en el orden de `ids`. */
@@ -90,9 +106,11 @@ export async function generarPdfFichas(
   ids: readonly string[],
   contexto: ContextoFichasPdf,
 ): Promise<FichasPdf> {
-  const [arboles, organizacion, puntos, motor] = await leerInsumos(ids, contexto);
+  const [arboles, organizacion, puntos, especies, motor] = await leerInsumos(ids, contexto);
   if (arboles.length === 0) throw new Error(ERROR_FICHAS_SIN_ARBOLES);
-  const fichas = await prepararFichas(motor, arboles, puntos, contexto.nombresUsuario);
+  const colorDe = coloresDeHabilitadas(especies, codigosPresentes(arboles, puntos));
+  const nombres = contexto.nombresUsuario;
+  const fichas = await prepararFichas(motor, arboles, { puntos, colorDe, nombres });
   const logo = motor.logoNavegador();
   const encabezado = motor.encabezadoDePlantacion(contexto.plantacion, organizacion, logo);
   const emitido = formatearFechaCorta(new Date().toISOString());

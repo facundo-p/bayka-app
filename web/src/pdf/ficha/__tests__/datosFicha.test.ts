@@ -1,6 +1,6 @@
 import { arbolParaFicha } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
-import { colorEspeciePorCodigo } from '../../../theme/coloresEspecie';
+import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
 import { datosFicha, documentoDeFichas, hojasConSatelite } from '../datosFicha';
@@ -30,14 +30,15 @@ const COMPLETO = arbolParaFicha({
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 4.4 },
 });
 
-const CONTEXTO = { tecnico: 'Lucía Ferreyra', foto: FOTO, mapa: MAPA };
+const COLOR_DE = coloresDeEspecies(['ANC', 'TIM']);
+const CONTEXTO = { tecnico: 'Lucía Ferreyra', foto: FOTO, mapa: MAPA, colorDe: COLOR_DE };
 
 test('ficha completa: todo formateado para pintar', () => {
   expect(datosFicha(COMPLETO, CONTEXTO)).toEqual({
     subId: 'LP12L10ANC23',
     idArbol: 'LP12L10ANC23-SS26',
     especie: {
-      color: colorEspeciePorCodigo('ANC'),
+      color: COLOR_DE('ANC'),
       titulo: 'ANC · Anchico',
       cientifico: 'Parapiptadenia rigida',
       clasificacion: 'Flora · Árbol',
@@ -106,7 +107,7 @@ test('el pie nombra el documento según cuántas fichas lleva', () => {
 });
 
 test('hojasConSatelite: las hojas, de a tres fichas, con algún minimapa satelital', () => {
-  const contexto = { tecnico: null, foto: FOTO };
+  const contexto = { tecnico: null, foto: FOTO, colorDe: COLOR_DE };
   const liso = datosFicha(COMPLETO, { ...contexto, mapa: MAPA });
   const satelital = datosFicha(COMPLETO, { ...contexto, mapa: { ...MAPA, conSatelite: true } });
   const sinGps = datosFicha({ ...COMPLETO, gps: null }, { ...contexto, mapa: MAPA });
