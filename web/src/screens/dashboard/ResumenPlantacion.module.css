@@ -153,6 +153,12 @@
   color: var(--color-warn-dot);
 }
 
+.conteo {
+  font-size: var(--text-sm);
+  color: var(--color-on-primary-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 .hint {
   display: flex;
   align-items: center;
