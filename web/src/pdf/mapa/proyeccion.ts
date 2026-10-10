@@ -96,13 +96,6 @@ function extensionDe(puntos: readonly LatLng[], minimoMetros: number): Extension
   };
 }
 
-/** Ancho sobre alto de lo que ocupan los puntos en el mapa; 1 sin puntos. */
-export function aspectoDe(puntos: readonly LatLng[], minimoMetros: number): number {
-  if (puntos.length === 0) return 1;
-  const extension = extensionDe(puntos, minimoMetros);
-  return extension.x / extension.y;
-}
-
 /** El zoom más alto que deja entrar todos los puntos con el margen pedido. */
 export function encuadrar(
   puntos: readonly LatLng[],

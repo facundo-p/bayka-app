@@ -3,9 +3,10 @@ import { LlamadaSatelite, NOTA_SATELITE } from '../mapa/LlamadaSatelite';
 import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
 import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import { CAJA_MAPA_INFORME } from '../plantilla/tokens';
 import type { ItemLeyenda, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
-import type { Caja, MapaInformePdf } from './mapaInforme';
+import type { MapaInformePdf } from './mapaInforme';
 import { esMapaEnHojaCompleta, type PlanInforme } from './planificarInforme';
 import {
   BloqueEspecies,
@@ -38,11 +39,11 @@ function Leyenda({ items }: { items: readonly ItemLeyenda[] }) {
   );
 }
 
-type MapaListo = { src: string; caja: Caja; conSatelite: boolean };
+type MapaListo = { src: string; conSatelite: boolean };
 
 /** Con satélite, la llamada a la nota al pie va bajo la esquina derecha de la imagen. */
 function ImagenMapa({ mapa }: { mapa: MapaListo }) {
-  const { ancho, alto } = mapa.caja;
+  const { ancho, alto } = CAJA_MAPA_INFORME;
   return (
     <View style={[styles.mapa, { width: ancho, height: alto }]}>
       <Image style={styles.imagenMapa} src={mapa.src} />
@@ -90,8 +91,7 @@ function BloqueMapa({ modelo, plan, mapa }: Omit<DocumentoInformeProps, 'encabez
   if (modelo.mapa.vacio) return <SinMapa motivo={modelo.mapa.vacio} />;
   // Si el canvas falló, el aviso va en el flujo: no merece una hoja propia.
   if (!mapa || !esMapaListo(mapa.mapa)) return <SinMapa motivo={TEXTO_INFORME.mapaNoDisponible} />;
-  const { src, conSatelite } = mapa.mapa;
-  const listo = { src, conSatelite, caja: mapa.caja };
+  const listo = { src: mapa.mapa.src, conSatelite: mapa.mapa.conSatelite };
   if (esMapaEnHojaCompleta(plan)) return <MapaEnHojaCompleta modelo={modelo} mapa={listo} />;
   return <MapaAlPie modelo={modelo} mapa={listo} />;
 }

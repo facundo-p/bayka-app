@@ -1,12 +1,5 @@
 import type { LatLng } from '../../../../../shared/distancia';
-import {
-  aspectoDe,
-  LADO_TILE,
-  encuadrar,
-  metrosPorPixel,
-  pixelDelMundo,
-  proyectar,
-} from '../proyeccion';
+import { LADO_TILE, encuadrar, metrosPorPixel, pixelDelMundo, proyectar } from '../proyeccion';
 
 const SAN_SEBASTIAN: LatLng = { lat: -27.36012, lng: -55.89744 };
 const OPCIONES = { margen: 10, minimoMetros: 60 };
@@ -83,25 +76,5 @@ describe('encuadrar', () => {
 
   test('sin puntos no hay encuadre', () => {
     expect(() => encuadrar([], 128, 128, OPCIONES)).toThrow();
-  });
-});
-
-describe('aspectoDe', () => {
-  test('ancho sobre alto de lo que ocupan los puntos', () => {
-    const ancha = [
-      { lat: -27.47, lng: -55.9 },
-      { lat: -27.48, lng: -55.85 },
-    ];
-    expect(aspectoDe(ancha, 60)).toBeGreaterThan(4);
-    const alta = [
-      { lat: -27.4, lng: -55.9 },
-      { lat: -27.45, lng: -55.901 },
-    ];
-    expect(aspectoDe(alta, 60)).toBeLessThan(1);
-  });
-
-  test('un punto solo es cuadrado, y sin puntos también', () => {
-    expect(aspectoDe([{ lat: -27.47, lng: -55.9 }], 60)).toBeCloseTo(1);
-    expect(aspectoDe([], 60)).toBe(1);
   });
 });
