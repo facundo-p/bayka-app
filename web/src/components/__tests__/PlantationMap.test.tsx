@@ -60,4 +60,3 @@ test.each([
   expect(screen.getByText(subtitulo)).toBeInTheDocument();
   expect(screen.getByText(vacio)).toBeInTheDocument();
 });
-

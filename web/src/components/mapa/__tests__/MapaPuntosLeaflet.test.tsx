@@ -15,7 +15,8 @@ vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TileLayer: () => null,
   Popup: () => null,
-  useMap: () => ({ invalidateSize: vi.fn(), setView: vi.fn(), fitBounds: vi.fn() }),
+  // Sin zoom calculable, AjustarVista no encuadra ni consulta a Esri.
+  useMap: () => ({ invalidateSize: vi.fn(), getBoundsZoom: () => NaN }),
   CircleMarker: ({ center, pathOptions }: MarkerFalsoProps) => (
     <span data-testid="marker" data-lat={center[0]} data-color={pathOptions?.fillColor} />
   ),
