@@ -7,6 +7,7 @@ const PATRON_TIMESTAMP =
 const PATRON_OFFSET = /^([+-])(\d{2}):?(\d{2})?$/;
 
 const MS_POR_MINUTO = 60_000;
+const MINUTOS_POR_HORA = 60;
 export const MICROSEGUNDOS_POR_MS = 1000;
 const DIGITOS_DE_MICROSEGUNDOS = 6;
 
@@ -14,7 +15,7 @@ function minutosDeOffset(offset: string | undefined): number {
   const partes = offset ? PATRON_OFFSET.exec(offset) : null;
   if (!partes) return 0;
   const [, signo, horas, minutos = '0'] = partes;
-  return (signo === '-' ? -1 : 1) * (Number(horas) * 60 + Number(minutos));
+  return (signo === '-' ? -1 : 1) * (Number(horas) * MINUTOS_POR_HORA + Number(minutos));
 }
 
 /** La fracción de segundo en microsegundos: completa con ceros o corta lo que sobra. */

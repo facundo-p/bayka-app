@@ -14,9 +14,11 @@ export type ArbolNumerable = {
   posicion: number;
 };
 
+type ConAlta<T> = { arbol: T; alta: number };
+
 /** Un alta ilegible va al final: no se puede ubicar y no corre al resto. */
-function altaDelGrupo(arbol: ArbolNumerable): number {
-  return microsegundosDesdeEpoch(arbol.grupoCreadoEn) ?? Number.MAX_SAFE_INTEGER;
+function conAlta<T extends ArbolNumerable>(arbol: T): ConAlta<T> {
+  return { arbol, alta: microsegundosDesdeEpoch(arbol.grupoCreadoEn) ?? Number.MAX_SAFE_INTEGER };
 }
 
 // Por código de carácter, como compara los uuid Postgres; `localeCompare` depende del idioma.
@@ -25,12 +27,12 @@ function compararTexto(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
-export function compararPorIdParcial(a: ArbolNumerable, b: ArbolNumerable): number {
+function compararPorIdParcial<T extends ArbolNumerable>(a: ConAlta<T>, b: ConAlta<T>): number {
   return (
-    altaDelGrupo(a) - altaDelGrupo(b) ||
-    a.posicion - b.posicion ||
-    compararTexto(a.grupoId, b.grupoId) ||
-    compararTexto(a.arbolId, b.arbolId)
+    a.alta - b.alta ||
+    a.arbol.posicion - b.arbol.posicion ||
+    compararTexto(a.arbol.grupoId, b.arbol.grupoId) ||
+    compararTexto(a.arbol.arbolId, b.arbol.arbolId)
   );
 }
 
@@ -38,7 +40,9 @@ export function compararPorIdParcial(a: ArbolNumerable, b: ArbolNumerable): numb
 export function numerarPorIdParcial<T extends ArbolNumerable>(
   arboles: readonly T[],
 ): (T & { idParcial: number })[] {
-  return [...arboles]
+  // El alta se lee una vez por árbol y no en cada comparación del sort.
+  return arboles
+    .map(conAlta)
     .sort(compararPorIdParcial)
-    .map((arbol, i) => ({ ...arbol, idParcial: i + 1 }));
+    .map(({ arbol }, i) => ({ ...arbol, idParcial: i + 1 }));
 }

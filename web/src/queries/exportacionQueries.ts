@@ -74,7 +74,7 @@ function mapearFila({ fila, idParcial }: { fila: FilaCruda; idParcial: number })
   };
 }
 
-/** Lo que ordena el ID Parcial; el embed del grupo es `!inner`, nunca falta. */
+/** Lo que ordena el ID Parcial. */
 function arbolNumerable(fila: FilaCruda) {
   return {
     fila,

@@ -201,7 +201,7 @@ describe('AdminBottomSheet', () => {
     expect(getByText('Exportar CSV')).toBeTruthy();
     expect(getByText('Exportar Excel')).toBeTruthy();
     expect(getByText('Exportar KML')).toBeTruthy();
-    expect(queryByText(/IDs/)).toBeNull();
+    expect(queryByText(/IDs se generan|Generar IDs/)).toBeNull();
   });
 
   it('shows Bloqueada badge for finalizada', () => {

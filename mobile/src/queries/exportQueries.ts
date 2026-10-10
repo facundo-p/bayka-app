@@ -32,22 +32,24 @@ function nombreVigente(nombre: string | null, borradaEn: string | null): string 
   return borradaEn === null ? nombre : null;
 }
 
+const COLUMNAS_DE_EXPORT = {
+  arbolId: trees.id,
+  grupoId: groups.id,
+  grupoCreadoEn: groups.createdAt,
+  posicion: trees.posicion,
+  lugar: plantations.lugar,
+  parcelaNombre: parcelas.nombre,
+  parcelaBorradaEn: parcelas.deletedAt,
+  grupoNombre: groups.nombre,
+  subId: trees.subId,
+  plantacionCodigo: plantations.codigo,
+  periodo: plantations.periodo,
+  especieNombre: species.nombre,
+};
+
 function leerFilasDeExport(plantacionId: string) {
   return db
-    .select({
-      arbolId: trees.id,
-      grupoId: groups.id,
-      grupoCreadoEn: groups.createdAt,
-      posicion: trees.posicion,
-      lugar: plantations.lugar,
-      parcelaNombre: parcelas.nombre,
-      parcelaBorradaEn: parcelas.deletedAt,
-      grupoNombre: groups.nombre,
-      subId: trees.subId,
-      plantacionCodigo: plantations.codigo,
-      periodo: plantations.periodo,
-      especieNombre: species.nombre,
-    })
+    .select(COLUMNAS_DE_EXPORT)
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))

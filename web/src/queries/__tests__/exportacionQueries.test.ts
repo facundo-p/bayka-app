@@ -114,10 +114,11 @@ describe('listarFilasExportacion', () => {
   });
 
   test('numera el ID Parcial por alta del grupo y posición, no por el orden de lectura', async () => {
+    // 12:00+05:00 es 07:00Z, antes que las 10:00Z del otro grupo aunque como texto vaya después.
     const grupoViejo = {
       ...FILA_COMPLETA.groups,
       id: 'grupo-z',
-      created_at: '2026-02-01T00:00:00Z',
+      created_at: '2026-03-01T12:00:00+05:00',
     };
     capturarConsultas(() => ({
       data: [
@@ -158,13 +159,23 @@ describe('listarFilasExportacion', () => {
     expect(fila.parcela).toBeNull();
   });
 
-  test('pagina sin truncar a 1000 (lee todas las filas con range)', async () => {
+  test('pagina sin truncar a 1000 y numera con la plantación entera', async () => {
     const totalFilas = 1500;
+    const indiceDelGrupoViejo = 1400;
+    const grupoViejo = {
+      ...FILA_COMPLETA.groups,
+      id: 'grupo-0',
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const fila = (indice: number) =>
+      indice === indiceDelGrupoViejo
+        ? { ...FILA_COMPLETA, id: `arbol-${indice}`, sub_id: `A-${indice}`, groups: grupoViejo }
+        : { ...FILA_COMPLETA, id: `arbol-${indice}`, sub_id: `A-${indice}`, posicion: indice + 1 };
     const responderPaginado = (consulta: ConsultaCapturada): RespuestaMock => {
       const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalFilas - 1 };
       const filas = [];
       for (let indice = desde; indice <= hasta && indice < totalFilas; indice++) {
-        filas.push({ ...FILA_COMPLETA, id: `arbol-${indice}`, sub_id: `A-${indice}` });
+        filas.push(fila(indice));
       }
       return { data: filas };
     };
@@ -173,6 +184,10 @@ describe('listarFilasExportacion', () => {
     const filas = await listarFilasExportacion('plant-1');
 
     expect(filas).toHaveLength(totalFilas);
+    // El árbol del grupo más viejo llega en la segunda página y es el primero de la planilla.
+    expect(filas[0]).toMatchObject({ subId: `A-${indiceDelGrupoViejo}`, idParcial: 1 });
+    expect(filas[1]).toMatchObject({ subId: 'A-0', idParcial: 2 });
+    expect(filas.at(-1)?.idParcial).toBe(totalFilas);
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     // Página 0 llena → una tanda en paralelo, cuya primera página (500) ya es la última.
     expect(deArboles).toHaveLength(1 + PAGINAS_EN_PARALELO);
