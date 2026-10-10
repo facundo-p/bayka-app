@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { Button, Cargando, MapaPuntos, PanelBloque, PanelLateral } from '../../components';
+import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { useDescarga } from '../../hooks/useDescarga';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -13,7 +14,6 @@ import {
   tieneFotoSubida,
 } from '../../services/fotoService';
 import { TAMANO_ICONO } from '../../theme/iconos';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
 import { BloqueEspecie } from './BloqueEspecie';
 import { BotonFichaPdf } from './BotonFichaPdf';
@@ -96,6 +96,7 @@ function BloqueFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: st
 
 /** El único punto del árbol, con el color de su especie. */
 function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
+  const colorDe = useColorEspecie();
   const codigo = arbol.especieCodigo ?? ESPECIE_SIN_IDENTIFICAR;
   const punto = {
     lat: arbol.latitude,
@@ -106,7 +107,7 @@ function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
     subId: arbol.subId,
     parcelaId: arbol.parcelaId,
   };
-  const colorPorCodigo = new Map([[codigo, colorEspeciePorCodigo(arbol.especieCodigo)]]);
+  const colorPorCodigo = new Map([[codigo, colorDe(arbol.especieCodigo)]]);
   return <MapaPuntos variante="compacto" puntos={[punto]} colorPorCodigo={colorPorCodigo} />;
 }
 

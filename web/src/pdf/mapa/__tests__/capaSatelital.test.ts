@@ -1,9 +1,10 @@
 import { liberarCanvas } from '../../canvas';
 import { capaSatelital, rectanguloAlPixel } from '../capaSatelital';
-import type { FuenteTiles } from '../cargaTiles';
+import type { FuenteTiles } from '../../../lib/mapa/fuenteTiles';
+import type { TileXYZ, ZonaTiles } from '../../../lib/mapa/tiles';
 import { dibujarMapa, type CapaFondo } from '../dibujarMapa';
 import { encuadrar, type Encuadre } from '../proyeccion';
-import { TOPE_TILES, tilesDelZoom, type TileXYZ, type ZonaTiles } from '../tiles';
+import { TOPE_TILES, tilesDelZoom } from '../tiles';
 
 type Llamada = { nombre: string; args: unknown[] };
 

@@ -1,18 +1,11 @@
 /*
- * Colores del informe: únicos dentro del documento, por orden de cantidad. No
- * usa `colorEspeciePorCodigo` porque su hash repite colores entre especies, y
- * en el mapa del informe dos especies del mismo color no se distinguen.
+ * Colores del informe: únicos dentro del documento, por orden de cantidad, con
+ * la misma paleta de especies que la web. El orden es el del informe y no el
+ * del catálogo, así que una especie puede llevar otro color que en la web.
  */
 import { esSinIdentificar } from '../../queries/especiesConstantes';
-import {
-  COLOR_GRAFICO_NN,
-  COLOR_GRAFICO_OTRAS,
-  COLORES_GRAFICOS,
-  COLORES_GRAFICOS_EXTRA,
-} from '../../theme/chartColors';
-
-/** Los 8 de los gráficos y los 4 extra; con más de 12 especies se cicla. */
-export const PALETA_INFORME = [...COLORES_GRAFICOS, ...COLORES_GRAFICOS_EXTRA] as const;
+import { COLOR_GRAFICO_NN, COLOR_GRAFICO_OTRAS } from '../../theme/chartColors';
+import { PALETA_ESPECIES } from '../../theme/coloresEspecie';
 
 /** Color de cada código de especie. */
 export type ColoresInforme = (codigo: string) => string;
@@ -27,7 +20,7 @@ export function asignarColoresInforme(especies: readonly { codigo: string }[]): 
   let indice = 0;
   for (const { codigo } of especies) {
     if (esSinIdentificar(codigo)) continue;
-    colores.set(codigo, PALETA_INFORME[indice % PALETA_INFORME.length]);
+    colores.set(codigo, PALETA_ESPECIES[indice % PALETA_ESPECIES.length]);
     indice += 1;
   }
   return (codigo) =>

@@ -50,7 +50,7 @@ function FotoDelServidor({ treeId, uri, descripcion }: FotoDeOpcion) {
 export default function FotoDeConflicto(props: FotoDeOpcion) {
   const { uri, enLinea, descripcion } = props;
   if (isLocalUri(uri)) {
-    return <Image source={{ uri }} style={styles.miniatura} accessible accessibilityLabel={descripcion} accessibilityIgnoresInvertColors />;
+    return <Image source={{ uri }} style={styles.miniatura} resizeMode="cover" accessible accessibilityLabel={descripcion} accessibilityIgnoresInvertColors />;
   }
   if (!enLinea) return <SinConexion descripcion={descripcion} />;
   return <FotoDelServidor {...props} />;

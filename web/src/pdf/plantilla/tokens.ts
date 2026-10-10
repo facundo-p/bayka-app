@@ -3,8 +3,6 @@
  * repiten los hex de theme.css (la paridad la cuida un test), y cambiar la
  * estética de los PDF es editar este archivo.
  */
-import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
-
 export const COLOR_PDF = {
   navy: '#0a3760',
   oliva: '#99b95b',
@@ -17,9 +15,7 @@ export const COLOR_PDF = {
   apagado: '#6e6a5e',
   tenue: '#9a927e',
   linea: '#e7e1d4',
-  ambar: COLOR_GRAFICO_NN,
-  ambarFondo: '#fffaf0',
-  // Más oscuro que --color-warn-fg-strong: el texto ámbar de 6,5 pt tiene que leerse impreso.
+  // Más oscuro que --color-warn-fg-strong: el texto ámbar chico tiene que leerse impreso.
   ambarTexto: '#9a6b12',
   mapaFondo: '#f6f9f0',
   // Solo del PDF: la grilla y las insignias del mapa no tienen par en la web.
@@ -43,8 +39,6 @@ export const TOKEN_CSS_DE_COLOR_PDF = {
   apagado: '--color-text-secondary',
   tenue: '--color-text-muted',
   linea: '--color-border',
-  ambar: '--color-warn-dot',
-  ambarFondo: '--color-warn-bg',
   mapaFondo: '--color-secondary-bg',
 } as const satisfies Partial<Record<keyof typeof COLOR_PDF, `--color-${string}`>>;
 
@@ -70,7 +64,6 @@ export const TAMANO_TEXTO = {
   etiqueta: 7.2,
   clasificacion: 7,
   secundario: 7.5,
-  marca: 6.5,
   dato: 8.3,
   datoMono: 7.8,
   cientifico: 8,
@@ -116,8 +109,8 @@ export const MEDIDA_FICHA = {
   separacionSuperior: 6,
   separacionDatos: 3,
   radioRecuadro: 3,
-  anchoFoto: 120,
-  altoFoto: 90,
+  /** Cuadrada, como las fotos que saca la app. */
+  ladoFoto: 120,
   ladoMapa: 128,
   separacion: 12,
   hueco: 12,
@@ -126,7 +119,6 @@ export const MEDIDA_FICHA = {
   bordeFino: 0.5,
   punto: 8,
   aireTrasPunto: 5,
-  rellenoMarca: { vertical: 1, horizontal: 4 },
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   anchoEtiqueta: 54,
@@ -195,8 +187,8 @@ export const MEDIDA_INFORME = {
   anchoItemLeyenda: 44,
   separacionLeyenda: 10,
   altoNotaMapa: 11,
-  /** Lo mínimo que tiene que medir el mapa para ir al pie de la última hoja: 7 cm. */
-  altoMinimoMapa: 198,
+  /** Horizontal, como el mapa del dashboard. */
+  proporcionMapa: { ancho: 16, alto: 9 },
   /** Colchón contra los redondeos del layout: si el cálculo se queda corto, el mapa salta solo. */
   holgura: 8,
   /** Aire dentro del marco del mapa: las etiquetas, el norte y la escala no tocan los puntos. */
@@ -205,4 +197,11 @@ export const MEDIDA_INFORME = {
   radioPuntoMapa: { minimo: 1.1, maximo: 4 },
   /** Fracción de la distancia al vecino más cercano: deja aire entre dos puntos vecinos. */
   factorRadioPunto: 0.35,
+} as const;
+
+/** El mapa del informe: al ancho del cuerpo y con proporción fija; los puntos se encuadran adentro. */
+export const CAJA_MAPA_INFORME = {
+  ancho: CUERPO_HOJA.ancho,
+  alto:
+    (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;

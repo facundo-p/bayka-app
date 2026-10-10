@@ -2,7 +2,8 @@ import { AlertTriangle } from 'lucide-react';
 import { BarraProgreso, type RellenoBarra } from '../../components/BarraProgreso';
 import { PuntoColor } from '../../components/PuntoColor';
 import { cx } from '../../lib/classNames';
-import { concordar, formatearEntero, porcentajeDeObjetivo } from '../../lib/formato';
+import { concordar, formatearEntero, pluralizar, porcentajeDeObjetivo } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { KpisArboles } from '../../queries/dashboardQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ResumenPlantacion.module.css';
@@ -92,17 +93,20 @@ function AvanceMeta({ total, objetivo }: { total: number; objetivo: number | nul
 interface CeldaTasaProps {
   etiqueta: string;
   porcentaje: number;
+  /** Cantidad absoluta detrás del porcentaje, ya concordada (ej. "1.234 puntos"). */
+  conteo: string;
   relleno: RellenoBarra;
 }
 
-/** Celda de tasa: overline + porcentaje + barra al pie. */
-function CeldaTasa({ etiqueta, porcentaje, relleno }: CeldaTasaProps) {
+/** Celda de tasa: overline + porcentaje, el conteo debajo y la barra al pie. */
+function CeldaTasa({ etiqueta, porcentaje, conteo, relleno }: CeldaTasaProps) {
   return (
     <div className={styles.celda}>
       <div className={styles.celdaFila}>
         <span className={styles.overline}>{etiqueta}</span>
         <span className={styles.celdaValor}>{`${porcentaje}%`}</span>
       </div>
+      <span className={styles.conteo}>{conteo}</span>
       <BarraProgreso alto="sm" fondo="sobrePrimario" relleno={relleno} porcentaje={porcentaje} />
     </div>
   );
@@ -132,8 +136,18 @@ function CeldaSinIdentificar({ cantidad }: { cantidad: number }) {
 function CeldasTasas({ datos }: { datos: KpisArboles }) {
   return (
     <div className={styles.celdas}>
-      <CeldaTasa etiqueta="Con GPS" porcentaje={datos.porcentajeConGps} relleno="secundario" />
-      <CeldaTasa etiqueta="Con foto" porcentaje={datos.porcentajeConFoto} relleno="primarioSuave" />
+      <CeldaTasa
+        etiqueta="Con GPS"
+        porcentaje={datos.porcentajeConGps}
+        conteo={pluralizar(datos.arbolesConGps, SUSTANTIVO.punto)}
+        relleno="secundario"
+      />
+      <CeldaTasa
+        etiqueta="Con foto"
+        porcentaje={datos.porcentajeConFoto}
+        conteo={pluralizar(datos.arbolesConFoto, SUSTANTIVO.foto)}
+        relleno="primarioSuave"
+      />
       <CeldaSinIdentificar cantidad={datos.arbolesNN} />
     </div>
   );

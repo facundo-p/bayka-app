@@ -8,8 +8,11 @@ import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../../mapa/estadoMapa';
 import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
+import { coloresDeEspecies } from '../../../theme/coloresEspecie';
 import { datosFicha } from '../datosFicha';
 import { DocumentoFichas } from '../DocumentoFichas';
+
+const COLOR_DE = coloresDeEspecies(['ANC']);
 
 const ENCABEZADO = encabezadoDePlantacion(
   { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
@@ -38,7 +41,9 @@ const ATRIBUCION = 'Imágenes © Esri, Maxar';
 beforeAll(() => registrarFuentes(FUENTES_NODE));
 
 test('una ficha completa entra en una hoja', async () => {
-  const fichas = [datosFicha(CON_TODO, { tecnico: 'Lucía', foto: LISTA, mapa: MAPA })];
+  const fichas = [
+    datosFicha(CON_TODO, { colorDe: COLOR_DE, tecnico: 'Lucía', foto: LISTA, mapa: MAPA }),
+  ];
   const pdf = await renderToBuffer(
     <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
   );
@@ -49,18 +54,25 @@ test('una ficha completa entra en una hoja', async () => {
 test('con los casos borde, tres fichas por hoja', async () => {
   const sinNada = arbolParaFicha();
   const fichas = [
-    datosFicha(CON_TODO, { tecnico: null, foto: LISTA, mapa: MAPA }),
+    datosFicha(CON_TODO, { colorDe: COLOR_DE, tecnico: null, foto: LISTA, mapa: MAPA }),
     datosFicha(sinNada, {
+      colorDe: COLOR_DE,
       tecnico: null,
       foto: { estado: ESTADO_FOTO.sinFoto },
       mapa: MAPA_SIN_GPS,
     }),
     datosFicha(sinNada, {
+      colorDe: COLOR_DE,
       tecnico: null,
       foto: { estado: ESTADO_FOTO.noDisponible },
       mapa: MAPA_NO_DISPONIBLE,
     }),
-    datosFicha(CON_TODO, { tecnico: null, foto: LISTA, mapa: MAPA_NO_DISPONIBLE }),
+    datosFicha(CON_TODO, {
+      colorDe: COLOR_DE,
+      tecnico: null,
+      foto: LISTA,
+      mapa: MAPA_NO_DISPONIBLE,
+    }),
   ];
   const pdf = await renderToBuffer(
     <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
@@ -97,7 +109,7 @@ const PEOR_CASO = arbolParaFicha({
 
 test('tres fichas en el peor caso realista, con la llamada del satélite, entran en una hoja', async () => {
   const tecnico = 'María Fernanda Etchegoyen Larrañaga';
-  const contexto = { tecnico, foto: LISTA, mapa: MAPA_SATELITE };
+  const contexto = { tecnico, foto: LISTA, mapa: MAPA_SATELITE, colorDe: COLOR_DE };
   const fichas = [1, 2, 3].map(() => datosFicha(PEOR_CASO, contexto));
   const pdf = await renderToBuffer(
     <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
@@ -112,7 +124,7 @@ test('con satélite, el minimapa lleva la llamada y la hoja la nota de Esri al p
         <DocumentoFichas
           encabezado={ENCABEZADO}
           emitido="06/10/2026"
-          fichas={[datosFicha(CON_TODO, { tecnico: null, foto: LISTA, mapa })]}
+          fichas={[datosFicha(CON_TODO, { colorDe: COLOR_DE, tecnico: null, foto: LISTA, mapa })]}
         />,
       ),
     );
@@ -123,7 +135,7 @@ test('con satélite, el minimapa lleva la llamada y la hoja la nota de Esri al p
 });
 
 test('la nota de Esri va solo al pie de las hojas con minimapa satelital', async () => {
-  const contexto = { tecnico: null, foto: LISTA };
+  const contexto = { tecnico: null, foto: LISTA, colorDe: COLOR_DE };
   const fichas = [
     ...[1, 2, 3].map(() => datosFicha(CON_TODO, { ...contexto, mapa: MAPA })),
     datosFicha(CON_TODO, { ...contexto, mapa: MAPA_SATELITE }),
@@ -140,7 +152,7 @@ test('la nota de Esri va solo al pie de las hojas con minimapa satelital', async
 
 test('con fichas del peor caso siguen entrando tres por hoja y la nota cae en la hoja 2', async () => {
   const tecnico = 'María Fernanda Etchegoyen Larrañaga';
-  const contexto = { tecnico, foto: LISTA };
+  const contexto = { tecnico, foto: LISTA, colorDe: COLOR_DE };
   const fichas = [1, 2, 3, 4, 5, 6].map((numero) =>
     datosFicha(PEOR_CASO, { ...contexto, mapa: numero === 5 ? MAPA_SATELITE : MAPA }),
   );
@@ -154,6 +166,19 @@ test('con fichas del peor caso siguen entrando tres por hoja y la nota cae en la
   );
 });
 
+test('la ficha no muestra el ID Global, generado o no', async () => {
+  const contexto = { colorDe: COLOR_DE, tecnico: null, foto: LISTA, mapa: MAPA };
+  const fichas = [CON_TODO, { ...CON_TODO, idGlobal: null }].map((arbol) =>
+    datosFicha(arbol, contexto),
+  );
+  const pdf = await renderToBuffer(
+    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+  );
+  const textos = textosDelPdf(pdf).join(' ');
+  expect(textos).not.toMatch(/ID Global/i);
+  expect(textos).not.toContain('10479');
+});
+
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
   const renderizar = (arbol: typeof CON_TODO) =>
     renderizarEnSerie(FUENTES_NODE, () =>
@@ -161,7 +186,9 @@ test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
         <DocumentoFichas
           encabezado={ENCABEZADO}
           emitido="06/10/2026"
-          fichas={[datosFicha(arbol, { tecnico: 'Lucía', foto: LISTA, mapa: MAPA })]}
+          fichas={[
+            datosFicha(arbol, { colorDe: COLOR_DE, tecnico: 'Lucía', foto: LISTA, mapa: MAPA }),
+          ]}
         />,
       ),
     );

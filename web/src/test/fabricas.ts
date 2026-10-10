@@ -21,6 +21,8 @@ import {
   type Plantacion,
   type PlantacionConStats,
 } from '../queries/plantationQueries';
+import type { PerfilResumen } from '../queries/usuarioQueries';
+import { ROL } from '../repositories/profileRepository';
 
 const CREADO_EN = '2026-01-01T00:00:00Z';
 
@@ -64,7 +66,15 @@ export function plantacion(overrides: Partial<Plantacion> = {}): Plantacion {
 export function plantacionConStats(
   overrides: Partial<PlantacionConStats> = {},
 ): PlantacionConStats {
-  return { ...plantacion(), arboles: 0, parcelas: 0, usuarios: 0, ...overrides };
+  return {
+    ...plantacion(),
+    arboles: 0,
+    parcelas: 0,
+    puntosGps: 0,
+    fotos: 0,
+    tecnicos: [],
+    ...overrides,
+  };
 }
 
 /** Fila de `plantations` con las columnas obligatorias; las opcionales, por override. */
@@ -171,6 +181,18 @@ export function arbolParaFicha(overrides: Partial<ArbolParaFicha> = {}): ArbolPa
     usuarioRegistro: null,
     createdAt: CREADO_EN,
     gps: null,
+    ...overrides,
+  };
+}
+
+/** Perfil activo de técnico, como lo lista `listarPerfiles`. */
+export function perfilResumen(overrides: Partial<PerfilResumen> = {}): PerfilResumen {
+  return {
+    id: 'perfil-1',
+    nombre: 'Técnico',
+    rol: ROL.TECNICO,
+    email: null,
+    activo: true,
     ...overrides,
   };
 }

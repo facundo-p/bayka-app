@@ -149,6 +149,18 @@ describe('cliente demo: árboles de muestra', () => {
     }
   });
 
+  it('el listado cuenta los mismos puntos GPS y fotos que el dashboard', async () => {
+    const { data } = await supabase.rpc('stats_plantaciones');
+
+    for (const stats of data as FilaDemo[]) {
+      const { arboles } = await obtenerFuenteDashboard(String(stats.plantation_id));
+      const contar = (criterio: (conteo: (typeof arboles)[number]) => boolean) =>
+        arboles.filter(criterio).reduce((total, { cantidad }) => total + cantidad, 0);
+      expect(stats.puntos_gps, String(stats.plantation_id)).toBe(contar((c) => c.conGps));
+      expect(stats.fotos, String(stats.plantation_id)).toBe(contar((c) => c.conFoto));
+    }
+  });
+
   it('el dashboard y el mapa de p2 tienen árboles', async () => {
     const [fuente, puntos] = await Promise.all([
       obtenerFuenteDashboard('p2'),

@@ -27,6 +27,25 @@ test('muestra el total, la meta y las tres tasas', () => {
   expect(within(card()).getByText('37')).toBeInTheDocument();
 });
 
+test('bajo cada tasa muestra cuántos puntos GPS y fotos hay', () => {
+  render(<ResumenPlantacion datos={KPIS} objetivo={20000} />);
+
+  expect(within(card()).getByText('11.731 puntos')).toBeInTheDocument();
+  expect(within(card()).getByText('10.109 fotos')).toBeInTheDocument();
+});
+
+test.each([
+  [0, '0 puntos', '0 fotos'],
+  [1, '1 punto', '1 foto'],
+  [2, '2 puntos', '2 fotos'],
+])('los conteos concuerdan con %i: "%s", "%s"', (cantidad, puntos, fotos) => {
+  const datos = { ...KPIS, arbolesConGps: cantidad, arbolesConFoto: cantidad };
+  render(<ResumenPlantacion datos={datos} objetivo={20000} />);
+
+  expect(within(card()).getByText(puntos)).toBeInTheDocument();
+  expect(within(card()).getByText(fotos)).toBeInTheDocument();
+});
+
 test('con N/N pendientes avisa que requieren atención', () => {
   render(<ResumenPlantacion datos={KPIS} objetivo={20000} />);
 

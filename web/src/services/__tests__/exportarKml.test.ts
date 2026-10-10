@@ -1,9 +1,10 @@
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import { coloresDeEspecies } from '../../theme/coloresEspecie';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { construirKml, nombreArchivoKml } from '../exportarKml';
 
-const OPCIONES = { nombreDocumento: 'Puntos GPS – Sitio (2025)' };
+const COLOR_DE = coloresDeEspecies(['QB', 'AL']);
+const OPCIONES = { nombreDocumento: 'Puntos GPS – Sitio (2025)', colorDe: COLOR_DE };
 
 function punto(parcial: Partial<PuntoGps>): PuntoGps {
   return {
@@ -59,9 +60,9 @@ describe('construirKml', () => {
     expect(kml).toContain('<name>Algarrobo</name>');
   });
 
-  test('color del estilo = color estable de la especie, en formato KML', () => {
+  test('color del estilo = color de la especie en la plantación, en formato KML', () => {
     const kml = construirKml([punto({ codigo: 'QB' })], OPCIONES);
-    expect(kml).toContain(`<color>${colorKml(colorEspeciePorCodigo('QB'))}</color>`);
+    expect(kml).toContain(`<color>${colorKml(COLOR_DE('QB'))}</color>`);
   });
 
   test('especie sin identificar (NN) usa el ámbar por defecto y "Sin identificar"', () => {
@@ -73,7 +74,7 @@ describe('construirKml', () => {
   test('escapa caracteres XML reservados en nombres, ID Árbol y SubID', () => {
     const kml = construirKml(
       [punto({ idArbol: 'A&B-SS26-1', subId: 'A&B', nombre: `Ñandubay <"'> & árbol` })],
-      { nombreDocumento: 'Doc & <título>' },
+      { nombreDocumento: 'Doc & <título>', colorDe: COLOR_DE },
     );
     expect(kml).toContain('<name>A&amp;B-SS26-1</name>');
     expect(kml).toContain('SubID: A&amp;B\n');

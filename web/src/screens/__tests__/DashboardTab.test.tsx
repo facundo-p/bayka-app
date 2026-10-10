@@ -17,15 +17,19 @@ interface MapaFalsoProps {
   puntos: unknown[];
   parcelaFiltro?: string;
   especieFiltro?: string;
+  leyenda: { codigo: string; color: string }[];
 }
 
 vi.mock('../../components/PlantationMap', () => ({
-  PlantationMap: ({ puntos, parcelaFiltro, especieFiltro }: MapaFalsoProps) => (
+  PlantationMap: ({ puntos, parcelaFiltro, especieFiltro, leyenda }: MapaFalsoProps) => (
     <div>
       Mapa de la plantación
       <span data-testid="puntos-en-mapa">{puntos.length}</span>
       <span data-testid="parcela-filtro">{parcelaFiltro ?? '-'}</span>
       <span data-testid="especie-filtro">{especieFiltro ?? '-'}</span>
+      <span data-testid="colores-mapa">
+        {leyenda.map(({ codigo, color }) => `${codigo}:${color}`).join(' ')}
+      </span>
     </div>
   ),
 }));
@@ -140,9 +144,20 @@ function esConteo(consulta: ConsultaCapturada): boolean {
   return consulta.opciones?.head === true;
 }
 
-function crearResolver(conteos: RespuestaMock['data']) {
+/** AA está habilitada sin árboles: corre a AL y QB un lugar en la paleta. */
+const HABILITADAS = [
+  {
+    species_id: 'sp-0',
+    species: { id: 'sp-0', codigo: 'AA', nombre: 'Aaa', nombre_cientifico: null },
+  },
+  { species_id: 'sp-1', species: { ...CATALOGO[0] } },
+  { species_id: 'sp-2', species: { ...CATALOGO[1] } },
+];
+
+function crearResolver(conteos: RespuestaMock['data'], habilitadas: RespuestaMock['data'] = []) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
     if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
+    if (consulta.tabla === 'plantation_species') return { data: habilitadas };
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'parcelas') return { data: FILAS_PARCELAS };
     if (consulta.tabla === 'groups') return esConteo(consulta) ? { count: 2 } : { count: 3 };
@@ -174,6 +189,8 @@ describe('DashboardTab', () => {
     expect(within(card).getByText('60%')).toBeInTheDocument();
     expect(within(card).getByText('Con foto')).toBeInTheDocument();
     expect(within(card).getByText('40%')).toBeInTheDocument();
+    expect(within(card).getByText('3 puntos')).toBeInTheDocument();
+    expect(within(card).getByText('2 fotos')).toBeInTheDocument();
     expect(within(card).getByText('N/N')).toBeInTheDocument();
     expect(within(card).getByText('requiere atención')).toBeInTheDocument();
     // Paneles nuevos.
@@ -185,6 +202,27 @@ describe('DashboardTab', () => {
     expect(within(quebracho).getByText('60%')).toBeInTheDocument();
     const algarrobo = screen.getByText('Algarrobo').closest('li') as HTMLElement;
     expect(within(algarrobo).getByText('20%')).toBeInTheDocument();
+  });
+
+  test('«Por especie» y el mapa usan los colores de la plantación (#777)', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS));
+    renderRutasEn('/plantaciones/plant-1');
+
+    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
+    expect(colores).toHaveTextContent('QB:#3b7db5');
+    expect(colores).toHaveTextContent('AL:#99b95b');
+    const quebracho = screen.getByText('Quebracho').closest('li') as HTMLElement;
+    const barra = quebracho.querySelector('[style*="--color"]') as HTMLElement;
+    expect(barra.style.getPropertyValue('--color')).toBe('#3b7db5');
+  });
+
+  test('sin especies habilitadas, los colores salen de las especies con árboles', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    renderRutasEn('/plantaciones/plant-1');
+
+    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
+    expect(colores).toHaveTextContent('AL:#0a3760');
+    expect(colores).toHaveTextContent('QB:#99b95b');
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
@@ -243,6 +281,8 @@ describe('DashboardTab', () => {
     expect(within(resumen()).getByText('Norte')).toBeInTheDocument();
     // GPS y foto quedan los dos en 67% con los 3 árboles de la parcela.
     expect(within(resumen()).getAllByText('67%')).toHaveLength(2);
+    expect(within(resumen()).getByText('2 puntos')).toBeInTheDocument();
+    expect(within(resumen()).getByText('2 fotos')).toBeInTheDocument();
     expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
     expect(screen.getByText('Composición de la parcela P1')).toBeInTheDocument();
   });

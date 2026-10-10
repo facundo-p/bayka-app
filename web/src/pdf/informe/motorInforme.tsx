@@ -17,7 +17,7 @@ export type PedidoInforme = EntradaInforme & { emitido: string };
 export async function renderizarInforme({ emitido, ...entrada }: PedidoInforme): Promise<Blob> {
   const modelo = datosInforme(entrada);
   const plan = planificarInforme(modelo);
-  const mapa = modelo.mapa.vacio ? null : await dibujarMapaInforme(modelo.mapa, plan.disponible);
+  const mapa = modelo.mapa.vacio ? null : await dibujarMapaInforme(modelo.mapa);
   const encabezado = encabezadoDePlantacion(
     entrada.plantacion,
     entrada.organizacion,

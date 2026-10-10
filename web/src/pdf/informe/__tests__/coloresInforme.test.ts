@@ -1,4 +1,5 @@
-import { asignarColoresInforme, PALETA_INFORME } from '../coloresInforme';
+import { PALETA_ESPECIES } from '../../../theme/coloresEspecie';
+import { asignarColoresInforme } from '../coloresInforme';
 
 const especies = (codigos: string[]) => codigos.map((codigo) => ({ codigo }));
 
@@ -18,8 +19,8 @@ const PALETA = [
 ];
 
 test('la paleta del informe son los 8 de los gráficos y los 4 extra, sin repetir', () => {
-  expect(PALETA_INFORME).toEqual(PALETA);
-  expect(new Set(PALETA_INFORME).size).toBe(12);
+  expect(PALETA_ESPECIES).toEqual(PALETA);
+  expect(new Set(PALETA_ESPECIES).size).toBe(12);
 });
 
 test('asigna por orden de cantidad, sin repetir hasta la especie 12', () => {

@@ -2,9 +2,8 @@ import { columnaChevron, EstadoPlantacionBadge, type TableColumn } from '../../c
 import tabla from '../../components/Table.module.css';
 import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
-import { formatearEntero } from '../../lib/formato';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
-import { CeldaLugar, CeldaVisible } from './celdas';
+import { CeldaConteo, CeldaLugar } from './celdas';
 import styles from './Plantaciones.module.css';
 
 export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
@@ -33,19 +32,6 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     render: (plantacion) => <EstadoPlantacionBadge estado={plantacion.estado} />,
   },
   {
-    key: 'visibleInApp',
-    fueraEnMovil: true,
-    header: 'Visible',
-    render: (plantacion) => <CeldaVisible visible={plantacion.visibleInApp} />,
-  },
-  {
-    key: 'usuarios',
-    fueraEnMovil: true,
-    header: 'Usuarios',
-    align: 'center',
-    render: (plantacion) => <span className={tabla.numero}>{plantacion.usuarios}</span>,
-  },
-  {
     key: 'parcelas',
     header: 'Parcelas',
     align: 'center',
@@ -56,10 +42,23 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     header: 'Árboles',
     align: 'right',
     render: (plantacion) => (
-      <span className={cx(tabla.mono, tabla.numero, styles.arboles)}>
-        {formatearEntero(plantacion.arboles)}
-      </span>
+      <CeldaConteo cantidad={plantacion.arboles} className={styles.arboles} />
     ),
+  },
+  {
+    key: 'puntosGps',
+    fueraEnMovil: true,
+    // Espacio no separable: a 1366 el encabezado se partía en dos renglones.
+    header: 'Puntos\u00A0GPS',
+    align: 'right',
+    render: (plantacion) => <CeldaConteo cantidad={plantacion.puntosGps} />,
+  },
+  {
+    key: 'fotos',
+    fueraEnMovil: true,
+    header: 'Fotos',
+    align: 'right',
+    render: (plantacion) => <CeldaConteo cantidad={plantacion.fotos} />,
   },
   {
     key: 'createdAt',

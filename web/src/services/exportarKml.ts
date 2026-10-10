@@ -1,12 +1,11 @@
 /*
  * KML con los puntos GPS de los árboles, importable en Google Maps/Earth (`construirKml`
- * es pura y testeable). El color por especie reutiliza el único mapeo código→color de la
- * app (`colorEspeciePorCodigo`) para que coincida con el mapa Leaflet y el dashboard; el
- * hex #rrggbb se traduce al formato KML `aabbggrr` (alfa + BGR).
+ * es pura y testeable). El color por especie es el de la plantación, el mismo del mapa
+ * Leaflet y el dashboard; el hex #rrggbb se traduce al formato KML `aabbggrr` (alfa + BGR).
  */
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../queries/especiesConstantes';
 import type { PuntoGps } from '../queries/mapaQueries';
-import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
+import type { ColorEspecie } from '../theme/coloresEspecie';
 import { nombreArchivoDescarga } from './descargas';
 
 export const TIPO_MIME_KML = 'application/vnd.google-earth.kml+xml';
@@ -18,6 +17,8 @@ const ALFA_KML_OPACO = 'ff';
 export type OpcionesKml = {
   /** `<name>` del documento raíz (título visible en Earth). */
   nombreDocumento: string;
+  /** Colores de especie de la plantación. */
+  colorDe: ColorEspecie;
 };
 
 function escaparXml(texto: string): string {
@@ -56,8 +57,8 @@ function agruparPorEspecie(puntos: PuntoGps[]): GrupoEspecie[] {
   return [...grupos.values()];
 }
 
-function bloqueEstilo(grupo: GrupoEspecie): string {
-  const color = hexAColorKml(colorEspeciePorCodigo(grupo.codigo));
+function bloqueEstilo(grupo: GrupoEspecie, colorDe: ColorEspecie): string {
+  const color = hexAColorKml(colorDe(grupo.codigo));
   return `    <Style id="${idEstilo(grupo.codigo)}">
       <IconStyle><color>${color}</color></IconStyle>
     </Style>`;
@@ -90,7 +91,7 @@ ${placemarks}
 /** KML válido: un `<Placemark>` por árbol agrupado en `<Folder>` por especie. Función pura. */
 export function construirKml(puntos: PuntoGps[], opciones: OpcionesKml): string {
   const grupos = agruparPorEspecie(puntos);
-  const estilos = grupos.map(bloqueEstilo).join('\n');
+  const estilos = grupos.map((grupo) => bloqueEstilo(grupo, opciones.colorDe)).join('\n');
   const carpetas = grupos.map(bloqueCarpeta).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">

@@ -1,9 +1,10 @@
 /*
  * Descarga de tiles satelitales con caché de sesión: 50 fichas de una misma
- * parcela comparten encuadre y bajan cada tile una sola vez.
+ * parcela comparten encuadre y bajan cada tile una sola vez, y el mapa de la
+ * web reusa lo que ya se preguntó.
  */
-import { crearLimitador, type Limitador } from '../../lib/concurrencia';
-import { senalConEspera, type SenalConEspera } from '../../lib/espera';
+import { crearLimitador, type Limitador } from '../concurrencia';
+import { senalConEspera, type SenalConEspera } from '../espera';
 import {
   partirEnPaquetes,
   urlDeTile,
@@ -146,5 +147,5 @@ export function crearFuenteTiles(dependencias = DEPENDENCIAS_NAVEGADOR): FuenteT
   };
 }
 
-/** Una para toda la sesión: la caché sirve entre un PDF y el siguiente. */
+/** Una para toda la sesión: la caché sirve entre un PDF y el siguiente, y para el mapa de la web. */
 export const fuenteSatelite = crearFuenteTiles();
