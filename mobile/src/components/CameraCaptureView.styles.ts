@@ -8,6 +8,7 @@ export const cameraCaptureStyles = StyleSheet.create({
   // flex-end: la barra del obturador (único hijo en flujo) va abajo; el botón
   // de cerrar es absoluto arriba. Con space-between quedaba arriba.
   camera: { flex: 1, justifyContent: 'flex-end' },
+  frameOverlay: StyleSheet.absoluteFillObject,
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing['4xl'], backgroundColor: colors.overlayDark },
   permText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.regular, textAlign: 'center' },
   permBtn: {
