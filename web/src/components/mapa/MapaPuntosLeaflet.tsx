@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { CAPA_SATELITE } from '../../lib/capaSatelite';
 import { cx } from '../../lib/classNames';
 import { colorDePunto } from './fichaPunto';
+import { clavesDePuntos } from './clavesDePuntos';
 import { useSeleccionPunto, type SeleccionPunto } from './seleccionPunto';
 import { VARIANTE_MAPA_POR_DEFECTO, type MapaPuntosProps, type PuntoGps } from './types';
 import styles from './MapaPuntos.module.css';
@@ -47,18 +48,23 @@ const CapaPuntos = memo(function CapaPuntos({
   onSeleccionar?: SeleccionarPunto;
 }) {
   const renderer = useMemo(() => L.canvas(), []);
+  const claves = useMemo(() => clavesDePuntos(puntos), [puntos]);
+  // El estilo va por `pathOptions`: react-leaflet ignora `fillColor` y compañía
+  // cuando cambian en un marker ya montado, y al filtrar los markers se reutilizan.
   return (
     <>
       {puntos.map((punto, indice) => (
         <CircleMarker
-          key={indice}
+          key={claves[indice]}
           center={[punto.lat, punto.lng]}
           renderer={renderer}
           radius={4}
-          weight={1}
-          color={BORDE_PUNTO}
-          fillColor={colorDePunto(punto, colorPorCodigo)}
-          fillOpacity={1}
+          pathOptions={{
+            weight: 1,
+            color: BORDE_PUNTO,
+            fillColor: colorDePunto(punto, colorPorCodigo),
+            fillOpacity: 1,
+          }}
           eventHandlers={onSeleccionar && { click: () => onSeleccionar(punto) }}
         />
       ))}
