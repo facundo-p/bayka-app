@@ -99,7 +99,7 @@ function useSaveCrop(raw: RawPhoto | null, onSave: (uri: string) => void) {
     if (!raw || saving) return;
     setSaving(true);
     try {
-      onSave(await cropResizeAndSave(raw.uri, cropBoxToPixels(box, disp, imgSize.w, imgSize.h), imgSize.w, imgSize.h));
+      onSave(await cropResizeAndSave(raw.uri, cropBoxToPixels(box, disp, imgSize.w, imgSize.h)));
     } catch (e) {
       console.error('[Photo] no se pudo guardar el recorte', e);
       avisoBreve(AVISO.noSeGuardo);

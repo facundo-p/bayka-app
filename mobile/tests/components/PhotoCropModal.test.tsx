@@ -38,12 +38,7 @@ it('guardar sin tocar el marco recorta ese cuadrado, no la foto entera', async (
   mockedSave.mockResolvedValue('file:///photos/photo_1.jpg');
   const { onSave } = renderRecorte();
   await act(async () => { fireEvent.press(screen.getByLabelText('Guardar foto')); });
-  expect(mockedSave).toHaveBeenCalledWith(
-    FOTO.uri,
-    { originX: 0, originY: 500, width: 3000, height: 3000 },
-    3000,
-    4000,
-  );
+  expect(mockedSave).toHaveBeenCalledWith(FOTO.uri, { originX: 0, originY: 500, width: 3000, height: 3000 });
   expect(onSave).toHaveBeenCalledWith('file:///photos/photo_1.jpg');
 });
 

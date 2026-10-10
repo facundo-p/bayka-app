@@ -1,6 +1,5 @@
 import {
   cameraFrame,
-  centeredSquareCrop,
   computeDisplayRect,
   cornerPoint,
   cropBoxToPixels,
@@ -42,18 +41,6 @@ describe('cropGeometry (#167, #831)', () => {
       const view = { w: 360, h: 800 };
       const fotoMostrada = computeDisplayRect(3000, 4000, view.w, view.h);
       expect(cameraFrame(view.w, view.h)).toEqual(largestCenteredSquare(fotoMostrada));
-    });
-  });
-
-  describe('centeredSquareCrop', () => {
-    test('foto vertical → cuadrado del ancho centrado', () => {
-      expect(centeredSquareCrop(3000, 4000)).toEqual({ originX: 0, originY: 500, width: 3000, height: 3000 });
-    });
-    test('foto horizontal → cuadrado del alto centrado', () => {
-      expect(centeredSquareCrop(4000, 3000)).toEqual({ originX: 500, originY: 0, width: 3000, height: 3000 });
-    });
-    test('lado impar → origen entero', () => {
-      expect(centeredSquareCrop(1001, 2000).originY).toBe(499);
     });
   });
 

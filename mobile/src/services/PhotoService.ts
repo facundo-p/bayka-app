@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { File, Directory, Paths } from 'expo-file-system';
 import { manipulateAsync, SaveFormat, Action } from 'expo-image-manipulator';
-import { centeredSquareCrop, type PixelCrop } from '../utils/cropGeometry';
+import type { PixelCrop } from '../utils/cropGeometry';
 
 /** Toda foto guardada es un JPEG cuadrado de este lado (#831). */
 export const PHOTO_SIDE = 1200;
@@ -95,18 +95,13 @@ export function borrarFotosLocales(uris: readonly string[]): void {
   }
 }
 
-/**
- * Recorta el cuadrado (o el cuadrado centrado si no llega recorte), lo lleva a
- * PHOTO_SIDE × PHOTO_SIDE y lo guarda como JPEG permanente.
- */
-export async function cropResizeAndSave(
-  uri: string,
-  pixelCrop: PixelCrop | null,
-  origWidth: number,
-  origHeight: number
-): Promise<string> {
+/** Recorta el cuadrado, lo lleva a PHOTO_SIDE × PHOTO_SIDE y lo guarda como JPEG permanente. */
+export async function cropResizeAndSave(uri: string, pixelCrop: PixelCrop): Promise<string> {
+  if (!(pixelCrop.width > 0 && pixelCrop.height > 0)) {
+    throw new Error(`[Photo] recorte vacío (${pixelCrop.width}×${pixelCrop.height}): ¿la imagen no informó su tamaño?`);
+  }
   const actions: Action[] = [
-    { crop: pixelCrop ?? centeredSquareCrop(origWidth, origHeight) },
+    { crop: pixelCrop },
     { resize: { width: PHOTO_SIDE, height: PHOTO_SIDE } },
   ];
   const result = await manipulateAsync(uri, actions, { compress: PHOTO_JPEG_QUALITY, format: SaveFormat.JPEG });

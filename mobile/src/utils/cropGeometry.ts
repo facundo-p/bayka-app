@@ -21,6 +21,7 @@ export const CORNERS = Object.keys(CORNER_SIGN) as Corner[];
 /**
  * Preview de la cámara: 4:3 del sensor, entero (sin recortar) en la vista.
  * Con el teléfono vertical la foto sale 3:4, de ahí el ancho sobre alto.
+ * Vale para Android con la vista en vertical: en iOS `ratio` no existe y el preview es aspect-fill.
  */
 export const CAMERA_PREVIEW = { ratio: '4:3', anchoSobreAlto: 3 / 4 } as const;
 
@@ -54,17 +55,6 @@ export function largestCenteredSquare(rect: Rect): Rect {
 export function cameraFrame(viewW: number, viewH: number): Rect {
   const { anchoSobreAlto } = CAMERA_PREVIEW;
   return largestCenteredSquare(computeDisplayRect(anchoSobreAlto, 1, viewW, viewH));
-}
-
-/** Recorte cuadrado centrado más grande de la imagen, en píxeles. */
-export function centeredSquareCrop(imgW: number, imgH: number): PixelCrop {
-  const side = Math.min(imgW, imgH);
-  return {
-    originX: Math.floor((imgW - side) / 2),
-    originY: Math.floor((imgH - side) / 2),
-    width: side,
-    height: side,
-  };
 }
 
 /** Mueve el box `dx/dy` clampeado para no salirse del rectángulo de la imagen. */

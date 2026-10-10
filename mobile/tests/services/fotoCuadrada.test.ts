@@ -29,33 +29,33 @@ const RESIZE_CUADRADO = { resize: { width: 1200, height: 1200 } };
 beforeEach(() => jest.clearAllMocks());
 
 describe('cropResizeAndSave', () => {
+  const RECORTE = { originX: 10, originY: 20, width: 800, height: 800 };
+
   it('recorta el cuadrado recibido y lo lleva a 1200×1200', async () => {
-    const recorte = { originX: 10, originY: 20, width: 800, height: 800 };
-    await cropResizeAndSave('file:///raw.jpg', recorte, 3000, 4000);
+    await cropResizeAndSave('file:///raw.jpg', RECORTE);
     expect(mockedManipulate).toHaveBeenCalledWith(
       'file:///raw.jpg',
-      [{ crop: recorte }, RESIZE_CUADRADO],
+      [{ crop: RECORTE }, RESIZE_CUADRADO],
       expect.objectContaining({ format: 'jpeg' }),
     );
   });
 
-  it('sin recorte usa el cuadrado centrado más grande', async () => {
-    await cropResizeAndSave('file:///raw.jpg', null, 3000, 4000);
-    expect(mockedManipulate.mock.calls[0][1]).toEqual([
-      { crop: { originX: 0, originY: 500, width: 3000, height: 3000 } },
-      RESIZE_CUADRADO,
-    ]);
-  });
-
   it('una foto chica también sale de 1200', async () => {
-    await cropResizeAndSave('file:///raw.jpg', null, 640, 480);
+    await cropResizeAndSave('file:///raw.jpg', { originX: 0, originY: 0, width: 480, height: 480 });
     expect(mockedManipulate.mock.calls[0][1][1]).toEqual(RESIZE_CUADRADO);
   });
 
   it('copia el resultado a la carpeta permanente de fotos', async () => {
-    const uri = await cropResizeAndSave('file:///raw.jpg', null, 100, 100);
+    const uri = await cropResizeAndSave('file:///raw.jpg', RECORTE);
     expect(uri).toMatch(/^file:\/\/\/data\/files\/photos\/photo_\d+\.jpg$/);
     expect(mockCopy).toHaveBeenCalledTimes(1);
+  });
+
+  it('un recorte vacío falla con un error claro sin llamar al manipulador', async () => {
+    await expect(cropResizeAndSave('file:///raw.jpg', { originX: 0, originY: 0, width: 0, height: 0 }))
+      .rejects.toThrow('recorte vacío');
+    expect(mockedManipulate).not.toHaveBeenCalled();
+    expect(mockCopy).not.toHaveBeenCalled();
   });
 });
 
