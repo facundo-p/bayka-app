@@ -17,17 +17,20 @@ function minutosDeOffset(offset: string | undefined): number {
   return (signo === '-' ? -1 : 1) * (Number(horas) * 60 + Number(minutos));
 }
 
+/** La fracción de segundo en microsegundos: completa con ceros o corta lo que sobra. */
+function microsegundosDeFraccion(fraccion: string): number {
+  return Number(fraccion.padEnd(DIGITOS_DE_MICROSEGUNDOS, '0').slice(0, DIGITOS_DE_MICROSEGUNDOS));
+}
+
 /**
  * Microsegundos desde 1970 en UTC, o null si no es un timestamp. Sin offset se
  * toma como UTC, que es como lo guarda el server.
  */
 export function microsegundosDesdeEpoch(iso: string): number | null {
-  const m = PATRON_TIMESTAMP.exec(iso.trim());
-  if (!m) return null;
-  const [, anio, mes, dia, hora, minuto, segundo = '0', fraccion = '', offset] = m;
-  const ms =
-    Date.UTC(Number(anio), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo)) -
-    minutosDeOffset(offset) * MS_POR_MINUTO;
-  const microsegundos = fraccion.padEnd(DIGITOS_DE_MICROSEGUNDOS, '0').slice(0, DIGITOS_DE_MICROSEGUNDOS);
-  return ms * MICROSEGUNDOS_POR_MS + Number(microsegundos);
+  const partes = PATRON_TIMESTAMP.exec(iso.trim());
+  if (!partes) return null;
+  const [, anio, mes, dia, hora, minuto, segundo = '0', fraccion = '', offset] = partes;
+  const utc = Date.UTC(+anio, +mes - 1, +dia, +hora, +minuto, +segundo);
+  const ms = utc - minutosDeOffset(offset) * MS_POR_MINUTO;
+  return ms * MICROSEGUNDOS_POR_MS + microsegundosDeFraccion(fraccion);
 }

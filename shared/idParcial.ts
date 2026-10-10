@@ -38,5 +38,7 @@ export function compararPorIdParcial(a: ArbolNumerable, b: ArbolNumerable): numb
 export function numerarPorIdParcial<T extends ArbolNumerable>(
   arboles: readonly T[],
 ): (T & { idParcial: number })[] {
-  return [...arboles].sort(compararPorIdParcial).map((arbol, i) => ({ ...arbol, idParcial: i + 1 }));
+  return [...arboles]
+    .sort(compararPorIdParcial)
+    .map((arbol, i) => ({ ...arbol, idParcial: i + 1 }));
 }
