@@ -42,6 +42,13 @@ describe('contraste()', () => {
     expect(contraste('rgba(0, 0, 0, 0)', '#0a3760')).toBe(1);
     expect(contraste('rgba(255, 255, 255, 1)', '#000000')).toBeCloseTo(21, 5);
   });
+
+  test('rechaza lo que no sabe leer en vez de medir mal', () => {
+    expect(() => contraste('#fff', '#ffffff')).toThrow('no soportado');
+    expect(() => contraste('rgba(1, 2)', '#ffffff')).toThrow('no soportado');
+    expect(() => contraste('var(--color-x, #000000)', '#ffffff')).toThrow('no soportado');
+    expect(() => contraste('#000000', 'rgba(255, 255, 255, 0.5)')).toThrow('opaco');
+  });
 });
 
 const PARES_CLAROS = TEXTOS_APAGADOS.flatMap((texto) =>
