@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { contarFiltrosActivos } from '../lib/filtros';
+import { contarFiltrosActivos, limpiarFiltros } from '../lib/filtros';
 import { useBusquedaDemorada } from './useBusquedaDemorada';
 
 /** Lo que la barra de un listado lee y cambia: el buscador y los filtros. */
@@ -8,9 +8,9 @@ export interface ControlesFiltros<F> {
   onBuscar: (texto: string) => void;
   filtros: F;
   onFiltro: <K extends keyof F>(clave: K, valor: F[K]) => void;
-  /** Devuelve los filtros a su valor inicial; no toca la búsqueda. */
+  /** Devuelve los filtros a su valor inicial; no toca la búsqueda ni el orden. */
   limpiar: () => void;
-  /** Cuántos filtros están puestos. */
+  /** Cuántos filtros están puestos; el orden no cuenta. */
   activos: number;
 }
 
@@ -34,7 +34,10 @@ export function useFiltrosListado<T, F extends object>(
     () => filtrar(filas ?? [], { ...filtros, busqueda: busquedaDemorada }),
     [filas, filtrar, filtros, busquedaDemorada],
   );
-  const limpiar = useCallback(() => setFiltros(iniciales), [iniciales]);
+  const limpiar = useCallback(
+    () => setFiltros((actuales) => limpiarFiltros(actuales, iniciales)),
+    [iniciales],
+  );
   const controles: ControlesFiltros<F> = {
     busqueda,
     onBuscar: setBusqueda,

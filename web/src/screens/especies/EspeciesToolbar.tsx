@@ -42,13 +42,25 @@ const OPCIONES_ORDEN: Array<Opcion<OrdenEspecie>> = [
   { value: ORDEN_ESPECIE.codigo, label: 'Orden: código A-Z' },
 ];
 
+function OrdenEspecies({ controles }: { controles: ControlesFiltros<FiltrosBarraEspecies> }) {
+  return (
+    <Select
+      label="Ordenar especies"
+      labelOculto
+      value={controles.filtros.orden}
+      onChange={(evento) => controles.onFiltro('orden', evento.target.value as OrdenEspecie)}
+      opciones={OPCIONES_ORDEN}
+    />
+  );
+}
+
 interface EspeciesToolbarProps {
   controles: ControlesFiltros<FiltrosBarraEspecies>;
   /** Las que pasan los filtros: de ellas sale el recuento. */
   visibles: EspecieConCatalogoUso[];
 }
 
-/** Toolbar de Especies: búsqueda, filtros de uso y subtipo, orden y recuento, un renglón. */
+/** Toolbar de Especies: búsqueda, filtros de uso y subtipo, orden y recuento. */
 export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
   const { busqueda, onBuscar, filtros, onFiltro } = controles;
   return (
@@ -61,6 +73,7 @@ export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
           onChange={onBuscar}
         />
       }
+      orden={<OrdenEspecies controles={controles} />}
       tituloFiltros="Filtros de especies"
       filtrosActivos={controles.activos}
       onLimpiar={controles.limpiar}
@@ -84,13 +97,6 @@ export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
         value={filtros.subtipo}
         onChange={(evento) => onFiltro('subtipo', evento.target.value as SubtipoFiltro)}
         opciones={OPCIONES_SUBTIPO}
-      />
-      <Select
-        label="Ordenar especies"
-        labelOculto
-        value={filtros.orden}
-        onChange={(evento) => onFiltro('orden', evento.target.value as OrdenEspecie)}
-        opciones={OPCIONES_ORDEN}
       />
     </BarraHerramientas>
   );

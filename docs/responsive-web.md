@@ -122,13 +122,29 @@ vista y los deja en el árbol de accesibilidad. Con `display: none` el control s
 queda sin nombre accesible — que es lo que lee el lector de pantalla, y por donde
 lo encuentran los tests y la auditoría.
 
-**Los filtros se guardan en una hoja.** `BarraHerramientas` a ≤600 deja el
-buscador y un botón con el contador de filtros puestos; el resto va a un
-`Modal posicion="hoja"`. Se aplican al toque, sin "Aplicar", y el recuento se muda
-al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
+**Los filtros viven detrás de un botón** (#844). `BarraHerramientas` deja a la
+vista el buscador, el orden, el recuento y las acciones (el «PDF» de Árboles);
+todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los puestos.
+En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
+abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
+en la ventana y, si no entra en ninguno, se corre lo justo para dejar el margen:
+el de Usuarios, con dos segmentados, se salía por la izquierda entre 601 y 741.
+A ≤600, un `Modal posicion="hoja"` al que también va el orden. En
+los dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar».
+El buscador queda a la vista en todos los anchos y en los cinco listados; en
+teléfono, si la barra abre con otra cosa (el selector de sección de Datos), esa
+va en su propio renglón y el buscador crece en el de abajo. Ni el buscador ni el
+orden son filtros del panel: no suman a la cuenta y «Limpiar» no los toca. La
+regla vive en un solo lugar, `contarFiltrosActivos` y `limpiarFiltros`
+(`lib/filtros.ts`). El vacío de una tabla de Datos sí cuenta la búsqueda: es lo
+que la dejó vacía, y su «Limpiar filtros» la borra. Elegir entre
+popover y hoja es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
-autoriza: el layout sigue yendo en `@media`. Las `acciones` de la barra (el
-botón «PDF» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
+autoriza: el layout sigue yendo en `@media`.
+
+Lo que va en el panel o en la hoja solo está montado con ellos abiertos. Un
+efecto que tiene que correr siempre, como soltar una parcela o un técnico que ya
+no existen, va en la sección o en la barra, no en el filtro.
 
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
@@ -136,11 +152,7 @@ dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar p
 Para que un control comparta renglón en teléfono, su vecino va con una base chica
 y crece, no con una base grande que después se achica. Chica no quiere decir 0:
 con 0, lo que entra al lado puede dejar al vecino en nada (ver abajo). La base es
-lo mínimo que el vecino necesita para leerse. Lo mismo con un botón detrás de un
-bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la base
-del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
-`BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
-bloque se angosta y el botón queda en su última fila.
+lo mínimo que el vecino necesita para leerse.
 
 La base en 0 tiene su propia trampa: lo que comparte renglón puede exprimir al
 vecino hasta dejarlo en nada. Con `.left` en 0, entre 370 y 550 las tabs del
@@ -199,7 +211,7 @@ que muestrean la escala y marca en cada celda de la matriz:
 | **S** | Scroll horizontal de documento |
 | **O** | Textos cuyas cajas pintadas se pisan |
 | **R** | Texto recortado sin aviso |
-| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea |
+| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea. También un diálogo que se sale de costado: con el padding de por medio, sus controles entran y su borde queda cortado |
 | **VACIA** | La vista no renderizó nada |
 | **D** | Controles de altos distintos en una misma fila |
 | **H** | Cards colapsadas: perdieron la mayor parte del tamaño que tenían en desktop y el contenido ya no entra |
@@ -237,8 +249,12 @@ mide. `/novedades` se mide plegada y además desplegada (`novedades-pasos`),
 porque los pasos de prueba solo se ven así.
 
 Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja de
-filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
-botón que no está. Esas celdas salen `–` en la matriz.
+filtros (`modal-filtros`) solo existe a ≤600, y medirla a 1920 sería esperar diez
+segundos a un botón que no está. Arriba de 600 el mismo botón abre el panel
+anclado, que se mide igual que un modal: es un diálogo, y la `raiz` lo acota.
+Van dos, el de Plantaciones (`panel-filtros`), que tiene más filtros, y el de
+Usuarios (`panel-usuarios`), el más ancho, y los dos suman 601, el primer ancho
+que abre el popover. Esas celdas salen `–` en la matriz.
 
 `dashboard-archivada` mide el detalle de la plantación archivada, solo en
 teléfono. Con estado y «Archivada», su miga es la más ancha del demo: cuando las
@@ -287,8 +303,8 @@ redirige— y sus celdas eran un duplicado exacto de las de `plantaciones`.
 Para no leer de más en un `·`:
 
 - **Solo la carga inicial.** No cubre estados de error ni de vacío, los demás
-  modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
-  acotada no tiene noción de capa flotante. De los `<details>`, solo los de
+  modales, ni popovers salvo el panel de filtros: con uno abierto O da ruido,
+  porque fuera de una `raiz` acotada no tiene noción de capa flotante. De los `<details>`, solo los de
   `/novedades` se miden desplegados.
 - **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
   pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
@@ -301,7 +317,7 @@ Para no leer de más en un `·`:
 - **La ventana mide siempre 900px de alto**: el escalón `max-height: 760` no se
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
-  se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
+  se mide, salvo los paneles de filtros a 601, y ahí la barra superior mide más que a 768 porque vuelve la card de
   temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
   común: ahí la auditoría vio las tabs del detalle encima de la miga. A 430 la
   celda salía limpia con la miga ya aplastada en 66px: limpia quiere decir sin

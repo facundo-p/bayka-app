@@ -23,12 +23,13 @@ import {
 import { nombreArchivoFoto } from '../../services/descargas';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
-import { ArbolesFiltros } from './ArbolesFiltros';
+import { ArbolesFiltros, BuscadorArboles } from './ArbolesFiltros';
 import { BarraSeleccionFichas } from './BarraSeleccionFichas';
 import { nombreTecnicoDe, parcelaDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
 import { useArbolesSection } from './useArbolesSection';
+import { useSoltarParcelaFantasma } from './useSoltarParcelaFantasma';
 import type { SeleccionFichas } from './useSeleccionFichas';
 import { VacioConFiltros } from './VacioConFiltros';
 
@@ -126,8 +127,8 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
 function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   const { arboles, arbolSeleccionado: arbol } = seccion;
   if (!arboles.data || !seccion.colores.listo) return <Cargando label="Cargando árboles…" />;
-  if (arboles.data.total === 0 && seccion.hayFiltro) {
-    return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiar} />;
+  if (arboles.data.total === 0 && seccion.hayFiltroOBusqueda) {
+    return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiarTodo} />;
   }
   const panel = arbol && <PanelArbolSeleccionado seccion={seccion} arbol={arbol} />;
   return (
@@ -171,12 +172,17 @@ function sinArboles({ arboles }: SeccionArboles): boolean {
 }
 
 function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
+  const { parcelas, filtros, setFiltro } = seccion;
+  useSoltarParcelaFantasma(parcelas.data ?? [], filtros.parcelaId, (valor) =>
+    setFiltro('parcelaId', valor),
+  );
   return (
     <DatosToolbar
       segmento={SEGMENTO_DATOS.arboles}
       tituloFiltros="Filtros de árboles"
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
+      busqueda={<BuscadorArboles filtros={seccion.filtros} onCambiar={seccion.setFiltro} />}
       // En modo selección la salida es «Cancelar», en la franja azul.
       acciones={
         !seccion.seleccion.activa && (

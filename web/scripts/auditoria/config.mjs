@@ -36,6 +36,16 @@ export const ANCHOS = Object.freeze([...PANTALLAS, ...BORDES].sort((a, b) => b -
 /** Para las vistas que solo existen en teléfono, como la hoja de filtros. */
 export const ANCHOS_MOVIL = Object.freeze(ANCHOS.filter((a) => a <= ESCALA.ancho.movil));
 
+/** Y las que solo existen arriba del teléfono, como el panel de filtros. */
+export const ANCHOS_ESCRITORIO = Object.freeze(ANCHOS.filter((a) => a > ESCALA.ancho.movil));
+
+/**
+ * El panel de filtros se mide además en el primer ancho que lo abre: entre 601 y
+ * 741 el de Usuarios no entraba hacia ningún lado del botón y se salía por la
+ * izquierda, y ningún ancho de la escala caía ahí.
+ */
+const ANCHOS_PANEL_FILTROS = Object.freeze([...ANCHOS_ESCRITORIO, ESCALA.ancho.movil + 1]);
+
 export const claveCelda = (pantalla, ancho) => `${pantalla}@${ancho}`;
 
 /** Clase de un CSS Module: Vite la renombra a `_<nombre>_<hash>`. */
@@ -129,6 +139,23 @@ export const VISTAS = Object.freeze([
     abrir: 'Filtros',
     raiz: SELECTOR_DIALOGO,
     anchos: ANCHOS_MOVIL,
+  },
+  // El panel de filtros, que es la hoja arriba de 600: un popover anclado al
+  // botón. Plantaciones es la que tiene más filtros, y Usuarios el panel más
+  // ancho, con dos segmentados.
+  {
+    pantalla: 'panel-filtros',
+    ruta: RUTA.plantaciones,
+    abrir: 'Filtros',
+    raiz: SELECTOR_DIALOGO,
+    anchos: ANCHOS_PANEL_FILTROS,
+  },
+  {
+    pantalla: 'panel-usuarios',
+    ruta: RUTA.usuarios,
+    abrir: 'Filtros',
+    raiz: SELECTOR_DIALOGO,
+    anchos: ANCHOS_PANEL_FILTROS,
   },
 ]);
 

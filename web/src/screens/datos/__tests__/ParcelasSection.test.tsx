@@ -31,11 +31,15 @@ function renderEn(url: string) {
   );
 }
 
-test('la toolbar cuenta solo la búsqueda: el scope de parcela no aplica en Parcelas', () => {
-  simularAncho(ANCHO.movil);
-  renderEn('/datos/parcelas?parcela=p1&q=zzz');
-  expect(screen.getByRole('button', { name: /Filtros/ })).toHaveTextContent('Filtros1');
-});
+test.each([ANCHO.movil, ANCHO.desktop])(
+  'a %ipx la búsqueda queda a la vista y Parcelas no tiene botón de filtros',
+  (ancho) => {
+    simularAncho(ancho);
+    renderEn('/datos/parcelas?parcela=p1&q=zzz');
+    expect(screen.getByRole('searchbox')).toHaveValue('zzz');
+    expect(screen.queryByRole('button', { name: /Filtros/ })).not.toBeInTheDocument();
+  },
+);
 
 test('"Limpiar filtros" del vacío solo vacía la búsqueda', () => {
   renderEn('/datos/parcelas?parcela=p1&q=zzz');

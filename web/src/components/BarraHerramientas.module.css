@@ -43,16 +43,6 @@
   color: var(--color-text-heading);
 }
 
-/* Sin envolver: los filtros se angostan y envuelven adentro, y las acciones
-   quedan abajo a la derecha, alineadas con la última fila de filtros. */
-.filtrosConAcciones {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: flex-end;
-  gap: var(--space-lg);
-  min-width: 0;
-}
-
 .acciones {
   display: flex;
   gap: var(--space-md);
@@ -60,20 +50,19 @@
   flex-shrink: 0;
 }
 
-/* Cuántos filtros están puestos, sobre el botón que abre la hoja. */
-.cuenta {
-  min-width: var(--space-3xl);
-  padding: 0 var(--space-sm);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
-  color: var(--color-white);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--space-3xl);
-  text-align: center;
+/* Con recuento, ese ya empuja a la derecha: dos márgenes automáticos se
+   repartirían el hueco y las acciones quedarían en el medio. */
+.recuento + .acciones {
+  margin-left: 0;
 }
 
-/* Los filtros adentro de la hoja: uno abajo del otro y a ancho completo. */
+/* El encabezado solo en su renglón, a su ancho: el buscador pasa al de abajo. */
+.renglonPropio {
+  display: flex;
+  flex-basis: 100%;
+}
+
+/* Lo que va a la hoja: uno abajo del otro y a ancho completo. */
 .hoja {
   display: flex;
   flex-direction: column;
@@ -109,13 +98,15 @@
   color: inherit;
 }
 
-/* Con los filtros en la hoja, lo que queda en la fila es el buscador y un
-   botón: hay lugar de sobra para darles el alto táctil completo. El segmentado
-   entra por su rol —el selector de sección de Datos abre la fila— porque su
-   clase vive en otro módulo. */
+/* Con los filtros en la hoja, lo que queda en la fila es el buscador y un par
+   de botones: hay lugar de sobra para darles el alto táctil completo, también a
+   una acción compacta como «PDF» de Árboles, que si no queda más baja que sus
+   vecinos. El segmentado entra por su rol —el selector de sección de Datos abre
+   la barra— porque su clase vive en otro módulo. */
 @media (max-width: 600px) {
   .barra :is(input, select),
-  .barra [role='radio'] {
+  .barra [role='radio'],
+  .acciones > button {
     min-height: var(--control-height);
   }
 }

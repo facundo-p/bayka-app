@@ -30,7 +30,7 @@ function useParcelasSection() {
     busqueda: filtros.busqueda,
     buscar,
     visibles: filtrarPorCodigoNombre(parcelas.data, filtros.busqueda),
-    filtros: filtrosBusqueda,
+    filtrosVacio: filtrosBusqueda,
     verGrupos: (parcela: ParcelaConStats) =>
       irA(SEGMENTO_DATOS.grupos, filtrosAParams({ parcelaId: parcela.id })),
   };
@@ -47,9 +47,8 @@ export function ParcelasSection() {
       textos={TEXTOS}
       columnas={COLUMNAS_PARCELAS}
       onRowClick={seccion.verGrupos}
-      filtros={seccion.filtros}
-    >
-      <BuscadorCodigoNombre value={seccion.busqueda} onChange={seccion.buscar} />
-    </SeccionTablaDatos>
+      filtrosVacio={seccion.filtrosVacio}
+      busqueda={<BuscadorCodigoNombre value={seccion.busqueda} onChange={seccion.buscar} />}
+    />
   );
 }

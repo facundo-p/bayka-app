@@ -36,12 +36,14 @@ export function leerFiltrosDeUrl(params: URLSearchParams): FiltrosUi {
   return Object.fromEntries(CAMPOS.map((campo) => [campo, leerCampo(params, campo)])) as FiltrosUi;
 }
 
+/** Los filtros del panel: la búsqueda queda a la vista y no cuenta. */
 export function contarFiltros(filtros: FiltrosUi): number {
   return contarFiltrosActivos(filtros, FILTROS_INICIALES);
 }
 
-export function hayFiltroActivo(filtros: FiltrosUi): boolean {
-  return contarFiltros(filtros) > 0;
+/** Si algo acota el listado, búsqueda incluida: es lo que explica una tabla vacía. */
+export function hayFiltroOBusqueda(filtros: FiltrosUi): boolean {
+  return CAMPOS.some((campo) => filtros[campo] !== FILTROS_INICIALES[campo]);
 }
 
 /** Cambiar de parcela suelta el grupo: el scope viejo deja de tener sentido. */

@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { filaPlantacion, perfilResumen } from '../../test/fabricas';
@@ -87,7 +88,8 @@ test('«Visible por» acota a las plantaciones del técnico y compone con «Visi
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
   await esperarTablaCargada();
-  const visiblePor = enMain().getByLabelText('Filtrar por técnico asignado');
+  const filtros = await abrirFiltros(usuario);
+  const visiblePor = filtros.getByLabelText('Filtrar por técnico asignado');
   await waitFor(() => expect(within(visiblePor).getAllByRole('option')).toHaveLength(3));
   expect(within(visiblePor).queryByText('Sin Asignaciones')).not.toBeInTheDocument();
 
@@ -97,7 +99,7 @@ test('«Visible por» acota a las plantaciones del técnico y compone con «Visi
 
   await usuario.selectOptions(visiblePor, 'Ana Técnica');
   await usuario.selectOptions(
-    enMain().getByLabelText('Filtrar por visibilidad en la app'),
+    filtros.getByLabelText('Filtrar por visibilidad en la app'),
     'Visibles: sí',
   );
   expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
@@ -121,7 +123,7 @@ test('si el técnico elegido sale de las opciones, «Visible por» se suelta', a
   const usuario = userEvent.setup();
   const { queryClient } = renderRutasEn('/plantaciones');
   await esperarTablaCargada();
-  const visiblePor = enMain().getByLabelText('Filtrar por técnico asignado');
+  const visiblePor = (await abrirFiltros(usuario)).getByLabelText('Filtrar por técnico asignado');
   await waitFor(() => expect(within(visiblePor).getAllByRole('option')).toHaveLength(3));
   await usuario.selectOptions(visiblePor, 'Beto Técnico');
   expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
@@ -143,15 +145,16 @@ test('el segmentado de estado filtra las filas de la tabla', async () => {
   renderRutasEn('/plantaciones');
   await esperarTablaCargada();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Activas' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Activas' }));
   expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
   expect(enTabla().queryByText('Salta')).not.toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Finalizadas' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Finalizadas' }));
   expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Todas' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Todas' }));
   expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
 });
@@ -179,7 +182,8 @@ test('el Select de temporada acota a un período', async () => {
   renderRutasEn('/plantaciones');
   await esperarTablaCargada();
 
-  await usuario.selectOptions(enMain().getByLabelText('Filtrar por temporada'), '2024-2025');
+  const filtros = await abrirFiltros(usuario);
+  await usuario.selectOptions(filtros.getByLabelText('Filtrar por temporada'), '2024-2025');
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
   expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
 });
@@ -203,6 +207,26 @@ test('el orden por lugar reordena las filas', async () => {
     .slice(1)
     .map((fila) => within(fila).getByText(/Mendoza|Salta/).textContent);
   expect(porCreada).toEqual(['Mendoza', 'Salta']);
+});
+
+test('el orden queda a la vista y no suma a la cuenta; «Limpiar» lo conserva', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+
+  const orden = enMain().getByLabelText('Ordenar plantaciones');
+  await usuario.selectOptions(orden, 'Orden: lugar A-Z');
+  expect(enMain().getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+
+  const filtros = await abrirFiltros(usuario);
+  expect(filtros.queryByLabelText('Ordenar plantaciones')).not.toBeInTheDocument();
+  await usuario.click(filtros.getByRole('radio', { name: 'Activas' }));
+  expect(enMain().getByRole('button', { name: 'Filtros 1' })).toBeInTheDocument();
+
+  await usuario.click(filtros.getByRole('button', { name: 'Limpiar' }));
+  expect(enMain().getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+  expect(orden).toHaveValue('lugar');
 });
 
 test('una búsqueda sin coincidencias muestra el vacío del listado', async () => {

@@ -152,6 +152,16 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nFueraViewport > 0,
   },
   {
+    nombre: 'X · diálogo que se sale de la ventana aunque sus controles entren',
+    ruta: RUTA.usuarios,
+    abrir: 'Filtros',
+    raiz: SELECTOR_DIALOGO,
+    ancho: 1280,
+    // Corrido menos que su padding: el borde queda afuera y los controles no.
+    css: `${SELECTOR_DIALOGO}{position:fixed !important;left:-10px !important;right:auto !important}`,
+    espera: (r) => r.nFueraViewport > 0,
+  },
+  {
     nombre: 'X · control recortado por una card que no scrollea',
     ruta: RUTA.especies,
     ancho: 1920,
