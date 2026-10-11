@@ -2,7 +2,6 @@
 name: issue
 description: Crea un Issue de Bayka con el formato del repo — resumen arriba, redacción sintética, labels de quién/tipo/área/estado puestos al crear, y verificado en el board. Usalo cuando haya que abrir un Issue, anotar un bug, un olor detectado de paso, o convertir algo que surgió en la conversación en trabajo trazable.
 argument-hint: "[qué pasa]"
-disable-model-invocation: true
 ---
 
 # /issue — abrir un Issue que se lea de un vistazo
@@ -33,7 +32,8 @@ gh issue list --state all --search "<palabras clave>" --limit 20 \
 ```
 
 Si ya existe y está abierto, comentá ahí en vez de abrir otro. Si está cerrado y
-el problema volvió, reabrilo (`gh issue reopen`) y comentá qué cambió.
+el problema volvió, reabrilo (`gh issue reopen`) y comentá qué cambió. Si lo
+cerraron como `not planned`, no lo reabras: comentá y avisale a Facu.
 
 ## 2. Escribir
 
@@ -53,11 +53,15 @@ cualquiera; «Mejoras en el CommandMenu» no dice nada. Prefijo tipo
 `fix(web/db):` solo si el issue es sobre un punto muy concreto del código; el
 dashboard se lo saca igual para mostrarlo.
 
-Escribí el body en un archivo y pasalo con `--body-file`: con `--body` inline,
-los backticks y las comillas se los come la shell.
+El repo es público: el body no lleva credenciales, tokens ni datos personales.
+
+Escribí el body en un archivo propio y pasalo con `--body-file`: con `--body`
+inline, los backticks y las comillas se los come la shell. Una ruta fija se pisa
+si dos agentes crean Issues a la vez.
 
 ```sh
-gh issue create --title "<título>" --body-file /tmp/issue-body.md \
+BODY=$(mktemp)   # escribí el body ahí
+gh issue create --title "<título>" --body-file "$BODY" \
   --label hace-claude --label bug --label web --label quick-win
 ```
 
@@ -102,5 +106,5 @@ Si el issue quedó con `necesita-ok` o `necesita-facu`, decilo explícitamente:
 es trabajo que no arranca hasta que él haga algo, y conviene que lo sepa ahora y
 no cuando mire el dashboard.
 
-Corré `/matriz-issues` después solo si querés ver dónde cae en el cuadrante; el
-issue ya nace con todo lo que ese skill necesita.
+No hace falta correr `/matriz-issues`: el issue ya nace con todo lo que ese
+skill necesita, y ese skill lo corre Facu.
