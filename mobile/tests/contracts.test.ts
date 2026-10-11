@@ -33,8 +33,7 @@ import { leerContrato } from './helpers/contratos';
 
 const FILA_EXPORT_VACIA: ExportRow = {
   idArbol: '',
-  globalId: null,
-  idParcial: null,
+  idParcial: 1,
   lugar: '',
   plantacionLugar: '',
   parcelaNombre: '',

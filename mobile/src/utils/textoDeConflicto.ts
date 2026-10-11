@@ -4,6 +4,7 @@ import type { ConflictoDeCampo, ValorDeCampo } from './conflictosDeEdicion';
 import type { VistaDeConflicto } from './vistaDeConflicto';
 import { isoAFecha } from './fechaDeCalendario';
 import { conPuntosDeMiles } from './formularioDePlantacion';
+import { MICROSEGUNDOS_POR_MS, microsegundosDesdeEpoch } from '../../../shared/instante';
 
 export const ETIQUETA_DE_CAMPO: Record<CampoDePlantacion, string> = {
   lugar: 'Lugar',
@@ -27,27 +28,10 @@ export function textoDeValor(campo: CampoDePlantacion, valor: ValorDeCampo): str
   return campo === 'fechaInicio' ? isoAFecha(valor) : valor;
 }
 
-// Timestamp ISO de Postgres o de JS, con microsegundos y offset opcionales.
-const PATRON_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}(?::?\d{2})?)?$/;
-
-function minutosDeOffset(offset: string | undefined): number {
-  const partes = offset ? /^([+-])(\d{2}):?(\d{2})?$/.exec(offset) : null;
-  if (!partes) return 0;
-  const [, signo, horas, minutos = '0'] = partes;
-  return (signo === '-' ? -1 : 1) * (Number(horas) * 60 + Number(minutos));
-}
-
-/**
- * Parseo manual: `new Date()` de Hermes no garantiza aceptar microsegundos ni `+00:00`.
- * Sin offset se toma como UTC, que es como lo guarda el server.
- */
+/** El timestamp ISO de Postgres o de JS como fecha, con precisión de milisegundos. */
 export function parsearTimestamp(iso: string): Date | null {
-  const m = PATRON_TIMESTAMP.exec(iso.trim());
-  if (!m) return null;
-  const [, anio, mes, dia, hora, minuto, segundo = '0', fraccion = '0', offset] = m;
-  const ms = Number(fraccion.padEnd(3, '0').slice(0, 3));
-  const utc = Date.UTC(Number(anio), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo), ms);
-  return new Date(utc - minutosDeOffset(offset) * 60_000);
+  const microsegundos = microsegundosDesdeEpoch(iso);
+  return microsegundos === null ? null : new Date(Math.floor(microsegundos / MICROSEGUNDOS_POR_MS));
 }
 
 const dos = (n: number) => String(n).padStart(2, '0');

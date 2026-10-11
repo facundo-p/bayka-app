@@ -1,13 +1,11 @@
 import type { FilaExportacion } from '../../queries/exportacionQueries';
 import { construirCsvExportacion, nombreArchivoCsv } from '../exportarCsv';
 
-const ENCABEZADO =
-  'ID Árbol,ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
+const ENCABEZADO = 'ID Árbol,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
 
 function fila(parcial: Partial<FilaExportacion> = {}): FilaExportacion {
   return {
     idArbol: 'A-001-SS26-1',
-    idGlobal: 1001,
     idParcial: 12,
     zona: 'Sitio',
     plantacion: 'Sitio',
@@ -21,7 +19,7 @@ function fila(parcial: Partial<FilaExportacion> = {}): FilaExportacion {
 }
 
 describe('construirCsvExportacion', () => {
-  test('primera línea = encabezado en el orden canónico (10 columnas)', () => {
+  test('primera línea = encabezado en el orden canónico (9 columnas)', () => {
     const csv = construirCsvExportacion([]);
     expect(csv).toBe(ENCABEZADO);
   });
@@ -30,30 +28,21 @@ describe('construirCsvExportacion', () => {
     const csv = construirCsvExportacion([fila()]);
     const lineas = csv.split('\n');
     expect(lineas[0]).toBe(ENCABEZADO);
-    expect(lineas[1]).toBe(
-      'A-001-SS26-1,1001,12,Sitio,Sitio,Norte,Línea 1,A-001,2025-2026,Quebracho',
-    );
-  });
-
-  test('idGlobal/idParcial null → celdas vacías', () => {
-    const csv = construirCsvExportacion([fila({ idGlobal: null, idParcial: null })]);
-    expect(csv.split('\n')[1]).toBe(
-      'A-001-SS26-1,,,Sitio,Sitio,Norte,Línea 1,A-001,2025-2026,Quebracho',
-    );
+    expect(lineas[1]).toBe('A-001-SS26-1,12,Sitio,Sitio,Norte,Línea 1,A-001,2025-2026,Quebracho');
   });
 
   test('parcela null → celda vacía', () => {
     const csv = construirCsvExportacion([fila({ parcela: null })]);
-    // La columna Parcela (6ta) queda vacía entre "Sitio," y ",Línea 1".
+    // La columna Parcela (5ta) queda vacía entre "Sitio," y ",Línea 1".
     expect(csv.split('\n')[1]).toBe(
-      'A-001-SS26-1,1001,12,Sitio,Sitio,,Línea 1,A-001,2025-2026,Quebracho',
+      'A-001-SS26-1,12,Sitio,Sitio,,Línea 1,A-001,2025-2026,Quebracho',
     );
   });
 
   test('especie null → "N/N" (el árbol nunca se pierde)', () => {
     const csv = construirCsvExportacion([fila({ especie: null })]);
     expect(csv.split('\n')[1]).toBe(
-      'A-001-SS26-1,1001,12,Sitio,Sitio,Norte,Línea 1,A-001,2025-2026,N/N',
+      'A-001-SS26-1,12,Sitio,Sitio,Norte,Línea 1,A-001,2025-2026,N/N',
     );
   });
 

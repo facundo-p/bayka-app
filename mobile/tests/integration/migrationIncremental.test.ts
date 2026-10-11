@@ -88,6 +88,8 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
   expect(columnNames(sqlite, 'trees')).toContain('especie_base_id');
   expect(columnNames(sqlite, 'trees')).not.toContain('conflict_especie_id');
   expect(columnNames(sqlite, 'trees')).not.toContain('conflict_especie_nombre');
+  expect(columnNames(sqlite, 'trees')).not.toContain('plantacion_id');
+  expect(columnNames(sqlite, 'trees')).not.toContain('global_id');
 
   sqlite.close();
 });
@@ -202,5 +204,31 @@ test('0034 arranca las bases de GPS, foto y grupo con lo local, salvo en un grup
   expect(columnNames(sqlite, 'conflictos_de_sync')).toEqual(
     ['entidad_id', 'campo', 'grupo_id', 'plantacion_id', 'mio', 'servidor', 'detectado_en'],
   );
+  sqlite.close();
+});
+
+// 0035 (#822): dropea los IDs numéricos sin perder árboles ni el resto de sus datos.
+test('0035 dropea plantacion_id y global_id y conserva los árboles', () => {
+  const sqlite = new Database(':memory:');
+  const db = drizzle(sqlite);
+  migrarHasta(db, '0034_conflictos_de_sync');
+  sqlite.exec(PADRES_DE_ARBOLES_SQL);
+  sqlite.exec(`
+    INSERT INTO trees (id, group_id, especie_id, posicion, sub_id, usuario_registro, created_at,
+                       plantacion_id, global_id) VALUES
+      ('t1', 'g1', 'sp1', 1, 'P1L1ROB1', 'u1', '2026-01-01', 1, 10001),
+      ('t2', 'g2', NULL, 1, 'P1L2NN1', 'u1', '2026-01-01', NULL, NULL);
+  `);
+  const columnasAntes = columnNames(sqlite, 'trees');
+
+  migrarHasta(db, '0035_trees_drop_ids_numericos');
+
+  expect(columnNames(sqlite, 'trees')).toEqual(
+    columnasAntes.filter((c) => c !== 'plantacion_id' && c !== 'global_id'),
+  );
+  expect(sqlite.prepare('SELECT id, group_id, especie_id, sub_id FROM trees ORDER BY id').all()).toEqual([
+    { id: 't1', group_id: 'g1', especie_id: 'sp1', sub_id: 'P1L1ROB1' },
+    { id: 't2', group_id: 'g2', especie_id: null, sub_id: 'P1L2NN1' },
+  ]);
   sqlite.close();
 });

@@ -10,7 +10,7 @@ jest.mock('../../src/supabase/client', () => ({ supabase: {} }));
 
 const arbol = (overrides: Partial<ArbolDeGrupo> = {}): ArbolDeGrupo => ({
   id: 't-1', groupId: 'g-1', especieId: 'sp-1', especieBaseId: 'sp-1', posicion: 1, subId: 'P1L1ROB1',
-  fotoUrl: null, fotoSynced: false, plantacionId: null, globalId: null, usuarioRegistro: 'u-1',
+  fotoUrl: null, fotoSynced: false, usuarioRegistro: 'u-1',
   createdAt: '2026-01-01', latitude: null, longitude: null, gpsAccuracy: null, gpsCapturedAt: null,
   fotoBase: null, latitudeBase: null, longitudeBase: null, gpsCapturedAtBase: null,
   ...overrides,

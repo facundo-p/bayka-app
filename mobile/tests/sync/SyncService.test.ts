@@ -160,8 +160,6 @@ const makeTrees = (groupId: string): ArbolDeGrupo[] => [
     subId: 'LA-SP-1',
     fotoUrl: null,
     fotoSynced: false,
-    plantacionId: 1,
-    globalId: 1,
     usuarioRegistro: 'user-1',
     createdAt: '2026-01-01T00:00:00Z',
     latitude: null,

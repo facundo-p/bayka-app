@@ -548,8 +548,6 @@ function filaDeArbol(t: any) {
     fotoUrl: hasFotoOnServer ? t.foto_url : null,
     fotoSynced: hasFotoOnServer,
     fotoBase: isRemoteUri(fotoEnServidor) ? fotoEnServidor : null,
-    plantacionId: t.plantacion_id ?? null,
-    globalId: t.global_id ?? null,
     usuarioRegistro: t.usuario_registro,
     createdAt: t.created_at,
     latitude: t.latitude ?? null,
@@ -627,9 +625,6 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       // insert multi-fila la condición viaja en los valores, no en el `set`.
       fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`,
       fotoBase: sql`excluded.foto_base`,
-      // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
-      plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
-      globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
       latitude: sql`CASE WHEN ${gpsLocal} THEN ${trees.latitude} ELSE excluded.latitude END`,
       longitude: sql`CASE WHEN ${gpsLocal} THEN ${trees.longitude} ELSE excluded.longitude END`,
       gpsAccuracy: sql`CASE WHEN ${gpsLocal} THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,

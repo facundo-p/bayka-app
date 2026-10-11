@@ -569,32 +569,26 @@ operación offline
 
 ---
 
-# 10. Generación de IDs
+# 10. Identificadores de árbol
 
-Los IDs finales se generan **desde la web de gestión, server-side** (issue #232),
-no desde la app. El RPC `generate_tree_ids` (mig. 029) corre en una transacción
-Postgres: ordena los árboles de la plantación (por `groups.created_at`,
-`trees.posicion`, `groups.id` como desempate) y asigna el ID parcial (1..N por
-plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
-`MAX(global_id) + 1` o la que indique el admin).
-
-Solo lo corre un admin o superadmin activo de la organización de la plantación
-(mig. 042). Una plantación archivada devuelve `PLANTACION_ARCHIVADA`; una
-finalizada sí genera IDs, porque es el momento normal de hacerlo.
-
-Tipos de ID:
+Ningún ID se genera con una acción aparte:
 
 ```
-ID parcial de plantación  (plantacion_id)
-ID global Bayka           (global_id)
+ID de árbol               <SubID>-<código de plantación>, se arma al registrar
+ID parcial de plantación  1..N por plantación, se calcula al exportar
 ```
 
-**La app los recibe por el pull normal**, no los genera ni los sube: el upsert de
-`trees` adopta `plantacion_id`/`global_id` del server si el valor local está vacío.
-El RPC viejo `update_tree_ids` (mig. 020), que la app usaba para subir IDs
-generados localmente, quedó sin callers y se eliminó en la mig. 030.
+El ID parcial no se guarda. Web y mobile lo calculan con
+`shared/idParcial.ts`: ordenan por `groups.created_at` (como instante, con
+microsegundos), `trees.posicion`, `groups.id` y, por último, el id del árbol.
+Es el orden que usaba el RPC `generate_tree_ids`.
 
-El gate de export exige que TODOS los árboles tengan ID.
+El ID global numérico se dio de baja en #822, sin reemplazo. La base conserva
+`trees.global_id`, `trees.plantacion_id`, `generate_tree_ids`,
+`next_global_id_seed` y `plantation_ids_status` hasta que ningún APK de prod lea
+`global_id` del pull. Nadie los escribe: desde la mig. 080, `sync_subgroup`
+ignora los dos IDs si un APK viejo los manda. La app dropeó sus columnas locales
+en la migración SQLite 0035.
 
 El SubID de un árbol (`<parcela><grupo><especie><posición>`) lo arman la app y
 el server. Sus vectores de prueba viven en `contracts/sub-id.json` y los

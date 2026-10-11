@@ -25,7 +25,7 @@ import { useIrAResolverCambios } from './useIrAResolverCambios';
 import { useConflictosDeSyncPorPlantacion } from './useConflictosDeSyncPorPlantacion';
 import { usePuedeEditarParcela } from './usePuedeEditarParcela';
 
-const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
+const EMPTY_META: ExpandedMeta = { canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();

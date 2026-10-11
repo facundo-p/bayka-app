@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useDescarga } from '../hooks/useDescarga';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
-import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarFilasExportacion } from '../queries/exportacionQueries';
-import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { Perfil } from '../repositories/profileRepository';
@@ -77,13 +75,9 @@ export interface AccionesProps {
   xlsx: Descarga;
   csv: Descarga;
   pdf: Descarga;
-  /** Las planillas necesitan los IDs definitivos; el KML y el informe no. */
-  idsPendientes: boolean;
   /** null = se puede editar; texto = por qué no (plantación archivada). Exportar sigue disponible. */
   motivoEdicion: string | null;
   onEditar: () => void;
-  /** Solo la web genera los IDs, server-side vía RPC (#232). */
-  onGenerarIds: () => void;
   /** Archivar/desarchivar y eliminar; vacío si el perfil no puede. */
   administracion: AccionMenu[];
 }
@@ -112,15 +106,6 @@ function useDescargasDetalle(plantacion: Plantacion) {
   const pdf = useDescargaInforme(plantacion);
   const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje ?? pdf.mensaje;
   return { kml, xlsx, csv, pdf, mensaje };
-}
-
-/** Mientras la consulta no responde no se ofrece generar: solo con un `false` explícito. */
-function useIdsPendientes(plantationId: string): boolean {
-  const { data: generados } = useQuery({
-    queryKey: CLAVE_QUERY.idsGenerados(plantationId),
-    queryFn: () => idsGenerados(plantationId),
-  });
-  return generados === false;
 }
 
 /** Solo superadmin, y solo sobre una finalizada que no esté archivada (#470). */
@@ -173,21 +158,17 @@ function useAdministracionDetalle(plantacion: Plantacion) {
   return { administracion, modalAdministracion, abrirArchivado, cerrarModal };
 }
 
-/** Descargas, generación de IDs, administración y si la barra va plegada en un solo «⋯». */
+/** Descargas, administración y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
   const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
   const { administracion, ...modales } = useAdministracionDetalle(plantacion);
   const { perfil } = useAuth();
-  const [generandoIds, setGenerandoIds] = useState(false);
   const acciones: AccionesProps = {
     ...descargas,
-    idsPendientes: useIdsPendientes(plantacion.id),
     motivoEdicion: motivoEdicion(perfil, plantacion),
     onEditar,
-    onGenerarIds: () => setGenerandoIds(true),
     administracion,
   };
-  const cerrarGenerarIds = () => setGenerandoIds(false);
   const plegado = useMediaQuery(BP.tablet);
-  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds, ...modales };
+  return { acciones, mensaje, plegado, ...modales };
 }

@@ -111,7 +111,7 @@ export async function getSyncedTreeCounts() {
     .groupBy(groups.plantacionId);
 }
 
-/** Total tree count per plantation (all users); JOINs through groups since trees.plantacionId is unused/null. */
+/** Total tree count per plantation (all users); JOINs through groups: the tree has no plantation column. */
 export async function getTotalTreeCounts() {
   return db
     .select({

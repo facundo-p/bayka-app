@@ -114,8 +114,6 @@ export type NewTree = {
   subId: string;
   fotoUrl: string | null;
   fotoSynced?: boolean;
-  plantacionId: number | null;
-  globalId: number | null;
   usuarioRegistro: string;
   createdAt: string;
   fotoBase?: string | null;
@@ -136,8 +134,6 @@ export function createTestTree(overrides?: Partial<NewTree>): NewTree {
     posicion: 1,
     subId: 'LA-EUC-1',
     fotoUrl: null,
-    plantacionId: null,
-    globalId: null,
     usuarioRegistro: 'user-tecnico-1',
     createdAt: nowIso(),
     ...overrides,

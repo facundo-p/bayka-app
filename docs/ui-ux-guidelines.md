@@ -357,10 +357,6 @@ estado de sincronización
 La sincronización general nunca debe iniciarse automáticamente (el técnico decide
 qué y cuándo subir).
 
-**Excepción puntual:** "Generar IDs" (acción explícita del admin, ver §19) sube sus
-IDs al server en el mismo paso. No es un sync de fondo automático, sino la
-persistencia inmediata de una acción que el usuario inició a propósito.
-
 ---
 
 # 13. Rendimiento
@@ -492,14 +488,9 @@ Algunos pasos el negocio los separa a propósito, y eso es correcto:
 
 ## Tareas que deben ser atómicas y autocontenidas
 
-- **Generar IDs** es una tarea atómica completa: asigna los IDs en local **y los
-  persiste en el server en el mismo paso** (requiere conexión; usa un RPC dedicado).
-  No hay que "generar y después sincronizar" — queda hecho y guardado en un solo
-  paso. (Esto es, además, una excepción legítima a §12: el push va dentro de una
-  acción explícita del admin, no es un sync automático de fondo.)
-  Si el push falla, los IDs **no** quedan "a medio subir": se revierten y el botón
-  vuelve a ofrecer "Generar IDs" (es el único mecanismo para subirlos). La
-  exportación (Excel/CSV) solo aparece cuando los IDs están confirmados en el server.
+- **Exportar la planilla** numera el ID Parcial en el mismo paso (#822). Antes
+  había que "generar IDs" y recién después exportar; esa separación no aportaba
+  ninguna decisión y se eliminó.
 
 ## Regla práctica para el desarrollo
 

@@ -20,7 +20,6 @@ const ENCABEZADO = encabezadoDePlantacion(
 );
 
 const CON_TODO = arbolParaFicha({
-  idGlobal: 10479,
   especie: {
     codigo: 'ANC',
     nombre: 'Anchico',
@@ -91,7 +90,6 @@ test('con los casos borde, tres fichas por hoja', async () => {
 const PEOR_CASO = arbolParaFicha({
   subId: 'LPN12L10ANCH123',
   idArbol: 'LPN12L10ANCH123-SS2026B',
-  idGlobal: 1048576,
   posicion: 123,
   especie: {
     codigo: 'ANCHC',
@@ -165,17 +163,16 @@ test('con fichas del peor caso siguen entrando tres por hoja y la nota cae en la
   );
 });
 
-test('la ficha no muestra el ID Global, generado o no', async () => {
+test('la ficha no muestra un ID Global (#822)', async () => {
   const contexto = { colorDe: COLOR_DE, tecnico: null, foto: LISTA, mapa: MAPA };
-  const fichas = [CON_TODO, { ...CON_TODO, idGlobal: null }].map((arbol) =>
-    datosFicha(arbol, contexto),
-  );
   const pdf = await renderToBuffer(
-    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+    <DocumentoFichas
+      encabezado={ENCABEZADO}
+      emitido="06/10/2026"
+      fichas={[datosFicha(CON_TODO, contexto)]}
+    />,
   );
-  const textos = textosDelPdf(pdf).join(' ');
-  expect(textos).not.toMatch(/ID Global/i);
-  expect(textos).not.toContain('10479');
+  expect(textosDelPdf(pdf).join(' ')).not.toMatch(/ID Global/i);
 });
 
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {

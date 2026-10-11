@@ -87,8 +87,6 @@ async function seedTree(groupId: string, posicion: number): Promise<void> {
     subId: `S-${posicion}`,
     fotoUrl: null,
     fotoSynced: true,
-    plantacionId: null,
-    globalId: null,
     usuarioRegistro: 'u1',
     createdAt: localNow(),
   });

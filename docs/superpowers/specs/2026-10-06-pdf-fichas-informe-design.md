@@ -67,7 +67,7 @@ cambia.
 | `services/pdf*.ts` | Orquestan: leen lo que falta, cargan `pdf/` con `import()`, arman el blob y descargan con `descargarBlob`. | Con mocks |
 
 **Datos.**
-- Las fichas usan una query nueva por ids, `listarArbolesParaFichas(plantationId, ids)`. Trae científico, tipo y subtipo de la especie, nombres de parcela y grupo, y `global_id`. El select del listado no cambia.
+- Las fichas usan una query nueva por ids, `listarArbolesParaFichas(plantationId, ids)`. Trae científico, tipo y subtipo de la especie, nombres de parcela y grupo. El select del listado no cambia.
 - El minimapa toma los puntos de `listarPuntosGps`, cacheados con `CLAVE_QUERY.mapa`, filtrados por parcela.
 - La organización sale de una lectura de `organizations.nombre`.
 - El técnico sale del `nombresUsuario` del listado.

@@ -178,16 +178,3 @@ export async function getAllSpecies(): Promise<{ id: string; nombre: string; cod
     .where(soloEspeciesDelCatalogo())
     .orderBy(asc(species.nombre));
 }
-
-/** True solo si TODOS los árboles tienen globalId (y hay ≥1); un set parcial cuenta como NO generado, para que la UI siga ofreciendo "Generar IDs". */
-export async function hasIdsGenerated(plantacionId: string): Promise<boolean> {
-  const [row] = await db
-    .select({
-      total: count(),
-      conId: sql<number>`COUNT(${trees.globalId})`,
-    })
-    .from(trees)
-    .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(eq(groups.plantacionId, plantacionId));
-  return row != null && row.total > 0 && row.total === row.conId;
-}

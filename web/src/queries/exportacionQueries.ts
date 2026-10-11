@@ -1,6 +1,7 @@
 /* Filas de exportación de una plantación (espeja `getExportRows` de mobile); LEFT JOIN a species
  * para que un árbol sin especie o huérfano nunca se caiga del export, se marca "N/N". */
 import { idDeArbol } from '../../../shared/codigoPlantacion';
+import { numerarPorIdParcial } from '../../../shared/idParcial';
 import { supabase } from '../lib/supabase';
 import { leerPaginado } from './leerPaginado';
 
@@ -8,9 +9,8 @@ import { leerPaginado } from './leerPaginado';
 export type FilaExportacion = {
   /** `<SubID>-<código de plantación>` (#559); solo el SubID si el embed de la plantación no llega. */
   idArbol: string;
-  /** `global_id` (ID final, null si aún no se generó) y `plantacion_id` (ID parcial, null si no tiene). */
-  idGlobal: number | null;
-  idParcial: number | null;
+  /** Número del árbol en la plantación, calculado al exportar (#822). */
+  idParcial: number;
   /** Columnas "Zona"/"Plantación" duplicadas (mismo valor) por compat con la planilla histórica. */
   zona: string;
   plantacion: string;
@@ -31,11 +31,13 @@ export type FilaExportacion = {
 type ParcelaCruda = { nombre: string; deleted_at: string | null };
 
 type FilaCruda = {
-  global_id: number | null;
-  plantacion_id: number | null;
+  id: string;
+  posicion: number;
   sub_id: string;
   species: { nombre: string } | null;
   groups: {
+    id: string;
+    created_at: string;
     nombre: string;
     plantations: { lugar: string; periodo: string; codigo: string } | null;
     parcelas: ParcelaCruda | null;
@@ -47,8 +49,8 @@ type FilaCruda = {
  * no puede ir de filtro (`!inner` excluiría grupos sin parcela, caso válido); se post-filtra en `mapearFila`.
  */
 const SELECT_EXPORTACION =
-  'global_id, plantacion_id, sub_id, species(nombre), ' +
-  'groups!inner(nombre, plantation_id, plantations(lugar, periodo, codigo), parcelas(nombre, deleted_at))';
+  'id, posicion, sub_id, species(nombre), ' +
+  'groups!inner(id, created_at, nombre, plantation_id, plantations(lugar, periodo, codigo), parcelas(nombre, deleted_at))';
 
 /** Null si el grupo no tiene parcela o si está soft-deleted (no debe salir en la planilla). */
 function nombreParcela(parcela: ParcelaCruda | null): string | null {
@@ -56,13 +58,12 @@ function nombreParcela(parcela: ParcelaCruda | null): string | null {
   return parcela.nombre;
 }
 
-function mapearFila(fila: FilaCruda): FilaExportacion {
+function mapearFila({ fila, idParcial }: { fila: FilaCruda; idParcial: number }): FilaExportacion {
   const plantacion = fila.groups?.plantations;
   const lugar = plantacion?.lugar ?? '';
   return {
     idArbol: idDeArbol(fila.sub_id, plantacion?.codigo),
-    idGlobal: fila.global_id,
-    idParcial: fila.plantacion_id,
+    idParcial,
     zona: lugar,
     plantacion: lugar,
     parcela: nombreParcela(fila.groups?.parcelas ?? null),
@@ -73,9 +74,20 @@ function mapearFila(fila: FilaCruda): FilaExportacion {
   };
 }
 
+/** Lo que ordena el ID Parcial. */
+function arbolNumerable(fila: FilaCruda) {
+  return {
+    fila,
+    arbolId: fila.id,
+    grupoId: fila.groups?.id ?? '',
+    grupoCreadoEn: fila.groups?.created_at ?? '',
+    posicion: fila.posicion,
+  };
+}
+
 /**
- * Ordenadas por `global_id` ASC (nulls al final, default de Postgres). Lectura paginada
- * para evitar el tope de 1000 filas de PostgREST.
+ * En orden de ID Parcial, que se numera con la plantación entera: por eso se lee todo
+ * antes de ordenar. Lectura paginada por `id` para evitar el tope de 1000 filas de PostgREST.
  */
 export async function listarFilasExportacion(plantationId: string): Promise<FilaExportacion[]> {
   const filas = await leerPaginado<FilaCruda>(
@@ -84,12 +96,11 @@ export async function listarFilasExportacion(plantationId: string): Promise<Fila
         .from('trees')
         .select(SELECT_EXPORTACION)
         .eq('groups.plantation_id', plantationId)
-        .order('global_id', { ascending: true })
         .order('id')
         .range(desde, hasta) as unknown as PromiseLike<{
         data: FilaCruda[] | null;
         error: { message: string; code?: string } | null;
       }>,
   );
-  return filas.map(mapearFila);
+  return numerarPorIdParcial(filas.map(arbolNumerable)).map(mapearFila);
 }

@@ -604,8 +604,6 @@ especie_id
 posicion
 foto_url (opcional)
 sub_id
-plantacion_id (ver # 18. ID Parcial de Plantación)
-global_id (ver # 19. ID Global Bayka)
 usuario_registro
 fecha_creacion
 ```
@@ -767,13 +765,14 @@ Una plantación puede finalizarse cuando:
 todos los grupos están sincronizados
 ```
 
-Luego se generan los IDs finales (de plantación y global).
+Finalizada, la app ofrece exportarla.
 
 ---
 
 # 18. ID Parcial de Plantación
 
-Secuencial dentro de la plantación.
+Número del árbol dentro de la plantación, desde 1. No se guarda: web y app lo
+calculan al exportar, por alta del grupo y posición del árbol (#822).
 
 Ejemplo:
 
@@ -786,19 +785,13 @@ Ejemplo:
 
 ---
 
-# 19. ID Global de Organización
+# 19. ID Global (dado de baja)
 
-Secuencial entre todas las plantaciones.
-
-El administrador define un valor inicial.
-
-Ejemplo:
-
-```
-Seed inicial = 10456
-```
-
-Los IDs incrementan desde ese valor.
+Era un número secuencial entre todas las plantaciones. Se sacó de la app y de
+las exportaciones en #822, sin reemplazo: identifica al árbol su ID
+(`<SubID>-<código de plantación>`). Las columnas `trees.global_id` y
+`trees.plantacion_id` quedan en la base, sin uso, hasta que ningún APK de prod
+las lea.
 
 ---
 

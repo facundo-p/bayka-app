@@ -558,7 +558,7 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
       { id: 'sp-kok', nombre: 'Recuperada', codigo: 'recuperada:sp-kok', nombreCientifico: null, createdAt: now },
     ]);
     const arbol = (id: string, groupId: string, especieId: string, posicion: number, subId: string) => ({
-      id, groupId, especieId, posicion, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      id, groupId, especieId, posicion, subId, fotoUrl: null,
       usuarioRegistro: 'user-tecnico-1', createdAt: now,
     });
     await mockTestDb.insert(trees).values([
@@ -609,7 +609,7 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
       { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
     ]);
     const arbol = (id: string, groupId: string, subId: string) => ({
-      id, groupId, especieId: 'sp-euc', posicion: 1, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      id, groupId, especieId: 'sp-euc', posicion: 1, subId, fotoUrl: null,
       usuarioRegistro: 'user-tecnico-1', createdAt: now,
     });
     await mockTestDb.insert(trees).values([arbol('a1', 'g-limpio', 'P1L1EUC1'), arbol('b1', 'g-pendiente', 'P1L2EUC1')]);

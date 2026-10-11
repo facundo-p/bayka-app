@@ -1,7 +1,7 @@
 /*
  * XLSX nativo de exportación con `write-excel-file` (liviana, evita `xlsx`@npm por sus CVEs).
- * Espeja el esquema de mobile: mismas 10 columnas y normalizaciones que el CSV; a diferencia
- * de este, ID Global/ID Parcial viajan tipados como número. `COLUMNAS_XLSX` es un mapeo puro
+ * Espeja el esquema de mobile: mismas 9 columnas y normalizaciones que el CSV; a diferencia
+ * de este, el ID Parcial viaja tipado como número. `COLUMNAS_XLSX` es un mapeo puro
  * fila→celdas (testeable); la descarga arma el Blob y delega en `descargarBlob`.
  */
 import type { Cell, Column } from 'write-excel-file/browser';
@@ -14,19 +14,17 @@ const EXTENSION_XLSX = 'xlsx';
 /** Nombre de la hoja, igual que en mobile (ExportService). */
 const NOMBRE_HOJA = 'Plantacion';
 
-/** Celda numérica tipada; null → celda vacía (igual que el CSV). */
-function celdaNumero(valor: number | null): Cell {
-  return valor == null ? null : { value: valor, type: Number };
+function celdaNumero(valor: number): Cell {
+  return { value: valor, type: Number };
 }
 
 function celdaTexto(valor: string): Cell {
   return { value: valor, type: String };
 }
 
-/** Las 10 columnas en el orden canónico: parcela null → vacía, especie null → "N/N". */
+/** Las 9 columnas en el orden canónico: parcela null → vacía, especie null → "N/N". */
 export const COLUMNAS_XLSX: Column<FilaExportacion>[] = [
   { header: 'ID Árbol', cell: (fila) => celdaTexto(fila.idArbol) },
-  { header: 'ID Global', cell: (fila) => celdaNumero(fila.idGlobal) },
   { header: 'ID Parcial', cell: (fila) => celdaNumero(fila.idParcial) },
   { header: 'Zona', cell: (fila) => celdaTexto(fila.zona) },
   { header: 'Plantación', cell: (fila) => celdaTexto(fila.plantacion) },

@@ -170,13 +170,12 @@ export function arbolDetalle(overrides: Partial<ArbolDetalle> = {}): ArbolDetall
   };
 }
 
-/** Árbol de las fichas PDF sin especie, GPS, foto ni ID Global. */
+/** Árbol de las fichas PDF sin especie, GPS ni foto. */
 export function arbolParaFicha(overrides: Partial<ArbolParaFicha> = {}): ArbolParaFicha {
   return {
     id: IDS_FABRICA.arbol,
     subId: IDS_FABRICA.subIdArbol,
     idArbol: idDeArbol(IDS_FABRICA.subIdArbol, IDS_FABRICA.codigoPlantacion),
-    idGlobal: null,
     posicion: 1,
     especie: null,
     grupo: { codigo: IDS_FABRICA.codigoGrupo, nombre: 'Línea 1' },

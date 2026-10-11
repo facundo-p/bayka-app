@@ -15,7 +15,6 @@ import {
   checkFinalizationGate,
   getPlantationEstadoDeEdicion,
   hasTreesForSpecies,
-  hasIdsGenerated,
   porAsignadoYNombre,
 } from '../../src/queries/adminQueries';
 
@@ -229,8 +228,6 @@ describe('adminQueries', () => {
     });
   });
 
-  // ─── hasIdsGenerated ─────────────────────────────────────────────────────
-
   describe('getPlantationEstadoDeEdicion', () => {
     const mockRows = (rows: any[]) => {
       (mockDb.select as jest.Mock).mockReturnValue({
@@ -247,40 +244,6 @@ describe('adminQueries', () => {
     it('null si la plantación no está local', async () => {
       mockRows([]);
       expect(await getPlantationEstadoDeEdicion('plantation-1')).toBeNull();
-    });
-  });
-
-  describe('hasIdsGenerated', () => {
-    const mockCounts = (total: number, conId: number) => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([{ total, conId }]),
-          }),
-        }),
-      });
-    };
-
-    it('retorna false cuando ningún árbol tiene globalId', async () => {
-      mockCounts(5, 0);
-      expect(await hasIdsGenerated('plantation-1')).toBe(false);
-    });
-
-    it('retorna true solo cuando TODOS los árboles tienen globalId', async () => {
-      mockCounts(5, 5);
-      expect(await hasIdsGenerated('plantation-1')).toBe(true);
-    });
-
-    it('retorna false con un set PARCIAL de IDs (remanente de sync incompleto)', async () => {
-      // Regresión: 401/7124 árboles con globalId NO cuenta como "generado".
-      // El gate "al menos uno" ocultaba "Generar IDs" dejando el 94% sin ID.
-      mockCounts(7124, 401);
-      expect(await hasIdsGenerated('plantation-1')).toBe(false);
-    });
-
-    it('retorna false cuando la plantación no tiene árboles', async () => {
-      mockCounts(0, 0);
-      expect(await hasIdsGenerated('plantation-1')).toBe(false);
     });
   });
 

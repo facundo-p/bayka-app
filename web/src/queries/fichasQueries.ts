@@ -1,6 +1,6 @@
 /*
  * Lo que necesitan las fichas PDF de árboles (#754): más datos por árbol que el listado
- * (científico, clasificación, nombres de parcela y grupo, ID Global), leídos por ids.
+ * (científico, clasificación, nombres de parcela y grupo), leídos por ids.
  */
 import { idDeArbol } from '../../../shared/codigoPlantacion';
 import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
@@ -21,8 +21,6 @@ export type ArbolParaFicha = {
   subId: string;
   /** `<SubID>-<código de plantación>` (#559). */
   idArbol: string;
-  /** null mientras no se generaron los IDs. */
-  idGlobal: number | null;
   posicion: number | null;
   /** null = N/N. */
   especie: EspecieDeFicha | null;
@@ -41,7 +39,6 @@ type FilaParcela = CodigoNombre & { deleted_at: string | null };
 type FilaArbolFicha = {
   id: string;
   sub_id: string;
-  global_id: number | null;
   posicion: number | null;
   foto_url: string | null;
   usuario_registro: string | null;
@@ -65,7 +62,7 @@ type FilaArbolFicha = {
 
 /** `parcelas.deleted_at` no puede filtrar con `!inner`: dejaría afuera a los grupos sin parcela. */
 const SELECT_FICHA =
-  'id, sub_id, global_id, posicion, foto_url, usuario_registro, created_at, ' +
+  'id, sub_id, posicion, foto_url, usuario_registro, created_at, ' +
   'latitude, longitude, gps_accuracy, ' +
   'species(codigo, nombre, nombre_cientifico, tipo, subtipo), ' +
   'groups!inner(codigo, nombre, parcela_id, plantation_id, plantations(codigo), ' +
@@ -94,7 +91,6 @@ function mapearArbolFicha(fila: FilaArbolFicha): ArbolParaFicha {
     id: fila.id,
     subId: fila.sub_id,
     idArbol: idDeArbol(fila.sub_id, groups.plantations?.codigo),
-    idGlobal: fila.global_id,
     posicion: fila.posicion,
     especie: especieDe(fila),
     grupo: { codigo: groups.codigo, nombre: groups.nombre },

@@ -316,8 +316,6 @@ function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
   };
 }
 
-// sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
-// (RPC generate_tree_ids, #232) y llegan por el pull.
 // `species_base_id`, `gps_base` y `foto_base`: lo que este dispositivo vio en el
 // server. Si el server ya tiene otra cosa, conserva la suya (#679, #795).
 function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {

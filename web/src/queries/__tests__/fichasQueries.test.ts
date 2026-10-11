@@ -14,7 +14,6 @@ function filaArbolFicha(id: string, sobre: Record<string, unknown> = {}) {
   return {
     id,
     sub_id: `SUB-${id}`,
-    global_id: 10479,
     posicion: 23,
     foto_url: 'plantations/p1/trees/t.jpg',
     usuario_registro: 'user-9',
@@ -51,7 +50,7 @@ describe('listarArbolesParaFichas', () => {
       'species(codigo, nombre, nombre_cientifico, tipo, subtipo)',
     );
     expect(consultas[0].columnas).toContain('parcelas(codigo, nombre, deleted_at)');
-    expect(consultas[0].columnas).toContain('global_id');
+    expect(consultas[0].columnas).not.toContain('global_id');
     expect(consultas[0].filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
       { metodo: 'in', columna: 'id', valor: ['t1'] },
@@ -66,7 +65,6 @@ describe('listarArbolesParaFichas', () => {
       id: 't1',
       subId: 'SUB-t1',
       idArbol: 'SUB-t1-SS26',
-      idGlobal: 10479,
       posicion: 23,
       especie: {
         codigo: 'ANC',
@@ -91,17 +89,16 @@ describe('listarArbolesParaFichas', () => {
     expect(arboles.map((arbol) => arbol.id)).toEqual(['t1', 't2']);
   });
 
-  test('N/N, sin GPS, sin ID Global y parcela eliminada', async () => {
+  test('N/N, sin GPS y parcela eliminada', async () => {
     const fila = filaArbolFicha('t1', {
       species: null,
       latitude: null,
       longitude: null,
-      global_id: null,
     });
     fila.groups.parcelas = { ...fila.groups.parcelas, deleted_at: '2026-01-01T00:00:00Z' };
     capturarConsultas(() => ({ data: [fila] }));
     const [arbol] = await listarArbolesParaFichas('plant-1', ['t1']);
-    expect(arbol).toMatchObject({ especie: null, gps: null, idGlobal: null, parcela: null });
+    expect(arbol).toMatchObject({ especie: null, gps: null, parcela: null });
   });
 
   test('sin ids no consulta', async () => {
