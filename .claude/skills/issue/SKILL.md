@@ -2,7 +2,6 @@
 name: issue
 description: Crea un Issue de Bayka con el formato del repo — resumen arriba, redacción sintética, labels de quién/tipo/área/estado puestos al crear, y verificado en el board. Usalo cuando haya que abrir un Issue, anotar un bug, un olor detectado de paso, o convertir algo que surgió en la conversación en trabajo trazable.
 argument-hint: "[qué pasa]"
-disable-model-invocation: true
 ---
 
 # /issue — abrir un Issue que se lea de un vistazo
