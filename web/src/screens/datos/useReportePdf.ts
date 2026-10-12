@@ -92,15 +92,19 @@ function useAbortador() {
   };
 }
 
-/** Sin fotos fallidas, al terminar cierra; con fallidas, el modal lo avisa. Cancelado, no avisa nada. */
+/**
+ * Sin fotos fallidas, al terminar cierra; con fallidas, el modal lo avisa.
+ * Cancelado, no avisa nada: ni el error ni el avance de una foto que ya venía.
+ */
 function useGeneracion({ props, modo, alTerminar }: Generacion) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState<EstadoReporte>(ELIGIENDO);
   const abortador = useAbortador();
-  const alProgresar = (progreso: ProgresoReporte) =>
-    setEstado({ fase: FASE_REPORTE.generando, progreso });
   const correr = async () => {
     const { signal } = abortador.nuevo();
+    const alProgresar = (progreso: ProgresoReporte) => {
+      if (!signal.aborted) setEstado({ fase: FASE_REPORTE.generando, progreso });
+    };
     alProgresar({ etapa: ETAPA_REPORTE.leyendoArboles });
     try {
       const pedido = { ...pedidoDeDescarga(props, modo), alProgresar, senal: signal };

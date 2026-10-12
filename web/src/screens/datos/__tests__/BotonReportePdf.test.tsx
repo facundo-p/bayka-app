@@ -197,6 +197,8 @@ describe('cancelar', () => {
     else await usuario.click(modal.getByRole('button', { name: 'Cancelar' }));
     expect(actual().pedido.senal?.aborted).toBe(true);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Una foto que ya venía bajando avisa su avance después de cancelar.
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 4, total: 148 });
     const otraVez = await abrir(usuario);
     expect(otraVez.queryByRole('alert')).not.toBeInTheDocument();
     expect(otraVez.getByRole('button', { name: 'Generar PDF' })).toBeEnabled();
