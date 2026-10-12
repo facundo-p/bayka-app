@@ -3,7 +3,7 @@
 --
 -- La excepción es de ROL: un superadmin sí escribe sobre una finalizada (#470).
 begin;
-select plan(15);
+select plan(14);
 
 insert into organizations (id, nombre) values
   ('a1000000-0000-0000-0000-000000000001', 'Org Test 14');
@@ -125,14 +125,6 @@ select lives_ok(
   $$insert into parcelas (id, plantation_id, nombre, codigo)
     values ('a1000000-0000-0000-0000-000000000033', 'a1000000-0000-0000-0000-000000000012', 'OK', 'OK')$$,
   'la plantación activa sigue aceptando parcelas nuevas');
-
--- ── generate_tree_ids sigue andando: SECURITY DEFINER, no pasa por RLS ──────
--- Es la única operación legítima posterior a finalizar (#232), y las policies de
--- arriba no pueden romperla.
-select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-0000000000a2', true);
-select is(
-  (generate_tree_ids('a1000000-0000-0000-0000-000000000002', 42)->>'success')::boolean,
-  true, 'generate_tree_ids sigue escribiendo trees sobre una plantación finalizada');
 
 select * from finish();
 rollback;

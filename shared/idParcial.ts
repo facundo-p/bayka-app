@@ -1,6 +1,6 @@
 /**
  * ID Parcial: el número de un árbol dentro de su plantación (#822). No se guarda:
- * web y mobile lo calculan al exportar, con el orden que usaba `generate_tree_ids`
+ * web y mobile lo calculan al exportar, con el orden con que lo numeraba el server
  * (alta del grupo, posición del árbol, id del grupo). El id del árbol desempata
  * lo que ese orden dejaba al azar, para que las dos apps numeren igual.
  */

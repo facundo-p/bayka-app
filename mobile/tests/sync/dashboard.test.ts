@@ -9,7 +9,6 @@ jest.mock('../../src/database/schema', () => ({
     grupoId: 'trees.subgrupo_id',
     usuarioRegistro: 'trees.usuario_registro',
     createdAt: 'trees.created_at',
-    plantacionId: 'trees.plantacion_id',
   },
 }));
 

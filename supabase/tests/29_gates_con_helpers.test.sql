@@ -1,7 +1,6 @@
--- Los dos gates que 051 pasó a helpers y el DELETE que sacó (#314).
--- El gate de `generate_tree_ids` ya lo cubre el test 04 entero (técnico, otra
--- organización, admin inactivo, inexistente, archivada); acá va lo que no
--- tenía ninguna red: el cambio de rol del trigger y el borrado de parcelas.
+-- Lo que 051 pasó a helpers o sacó (#314): el gate del cambio de rol en el
+-- trigger y el borrado de parcelas. El otro gate, el de `generate_tree_ids`, se
+-- dropeó en 081.
 begin;
 select plan(9);
 

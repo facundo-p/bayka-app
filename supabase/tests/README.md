@@ -81,10 +81,8 @@ cambiar una regla de un solo lado rompe el test de los otros (#735).
 ## Tests
 
 `01`-`02` membresía en INSERT (groups/parcelas), `03` guard de
-`sync_subgroup`, `04` gate por rol, organización y archivado de `generate_tree_ids` (042, sin uso desde #822), `05`
-`update_tree_ids` removida, `06` resto de 030, `07` mismo fix en `trees`
-INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
-scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
+`sync_subgroup`, `06` resto de 030, `07` mismo fix en `trees` INSERT, `10`
+SELECT scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
 (033, #310), `11` alta de plantaciones con `INSERT … RETURNING` bajo esa
 RLS (034, #379), `12` columna `photo_capture_all_trees` con su default (035,
 #439), `13` `sincronizar_borrados` (036, #467), `14` plantación finalizada
@@ -215,9 +213,11 @@ admin, superadmin y el creador sí lo borran; EXECUTE solo para `authenticated` 
 lo sube y no se crea, admin y superadmin sí y queda con el creador real; a
 nombre propio lo suben todos, sin creador nadie, y el rechazo del creador gana
 sobre DUPLICATE_CODE; un grupo que ya existe sigue la regla de 072 (074, #798).
-`63` `sync_subgroup` no escribe `plantacion_id` ni `global_id`: un payload viejo
-que los trae sincroniza y el árbol queda sin ids, y uno ya numerado los conserva
-al re-sincronizar con o sin esas claves (080, #822).
+`63` IDs numéricos dados de baja: no existen `trees.global_id`,
+`trees.plantacion_id`, `generate_tree_ids`, `next_global_id_seed`,
+`plantation_ids_status` ni `update_tree_ids`, y un payload viejo de
+`sync_subgroup` que trae `plantacion_id` y `global_id` sincroniza igual, también
+al re-sincronizar (080, 081, #822, #859).
 
 ## Hallazgo fuera de alcance (no corregido)
 

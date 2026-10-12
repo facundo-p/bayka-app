@@ -48,8 +48,6 @@ const serverTree = (overrides: Record<string, any>) => ({
   foto_url: null,
   usuario_registro: 'user-1',
   created_at: '2026-01-01T00:00:00Z',
-  plantacion_id: null,
-  global_id: null,
   ...overrides,
 });
 

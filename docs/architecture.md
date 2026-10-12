@@ -581,12 +581,11 @@ ID parcial de plantación  1..N por plantación, se calcula al exportar
 El ID parcial no se guarda. Web y mobile lo calculan con
 `shared/idParcial.ts`: ordenan por `groups.created_at` (como instante, con
 microsegundos), `trees.posicion`, `groups.id` y, por último, el id del árbol.
-Es el orden que usaba el RPC `generate_tree_ids`.
+Es el orden con el que se numeraba cuando el ID parcial se guardaba.
 
-El ID global numérico se dio de baja en #822, sin reemplazo. La base conserva
-`trees.global_id`, `trees.plantacion_id`, `generate_tree_ids`,
-`next_global_id_seed` y `plantation_ids_status` hasta que ningún APK de prod lea
-`global_id` del pull. Nadie los escribe: desde la mig. 080, `sync_subgroup`
+El ID global numérico se dio de baja en #822, sin reemplazo. La mig. 081 (#859)
+dropeó `trees.global_id`, `trees.plantacion_id`, `generate_tree_ids`,
+`next_global_id_seed` y `plantation_ids_status`; desde la 080, `sync_subgroup`
 ignora los dos IDs si un APK viejo los manda. La app dropeó sus columnas locales
 en la migración SQLite 0035.
 
