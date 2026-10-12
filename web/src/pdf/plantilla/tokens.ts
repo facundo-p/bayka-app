@@ -94,10 +94,13 @@ export const ORIENTACION_HOJA = {
 
 export type OrientacionHoja = (typeof ORIENTACION_HOJA)[keyof typeof ORIENTACION_HOJA];
 
-/** Medidas de la hoja A4 en pt (595 × 842), parada. */
+/**
+ * Medidas de la hoja A4 en pt, parada. Ancho y alto son los del A4 de react-pdf,
+ * no los redondeados: con 842, un renglón que llegaba justo al borde parecía entrar.
+ */
 export const MEDIDA_HOJA = {
-  ancho: 595,
-  alto: 842,
+  ancho: 595.28,
+  alto: 841.89,
   margenSuperior: 34,
   margenInferior: 22,
   margenLateral: 30,

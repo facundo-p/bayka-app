@@ -3,19 +3,8 @@
  * hojas; acá se simula ese flujo con los altos fijos de los renglones para
  * saber cuánto queda libre en la última hoja.
  */
-import {
-  CAJA_MAPA_INFORME,
-  CUERPO_HOJA,
-  MEDIDA_HOJA,
-  MEDIDA_INFORME as M,
-} from '../plantilla/tokens';
+import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME as M } from '../plantilla/tokens';
 import type { ModeloConMapa, ModeloInforme } from './datosInforme';
-
-/** El A4 de react-pdf mide 841,89 pt de alto, no los 842 de la plantilla. */
-const ALTO_A4_REACT_PDF = 841.89;
-
-/** El cuerpo que react-pdf llena: un renglón que llega justo al borde de la cuenta no entra. */
-const ALTO_CUERPO = CUERPO_HOJA.alto - (MEDIDA_HOJA.alto - ALTO_A4_REACT_PDF);
 
 export const UBICACION_MAPA = {
   /** Al pie de la última hoja, en lo que queda libre. */
@@ -71,7 +60,7 @@ function renglonesDelFlujo(modelo: ModeloInforme): Renglon[] {
 export function altoEnUltimaHoja(renglones: readonly Renglon[]): number {
   return renglones.reduce(
     (ocupado, { alto, presencia = alto }) =>
-      ocupado + Math.max(alto, presencia) > ALTO_CUERPO ? alto : ocupado + alto,
+      ocupado + Math.max(alto, presencia) > CUERPO_HOJA.alto ? alto : ocupado + alto,
     0,
   );
 }
@@ -106,5 +95,5 @@ export function planSegunLibre(modelo: ModeloConMapa, libre: number): PlanInform
 }
 
 export function planificarInforme(modelo: ModeloConMapa): PlanInforme {
-  return planSegunLibre(modelo, ALTO_CUERPO - altoEnUltimaHoja(renglonesDelFlujo(modelo)));
+  return planSegunLibre(modelo, CUERPO_HOJA.alto - altoEnUltimaHoja(renglonesDelFlujo(modelo)));
 }

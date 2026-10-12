@@ -65,13 +65,6 @@ describe('altoEnUltimaHoja', () => {
     expect(altoEnUltimaHoja([renglon(100), renglon(200)])).toBe(300);
   });
 
-  test('un renglón que llega justo al borde no entra: el A4 de react-pdf es más corto', () => {
-    expect(altoEnUltimaHoja([renglon(CUERPO_HOJA.alto - 14), renglon(14)])).toBe(14);
-    expect(altoEnUltimaHoja([renglon(CUERPO_HOJA.alto - 15), renglon(14)])).toBe(
-      CUERPO_HOJA.alto - 1,
-    );
-  });
-
   test('la presencia decide si salta de hoja, pero no suma al alto ocupado', () => {
     const casiLlena = CUERPO_HOJA.alto - 30;
     const titulo = { alto: 20, presencia: 50 };
