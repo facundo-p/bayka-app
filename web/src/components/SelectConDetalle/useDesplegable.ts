@@ -2,6 +2,7 @@ import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { useCerrarAfuera } from '../../hooks/useCerrarAfuera';
 import { useListboxNavegable } from '../../hooks/useListboxNavegable';
 import { usePosicionAnclada } from '../../hooks/usePosicionAnclada';
+import { cerrarSoloEstaCapa } from '../../lib/escape';
 import { TECLA } from '../../lib/teclas';
 import { filtrarOpciones, type OpcionConDetalle } from './opcionesConDetalle';
 
@@ -75,11 +76,9 @@ function teclaEnBuscador(
   cerrarYEnfocar: () => void,
   navegar: (evento: EventoTeclado) => void,
 ) {
-  if (evento.key === TECLA.escape) {
-    // Cierra solo la lista: sin esto el Escape también cierra el modal.
-    evento.stopPropagation();
-    cerrarYEnfocar();
-  } else if (evento.key === TECLA.tab) {
+  // Cierra solo la lista, no el modal donde vive el selector.
+  if (cerrarSoloEstaCapa(evento, cerrarYEnfocar)) return;
+  if (evento.key === TECLA.tab) {
     // Sin preventDefault: el Tab sigue desde el disparador al próximo control.
     cerrarYEnfocar();
   } else {

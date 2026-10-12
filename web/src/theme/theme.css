@@ -282,6 +282,20 @@
   --alto-banner-entorno: 26px;
 }
 
+/* Con un modal abierto el documento no scrollea: arrastrar el fondo de una hoja
+   movía la lista de atrás (#861). Lo marca `useBloquearScroll`. Sin overscroll,
+   tirar hacia abajo no dispara el pull-to-refresh de Chrome Android. */
+:root[data-scroll-bloqueado] {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* La barra clásica desaparece con el overflow: su lugar queda reservado para
+   que el layout no se corra de costado. */
+:root[data-scroll-bloqueado='con-barra'] {
+  scrollbar-gutter: stable;
+}
+
 /* Anchos estructurales por escalón. No van con clamp(): el panel al costado
    tiene dos anchos y a ≤900 sale en una hoja, sin intermedios con sentido. */
 @media (max-width: 1200px) {
