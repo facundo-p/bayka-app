@@ -27,9 +27,17 @@ export function colorEspeciePorCodigo(codigo: string | null): string {
   return colorEspeciePorIndice(hash);
 }
 
-function colorDeHabilitada({ codigo, lugarColor }: LugarDeEspecie): string {
-  if (lugarColor === null) return colorEspeciePorCodigo(codigo);
+function colorDeLugar(lugarColor: number): string {
   return PALETA_ESPECIES[lugarColor % PALETA_ESPECIES.length];
+}
+
+/** N/N no tiene lugar: la pinta el ámbar de "sin identificar". */
+function coloresPorCodigo(especies: readonly LugarDeEspecie[]): Map<string, string> {
+  const colores = new Map<string, string>();
+  for (const { codigo, lugarColor } of especies) {
+    if (lugarColor !== null) colores.set(codigo, colorDeLugar(lugarColor));
+  }
+  return colores;
 }
 
 /**
@@ -39,11 +47,11 @@ function colorDeHabilitada({ codigo, lugarColor }: LugarDeEspecie): string {
  * ficha y el informe.
  *
  * - Sin código o N/N → ámbar de "sin identificar".
- * - Habilitada sin lugar legible (la base todavía no tiene la columna) → hash.
  * - Código que no está habilitado → gris: no le roba el color a una que sí.
+ * - Habilitada sin lugar que no sea N/N (no debería pasar) → gris.
  */
 export function coloresDeEspecies(especies: readonly LugarDeEspecie[]): ColorEspecie {
-  const colores = new Map(especies.map((especie) => [especie.codigo, colorDeHabilitada(especie)]));
+  const colores = coloresPorCodigo(especies);
   return (codigo) => {
     if (codigo === null || esSinIdentificar(codigo)) return COLOR_GRAFICO_NN;
     return colores.get(codigo) ?? COLOR_GRAFICO_OTRAS;

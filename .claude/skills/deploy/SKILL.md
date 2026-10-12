@@ -303,24 +303,29 @@ Facu):
 
 ```markdown
 ## Post-merge (manual)
-- [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
-      → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
-- [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
-      en PRs a main (el default branch es staging)
-- [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
-- [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
-      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
-      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
-- [ ] Si el release incluye migraciones supabase/**: en el checkout principal
-      (el único con `.env.migration`), con main actualizado (`git switch main &&
-      git pull`):
+- [ ] Si el release incluye migraciones supabase/**: el push va apenas termina
+      el deploy de la web de prod, ni antes ni mucho después. Antes, la web
+      vieja puede usar lo que la migración saca; después, la nueva puede pedir
+      lo que la migración agrega. El deploy terminó cuando el check «Cloudflare
+      Pages» del merge en main da `completed success`:
+
+      ```sh
+      gh api repos/facundo-p/bayka-app/commits/main/check-runs \
+        --jq '.check_runs[] | select(.name == "Cloudflare Pages") | "\(.head_sha[0:7]) \(.status) \(.conclusion)"'
+      ```
+
+      Sin salida, el deploy sigue en curso. Con `failure`, no pushear: la web
+      vieja sigue viva y la migración puede sacarle lo que usa.
+
+      Mientras tanto, en el checkout principal (el único con `.env.migration`),
+      con main actualizado (`git switch main && git pull`):
       1. Drift check: `migration list` contra prod y contra staging. Lo
          registrado en prod tiene que ser lo de staging menos las migraciones de
          este release, sin huecos ni extras.
       2. `db push --dry-run` contra prod: tiene que listar justo las migraciones
          de este release.
-      3. Con confirmación dedicada, Facu corre el mismo push sin `--dry-run`
-         (nunca el SQL Editor; ver docs/db-baseline.md).
+      3. Con el deploy en verde y confirmación dedicada, Facu corre el mismo
+         push sin `--dry-run` (nunca el SQL Editor; ver docs/db-baseline.md).
 
       ```sh
       PROD="$(grep '^PROD_DB_URL=' .env.migration | cut -d= -f2-)"
@@ -329,6 +334,14 @@ Facu):
       npx --yes supabase@2.116.0 migration list --db-url "$PROD"
       npx --yes supabase@2.116.0 db push --dry-run --db-url "$PROD"
       ```
+- [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
+      → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
+- [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
+      en PRs a main (el default branch es staging)
+- [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
+- [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
+      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
+      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 
@@ -338,8 +351,10 @@ Facu):
 gh pr checks <numero-pr> --watch    # correr con run_in_background y timeout amplio
 ```
 
-- **Verde** → reportar "PR de release listo para tu merge" con el link. FIN: el
-  merge es de Facu, a mano. No mergear, no aprobar, no tocar más staging.
+- **Verde** → reportar "PR de release listo para tu merge" con el link. Si el
+  release trae migraciones, el aviso recuerda que el push de prod va apenas el
+  check «Cloudflare Pages» del merge en main da verde. FIN: el merge es de
+  Facu, a mano. No mergear, no aprobar, no tocar más staging.
 - **Rojo** → reportar el check fallido y PARAR. No arreglar en caliente sin un
   nuevo OK (el fix entra por el flujo normal de PR a staging, y después se
   refresca el release).
