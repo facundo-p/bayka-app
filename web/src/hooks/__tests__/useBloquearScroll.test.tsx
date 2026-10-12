@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { StrictMode } from 'react';
 import { afterEach, vi } from 'vitest';
 import { Modal } from '../../components/Modal';
 import { ATRIBUTO_SCROLL_BLOQUEADO, MARCA_SCROLL_BLOQUEADO } from '../useBloquearScroll';
@@ -36,8 +37,11 @@ function simularAnchoUtil(clientWidth: number) {
   Object.defineProperty(raiz, 'clientWidth', { configurable: true, value: clientWidth });
 }
 
+const URL_INICIAL = window.location.href;
+
 afterEach(() => {
   vi.restoreAllMocks();
+  window.history.replaceState(null, '', URL_INICIAL);
   Reflect.deleteProperty(window, 'scrollY');
   Reflect.deleteProperty(raiz, 'clientWidth');
 });
@@ -85,6 +89,40 @@ test('si la lista no se movió, cerrar no la toca', () => {
   expect(scroll.scrollTo).not.toHaveBeenCalled();
 });
 
+test('si se cerró por un «atrás», no pisa el scroll que restauró el navegador', () => {
+  const scroll = simularScrollDocumento(200);
+  const { rerender } = render(<Dos a b={false} />);
+
+  window.history.pushState(null, '', '/otra-pantalla');
+  scroll.arrastrarA(40);
+  rerender(<Dos a={false} b={false} />);
+
+  expect(scroll.scrollTo).not.toHaveBeenCalled();
+  expect(scroll.posicion()).toBe(40);
+});
+
+test('desmontar con el modal abierto lo libera', () => {
+  const { unmount } = render(<Dos a b />);
+  unmount();
+  expect(marca()).toBeNull();
+});
+
+test('en StrictMode los efectos dobles no desfasan la cuenta', () => {
+  const enStrict = (a: boolean, b: boolean) => (
+    <StrictMode>
+      <Dos a={a} b={b} />
+    </StrictMode>
+  );
+  const { rerender } = render(enStrict(true, false));
+  rerender(enStrict(true, true));
+
+  rerender(enStrict(true, false));
+  expect(marca()).not.toBeNull();
+
+  rerender(enStrict(false, false));
+  expect(marca()).toBeNull();
+});
+
 test.each([
   ['había barra de scroll clásica', 1009, MARCA_SCROLL_BLOQUEADO.conBarra],
   ['la barra no ocupa lugar (teléfono, macOS)', 1024, MARCA_SCROLL_BLOQUEADO.sinBarra],
@@ -112,8 +150,10 @@ describe('contrato con theme.css', () => {
     return inicio === -1 ? null : css.slice(inicio, css.indexOf('}', inicio));
   };
 
-  test('la marca en <html> corta el scroll del documento', () => {
-    expect(regla(`:root[${ATRIBUTO_SCROLL_BLOQUEADO}]`)).toMatch(/overflow:\s*hidden/);
+  test('la marca en <html> corta el scroll del documento y el pull-to-refresh', () => {
+    const bloqueada = regla(`:root[${ATRIBUTO_SCROLL_BLOQUEADO}]`);
+    expect(bloqueada).toMatch(/overflow:\s*hidden/);
+    expect(bloqueada).toMatch(/overscroll-behavior:\s*none/);
   });
 
   test('con barra clásica, su lugar queda reservado', () => {

@@ -278,9 +278,11 @@
 }
 
 /* Con un modal abierto el documento no scrollea: arrastrar el fondo de una hoja
-   movía la lista de atrás (#861). Lo marca `useBloquearScroll`. */
+   movía la lista de atrás (#861). Lo marca `useBloquearScroll`. Sin overscroll,
+   tirar hacia abajo no dispara el pull-to-refresh de Chrome Android. */
 :root[data-scroll-bloqueado] {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* La barra clásica desaparece con el overflow: su lugar queda reservado para

@@ -10,7 +10,7 @@ export const MARCA_SCROLL_BLOQUEADO = {
 } as const;
 
 // Compartido entre todos los modales: el primero bloquea, el último libera.
-const bloqueo = { abiertos: 0, posicion: 0 };
+const bloqueo = { abiertos: 0, posicion: 0, url: '' };
 
 /** Barra clásica: ocupa ancho. La de superposición (teléfono, macOS) no. */
 function barraOcupaLugar(): boolean {
@@ -21,18 +21,28 @@ function bloquear() {
   bloqueo.abiertos += 1;
   if (bloqueo.abiertos > 1) return;
   bloqueo.posicion = window.scrollY;
+  bloqueo.url = window.location.href;
   const marca = barraOcupaLugar()
     ? MARCA_SCROLL_BLOQUEADO.conBarra
     : MARCA_SCROLL_BLOQUEADO.sinBarra;
   document.documentElement.setAttribute(ATRIBUTO_SCROLL_BLOQUEADO, marca);
 }
 
-/** Si algo movió la lista igual (un navegador que ignora el overflow), vuelve a donde estaba. */
+/**
+ * Si algo movió la lista igual (un navegador que ignora el overflow), vuelve a
+ * donde estaba. Con otra URL (un «atrás», un filtro) la posición guardada ya no
+ * es de esta lista: queda el scroll que dejó el navegador.
+ */
+function restaurarPosicion() {
+  if (window.location.href !== bloqueo.url) return;
+  if (window.scrollY !== bloqueo.posicion) window.scrollTo({ top: bloqueo.posicion });
+}
+
 function liberar() {
   bloqueo.abiertos -= 1;
   if (bloqueo.abiertos > 0) return;
   document.documentElement.removeAttribute(ATRIBUTO_SCROLL_BLOQUEADO);
-  if (window.scrollY !== bloqueo.posicion) window.scrollTo({ top: bloqueo.posicion });
+  restaurarPosicion();
 }
 
 /**
