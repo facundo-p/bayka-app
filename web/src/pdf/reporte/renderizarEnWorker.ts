@@ -11,23 +11,30 @@ type WorkerDeRender = Pick<
 
 export type CrearWorker = () => WorkerDeRender;
 
-export const ERROR_RESPUESTA_ILEGIBLE = 'No se pudo leer el PDF que armó el worker';
+const ERROR_RESPUESTA_ILEGIBLE = 'No se pudo leer el PDF que armó el worker';
 
 function crearWorkerDelReporte(): WorkerDeRender {
   return new Worker(new URL('./reporte.worker.ts', import.meta.url), { type: 'module' });
 }
 
-/** Cualquier salida del worker resuelve o rechaza: sin respuesta, el modal quedaría esperando. */
+/**
+ * Cualquier salida del worker resuelve o rechaza: sin respuesta, el modal
+ * quedaría esperando. `soltar` quita el oyente de la señal: si no, un abort
+ * posterior rechazaría una espera que ya nadie escucha.
+ */
 function esperarRespuesta(worker: WorkerDeRender, senal: AbortSignal | undefined) {
-  return new Promise<Blob>((resolve, reject) => {
+  let alAbortar = () => {};
+  const respuesta = new Promise<Blob>((resolve, reject) => {
     worker.onmessage = ({ data }: MessageEvent<RespuestaRender>) => {
       if ('blob' in data) resolve(data.blob);
       else reject(new Error(data.error));
     };
     worker.onerror = (evento) => reject(new Error(evento.message));
     worker.onmessageerror = () => reject(new Error(ERROR_RESPUESTA_ILEGIBLE));
-    senal?.addEventListener('abort', () => reject(senal.reason), { once: true });
+    alAbortar = () => reject(senal?.reason);
   });
+  senal?.addEventListener('abort', alAbortar, { once: true });
+  return { respuesta, soltar: () => senal?.removeEventListener('abort', alAbortar) };
 }
 
 type OpcionesRender = {
@@ -46,11 +53,12 @@ export async function renderizarEnWorker(
 ): Promise<Blob> {
   senal?.throwIfAborted();
   const worker = crear();
+  const { respuesta, soltar } = esperarRespuesta(worker, senal);
   try {
-    const respuesta = esperarRespuesta(worker, senal);
     worker.postMessage(pedido);
     return await respuesta;
   } finally {
+    soltar();
     worker.terminate();
   }
 }

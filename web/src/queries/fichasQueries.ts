@@ -141,6 +141,7 @@ export async function listarArbolesDelFiltro(
   filtros: FiltrosArboles,
   senal?: AbortSignal,
 ): Promise<ArbolParaFicha[]> {
+  senal?.throwIfAborted();
   const busqueda = await resolverBusquedaDeFiltros(filtros);
   const select = { columnas: SELECT_FICHA };
   const pagina = (desde: number, hasta: number) => {

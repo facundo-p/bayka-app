@@ -210,6 +210,16 @@ describe('listarArbolesDelFiltro', () => {
       paginas.forEach((pagina) => expect(pagina.senal).toBe(control.signal));
     });
 
+    test('ya cancelada, no consulta nada, ni el código de la búsqueda', async () => {
+      const control = new AbortController();
+      control.abort();
+      const consultas = capturarConsultas(() => ({ data: [{ codigo: 'SS26' }] }));
+      await expect(
+        listarArbolesDelFiltro('plant-1', { busqueda: 'LP1L23BANC12-SS26' }, control.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(consultas).toHaveLength(0);
+    });
+
     test('cancelada a mitad, no pide más páginas y rechaza como cancelación', async () => {
       const control = new AbortController();
       const consultas = capturarConsultas(() => {

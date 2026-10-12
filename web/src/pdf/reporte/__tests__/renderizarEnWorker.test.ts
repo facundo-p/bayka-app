@@ -1,10 +1,6 @@
 import type { ArchivosFuentes } from '../../plantilla/fuentes';
 import { atenderPedido, type PedidoRender, type RespuestaRender } from '../renderReporte';
-import {
-  ERROR_RESPUESTA_ILEGIBLE,
-  renderizarEnWorker,
-  type CrearWorker,
-} from '../renderizarEnWorker';
+import { renderizarEnWorker, type CrearWorker } from '../renderizarEnWorker';
 
 const PEDIDO: PedidoRender = {
   documento: {
@@ -18,10 +14,16 @@ const BLOB = new Blob(['%PDF']);
 const FALLA_AL_CARGAR = Symbol('falla al cargar');
 const ILEGIBLE = Symbol('respuesta que no se puede deserializar');
 const NO_CONTESTA = Symbol('sigue armando');
+const NO_SE_PUEDE_CLONAR = Symbol('el pedido no cruza al worker');
 
-type Salida = RespuestaRender | typeof FALLA_AL_CARGAR | typeof ILEGIBLE | typeof NO_CONTESTA;
+type Salida =
+  | RespuestaRender
+  | typeof FALLA_AL_CARGAR
+  | typeof ILEGIBLE
+  | typeof NO_CONTESTA
+  | typeof NO_SE_PUEDE_CLONAR;
 
-/** Un worker que contesta lo que se le diga, falla, o se queda armando. */
+/** Un worker que contesta lo que se le diga, falla, se queda armando o rechaza el pedido. */
 function workerFalso(contestar: (pedido: PedidoRender) => Salida) {
   const worker = {
     onmessage: null as ((evento: MessageEvent) => void) | null,
@@ -29,6 +31,9 @@ function workerFalso(contestar: (pedido: PedidoRender) => Salida) {
     onmessageerror: null as ((evento: MessageEvent) => void) | null,
     postMessage: vi.fn((pedido: PedidoRender) => {
       const salida = contestar(pedido);
+      if (salida === NO_SE_PUEDE_CLONAR) {
+        throw new DOMException('could not be cloned', 'DataCloneError');
+      }
       queueMicrotask(() => {
         if (salida === NO_CONTESTA) return;
         if (salida === FALLA_AL_CARGAR) {
@@ -46,6 +51,20 @@ const crearCon =
   (worker: ReturnType<typeof workerFalso>): CrearWorker =>
   () =>
     worker as unknown as ReturnType<CrearWorker>;
+
+/** Los rechazos que nadie escuchó mientras corre `hacer`. */
+async function rechazosSueltos(hacer: () => Promise<void>): Promise<unknown[]> {
+  const rechazos: unknown[] = [];
+  const anotar = (razon: unknown) => rechazos.push(razon);
+  process.on('unhandledRejection', anotar);
+  try {
+    await hacer();
+    await new Promise((listo) => setTimeout(listo, 0));
+  } finally {
+    process.off('unhandledRejection', anotar);
+  }
+  return rechazos;
+}
 
 describe('renderizarEnWorker', () => {
   test('le manda el pedido al worker, devuelve su PDF y lo termina', async () => {
@@ -65,7 +84,7 @@ describe('renderizarEnWorker', () => {
 
   test.each([
     ['no llega a cargar', FALLA_AL_CARGAR, 'window is not defined'],
-    ['contesta algo ilegible', ILEGIBLE, ERROR_RESPUESTA_ILEGIBLE],
+    ['contesta algo ilegible', ILEGIBLE, 'No se pudo leer el PDF'],
   ] as const)('si el worker %s, rechaza en vez de quedar esperando', async (_, salida, mensaje) => {
     const worker = workerFalso(() => salida);
     await expect(renderizarEnWorker(PEDIDO, { crear: crearCon(worker) })).rejects.toThrow(mensaje);
@@ -79,6 +98,33 @@ describe('renderizarEnWorker', () => {
     control.abort();
     await expect(render).rejects.toMatchObject({ name: 'AbortError' });
     expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  test('si el pedido no cruza al worker, rechaza y un abort posterior no deja rechazos sueltos', async () => {
+    const worker = workerFalso(() => NO_SE_PUEDE_CLONAR);
+    const control = new AbortController();
+    const sueltos = await rechazosSueltos(async () => {
+      await expect(
+        renderizarEnWorker(PEDIDO, { senal: control.signal, crear: crearCon(worker) }),
+      ).rejects.toThrow('could not be cloned');
+      control.abort();
+    });
+    expect(sueltos).toEqual([]);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  test('un abort después de la respuesta no cambia nada: la señal ya no tiene oyente', async () => {
+    const worker = workerFalso(() => ({ blob: BLOB }));
+    const control = new AbortController();
+    const quitar = vi.spyOn(control.signal, 'removeEventListener');
+    const sueltos = await rechazosSueltos(async () => {
+      await expect(
+        renderizarEnWorker(PEDIDO, { senal: control.signal, crear: crearCon(worker) }),
+      ).resolves.toBe(BLOB);
+      control.abort();
+    });
+    expect(sueltos).toEqual([]);
+    expect(quitar).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 
   test('ya cancelado, ni crea el worker', async () => {
