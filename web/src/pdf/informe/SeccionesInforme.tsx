@@ -95,7 +95,7 @@ function RenglonEspecie({ fila }: { fila: FilaEspecie }) {
 
 export function BloqueEspecies({ especies }: { especies: ModeloInforme['especies'] }) {
   return (
-    <View style={styles.bloque}>
+    <View>
       <EncabezadoBloque>{especies.titulo}</EncabezadoBloque>
       {especies.vacio ? (
         <Text style={styles.mensaje}>{especies.vacio}</Text>

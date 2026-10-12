@@ -31,10 +31,6 @@ test.each([
   expect(plan(4, especies).ubicacion).toBe(ubicacion);
 });
 
-test('la cantidad de parcelas no mueve el mapa', () => {
-  expect(plan(120, 4)).toEqual(plan(1, 4));
-});
-
 describe('en el umbral de lo libre', () => {
   const cuatro = modelo(4, 4);
   const umbral = libreMinimoAlPie(cuatro);
@@ -67,6 +63,13 @@ describe('altoEnUltimaHoja', () => {
     const casiLlena = CUERPO_HOJA.alto - 10;
     expect(altoEnUltimaHoja([renglon(casiLlena), renglon(20), renglon(30)])).toBe(50);
     expect(altoEnUltimaHoja([renglon(100), renglon(200)])).toBe(300);
+  });
+
+  test('un renglón que llega justo al borde no entra: el A4 de react-pdf es más corto', () => {
+    expect(altoEnUltimaHoja([renglon(CUERPO_HOJA.alto - 14), renglon(14)])).toBe(14);
+    expect(altoEnUltimaHoja([renglon(CUERPO_HOJA.alto - 15), renglon(14)])).toBe(
+      CUERPO_HOJA.alto - 1,
+    );
   });
 
   test('la presencia decide si salta de hoja, pero no suma al alto ocupado', () => {

@@ -81,9 +81,6 @@ export const informeStyles = StyleSheet.create({
   },
   rellenoAvance: { height: '100%', backgroundColor: COLOR_PDF.oliva },
 
-  // Relleno y no margen: react-pdf manda entero a la hoja siguiente un bloque que
-  // entra en la hoja pero cuyo margen inferior no, y deja la anterior en blanco.
-  bloque: { paddingBottom: M.separacionBloques },
   encabezadoBloque: {
     ...titulo,
     fontSize: TAMANO_TEXTO.bloque,
@@ -128,6 +125,9 @@ export const informeStyles = StyleSheet.create({
   cantidad: { ...numero, width: M.anchoCantidad },
   porcentajeEspecie: { ...numero, width: M.anchoPorcentaje, color: COLOR_PDF.apagado },
 
+  // Margen arriba del mapa y no relleno al pie de las especies: un relleno que no
+  // entra en la hoja la parte y manda solo ese hueco a una hoja en blanco.
+  bloqueMapa: { marginTop: M.separacionBloques },
   tituloMapa: { ...titulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
   notaTitulo: {
     lineHeight: M.interlineado,

@@ -69,7 +69,7 @@ function MapaEnHojaCompleta({ contenido, mapa }: MapaProps) {
 
 function MapaAlPie({ contenido, mapa }: MapaProps) {
   return (
-    <View wrap={false}>
+    <View style={styles.bloqueMapa} wrap={false}>
       <EncabezadoBloque>{TEXTO_INFORME.mapa}</EncabezadoBloque>
       <ImagenMapa mapa={mapa} />
       <Leyenda items={contenido.leyenda} />
@@ -81,7 +81,7 @@ function MapaAlPie({ contenido, mapa }: MapaProps) {
 /** Sin puntos, el bloque explica por qué no hay mapa. */
 function SinMapa({ motivo }: { motivo: string }) {
   return (
-    <View wrap={false}>
+    <View style={styles.bloqueMapa} wrap={false}>
       <EncabezadoBloque>{TEXTO_INFORME.mapa}</EncabezadoBloque>
       <Text style={styles.mensaje}>{motivo}</Text>
     </View>

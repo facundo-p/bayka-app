@@ -98,16 +98,22 @@ test('11 especies y N/N: el mapa 16:9 no entra al pie y abre la hoja 2', async (
   expect(hojasConContenido(textos)).toEqual([1, 2]);
 });
 
-test('las especies empiezan en la hoja 1 aunque el bloque entero entre en la siguiente', async () => {
-  // Con 38 especies el bloque entraba justo en la hoja 1 salvo su margen inferior,
-  // y react-pdf lo mandaba entero a la hoja 2: la 1 quedaba con el resumen solo.
+test('cuando las especies llenan justo la hoja 1, no queda ninguna hoja en blanco', async () => {
+  // Con 38 filas, la separación al pie del bloque no entraba: react-pdf la mandaba
+  // sola a la hoja 2. Antes, con margen, mandaba el bloque entero y la 1 quedaba
+  // con el resumen solo.
   for (let especies = 30; especies <= 44; especies += 1) {
-    const { textos } = await renderizar(sinMapa(entradaInforme({ parcelas: 17, especies })));
-    const titulo = textos.indexOf(`Distribución por especie · ${especies} especies`);
-    const pieHoja1 = textos.findIndex((texto) => texto.includes('Página 1 de'));
-    expect(titulo, `${especies} especies`).toBeLessThan(pieHoja1);
+    const conMapa = entradaInforme({ parcelas: 17, especies });
+    for (const entrada of [conMapa, sinMapa(conMapa)]) {
+      const { pdf, textos } = await renderizar(entrada);
+      const caso = `${especies} especies${entrada.opciones.mapa ? ', con mapa' : ''}`;
+      const titulo = textos.indexOf(`Distribución por especie · ${especies} especies`);
+      const pieHoja1 = textos.findIndex((texto) => texto.includes('Página 1 de'));
+      expect(titulo, caso).toBeLessThan(pieHoja1);
+      expect(hojasConContenido(textos), caso).toEqual(hojasDel(pdf));
+    }
   }
-}, 30_000);
+}, 60_000);
 
 // Más allá de la hoja 2: el listado cruza al menos dos saltos de hoja.
 const HOJA_MINIMA_DEL_FINAL = 3;
@@ -177,6 +183,16 @@ async function entraAlPie(entrada: EntradaInforme) {
   const soloElResto = await renderizar(sinMapa(entrada));
   return paginasDelPdf(alPie.pdf) === paginasDelPdf(soloElResto.pdf);
 }
+
+// La última fila que entra en la hoja 1 y en la 2: el plan acierta en los dos bordes.
+test.each([38, 39, 57, 58])(
+  'con %i especies, el plan acierta si el mapa entra al pie',
+  async (especies) => {
+    const entrada = entradaInforme({ parcelas: 4, especies });
+    const { plan } = await renderizar(entrada);
+    expect(plan?.ubicacion === UBICACION_MAPA.ultimaHoja).toBe(await entraAlPie(entrada));
+  },
+);
 
 describe('en el borde de los informes cortos, con N/N', () => {
   test('con 10 especies el plan lo pone al pie y de verdad entra', async () => {
