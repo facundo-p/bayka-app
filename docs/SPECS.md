@@ -674,8 +674,8 @@ Hasta #822 cada árbol tenía además un ID numérico secuencial entre todas las
 plantaciones, que la web generaba con "Generar IDs". Se sacó de la app y de las
 exportaciones, sin reemplazo: el ID de Árbol cumple ese papel.
 
-La base ya no los guarda: las columnas y los RPC que los generaban se dropearon
-en #859. La sincronización ignora los IDs que mande un APK viejo.
+La base ya no guarda esos IDs: las columnas y los RPC que los generaban se
+dropearon en #859. La sincronización ignora los que mande un APK viejo.
 
 ---
 

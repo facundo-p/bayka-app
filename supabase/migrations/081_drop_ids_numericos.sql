@@ -1,15 +1,14 @@
 -- Se dropean los IDs numéricos de los árboles y los RPC que los generaban (#859).
 --
--- Desde #822 (080) ningún cliente escribe ni muestra `trees.global_id` ni
--- `trees.plantacion_id`, y la web ya no llama a `generate_tree_ids`,
--- `next_global_id_seed` ni `plantation_ids_status`. El APK de prod 1.3.0 baja
--- los árboles con `select('*')` y lee las dos columnas con `?? null`: sin ellas,
--- el pull sigue andando. Un celular con ese APK que baje una plantación desde
--- cero ya no recibe los IDs viejos y no ofrece CSV/Excel; la web exporta.
+-- Desde #822 (080) ningún cliente los escribe, muestra ni llama. El APK de prod
+-- 1.3.0 los lee del pull con `select('*')` y `?? null`: sin las columnas sigue
+-- andando, pero no ofrece CSV/Excel en una plantación bajada desde cero.
 --
--- Las columnas no tienen índices, constraints, vistas, policies ni triggers, y
--- ninguna otra función las nombra. Sin CASCADE: si una base tuviera algo que
--- dependa de ellas, la migración falla en vez de llevárselo.
+-- En prod va después del deploy de la web del pase: la anterior exporta con
+-- `global_id` y llama a los RPC.
+--
+-- Sin CASCADE: nada depende de las columnas, y si una base tuviera algo, la
+-- migración falla en vez de llevárselo.
 --
 -- Rollback: ALTER TABLE trees ADD COLUMN plantacion_id integer, ADD COLUMN
 -- global_id integer; recrear plantation_ids_status y next_global_id_seed como
