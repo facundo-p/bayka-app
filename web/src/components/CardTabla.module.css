@@ -23,6 +23,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Lo que se enfoca con Tab (fila, checkbox, menú) queda debajo del thead, no tapado. */
+  scroll-padding-top: var(--alto-encabezado-tabla);
 }
 
 /* Indicio de que hay más columnas hacia un lado: un degradado del color de la

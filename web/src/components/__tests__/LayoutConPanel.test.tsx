@@ -68,11 +68,29 @@ async function abrirAnchico() {
   return usuario;
 }
 
+/** Tab hasta la primera fila y Enter. */
+async function abrirAnchicoConTeclado() {
+  const usuario = userEvent.setup();
+  render(<ListadoConDetalle />);
+  await usuario.tab();
+  expect(fila('Anchico')).toHaveFocus();
+  await usuario.keyboard('{Enter}');
+  return usuario;
+}
+
 describe('arriba de 900px', () => {
   test('el detalle es una columna al costado, no un modal', async () => {
     await abrirAnchico();
     expect(screen.getByRole('complementary', { name: 'Detalle de Anchico' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('con teclado: Enter abre la columna y, al cerrar con Escape, el foco sigue en la fila', async () => {
+    const usuario = await abrirAnchicoConTeclado();
+    expect(screen.getByRole('complementary', { name: 'Detalle de Anchico' })).toBeInTheDocument();
+    await usuario.keyboard('{Escape}');
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(fila('Anchico')).toHaveFocus();
   });
 });
 
@@ -103,6 +121,14 @@ describe('a 900px o menos', () => {
   ])('cierra %s, deselecciona y devuelve el foco a la fila', async (_como, cerrar) => {
     const usuario = await abrirAnchico();
     await cerrar(usuario);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fila('Anchico')).toHaveFocus();
+  });
+
+  test('con teclado: Enter abre la hoja y, al cerrar con Escape, el foco vuelve a la fila', async () => {
+    const usuario = await abrirAnchicoConTeclado();
+    expect(screen.getByRole('dialog', { name: 'Detalle de Anchico' })).toHaveFocus();
+    await usuario.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(fila('Anchico')).toHaveFocus();
   });
