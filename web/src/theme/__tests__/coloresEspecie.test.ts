@@ -87,10 +87,4 @@ describe('coloresDeEspecies', () => {
   test('un código que no está habilitado va en gris', () => {
     expect(coloresDeEspecies([especie('ANC', 0)])('XYZ')).toBe(COLOR_GRAFICO_OTRAS);
   });
-
-  test('una especie habilitada sin lugar legible se pinta por su hash', () => {
-    const color = coloresDeEspecies([especie('ANC', null), especie('TIM', 0)]);
-    expect(color('ANC')).toBe(colorEspeciePorCodigo('ANC'));
-    expect(color('TIM')).toBe('#0a3760');
-  });
 });

@@ -49,9 +49,8 @@ type FilaEspecieClasificada = FilaEspecie & {
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
   species_id: string;
-  /** Falta mientras la base no tenga la columna. */
-  lugar_color?: number | null;
-  species: FilaEspecie | null;
+  lugar_color: number | null;
+  species: Omit<FilaEspecie, 'id'> | null;
 };
 
 function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
@@ -93,21 +92,20 @@ function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
     codigo: fila.species?.codigo ?? '',
     nombre: fila.species?.nombre ?? '',
     nombreCientifico: fila.species?.nombre_cientifico ?? null,
-    lugarColor: fila.lugar_color ?? null,
+    lugarColor: fila.lugar_color,
   };
 }
 
 /**
  * Especies habilitadas de la plantación, por nombre: el orden de la botonera en la app (#635).
- * `*` en vez de nombrar `lugar_color`: en una base que todavía no tiene la columna la
- * lectura no falla, y los colores caen al respaldo por hash (#845).
+ * `lugar_color` sale de la migración 079: en una base sin ella, la lectura falla (#863).
  */
 export async function listarEspeciesDePlantacion(
   plantationId: string,
 ): Promise<EspecieDePlantacion[]> {
   const { data, error } = await supabase
     .from('plantation_species')
-    .select('*, species(id, codigo, nombre, nombre_cientifico)')
+    .select('species_id, lugar_color, species(codigo, nombre, nombre_cientifico)')
     .eq('plantation_id', plantationId);
   if (error) throw new Error(error.message);
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).

@@ -5,7 +5,6 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { filaPlantacion } from '../../test/fabricas';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -156,12 +155,6 @@ const HABILITADAS = [
   { species_id: 'sp-2', lugar_color: 1, species: { ...CATALOGO[1] } },
 ];
 
-/** Una base sin la columna del lugar: las filas llegan sin `lugar_color`. */
-const HABILITADAS_SIN_LUGAR = HABILITADAS.map(({ species_id, species }) => ({
-  species_id,
-  species,
-}));
-
 function crearResolver(conteos: RespuestaMock['data'], habilitadas: RespuestaMock['data'] = []) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
     if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
@@ -222,15 +215,6 @@ describe('DashboardTab', () => {
     const quebracho = screen.getByText('Quebracho').closest('li') as HTMLElement;
     const barra = quebracho.querySelector('[style*="--color"]') as HTMLElement;
     expect(barra.style.getPropertyValue('--color')).toBe('#3b7db5');
-  });
-
-  test('si la base todavía no tiene el lugar, cada especie se pinta por su hash', async () => {
-    capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS_SIN_LUGAR));
-    renderRutasEn('/plantaciones/plant-1');
-
-    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
-    expect(colores).toHaveTextContent(`AL:${colorEspeciePorCodigo('AL')}`);
-    expect(colores).toHaveTextContent(`QB:${colorEspeciePorCodigo('QB')}`);
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
