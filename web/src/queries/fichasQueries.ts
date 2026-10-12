@@ -1,6 +1,6 @@
 /*
- * Lo que necesitan las fichas PDF de árboles (#754): más datos por árbol que el listado
- * (científico, clasificación, nombres de parcela y grupo), leídos por ids.
+ * Lo que necesita la ficha PDF de un árbol (#754): más datos que el listado
+ * (científico, clasificación, nombres de parcela y grupo).
  */
 import { idDeArbol } from '../../../shared/codigoPlantacion';
 import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
@@ -103,26 +103,21 @@ function mapearArbolFicha(fila: FilaArbolFicha): ArbolParaFicha {
   };
 }
 
-/** Árboles de la plantación con esos ids, en el orden de `ids`; los que no existen se omiten. */
-export async function listarArbolesParaFichas(
+/** El árbol de la plantación con ese id; null si no existe o no es de la plantación. */
+export async function leerArbolParaFicha(
   plantationId: string,
-  ids: readonly string[],
-): Promise<ArbolParaFicha[]> {
-  if (ids.length === 0) return [];
+  arbolId: string,
+): Promise<ArbolParaFicha | null> {
   const { data, error } = await supabase
     .from('trees')
     .select(SELECT_FICHA)
     .eq('groups.plantation_id', plantationId)
-    .in('id', [...ids]);
+    .eq('id', arbolId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
-  const porId = new Map(
-    ((data ?? []) as unknown as FilaArbolFicha[]).map((fila) => [fila.id, fila]),
-  );
-  return ids.flatMap((id) => {
-    const fila = porId.get(id);
-    return fila ? [mapearArbolFicha(fila)] : [];
-  });
+  const fila = data as unknown as FilaArbolFicha | null;
+  return fila && mapearArbolFicha(fila);
 }
 
 /** Nombre de la organización dueña de la plantación; null si no se puede leer. */

@@ -1,7 +1,7 @@
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { resetEstadoMock } from '../../test/supabaseMock';
-import { leerNombreOrganizacion, listarArbolesParaFichas } from '../fichasQueries';
+import { leerArbolParaFicha, leerNombreOrganizacion } from '../fichasQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -40,10 +40,10 @@ function filaArbolFicha(id: string, sobre: Record<string, unknown> = {}) {
   };
 }
 
-describe('listarArbolesParaFichas', () => {
-  test('lee por ids dentro de la plantación, con los embeds de la ficha', async () => {
-    const consultas = capturarConsultas(() => ({ data: [filaArbolFicha('t1')] }));
-    await listarArbolesParaFichas('plant-1', ['t1']);
+describe('leerArbolParaFicha', () => {
+  test('lee el árbol por id dentro de la plantación, con los embeds de la ficha', async () => {
+    const consultas = capturarConsultas(() => ({ data: filaArbolFicha('t1') }));
+    await leerArbolParaFicha('plant-1', 't1');
 
     expect(consultas[0].tabla).toBe('trees');
     expect(consultas[0].columnas).toContain(
@@ -53,13 +53,13 @@ describe('listarArbolesParaFichas', () => {
     expect(consultas[0].columnas).not.toContain('global_id');
     expect(consultas[0].filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
-      { metodo: 'in', columna: 'id', valor: ['t1'] },
+      { metodo: 'eq', columna: 'id', valor: 't1' },
     ]);
   });
 
   test('mapea la fila completa', async () => {
-    capturarConsultas(() => ({ data: [filaArbolFicha('t1')] }));
-    const [arbol] = await listarArbolesParaFichas('plant-1', ['t1']);
+    capturarConsultas(() => ({ data: filaArbolFicha('t1') }));
+    const arbol = await leerArbolParaFicha('plant-1', 't1');
 
     expect(arbol).toEqual({
       id: 't1',
@@ -83,12 +83,6 @@ describe('listarArbolesParaFichas', () => {
     });
   });
 
-  test('devuelve en el orden de los ids y omite los que no llegaron', async () => {
-    capturarConsultas(() => ({ data: [filaArbolFicha('t2'), filaArbolFicha('t1')] }));
-    const arboles = await listarArbolesParaFichas('plant-1', ['t1', 'x', 't2']);
-    expect(arboles.map((arbol) => arbol.id)).toEqual(['t1', 't2']);
-  });
-
   test('N/N, sin GPS y parcela eliminada', async () => {
     const fila = filaArbolFicha('t1', {
       species: null,
@@ -96,20 +90,19 @@ describe('listarArbolesParaFichas', () => {
       longitude: null,
     });
     fila.groups.parcelas = { ...fila.groups.parcelas, deleted_at: '2026-01-01T00:00:00Z' };
-    capturarConsultas(() => ({ data: [fila] }));
-    const [arbol] = await listarArbolesParaFichas('plant-1', ['t1']);
+    capturarConsultas(() => ({ data: fila }));
+    const arbol = await leerArbolParaFicha('plant-1', 't1');
     expect(arbol).toMatchObject({ especie: null, gps: null, parcela: null });
   });
 
-  test('sin ids no consulta', async () => {
-    const consultas = capturarConsultas(() => ({ data: [] }));
-    expect(await listarArbolesParaFichas('plant-1', [])).toEqual([]);
-    expect(consultas).toHaveLength(0);
+  test('null si el árbol no está en la plantación', async () => {
+    capturarConsultas(() => ({ data: null }));
+    expect(await leerArbolParaFicha('plant-1', 'x')).toBeNull();
   });
 
   test('propaga el error de la consulta', async () => {
     capturarConsultas(() => ({ error: { message: 'boom' } }));
-    await expect(listarArbolesParaFichas('plant-1', ['t1'])).rejects.toThrow('boom');
+    await expect(leerArbolParaFicha('plant-1', 't1')).rejects.toThrow('boom');
   });
 });
 
