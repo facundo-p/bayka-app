@@ -25,8 +25,6 @@ async function firmarSinFallar(fotoUrls: string[]): Promise<Array<string | null>
   }
 }
 
-export type OpcionesCargaFotos = { medida?: MedidaImagen };
-
 async function bajarYReducir(url: string | null, medida: MedidaImagen): Promise<FotoPdf> {
   if (!url) return NO_DISPONIBLE;
   try {
@@ -39,20 +37,38 @@ async function bajarYReducir(url: string | null, medida: MedidaImagen): Promise<
   }
 }
 
+export type OpcionesCargaFotos = {
+  /** `MEDIDA_FOTO_PDF` si no se indica. */
+  medida?: MedidaImagen;
+  /** Fotos terminadas, bajadas o fallidas, sobre las que hay que bajar. Arranca en 0. */
+  alProgresar?: (listas: number, total: number) => void;
+};
+
+/** Baja de a pocas y avisa cada una que termina. */
+async function bajarTodas(
+  firmadas: Array<string | null>,
+  { medida = MEDIDA_FOTO_PDF, alProgresar }: OpcionesCargaFotos,
+): Promise<FotoPdf[]> {
+  let listas = 0;
+  return mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, async (url) => {
+    const foto = await bajarYReducir(url, medida);
+    alProgresar?.(++listas, firmadas.length);
+    return foto;
+  });
+}
+
 /** Una foto por árbol, en el mismo orden que `fotoUrls`. */
 export async function cargarFotos(
   fotoUrls: ReadonlyArray<string | null>,
   opciones: OpcionesCargaFotos = {},
 ): Promise<FotoPdf[]> {
-  const { medida = MEDIDA_FOTO_PDF } = opciones;
   const conFoto = fotoUrls.flatMap((fotoUrl, indice) => {
     const url = fotoSubida(fotoUrl);
     return url ? [{ url, indice }] : [];
   });
+  opciones.alProgresar?.(0, conFoto.length);
   const firmadas = await firmarSinFallar(conFoto.map(({ url }) => url));
-  const cargadas = await mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, (url) =>
-    bajarYReducir(url, medida),
-  );
+  const cargadas = await bajarTodas(firmadas, opciones);
   const fotos = fotoUrls.map(() => SIN_FOTO);
   conFoto.forEach(({ indice }, posicion) => {
     fotos[indice] = cargadas[posicion];

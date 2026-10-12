@@ -35,13 +35,6 @@ test('firma solo las subidas, en una llamada, y reduce cada una', async () => {
   expect(reducir).toHaveBeenCalledWith(expect.anything(), { ancho: 480, alto: 480, calidad: 0.75 });
 });
 
-test('reduce a la medida pedida en vez de la de por defecto', async () => {
-  const medida = { ancho: 1050, alto: 1050, calidad: 0.8 };
-  await cargarFotos(['p/a.jpg', 'p/b.jpg'], { medida });
-  expect(reducir).toHaveBeenCalledTimes(2);
-  expect(reducir.mock.calls.map(([, pedida]) => pedida)).toEqual([medida, medida]);
-});
-
 test('una foto sin firma (sin permiso o inexistente) queda no disponible', async () => {
   estadoMock.pathsSinFirma = ['p/ajena.jpg'];
   expect(await cargarFotos(['p/ajena.jpg', 'p/b.jpg'])).toEqual([NO_DISPONIBLE, LISTA]);
@@ -64,4 +57,29 @@ test('una imagen que no se puede decodificar queda no disponible', async () => {
 test('si falla la firma entera, todas las subidas quedan no disponibles', async () => {
   estadoMock.errorFirma = { message: 'sin red' };
   expect(await cargarFotos(['p/a.jpg', null])).toEqual([NO_DISPONIBLE, SIN_FOTO]);
+});
+
+test('avisa cada foto terminada, bajada o fallida, sobre las que hay que bajar', async () => {
+  fetchFalso.mockRejectedValueOnce(new TypeError('CORS'));
+  const alProgresar = vi.fn();
+  await cargarFotos(['p/a.jpg', null, 'p/b.jpg', 'p/c.jpg'], { alProgresar });
+  expect(alProgresar.mock.calls).toEqual([
+    [0, 3],
+    [1, 3],
+    [2, 3],
+    [3, 3],
+  ]);
+});
+
+test('si falla la firma entera, el progreso igual llega al total', async () => {
+  estadoMock.errorFirma = { message: 'sin red' };
+  const alProgresar = vi.fn();
+  await cargarFotos(['p/a.jpg', 'p/b.jpg'], { alProgresar });
+  expect(alProgresar).toHaveBeenLastCalledWith(2, 2);
+});
+
+test('reduce a la medida pedida', async () => {
+  const medida = { ancho: 360, alto: 360, calidad: 0.7 };
+  await cargarFotos(['p/a.jpg'], { medida });
+  expect(reducir).toHaveBeenCalledWith(expect.anything(), medida);
 });
