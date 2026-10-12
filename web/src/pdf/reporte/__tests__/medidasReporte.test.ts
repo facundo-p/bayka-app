@@ -45,3 +45,26 @@ test.each([
 ])('el renglón de %s entra en su alto', (_, tamano, alto) => {
   expect(tamano * M.interlineado).toBeLessThanOrEqual(alto);
 });
+
+/** IBM Plex Mono: todos sus glifos avanzan 600/1000 de em. */
+const AVANCE_MONO = 0.6;
+
+/** Parcela de 6, grupo de 4, especie de 5, posición de 4 cifras y plantación de 7. */
+const ID_LARGO = 'LPN123L23BANCHC1234-SS2026B';
+
+const anchoMono = (texto: string, tamano: number) => texto.length * AVANCE_MONO * tamano;
+
+// Las columnas reparten a peso lo que dejan los rellenos de las celdas.
+test('un ID de 27 caracteres entra entero en su columna del listado', () => {
+  const pesos = Object.values(M.pesoColumna);
+  const libre = CUERPO_REPORTE.ancho - 2 * M.rellenoCelda * pesos.length;
+  const pesoTotal = pesos.reduce((suma, peso) => suma + peso, 0);
+  const ancho = (libre * M.pesoColumna.idArbol) / pesoTotal;
+  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.filaListado)).toBeLessThan(ancho);
+});
+
+test('y en la tarjeta, al lado de la foto', () => {
+  const marco = 2 * (M.rellenoTarjeta + M.borde);
+  const ancho = CAJA_TARJETA.ancho - marco - LADO_FOTO_TARJETA - M.aireFoto;
+  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.idTarjeta)).toBeLessThan(ancho);
+});
