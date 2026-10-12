@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ATRIBUTO_SCROLL_BLOQUEADO } from '../../../hooks/useBloquearScroll';
 import { PERFIL_SUPERADMIN, estadoMock, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { renderRutasEn } from '../../../test/renderConRutas';
@@ -266,6 +267,16 @@ test('Escape cierra la paleta', async () => {
   fireEvent.keyDown(dialog, { key: 'Escape' });
   await waitFor(() =>
     expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
+  );
+});
+
+test('abierta, el fondo no mueve la lista de atrás: bloquea el scroll del documento', async () => {
+  const dialog = await abrirPaleta();
+  expect(document.documentElement).toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO);
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() =>
+    expect(document.documentElement).not.toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO),
   );
 });
 
