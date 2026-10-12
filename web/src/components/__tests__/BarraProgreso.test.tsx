@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { BarraProgreso } from '../BarraProgreso';
 
 function relleno(container: HTMLElement): HTMLElement {
@@ -43,4 +43,17 @@ test('sin color propio no declara --color', () => {
   const { container } = render(<BarraProgreso alto="md" porcentaje={60} />);
 
   expect(relleno(container).style.getPropertyValue('--color')).toBe('');
+});
+
+test('con nombre es una barra de progreso con su valor, redondeado y dentro de 0 a 100', () => {
+  render(<BarraProgreso alto="md" porcentaje={24.6} nombre="Fotos bajadas" />);
+  const barra = screen.getByRole('progressbar', { name: 'Fotos bajadas' });
+  expect(barra).toHaveAttribute('aria-valuenow', '25');
+  expect(barra).toHaveAttribute('aria-valuemin', '0');
+  expect(barra).toHaveAttribute('aria-valuemax', '100');
+});
+
+test('sin nombre no se anuncia como barra de progreso', () => {
+  render(<BarraProgreso alto="md" porcentaje={60} />);
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 });

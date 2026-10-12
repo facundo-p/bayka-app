@@ -1,11 +1,5 @@
 /* Textos del botón y del modal del reporte PDF de árboles (#849): puros, para testearlos sin render. */
-import {
-  formatearEntero,
-  formatearPeso,
-  pluralizar,
-  PORCENTAJE_COMPLETO,
-  type Sustantivo,
-} from '../../lib/formato';
+import { formatearEntero, formatearPeso, pluralizar, PORCENTAJE_COMPLETO } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import { TOPE_TARJETAS, type EstimacionReporte } from '../../pdf/reporte/planReporte';
 import { TEXTO_REPORTE } from '../../pdf/reporte/textosReporte';
@@ -30,8 +24,10 @@ export const TEXTO_REPORTE_PDF = {
   error: 'No se pudo generar el reporte.',
   listo: 'Listo',
   leyendo: 'Leyendo árboles…',
+  bajando: 'Bajando fotos…',
+  barraFotos: 'Fotos bajadas',
   armando: 'Armando el PDF…',
-  armandoDetalle: 'Puede tardar unos segundos y ya no se puede cancelar.',
+  armandoDetalle: 'Puede tardar unos segundos.',
 } as const;
 
 /** «148 árboles en el filtro, 37 con foto.» */
@@ -39,11 +35,11 @@ export function textoResumenConteo({ total, conFoto }: ConteoDelFiltro): string 
   return `${pluralizar(total, SUSTANTIVO.arbol)} en el filtro, ${formatearEntero(conFoto)} con foto.`;
 }
 
-const TARJETA: Sustantivo = { singular: 'tarjeta con foto', plural: 'tarjetas con foto' };
-
 /** Sublabel de «Con fotos»: las que salen como tarjeta, ya con el tope. */
 export function textoTarjetas(tarjetas: number): string {
-  return tarjetas === 0 ? TEXTO_REPORTE_PDF.sinArbolesConFoto : pluralizar(tarjetas, TARJETA);
+  return tarjetas === 0
+    ? TEXTO_REPORTE_PDF.sinArbolesConFoto
+    : pluralizar(tarjetas, SUSTANTIVO.tarjetaConFoto);
 }
 
 /** «12 hojas · ≈ 2,1 MB». */
@@ -71,6 +67,16 @@ export function textoProgreso(progreso: ProgresoReporte): string {
     case ETAPA_REPORTE.armandoPdf:
       return TEXTO_REPORTE_PDF.armando;
   }
+}
+
+/**
+ * Lo que anuncian los lectores de pantalla: cambia con la etapa, no con cada
+ * foto. Vacío fuera de la generación.
+ */
+export function textoEtapa(progreso: ProgresoReporte | null): string {
+  if (!progreso) return '';
+  if (progreso.etapa === ETAPA_REPORTE.bajandoFotos) return TEXTO_REPORTE_PDF.bajando;
+  return textoProgreso(progreso);
 }
 
 /** Solo la bajada de fotos tiene un avance que medir. */

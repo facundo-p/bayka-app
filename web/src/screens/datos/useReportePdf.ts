@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { estimarPeso } from '../../pdf/reporte/pesoReporte';
 import { estimarReporte, MODO_REPORTE, type ModoReporte } from '../../pdf/reporte/planReporte';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -12,7 +12,8 @@ import type { Plantacion } from '../../queries/plantationQueries';
 import { nombreArchivoReporte, type CatalogosDelNombre } from '../../services/nombreArchivoReporte';
 import {
   descargarReportePdf,
-  ETAPA_REPORTE,
+  type ContextoReportePdf,
+  type PedidoDescargaReporte,
   type ProgresoReporte,
 } from '../../services/pdfReporte';
 import { TEXTO_REPORTE_PDF } from './textosReportePdf';
@@ -31,18 +32,27 @@ export type EstadoReporte =
 
 const ELIGIENDO: EstadoReporte = { fase: FASE_REPORTE.eligiendo, error: null };
 
+type PlantacionDelReporte = Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+
 export type ReportePdfProps = {
-  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+  /** Sin la plantación no hay lugar ni periodo para el nombre: no se puede abrir. */
+  plantacion: PlantacionDelReporte | null | undefined;
   /** Los del listado, con la búsqueda ya aplicada. */
   filtros: FiltrosArboles;
   catalogos: CatalogosDelNombre;
+  /** Sin árboles en el filtro no hay qué reportar. */
+  hayArboles: boolean;
 };
 
 /** Los conteos se piden al abrir: el modal los muestra antes de leer los árboles. */
-function useConteoReporte(plantationId: string, filtros: FiltrosArboles, abierto: boolean) {
+function useConteoReporte(
+  plantationId: string | undefined,
+  filtros: FiltrosArboles,
+  abierto: boolean,
+) {
   return useQuery({
-    queryKey: CLAVE_QUERY.conteoReporte(plantationId, filtros),
-    queryFn: () => contarArbolesDelFiltro(plantationId, filtros),
+    queryKey: CLAVE_QUERY.conteoReporte(plantationId ?? '', filtros),
+    queryFn: plantationId ? () => contarArbolesDelFiltro(plantationId, filtros) : skipToken,
     enabled: abierto,
   });
 }
@@ -64,11 +74,77 @@ function useEleccion(conteo: ConteoDelFiltro | undefined) {
   };
 }
 
-/** Cancelar vale hasta que empieza el armado del PDF, que no se puede cortar. */
-export function esCancelable(estado: EstadoReporte): boolean {
-  return (
-    estado.fase !== FASE_REPORTE.generando || estado.progreso.etapa !== ETAPA_REPORTE.armandoPdf
-  );
+function pedidoDeDescarga(
+  { lugar, periodo }: PlantacionDelReporte,
+  { filtros, catalogos }: ReportePdfProps,
+  modo: ModoReporte,
+) {
+  return { filtros, modo, nombreArchivo: nombreArchivoReporte(lugar, periodo, filtros, catalogos) };
+}
+
+/**
+ * Una corrida a la vez: la nueva corta la anterior. Salir de la pantalla a mitad
+ * de camino la corta, como «Cancelar».
+ */
+function useAbortador() {
+  const control = useRef<AbortController | null>(null);
+  useEffect(() => () => control.current?.abort(), []);
+  return {
+    nuevo: () => {
+      control.current?.abort();
+      control.current = new AbortController();
+      return control.current.signal;
+    },
+    abortar: () => control.current?.abort(),
+  };
+}
+
+type Avisos = {
+  mostrar: (estado: EstadoReporte) => void;
+  /** Sin fotos fallidas no hay nada que avisar: el modal se cierra. */
+  cerrar: () => void;
+};
+
+/** Cortada la corrida, lo que llegue tarde —un error, el avance de una foto— no se muestra. */
+function avisosDe(
+  senal: AbortSignal,
+  setEstado: (estado: EstadoReporte) => void,
+  alTerminar: () => void,
+): Avisos {
+  return {
+    mostrar: (estado) => {
+      if (!senal.aborted) setEstado(estado);
+    },
+    cerrar: () => {
+      setEstado(ELIGIENDO);
+      alTerminar();
+    },
+  };
+}
+
+type PedidoBase = Omit<PedidoDescargaReporte, 'alProgresar' | 'senal'>;
+
+/** Cancelada, no avisa nada ni deja rastro: no es un error. */
+async function correr(
+  pedido: PedidoBase,
+  senal: AbortSignal,
+  contexto: ContextoReportePdf,
+  { mostrar, cerrar }: Avisos,
+) {
+  const alProgresar = (progreso: ProgresoReporte) =>
+    mostrar({ fase: FASE_REPORTE.generando, progreso });
+  try {
+    const { fotosFallidas } = await descargarReportePdf(
+      { ...pedido, alProgresar, senal },
+      contexto,
+    );
+    if (fotosFallidas > 0) mostrar({ fase: FASE_REPORTE.terminado, fotosFallidas });
+    else cerrar();
+  } catch (error) {
+    if (senal.aborted) return;
+    console.error(error);
+    mostrar({ fase: FASE_REPORTE.eligiendo, error: TEXTO_REPORTE_PDF.error });
+  }
 }
 
 type Generacion = {
@@ -77,71 +153,44 @@ type Generacion = {
   alTerminar: () => void;
 };
 
-function pedidoDeDescarga({ plantacion, filtros, catalogos }: ReportePdfProps, modo: ModoReporte) {
-  const { lugar, periodo } = plantacion;
-  return { filtros, modo, nombreArchivo: nombreArchivoReporte(lugar, periodo, filtros, catalogos) };
-}
-
-/** Salir de la pantalla a mitad de camino corta la lectura y las fotos, como «Cancelar». */
-function useAbortador() {
-  const control = useRef<AbortController | null>(null);
-  useEffect(() => () => control.current?.abort(), []);
-  return {
-    nuevo: () => (control.current = new AbortController()),
-    abortar: () => control.current?.abort(),
-  };
-}
-
-/**
- * Sin fotos fallidas, al terminar cierra; con fallidas, el modal lo avisa.
- * Cancelado, no avisa nada: ni el error ni el avance de una foto que ya venía.
- */
+/** Solo arranca desde la elección, y cada corrida corta la anterior: nunca quedan dos vivas. */
 function useGeneracion({ props, modo, alTerminar }: Generacion) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState<EstadoReporte>(ELIGIENDO);
   const abortador = useAbortador();
-  const correr = async () => {
-    const { signal } = abortador.nuevo();
-    const alProgresar = (progreso: ProgresoReporte) => {
-      if (!signal.aborted) setEstado({ fase: FASE_REPORTE.generando, progreso });
-    };
-    alProgresar({ etapa: ETAPA_REPORTE.leyendoArboles });
-    try {
-      const pedido = { ...pedidoDeDescarga(props, modo), alProgresar, senal: signal };
-      const contexto = { plantacion: props.plantacion, queryClient };
-      const { fotosFallidas } = await descargarReportePdf(pedido, contexto);
-      setEstado(fotosFallidas > 0 ? { fase: FASE_REPORTE.terminado, fotosFallidas } : ELIGIENDO);
-      if (fotosFallidas === 0) alTerminar();
-    } catch {
-      if (!signal.aborted)
-        setEstado({ fase: FASE_REPORTE.eligiendo, error: TEXTO_REPORTE_PDF.error });
-    }
+  const generar = () => {
+    const { plantacion } = props;
+    if (!plantacion || estado.fase !== FASE_REPORTE.eligiendo) return;
+    const senal = abortador.nuevo();
+    const pedido = pedidoDeDescarga(plantacion, props, modo);
+    const avisos = avisosDe(senal, setEstado, alTerminar);
+    void correr(pedido, senal, { plantacion, queryClient }, avisos);
   };
   const reiniciar = () => {
     abortador.abortar();
     setEstado(ELIGIENDO);
   };
-  return { estado, generar: () => void correr(), reiniciar };
+  return { estado, generar, reiniciar };
 }
 
 /**
  * El modal del reporte: conteos del filtro, modo de fotos, estimación de hojas y
- * peso, y la generación con su progreso.
+ * peso, y la generación con su progreso. Cerrarlo corta la generación en
+ * cualquier etapa.
  */
 export function useReportePdf(props: ReportePdfProps) {
   const [abierto, setAbierto] = useState(false);
-  const conteo = useConteoReporte(props.plantacion.id, props.filtros, abierto);
+  const conteo = useConteoReporte(props.plantacion?.id, props.filtros, abierto);
   const eleccion = useEleccion(conteo.data);
   const alTerminar = () => setAbierto(false);
   const { estado, generar, reiniciar } = useGeneracion({ props, modo: eleccion.modo, alTerminar });
-  const cancelable = esCancelable(estado);
   const cerrar = () => {
-    if (!cancelable) return;
     reiniciar();
-    setAbierto(false);
+    alTerminar();
   };
+  const disponible = Boolean(props.plantacion) && props.hayArboles;
   const abrir = () => setAbierto(true);
-  return { abierto, abrir, cerrar, conteo, ...eleccion, estado, cancelable, generar };
+  return { disponible, abierto, abrir, cerrar, conteo, ...eleccion, estado, generar };
 }
 
 export type EstadoReportePdf = ReturnType<typeof useReportePdf>;

@@ -20,26 +20,15 @@ export function ErrorEnvio({ mensaje, className = styles.errorEnvio }: ErrorEnvi
 
 interface AccionesModalProps {
   onCancelar: () => void;
-  /** Mientras corre algo que no se puede cortar. */
-  cancelarDeshabilitado?: boolean;
   /** La acción principal, a la derecha de Cancelar. */
   children: ReactNode;
 }
 
 /** Pie de los modales: Cancelar y la acción principal. */
-export function AccionesModal({
-  onCancelar,
-  cancelarDeshabilitado = false,
-  children,
-}: AccionesModalProps) {
+export function AccionesModal({ onCancelar, children }: AccionesModalProps) {
   return (
     <div className={styles.acciones}>
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={cancelarDeshabilitado}
-        onClick={onCancelar}
-      >
+      <Button type="button" variant="secondary" onClick={onCancelar}>
         Cancelar
       </Button>
       {children}

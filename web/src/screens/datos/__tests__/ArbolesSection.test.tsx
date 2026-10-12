@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import {
 import { listarCatalogo, listarEspeciesDePlantacion } from '../../../queries/especieQueries';
 import { listarPerfiles } from '../../../queries/usuarioQueries';
 import { obtenerPlantacion } from '../../../queries/plantationQueries';
+import { descargarReportePdf, ETAPA_REPORTE } from '../../../services/pdfReporte';
 import { arbolDetalle, especieEnLugar as especie, plantacion } from '../../../test/fabricas';
 import { abrirFiltros } from '../../../test/panelFiltros';
 import { ANCHO, simularAncho } from '../../../test/simularAncho';
@@ -52,6 +53,10 @@ vi.mock('../../../hooks/useAuth', () => ({
   useAuth: () => ({ estado: 'autenticado', perfil: null }),
 }));
 vi.mock('../../../services/pdfFichas', () => ({ descargarFichaPdf: vi.fn() }));
+vi.mock('../../../services/pdfReporte', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../services/pdfReporte')>()),
+  descargarReportePdf: vi.fn(),
+}));
 // El panel tiene sus propias queries (foto, mapa): acá solo importa si se abre.
 vi.mock('../ArbolDetallePanel', () => ({
   ArbolDetallePanel: ({ arbol }: { arbol: ArbolDetalle }) => (
@@ -157,6 +162,39 @@ describe.each([ANCHO.desktop, ANCHO.movil])('el reporte PDF, a %ipx', (ancho) =>
     renderSeccion();
     await screen.findByText('Sin árboles para mostrar');
     expect(botonReporte()).toBeDisabled();
+  });
+});
+
+describe('un reporte a medio generar', () => {
+  /** Abre el reporte y lo deja bajando fotos; devuelve su señal. */
+  async function reporteEnCurso(usuario: ReturnType<typeof userEvent.setup>) {
+    vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 6, conFoto: 2 });
+    let senal: AbortSignal | undefined;
+    vi.mocked(descargarReportePdf).mockImplementation((pedido) => {
+      senal = pedido.senal;
+      pedido.alProgresar?.({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 2 });
+      return new Promise(() => {});
+    });
+    await screen.findByText('A1-SS26');
+    await usuario.click(screen.getByRole('button', { name: 'Reporte PDF' }));
+    const modal = within(screen.getByRole('dialog', { name: 'Reporte PDF de árboles' }));
+    await usuario.click(await modal.findByRole('button', { name: 'Generar PDF' }));
+    expect(screen.getByText('Bajando fotos: 1 de 2')).toBeInTheDocument();
+    return () => senal!;
+  }
+
+  test('sigue al cruzar el ancho de teléfono, que rearma la barra', async () => {
+    const senal = await reporteEnCurso(renderSeccion());
+    act(() => simularAncho(ANCHO.movil));
+    expect(screen.getByRole('dialog', { name: 'Reporte PDF de árboles' })).toBeInTheDocument();
+    expect(screen.getByText('Bajando fotos: 1 de 2')).toBeInTheDocument();
+    expect(senal().aborted).toBe(false);
+  });
+
+  test('se corta al salir de la sección', async () => {
+    const senal = await reporteEnCurso(renderSeccion());
+    cleanup();
+    expect(senal().aborted).toBe(true);
   });
 });
 

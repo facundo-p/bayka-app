@@ -10,6 +10,8 @@ import {
 } from '../../../services/pdfReporte';
 import { plantacion } from '../../../test/fabricas';
 import { BotonReportePdf } from '../BotonReportePdf';
+import { ReportePdfModal } from '../ReportePdfModal';
+import { useReportePdf, type ReportePdfProps } from '../useReportePdf';
 
 vi.mock('../../../queries/dataExplorerQueries', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../queries/dataExplorerQueries')>()),
@@ -31,71 +33,95 @@ type Generacion = {
   fallar: () => void;
 };
 
-/** La descarga queda abierta hasta que el test la termina; abortada, rechaza como la real. */
+/**
+ * La descarga queda abierta hasta que el test la termina. Como la real, avisa la
+ * lectura al arrancar y, abortada, rechaza.
+ */
 function generacionControlada(): { actual: () => Generacion } {
   let actual: Generacion | null = null;
-  vi.mocked(descargarReportePdf).mockImplementation(
-    (pedido) =>
-      new Promise((resolve, reject) => {
-        pedido.senal?.addEventListener('abort', () => reject(pedido.senal?.reason));
-        actual = {
-          pedido,
-          progresar: (progreso) => act(() => pedido.alProgresar?.(progreso)),
-          terminar: (fotosFallidas = 0) => resolve({ fotosFallidas }),
-          fallar: () => reject(new Error('sin red')),
-        };
-      }),
-  );
+  vi.mocked(descargarReportePdf).mockImplementation((pedido) => {
+    pedido.alProgresar?.({ etapa: ETAPA_REPORTE.leyendoArboles });
+    return new Promise((resolve, reject) => {
+      pedido.senal?.addEventListener('abort', () => reject(pedido.senal?.reason));
+      actual = {
+        pedido,
+        progresar: (progreso) => act(() => pedido.alProgresar?.(progreso)),
+        terminar: (fotosFallidas = 0) => resolve({ fotosFallidas }),
+        fallar: () => reject(new Error('sin red')),
+      };
+    });
+  });
   return { actual: () => actual! };
 }
 
-function renderBoton(hayArboles = true) {
+/** Como en la sección de Árboles: el botón y el modal comparten el estado del hook. */
+function Reporte(props: ReportePdfProps) {
+  const reporte = useReportePdf(props);
+  return (
+    <>
+      <BotonReportePdf reporte={reporte} />
+      <ReportePdfModal reporte={reporte} />
+    </>
+  );
+}
+
+function renderReporte(props: Partial<ReportePdfProps> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <BotonReportePdf
+      <Reporte
         plantacion={PLANTACION}
         filtros={FILTROS}
         catalogos={CATALOGOS}
-        hayArboles={hayArboles}
+        hayArboles
+        {...props}
       />
     </QueryClientProvider>,
   );
   return userEvent.setup();
 }
 
+const dialogo = () => screen.getByRole('dialog', { name: 'Reporte PDF de árboles' });
+
 async function abrir(usuario: ReturnType<typeof userEvent.setup>) {
   await usuario.click(screen.getByRole('button', { name: 'Reporte PDF' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Reporte PDF de árboles' });
-  await within(dialogo).findByText(/en el filtro/);
-  return within(dialogo);
+  await within(dialogo()).findByText(/en el filtro/);
+  return within(dialogo());
+}
+
+async function generar(usuario: ReturnType<typeof userEvent.setup>) {
+  const modal = await abrir(usuario);
+  await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+  return modal;
 }
 
 const opcion = (modal: ReturnType<typeof within>, nombre: RegExp) =>
   modal.getByRole('radio', { name: nombre });
+
+/** La región viva del modal: la primera, antes del contenido de cada fase. */
+const anuncio = (modal: ReturnType<typeof within>) => modal.getAllByRole('status')[0];
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 7124, conFoto: 148 });
 });
 
-test('sin árboles en el filtro el botón queda deshabilitado', () => {
-  renderBoton(false);
-  expect(screen.getByRole('button', { name: 'Reporte PDF' })).toBeDisabled();
-});
+describe('el botón', () => {
+  test('sin árboles en el filtro queda deshabilitado', () => {
+    renderReporte({ hayArboles: false });
+    expect(screen.getByRole('button', { name: 'Reporte PDF' })).toBeDisabled();
+  });
 
-test('sin la plantación cargada el botón queda deshabilitado', () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <BotonReportePdf plantacion={null} filtros={{}} catalogos={CATALOGOS} hayArboles />
-    </QueryClientProvider>,
-  );
-  expect(screen.getByRole('button', { name: 'Reporte PDF' })).toBeDisabled();
+  test('sin la plantación cargada queda deshabilitado y no cuenta nada', () => {
+    renderReporte({ plantacion: null });
+    expect(screen.getByRole('button', { name: 'Reporte PDF' })).toBeDisabled();
+    expect(contarArbolesDelFiltro).not.toHaveBeenCalled();
+  });
 });
 
 describe('al abrir', () => {
   test('cuenta los árboles del filtro y estima hojas y peso de cada modo', async () => {
-    const modal = await abrir(renderBoton());
+    const modal = await abrir(renderReporte());
     expect(contarArbolesDelFiltro).toHaveBeenCalledWith('plant-1', FILTROS);
     expect(modal.getByText('7.124 árboles en el filtro, 148 con foto.')).toBeInTheDocument();
     expect(opcion(modal, /Con fotos/)).toHaveAccessibleName('Con fotos 148 tarjetas con foto');
@@ -106,7 +132,7 @@ describe('al abrir', () => {
 
   test('sin árboles con foto, «Con fotos» queda apagado y dice por qué', async () => {
     vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 50, conFoto: 0 });
-    const modal = await abrir(renderBoton());
+    const modal = await abrir(renderReporte());
     expect(opcion(modal, /Con fotos/)).toBeDisabled();
     expect(opcion(modal, /Con fotos/)).toHaveAccessibleName('Con fotos Ningún árbol con foto');
     expect(opcion(modal, /Sin fotos/)).toBeChecked();
@@ -114,18 +140,18 @@ describe('al abrir', () => {
 
   test('pasado el tope de tarjetas, avisa cuántas van al listado; sin fotos, no', async () => {
     vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 900, conFoto: 512 });
-    const usuario = renderBoton();
+    const usuario = renderReporte();
     const modal = await abrir(usuario);
-    expect(modal.getByRole('status')).toHaveTextContent('Los otros 112 van al listado, sin foto.');
+    expect(modal.getByText(/Los otros 112 van al listado, sin foto\.$/)).toBeInTheDocument();
     await usuario.click(opcion(modal, /Sin fotos/));
     expect(modal.queryByText(/van al listado/)).not.toBeInTheDocument();
   });
 
   test('si el conteo falla, se puede reintentar', async () => {
     vi.mocked(contarArbolesDelFiltro).mockRejectedValueOnce(new Error('sin red'));
-    const usuario = renderBoton();
+    const usuario = renderReporte();
     await usuario.click(screen.getByRole('button', { name: 'Reporte PDF' }));
-    const modal = within(screen.getByRole('dialog'));
+    const modal = within(dialogo());
     expect(await modal.findByText('No se pudieron contar los árboles.')).toBeInTheDocument();
     expect(modal.getByRole('button', { name: 'Generar PDF' })).toBeDisabled();
     await usuario.click(modal.getByRole('button', { name: 'Reintentar' }));
@@ -136,63 +162,117 @@ describe('al abrir', () => {
 describe('al generar', () => {
   test('pide el reporte con el filtro, el modo y el nombre, y muestra cada etapa', async () => {
     const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    const modal = await abrir(usuario);
-    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+    const modal = await generar(renderReporte());
     expect(actual().pedido).toMatchObject({
       filtros: FILTROS,
       modo: 'con-fotos',
       nombreArchivo: 'arboles-san-sebastian-2025-2026-con-foto-id-l23.pdf',
     });
-    expect(modal.getByText('Leyendo árboles…')).toBeInTheDocument();
+    expect(modal.getByText('Leyendo árboles…', { selector: 'p:not([role])' })).toBeInTheDocument();
     actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 37, total: 148 });
     expect(modal.getByText('Bajando fotos: 37 de 148')).toBeInTheDocument();
+    expect(modal.getByRole('progressbar', { name: 'Fotos bajadas' })).toHaveAttribute(
+      'aria-valuenow',
+      '25',
+    );
     actual().progresar({ etapa: ETAPA_REPORTE.armandoPdf });
-    expect(modal.getByText('Armando el PDF…')).toBeInTheDocument();
+    expect(modal.getByText('Armando el PDF…', { selector: 'p:not([role])' })).toBeInTheDocument();
+  });
+
+  test('un doble clic en «Generar PDF» lanza una sola corrida', async () => {
+    generacionControlada();
+    const usuario = renderReporte();
+    const modal = await abrir(usuario);
+    await usuario.dblClick(modal.getByRole('button', { name: 'Generar PDF' }));
+    expect(descargarReportePdf).toHaveBeenCalledOnce();
+  });
+
+  test('si el segundo clic llega antes de que cambie la fase, corta la primera corrida', async () => {
+    const senales: AbortSignal[] = [];
+    vi.mocked(descargarReportePdf).mockImplementation(({ senal }) => {
+      senales.push(senal!);
+      return new Promise(() => {});
+    });
+    const usuario = renderReporte();
+    const modal = await abrir(usuario);
+    await usuario.dblClick(modal.getByRole('button', { name: 'Generar PDF' }));
+    expect(senales.map((senal) => senal.aborted)).toEqual([true, false]);
   });
 
   test('sin fotos fallidas, al terminar cierra el modal', async () => {
     const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    await usuario.click((await abrir(usuario)).getByRole('button', { name: 'Generar PDF' }));
+    await generar(renderReporte());
     await act(async () => actual().terminar());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   test('con fotos fallidas, al terminar lo avisa y «Listo» cierra', async () => {
     const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    const modal = await abrir(usuario);
-    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+    const usuario = renderReporte();
+    const modal = await generar(usuario);
     await act(async () => actual().terminar(2));
-    expect(modal.getByRole('status')).toHaveTextContent('2 fotos no se pudieron bajar');
+    expect(modal.getByText(/2 fotos no se pudieron bajar/)).toBeInTheDocument();
     await usuario.click(modal.getByRole('button', { name: 'Listo' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  test('si falla, lo dice y deja volver a intentar', async () => {
+  test('si falla, lo dice, deja rastro en la consola y deja volver a intentar', async () => {
+    const consola = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    const modal = await abrir(usuario);
-    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+    const modal = await generar(renderReporte());
     await act(async () => actual().fallar());
     expect(modal.getByRole('alert')).toHaveTextContent('No se pudo generar el reporte.');
     expect(modal.getByRole('button', { name: 'Generar PDF' })).toBeEnabled();
+    expect(consola).toHaveBeenCalledWith(new Error('sin red'));
+    consola.mockRestore();
+  });
+});
+
+describe('accesibilidad', () => {
+  test('al cambiar de fase el foco queda en el modal, no en el body', async () => {
+    const { actual } = generacionControlada();
+    const modal = await generar(renderReporte());
+    expect(dialogo()).toContainElement(document.activeElement as HTMLElement);
+    await act(async () => actual().terminar(1));
+    expect(modal.getByRole('button', { name: 'Listo' })).toBeInTheDocument();
+    expect(dialogo()).toContainElement(document.activeElement as HTMLElement);
+  });
+
+  test('la región viva está desde que abre y anuncia cada etapa, no cada foto', async () => {
+    const { actual } = generacionControlada();
+    const usuario = renderReporte();
+    const modal = await abrir(usuario);
+    const region = anuncio(modal);
+    expect(region).toHaveTextContent(/^$/);
+    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+    expect(anuncio(modal)).toBe(region);
+    expect(region).toHaveTextContent(/^Leyendo árboles…$/);
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 148 });
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 2, total: 148 });
+    expect(region).toHaveTextContent(/^Bajando fotos…$/);
+    actual().progresar({ etapa: ETAPA_REPORTE.armandoPdf });
+    expect(region).toHaveTextContent(/^Armando el PDF…$/);
   });
 });
 
 describe('cancelar', () => {
-  test.each([
-    ['Cancelar', ETAPA_REPORTE.leyendoArboles],
-    ['Cancelar', ETAPA_REPORTE.bajandoFotos],
-    ['Escape', ETAPA_REPORTE.leyendoArboles],
-    ['Escape', ETAPA_REPORTE.bajandoFotos],
-  ] as const)('con %s en «%s» corta todo, cierra y no avisa nada', async (como, etapa) => {
+  const etapas = [
+    { etapa: ETAPA_REPORTE.leyendoArboles },
+    { etapa: ETAPA_REPORTE.bajandoFotos, listas: 3, total: 148 },
+    { etapa: ETAPA_REPORTE.armandoPdf },
+  ] as const;
+
+  test.each(
+    etapas.flatMap((progreso) => [
+      ['Cancelar', progreso],
+      ['Escape', progreso],
+    ]),
+  )('con %s en %o corta todo, cierra y no avisa nada', async (como, progreso) => {
+    const consola = vi.spyOn(console, 'error');
     const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    const modal = await abrir(usuario);
-    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
-    if (etapa === ETAPA_REPORTE.bajandoFotos) actual().progresar({ etapa, listas: 3, total: 148 });
+    const usuario = renderReporte();
+    const modal = await generar(usuario);
+    actual().progresar(progreso);
     if (como === 'Escape') await usuario.keyboard('{Escape}');
     else await usuario.click(modal.getByRole('button', { name: 'Cancelar' }));
     expect(actual().pedido.senal?.aborted).toBe(true);
@@ -202,17 +282,7 @@ describe('cancelar', () => {
     const otraVez = await abrir(usuario);
     expect(otraVez.queryByRole('alert')).not.toBeInTheDocument();
     expect(otraVez.getByRole('button', { name: 'Generar PDF' })).toBeEnabled();
-  });
-
-  test('mientras se arma el PDF no se puede cancelar, ni con Escape', async () => {
-    const { actual } = generacionControlada();
-    const usuario = renderBoton();
-    const modal = await abrir(usuario);
-    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
-    actual().progresar({ etapa: ETAPA_REPORTE.armandoPdf });
-    expect(modal.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
-    await usuario.keyboard('{Escape}');
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(actual().pedido.senal?.aborted).toBe(false);
+    expect(consola).not.toHaveBeenCalled();
+    consola.mockRestore();
   });
 });

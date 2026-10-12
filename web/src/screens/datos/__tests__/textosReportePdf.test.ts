@@ -3,6 +3,7 @@ import {
   porcentajeDeFotos,
   textoAvisoTope,
   textoEstimacion,
+  textoEtapa,
   textoFotosFallidas,
   textoProgreso,
   textoResumenConteo,
@@ -46,6 +47,18 @@ test.each([
 ] as const)('progreso %j: «%s», barra %s', (progreso, texto, porcentaje) => {
   expect(textoProgreso(progreso)).toBe(texto);
   expect(porcentajeDeFotos(progreso)).toBe(porcentaje);
+});
+
+test('lo que se anuncia cambia con la etapa, no con cada foto', () => {
+  expect(textoEtapa(null)).toBe('');
+  expect(textoEtapa({ etapa: ETAPA_REPORTE.leyendoArboles })).toBe('Leyendo árboles…');
+  expect(textoEtapa({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 148 })).toBe(
+    textoEtapa({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 90, total: 148 }),
+  );
+  expect(textoEtapa({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 148 })).toBe(
+    'Bajando fotos…',
+  );
+  expect(textoEtapa({ etapa: ETAPA_REPORTE.armandoPdf })).toBe('Armando el PDF…');
 });
 
 test('las fotos fallidas se avisan en singular y en plural', () => {

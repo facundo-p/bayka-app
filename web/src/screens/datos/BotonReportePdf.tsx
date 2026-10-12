@@ -1,51 +1,26 @@
 import { FileDown } from 'lucide-react';
 import { Button } from '../../components';
 import { TAMANO_ICONO } from '../../theme/iconos';
-import { ReportePdfModal } from './ReportePdfModal';
 import { TEXTO_REPORTE_PDF } from './textosReportePdf';
-import { useReportePdf, type ReportePdfProps } from './useReportePdf';
+import type { EstadoReportePdf } from './useReportePdf';
 import styles from './BotonReportePdf.module.css';
 
-interface BotonProps {
-  deshabilitado: boolean;
-  onClick?: () => void;
-}
-
-function Boton({ deshabilitado, onClick }: BotonProps) {
+/**
+ * «Reporte PDF» de la barra de Árboles. Solo el botón: el estado y el modal van
+ * fuera de la barra, que se rearma al cruzar el ancho de teléfono.
+ */
+export function BotonReportePdf({ reporte }: { reporte: EstadoReportePdf }) {
   return (
     <Button
       variant="contorno"
       size="sm"
       className={styles.boton}
-      disabled={deshabilitado}
+      disabled={!reporte.disponible}
       title={TEXTO_REPORTE_PDF.botonDescripcion}
-      onClick={onClick}
+      onClick={reporte.abrir}
     >
       <FileDown size={TAMANO_ICONO.md} aria-hidden />
       <span className={styles.etiqueta}>{TEXTO_REPORTE_PDF.boton}</span>
     </Button>
   );
-}
-
-type ReportePdfConBotonProps = ReportePdfProps & { hayArboles: boolean };
-
-function ReportePdfConBoton({ hayArboles, ...props }: ReportePdfConBotonProps) {
-  const reporte = useReportePdf(props);
-  return (
-    <>
-      <Boton deshabilitado={!hayArboles} onClick={reporte.abrir} />
-      <ReportePdfModal reporte={reporte} />
-    </>
-  );
-}
-
-type BotonReportePdfProps = Omit<ReportePdfConBotonProps, 'plantacion'> & {
-  /** Sin la plantación no hay lugar ni periodo para el nombre: queda deshabilitado. */
-  plantacion: ReportePdfProps['plantacion'] | null | undefined;
-};
-
-/** «Reporte PDF» de la barra de Árboles; sin árboles en el filtro no hay qué reportar. */
-export function BotonReportePdf({ plantacion, ...props }: BotonReportePdfProps) {
-  if (!plantacion) return <Boton deshabilitado />;
-  return <ReportePdfConBoton plantacion={plantacion} {...props} />;
 }

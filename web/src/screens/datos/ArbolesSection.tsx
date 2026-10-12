@@ -23,7 +23,9 @@ import { BotonReportePdf } from './BotonReportePdf';
 import { nombreTecnicoDe, parcelaDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
+import { ReportePdfModal } from './ReportePdfModal';
 import { useArbolesSection } from './useArbolesSection';
+import { useReportePdf, type EstadoReportePdf } from './useReportePdf';
 import { useSoltarParcelaFantasma } from './useSoltarParcelaFantasma';
 import { VacioConFiltros } from './VacioConFiltros';
 
@@ -112,23 +114,30 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
-function AccionReportePdf({ seccion }: { seccion: SeccionArboles }) {
+/**
+ * El reporte vive acá y no en la barra: la barra se rearma al cruzar el ancho
+ * de teléfono (al rotarlo, por ejemplo) y se llevaría puesto un reporte a medias.
+ */
+function useReporteDeArboles(seccion: SeccionArboles) {
   const { parcelas, grupos, especies } = seccion;
-  return (
-    <BotonReportePdf
-      plantacion={seccion.plantacion}
-      filtros={seccion.filtrosAplicados}
-      catalogos={{
-        parcelas: parcelas.data ?? [],
-        grupos: grupos.data ?? [],
-        especies: especies.data ?? [],
-      }}
-      hayArboles={(seccion.arboles.data?.total ?? 0) > 0}
-    />
-  );
+  return useReportePdf({
+    plantacion: seccion.plantacion,
+    filtros: seccion.filtrosAplicados,
+    catalogos: {
+      parcelas: parcelas.data ?? [],
+      grupos: grupos.data ?? [],
+      especies: especies.data ?? [],
+    },
+    hayArboles: (seccion.arboles.data?.total ?? 0) > 0,
+  });
 }
 
-function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
+interface ConReporte {
+  seccion: SeccionArboles;
+  reporte: EstadoReportePdf;
+}
+
+function ToolbarArboles({ seccion, reporte }: ConReporte) {
   const { parcelas, filtros, setFiltro } = seccion;
   useSoltarParcelaFantasma(parcelas.data ?? [], filtros.parcelaId, (valor) =>
     setFiltro('parcelaId', valor),
@@ -140,7 +149,7 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
       busqueda={<BuscadorArboles filtros={seccion.filtros} onCambiar={seccion.setFiltro} />}
-      acciones={<AccionReportePdf seccion={seccion} />}
+      acciones={<BotonReportePdf reporte={reporte} />}
     >
       <ArbolesFiltros
         filtros={seccion.filtros}
@@ -153,9 +162,7 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
-/** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
-export function ArbolesSection() {
-  const seccion = useArbolesSection();
+function ContenidoArboles({ seccion, reporte }: ConReporte) {
   const { arboles } = seccion;
   if (arboles.isError) {
     return (
@@ -167,8 +174,20 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <ToolbarArboles seccion={seccion} />
+      <ToolbarArboles seccion={seccion} reporte={reporte} />
       <CuerpoArboles seccion={seccion} />
+    </>
+  );
+}
+
+/** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
+export function ArbolesSection() {
+  const seccion = useArbolesSection();
+  const reporte = useReporteDeArboles(seccion);
+  return (
+    <>
+      <ContenidoArboles seccion={seccion} reporte={reporte} />
+      <ReportePdfModal reporte={reporte} />
     </>
   );
 }
