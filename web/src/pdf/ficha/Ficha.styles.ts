@@ -3,109 +3,113 @@ import {
   COLOR_PDF,
   ESTILO_FUENTE,
   FUENTE_PDF,
-  MEDIDA_FICHA,
+  MEDIDA_FICHA as M,
   PESO_FUENTE,
-  TAMANO_TEXTO,
 } from '../plantilla/tokens';
 
-const recuadro = { borderRadius: MEDIDA_FICHA.radioRecuadro, overflow: 'hidden' } as const;
+const { letra } = M;
 
-const vacio = {
-  ...recuadro,
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderWidth: MEDIDA_FICHA.borde,
-  borderStyle: 'dashed',
-  borderColor: COLOR_PDF.linea,
-  backgroundColor: COLOR_PDF.papelHundido,
+const INTERLINEADO = { titulo: 1.25, id: 1.2, dato: 1.35 } as const;
+
+/** IBM Plex Mono: todos los glifos miden 0,6 em. */
+const ANCHO_GLIFO_MONO = 0.6;
+
+const imagen = {
+  width: M.ladoImagen,
+  height: M.ladoImagen,
+  borderRadius: M.radioRecuadro,
+  overflow: 'hidden',
 } as const;
 
+const rotulo = {
+  fontSize: letra.rotulo,
+  color: COLOR_PDF.apagado,
+  textTransform: 'uppercase',
+  letterSpacing: M.espaciadoMayusculas,
+} as const;
+
+const mono = { fontFamily: FUENTE_PDF.mono, fontSize: letra.datoMono } as const;
+
+/**
+ * El ID Árbol va en un renglón: react-pdf no lo parte en el guion y se
+ * metería debajo de la foto. Si a tamaño pleno no entra en la columna, se achica.
+ */
+export function tamanoIdArbol(idArbol: string): number {
+  const entra = M.anchoTexto / (idArbol.length * ANCHO_GLIFO_MONO);
+  return Math.min(letra.idArbol, entra);
+}
+
 export const fichaStyles = StyleSheet.create({
-  ficha: {
-    borderWidth: MEDIDA_FICHA.borde,
-    borderColor: COLOR_PDF.linea,
-    borderRadius: MEDIDA_FICHA.radio,
-    paddingVertical: MEDIDA_FICHA.rellenoVertical,
-    paddingHorizontal: MEDIDA_FICHA.rellenoHorizontal,
-    marginBottom: MEDIDA_FICHA.separacion,
-  },
-  superior: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingBottom: MEDIDA_FICHA.aireSuperior,
-    marginBottom: MEDIDA_FICHA.separacionSuperior,
-    borderBottomWidth: MEDIDA_FICHA.borde,
-    borderBottomColor: COLOR_PDF.linea,
-  },
-  especie: { flex: 1, paddingRight: MEDIDA_FICHA.hueco },
-  filaEspecie: { flexDirection: 'row', alignItems: 'center' },
+  fila: { flexDirection: 'row', justifyContent: 'space-between' },
+  filaFoto: { marginBottom: M.huecoImagenes },
+  texto: { width: M.anchoTexto },
+  filaEspecie: { flexDirection: 'row', alignItems: 'flex-start' },
   punto: {
-    width: MEDIDA_FICHA.punto,
-    height: MEDIDA_FICHA.punto,
-    borderRadius: MEDIDA_FICHA.punto / 2,
-    marginRight: MEDIDA_FICHA.aireTrasPunto,
+    width: M.punto,
+    height: M.punto,
+    borderRadius: M.punto / 2,
+    // Centrado en el primer renglón: si el nombre se parte, el punto no baja.
+    marginTop: (letra.especie * INTERLINEADO.titulo - M.punto) / 2,
+    marginRight: M.aireTrasPuntoEspecie,
   },
   nombreEspecie: {
+    flex: 1,
     fontWeight: PESO_FUENTE.semibold,
-    fontSize: TAMANO_TEXTO.especie,
+    fontSize: letra.especie,
+    lineHeight: INTERLINEADO.titulo,
     color: COLOR_PDF.tinta,
   },
   sinIdentificar: { color: COLOR_PDF.ambarTexto },
   cientifico: {
+    marginTop: M.aireBajoTitulo,
     fontStyle: ESTILO_FUENTE.italica,
-    fontSize: TAMANO_TEXTO.cientifico,
+    fontSize: letra.cientifico,
     color: COLOR_PDF.cuerpo,
   },
-  clasificacion: {
-    fontSize: TAMANO_TEXTO.clasificacion,
-    color: COLOR_PDF.apagado,
-    textTransform: 'uppercase',
-    letterSpacing: MEDIDA_FICHA.espaciadoMayusculas,
-  },
+  clasificacion: { ...rotulo, marginTop: M.aireBajoTitulo, fontSize: letra.clasificacion },
+  id: { marginTop: M.separacionBloques },
+  rotulo,
   idArbol: {
-    flexShrink: 0,
-    maxWidth: '55%',
+    marginTop: M.aireRotulo,
     fontFamily: FUENTE_PDF.mono,
     fontWeight: PESO_FUENTE.medio,
-    fontSize: TAMANO_TEXTO.idArbol,
+    lineHeight: INTERLINEADO.id,
     color: COLOR_PDF.navy,
-    textAlign: 'right',
-    lineHeight: 1.2,
   },
-  cuerpo: { flexDirection: 'row', alignItems: 'flex-start' },
-  foto: { ...recuadro, width: MEDIDA_FICHA.ladoFoto, height: MEDIDA_FICHA.ladoFoto },
-  fotoVacia: { ...vacio, width: MEDIDA_FICHA.ladoFoto, height: MEDIDA_FICHA.ladoFoto },
-  textoVacio: { fontSize: TAMANO_TEXTO.secundario, color: COLOR_PDF.tenue },
-  datos: { flex: 1, marginHorizontal: MEDIDA_FICHA.hueco },
-  filaDato: { flexDirection: 'row', marginBottom: MEDIDA_FICHA.separacionDatos },
-  etiqueta: {
-    width: MEDIDA_FICHA.anchoEtiqueta,
-    paddingTop: 1,
-    fontSize: TAMANO_TEXTO.etiqueta,
-    color: COLOR_PDF.apagado,
-    textTransform: 'uppercase',
-    letterSpacing: MEDIDA_FICHA.espaciadoMayusculas,
-  },
-  valor: { flex: 1, fontSize: TAMANO_TEXTO.dato, color: COLOR_PDF.tinta, lineHeight: 1.35 },
-  codigo: { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono, color: COLOR_PDF.navy },
-  mono: { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono },
-  apagado: { color: COLOR_PDF.apagado },
-  tenue: { color: COLOR_PDF.tenue },
-  mapa: {
-    ...recuadro,
-    width: MEDIDA_FICHA.ladoMapa,
-    height: MEDIDA_FICHA.ladoMapa,
-    borderWidth: MEDIDA_FICHA.bordeFino,
+  foto: imagen,
+  mapa: { ...imagen, borderWidth: M.bordeFino, borderColor: COLOR_PDF.linea },
+  vacio: {
+    ...imagen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: M.borde,
+    borderStyle: 'dashed',
     borderColor: COLOR_PDF.linea,
+    backgroundColor: COLOR_PDF.papelHundido,
   },
-  mapaVacio: { ...vacio, width: MEDIDA_FICHA.ladoMapa, height: MEDIDA_FICHA.ladoMapa },
-  // En el relleno inferior de la ficha: no empuja el cuerpo, y siguen entrando tres por hoja.
+  icono: { width: M.ladoIcono, height: M.ladoIcono, marginBottom: M.aireIcono },
+  textoVacio: { fontSize: letra.vacio, color: COLOR_PDF.tenue },
+  // Debajo del mapa, en el aire hasta el pie: no suma alto.
   llamada: {
     position: 'absolute',
-    top: MEDIDA_FICHA.ladoMapa,
+    top: M.ladoImagen,
     right: 0,
-    width: MEDIDA_FICHA.ladoMapa,
-    lineHeight: MEDIDA_FICHA.interlineadoLlamada,
+    lineHeight: M.interlineadoLlamada,
   },
+  registro: { marginTop: M.separacionBloques },
+  dato: {
+    paddingVertical: M.rellenoDato,
+    borderTopWidth: M.bordeFino,
+    borderTopColor: COLOR_PDF.linea,
+  },
+  valor: {
+    marginTop: M.aireRotulo,
+    fontSize: letra.dato,
+    lineHeight: INTERLINEADO.dato,
+    color: COLOR_PDF.tinta,
+  },
+  codigo: { ...mono, color: COLOR_PDF.navy },
+  mono,
+  apagado: { color: COLOR_PDF.apagado },
+  tenue: { color: COLOR_PDF.tenue },
 });

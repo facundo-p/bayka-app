@@ -73,7 +73,7 @@ describe('capaSatelital', () => {
       pintar: expect.any(Function),
       liberar: expect.any(Function),
     });
-    expect(f.cargar.mock.calls[0][0].length).toBeLessThanOrEqual(16);
+    expect(f.cargar.mock.calls[0][0].length).toBeLessThanOrEqual(TOPE_TILES.ficha);
   });
 
   test('si falla cualquier tile, no hay fondo', async () => {

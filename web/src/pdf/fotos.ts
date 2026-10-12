@@ -25,12 +25,14 @@ async function firmarSinFallar(fotoUrls: string[]): Promise<Array<string | null>
   }
 }
 
-async function bajarYReducir(url: string | null): Promise<FotoPdf> {
+export type OpcionesCargaFotos = { medida?: MedidaImagen };
+
+async function bajarYReducir(url: string | null, medida: MedidaImagen): Promise<FotoPdf> {
   if (!url) return NO_DISPONIBLE;
   try {
     const respuesta = await fetch(url);
     if (!respuesta.ok) return NO_DISPONIBLE;
-    const src = await reducirImagen(await respuesta.blob(), MEDIDA_FOTO_PDF);
+    const src = await reducirImagen(await respuesta.blob(), medida);
     return { estado: ESTADO_FOTO.lista, src };
   } catch {
     return NO_DISPONIBLE;
@@ -38,13 +40,19 @@ async function bajarYReducir(url: string | null): Promise<FotoPdf> {
 }
 
 /** Una foto por árbol, en el mismo orden que `fotoUrls`. */
-export async function cargarFotos(fotoUrls: ReadonlyArray<string | null>): Promise<FotoPdf[]> {
+export async function cargarFotos(
+  fotoUrls: ReadonlyArray<string | null>,
+  opciones: OpcionesCargaFotos = {},
+): Promise<FotoPdf[]> {
+  const { medida = MEDIDA_FOTO_PDF } = opciones;
   const conFoto = fotoUrls.flatMap((fotoUrl, indice) => {
     const url = fotoSubida(fotoUrl);
     return url ? [{ url, indice }] : [];
   });
   const firmadas = await firmarSinFallar(conFoto.map(({ url }) => url));
-  const cargadas = await mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, bajarYReducir);
+  const cargadas = await mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, (url) =>
+    bajarYReducir(url, medida),
+  );
   const fotos = fotoUrls.map(() => SIN_FOTO);
   conFoto.forEach(({ indice }, posicion) => {
     fotos[indice] = cargadas[posicion];

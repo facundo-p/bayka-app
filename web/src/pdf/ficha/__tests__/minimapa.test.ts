@@ -2,7 +2,10 @@ import type { PuntoGps } from '../../../queries/mapaQueries';
 import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
+import { MEDIDA_FICHA } from '../../plantilla/tokens';
 import { contenidoMinimapa, minimapaDeArbol } from '../minimapa';
+
+const PT_POR_PULGADA = 72;
 
 // jsdom no tiene canvas: el dibujo se prueba en el navegador.
 vi.mock('../../mapa/dibujarMapa', () => ({ dibujarMapa: vi.fn() }));
@@ -98,4 +101,30 @@ test('sin GPS ni se intenta dibujar', async () => {
     estado: 'sin-gps',
   });
   expect(dibujarMapa).not.toHaveBeenCalled();
+});
+
+/** Una hilera de árboles al este del de la ficha, a ~2 m uno de otro. */
+function hilera(cantidad: number): PuntoGps[] {
+  return Array.from({ length: cantidad }, (_, indice) =>
+    punto({ idArbol: `H${indice}-SS26`, lat: -27.361, lng: -55.891 + (indice + 1) * 0.00002 }),
+  );
+}
+
+async function opcionesDeDibujo(puntos: PuntoGps[]) {
+  vi.mocked(dibujarMapa).mockResolvedValueOnce(null);
+  await minimapaDeArbol(ARBOL, puntos, COLOR_DE);
+  return vi.mocked(dibujarMapa).mock.lastCall![0];
+}
+
+test('impreso en la caja de la ficha, el minimapa sale cuadrado y a 250 ppp o más', async () => {
+  const { ancho, alto, escalaRender } = await opcionesDeDibujo([]);
+  expect(alto).toBe(ancho);
+  const pulgadasImpresas = MEDIDA_FICHA.ladoImagen / PT_POR_PULGADA;
+  expect((ancho * escalaRender!) / pulgadasImpresas).toBeGreaterThanOrEqual(250);
+});
+
+test('con muchos árboles a lo ancho los puntos se achican y dejan ver el satélite', async () => {
+  const pocos = await opcionesDeDibujo(hilera(5));
+  const muchos = await opcionesDeDibujo(hilera(80));
+  expect(muchos.radioPunto).toBeLessThan(pocos.radioPunto!);
 });

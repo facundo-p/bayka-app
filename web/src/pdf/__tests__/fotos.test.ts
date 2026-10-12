@@ -35,6 +35,13 @@ test('firma solo las subidas, en una llamada, y reduce cada una', async () => {
   expect(reducir).toHaveBeenCalledWith(expect.anything(), { ancho: 480, alto: 480, calidad: 0.75 });
 });
 
+test('reduce a la medida pedida en vez de la de por defecto', async () => {
+  const medida = { ancho: 1050, alto: 1050, calidad: 0.8 };
+  await cargarFotos(['p/a.jpg', 'p/b.jpg'], { medida });
+  expect(reducir).toHaveBeenCalledTimes(2);
+  expect(reducir.mock.calls.map(([, pedida]) => pedida)).toEqual([medida, medida]);
+});
+
 test('una foto sin firma (sin permiso o inexistente) queda no disponible', async () => {
   estadoMock.pathsSinFirma = ['p/ajena.jpg'];
   expect(await cargarFotos(['p/ajena.jpg', 'p/b.jpg'])).toEqual([NO_DISPONIBLE, LISTA]);
