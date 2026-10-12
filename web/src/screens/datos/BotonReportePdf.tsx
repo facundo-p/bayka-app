@@ -4,6 +4,7 @@ import { TAMANO_ICONO } from '../../theme/iconos';
 import { ReportePdfModal } from './ReportePdfModal';
 import { TEXTO_REPORTE_PDF } from './textosReportePdf';
 import { useReportePdf, type ReportePdfProps } from './useReportePdf';
+import styles from './BotonReportePdf.module.css';
 
 interface BotonProps {
   deshabilitado: boolean;
@@ -15,12 +16,13 @@ function Boton({ deshabilitado, onClick }: BotonProps) {
     <Button
       variant="contorno"
       size="sm"
+      className={styles.boton}
       disabled={deshabilitado}
       title={TEXTO_REPORTE_PDF.botonDescripcion}
       onClick={onClick}
     >
-      <FileDown size={TAMANO_ICONO.sm} aria-hidden />
-      {TEXTO_REPORTE_PDF.boton}
+      <FileDown size={TAMANO_ICONO.md} aria-hidden />
+      <span className={styles.etiqueta}>{TEXTO_REPORTE_PDF.boton}</span>
     </Button>
   );
 }
