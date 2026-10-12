@@ -122,7 +122,7 @@ export const MEDIDA_FICHA = {
 
   /**
    * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
-   * izquierda. Columna, hueco e imagen llenan justo el ancho del cuerpo.
+   * izquierda. Columna, hueco e imagen llenan el ancho del cuerpo.
    */
   ladoImagen: 300,
   anchoTexto: 215,
