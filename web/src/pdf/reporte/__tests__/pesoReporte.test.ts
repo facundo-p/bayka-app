@@ -1,39 +1,31 @@
 import { estimarPeso, PESO_PDF } from '../pesoReporte';
-import {
-  estimarReporte,
-  FILAS_POR_HOJA,
-  MODO_REPORTE,
-  TOPE_TARJETAS,
-  type ModoReporte,
-} from '../planReporte';
+import { estimarReporte, MODO_REPORTE, type ModoReporte } from '../planReporte';
 
 const peso = (total: number, conFoto: number, modo: ModoReporte = MODO_REPORTE.conFotos) =>
   estimarPeso(estimarReporte({ total, conFoto, modo }));
 
-test('cada tarjeta suma una foto y cada hoja del listado, su texto', () => {
-  expect(peso(FILAS_POR_HOJA + 2, 2)).toBe(
-    PESO_PDF.base + 2 * PESO_PDF.porFoto + PESO_PDF.porHojaListado,
-  );
+test('cada hoja suma su logo y su texto, y cada tarjeta, su foto', () => {
+  const { hojas } = estimarReporte({ total: 40, conFoto: 2, modo: MODO_REPORTE.conFotos });
+  expect(peso(40, 2)).toBe(PESO_PDF.base + hojas * PESO_PDF.porHoja + 2 * PESO_PDF.porFoto);
 });
 
-test('una hoja del listado a medio llenar pesa como una entera', () => {
-  expect(peso(1, 0)).toBe(PESO_PDF.base + PESO_PDF.porHojaListado);
+test('sin fotos, las fotos no suman aunque el filtro las tenga', () => {
+  const { hojas } = estimarReporte({ total: 40, conFoto: 2, modo: MODO_REPORTE.sinFotos });
+  expect(peso(40, 2, MODO_REPORTE.sinFotos)).toBe(PESO_PDF.base + hojas * PESO_PDF.porHoja);
 });
 
 test('las fotos que pasan el tope van al listado y no suman foto', () => {
-  const hojasListado = Math.ceil(50 / FILAS_POR_HOJA);
-  expect(peso(TOPE_TARJETAS + 50, TOPE_TARJETAS + 50)).toBe(
-    PESO_PDF.base + TOPE_TARJETAS * PESO_PDF.porFoto + hojasListado * PESO_PDF.porHojaListado,
-  );
+  expect(peso(450, 450) - peso(450, 400)).toBe(0);
 });
 
-test('sin fotos, el peso es solo el del listado', () => {
-  const hojasListado = Math.ceil(7000 / FILAS_POR_HOJA);
-  expect(peso(7000, 148, MODO_REPORTE.sinFotos)).toBe(
-    PESO_PDF.base + hojasListado * PESO_PDF.porHojaListado,
-  );
+// Contra PDFs reales generados en la demo: 50 filas pesaron 43 KB y 7.000, 3,36 MB.
+test.each([
+  [50, 43_000],
+  [7000, 3_360_000],
+])('%i árboles sin fotos se estiman a menos de 5%% del PDF real', (total, real) => {
+  expect(Math.abs(peso(total, 0) - real) / real).toBeLessThan(0.05);
 });
 
-test('400 tarjetas rondan los 27 MB', () => {
-  expect(peso(400, 400) / 1e6).toBeCloseTo(26.8, 0);
+test('400 tarjetas con fotos reales rondan los 28 MB', () => {
+  expect(peso(400, 400) / 1e6).toBeCloseTo(28, 0);
 });

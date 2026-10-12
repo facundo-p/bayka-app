@@ -3,23 +3,25 @@
  * de hojas: el modal lo muestra antes de leer los árboles.
  */
 import { BYTES } from '../../lib/formato';
-import { FILAS_POR_HOJA, type EstimacionReporte } from './planReporte';
+import type { EstimacionReporte } from './planReporte';
 
-/** Bytes de cada parte del PDF. */
+/**
+ * Bytes de cada parte del PDF. Base y hoja salen de reportes reales de 2 y de
+ * 226 hojas: el peso crece en línea recta con las hojas.
+ */
 export const PESO_PDF = {
-  /** Fuentes embebidas, logo y estructura del documento. */
-  base: 40 * BYTES.kb,
+  /** Fuentes embebidas y estructura del documento. */
+  base: 15 * BYTES.kb,
+  /** El logo se embebe de nuevo en cada hoja (8,4 KB); el resto es el texto. */
+  porHoja: 15 * BYTES.kb,
   /**
    * 25 fotos reales de SS26-1 en staging, reducidas como el PDF (480 px,
    * calidad 0,75, recorte al centro), promediaron 67 KB, entre 29 y 101.
    */
   porFoto: 67 * BYTES.kb,
-  /** Texto y filetes de una hoja llena del listado. */
-  porHojaListado: 6 * BYTES.kb,
 } as const;
 
-/** En bytes. Las tarjetas pesan por su foto: el texto de su hoja es poco al lado. */
-export function estimarPeso({ tarjetas, filasListado }: EstimacionReporte): number {
-  const hojasListado = Math.ceil(filasListado / FILAS_POR_HOJA);
-  return PESO_PDF.base + tarjetas * PESO_PDF.porFoto + hojasListado * PESO_PDF.porHojaListado;
+/** En bytes. */
+export function estimarPeso({ tarjetas, hojas }: EstimacionReporte): number {
+  return PESO_PDF.base + hojas * PESO_PDF.porHoja + tarjetas * PESO_PDF.porFoto;
 }
