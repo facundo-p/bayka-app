@@ -98,7 +98,7 @@ function useDescargasDetalle(plantacion: Plantacion) {
   const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
   const informe = useInformePdf(plantacion);
   const pdf = { abrir: informe.abrir, descargando: informe.descargando };
-  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje ?? informe.mensajeBarra;
+  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
   return { kml, xlsx, csv, pdf, mensaje, informe };
 }
 

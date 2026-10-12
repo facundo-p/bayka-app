@@ -24,45 +24,49 @@ function useEleccion() {
   return { eleccion, alternar, recuperar };
 }
 
-/** Guarda la elección, arma el informe y, si sale bien, cierra el modal. */
-function useDescargaInforme(plantacion: Plantacion, eleccion: OpcionesInforme) {
+/**
+ * Guarda la elección, arma el informe y, si sale bien, cierra el modal. Mientras
+ * genera, el modal no se cierra: el render no se puede cortar y el PDF se bajaría igual.
+ */
+function useDescargaInforme(
+  plantacion: Plantacion,
+  eleccion: OpcionesInforme,
+  opciones: OpcionesInforme,
+) {
   const queryClient = useQueryClient();
   const [abierto, setAbierto] = useState(false);
   const descarga = useDescarga(async () => {
     guardarOpcionesInforme(eleccion);
-    const opciones = opcionesSegunObjetivo(eleccion, plantacion.objetivoArboles);
     await descargarInformePdf(plantacion, queryClient, opciones);
     setAbierto(false);
     return null;
   }, MENSAJE_ERROR_INFORME);
   const mostrar = (abrir: boolean) => {
+    if (descarga.descargando) return;
     descarga.limpiarMensaje();
     setAbierto(abrir);
   };
   return { ...descarga, abierto, mostrar };
 }
 
-/**
- * El modal del informe y su descarga. Cerrar el modal no la corta: si después
- * falla, el aviso va a la barra, como el de las otras descargas.
- */
+/** El modal del informe y su descarga. */
 export function useInformePdf(plantacion: Plantacion) {
   const { eleccion, alternar, recuperar } = useEleccion();
-  const { abierto, mostrar, mensaje, ...descarga } = useDescargaInforme(plantacion, eleccion);
+  const opciones = opcionesSegunObjetivo(eleccion, plantacion.objetivoArboles);
+  const descarga = useDescargaInforme(plantacion, eleccion, opciones);
   return {
-    abierto,
+    abierto: descarga.abierto,
     abrir: () => {
       recuperar();
-      mostrar(true);
+      descarga.mostrar(true);
     },
-    cerrar: () => mostrar(false),
-    opciones: opcionesSegunObjetivo(eleccion, plantacion.objetivoArboles),
+    cerrar: () => descarga.mostrar(false),
+    opciones,
     bloqueada: (opcion: OpcionInforme) => opcionBloqueada(opcion, plantacion.objetivoArboles),
     alternar,
     generar: descarga.descargar,
     descargando: descarga.descargando,
-    mensaje: abierto ? mensaje : null,
-    mensajeBarra: abierto ? null : mensaje,
+    mensaje: descarga.mensaje,
   };
 }
 

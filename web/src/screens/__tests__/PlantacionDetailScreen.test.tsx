@@ -234,23 +234,6 @@ test('si el informe falla, se avisa en el modal', async () => {
   expect(await within(modal).findByText('No se pudo generar el informe PDF.')).toBeInTheDocument();
 });
 
-test('si se cierra el modal mientras genera y después falla, se avisa en la barra', async () => {
-  const usuario = userEvent.setup();
-  let fallar: (error: Error) => void = () => {};
-  vi.mocked(descargarInformePdf).mockImplementationOnce(
-    () => new Promise<void>((_, rechazar) => (fallar = rechazar)),
-  );
-  renderRutasEn('/plantaciones/plant-1');
-
-  await usuario.click(await itemExportar(usuario, 'Informe PDF'));
-  await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
-  await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-  fallar(new Error('canvas'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo generar el informe PDF.');
-});
-
 test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
   const usuario = userEvent.setup();
   filasExport = []; // la query de exportación no devuelve filas

@@ -10,7 +10,6 @@ import { useInformePdf } from '../useInformePdf';
 vi.mock('../../../services/pdfInforme', () => ({ descargarInformePdf: vi.fn() }));
 
 const CLAVE = 'bayka.informe.opciones';
-const AVISO_BARRA = 'Aviso de la barra';
 const CON_META = fabricarPlantacion({ id: 'p1', objetivoArboles: 8000 });
 const SIN_META = fabricarPlantacion({ id: 'p2', objetivoArboles: null });
 const CASILLAS = [
@@ -20,17 +19,12 @@ const CASILLAS = [
   'Mapa de puntos GPS',
 ];
 
-/** El menú de la barra reducido a un botón, con el aviso de la barra al lado. */
+/** El menú de la barra reducido a un botón. */
 function Detalle({ plantacion }: { plantacion: Plantacion }) {
   const informe = useInformePdf(plantacion);
   return (
     <>
       <button onClick={informe.abrir}>Informe PDF</button>
-      {informe.mensajeBarra && (
-        <span role="alert" aria-label={AVISO_BARRA}>
-          {informe.mensajeBarra}
-        </span>
-      )}
       {informe.abierto && <InformePdfModal informe={informe} />}
     </>
   );
@@ -175,22 +169,6 @@ test('mientras genera, el botón muestra la carga y no responde dos veces', asyn
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 });
 
-test('reabierto mientras genera, muestra la carga y se cierra al terminar', async () => {
-  const terminar = descargaPendiente();
-  const { usuario } = renderizar();
-  await abrir(usuario);
-  await usuario.click(casilla('Porcentaje con foto'));
-  await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
-  await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
-
-  await abrir(usuario);
-  expect(screen.getByRole('button', { name: /Generando…/ })).toBeDisabled();
-  expect(marcadas()).toEqual(['Porcentaje con foto']);
-  terminar();
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-  expect(descargarInformePdf).toHaveBeenCalledTimes(1);
-});
-
 test('si falla, avisa en el modal, que queda abierto para reintentar', async () => {
   vi.mocked(descargarInformePdf).mockRejectedValueOnce(new Error('canvas'));
   const { usuario } = renderizar();
@@ -200,22 +178,31 @@ test('si falla, avisa en el modal, que queda abierto para reintentar', async () 
   expect(await within(modal).findByRole('alert')).toHaveTextContent(
     'No se pudo generar el informe PDF.',
   );
-  expect(screen.queryByRole('alert', { name: AVISO_BARRA })).not.toBeInTheDocument();
   await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(descargarInformePdf).toHaveBeenCalledTimes(2);
 });
 
-test('si se cierra mientras genera y después falla, el aviso va a la barra', async () => {
+// El render no se puede cortar: cerrar a mitad dejaría bajar el PDF igual.
+test('mientras genera no se cierra: ni Cancelar, ni Escape, ni el clic afuera', async () => {
   const terminar = descargaPendiente();
   const { usuario } = renderizar();
-  await abrir(usuario);
+  const modal = await abrir(usuario);
   await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
-  await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+  const cancelar = screen.getByRole('button', { name: 'Cancelar' });
+  expect(cancelar).toBeDisabled();
+  await usuario.click(cancelar);
+  await usuario.keyboard('{Escape}');
+  // El fondo oscuro que rodea al diálogo.
+  await usuario.click(modal.parentElement!);
+  expect(screen.getByRole('dialog', { name: 'Informe PDF' })).toBeInTheDocument();
 
   terminar(new Error('canvas'));
-  expect(await screen.findByRole('alert', { name: AVISO_BARRA })).toHaveTextContent(
+  expect(await within(modal).findByRole('alert')).toHaveTextContent(
     'No se pudo generar el informe PDF.',
   );
+  expect(cancelar).toBeEnabled();
+  await usuario.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

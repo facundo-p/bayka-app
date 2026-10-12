@@ -33,6 +33,14 @@ interface CasillaOpcionProps {
   informe: EstadoInformePdf;
 }
 
+function MotivoBloqueo({ id }: { id: string }) {
+  return (
+    <span id={id} className={styles.motivo}>
+      {TEXTO_MODAL.sinMeta}
+    </span>
+  );
+}
+
 /** La de meta, sin objetivo en la plantación, queda apagada y dice por qué. */
 function CasillaOpcion({ opcion, informe }: CasillaOpcionProps) {
   const idMotivo = useId();
@@ -48,11 +56,7 @@ function CasillaOpcion({ opcion, informe }: CasillaOpcionProps) {
     >
       <span className={styles.textos}>
         <span className={styles.etiqueta}>{ETIQUETA_OPCION[opcion]}</span>
-        {bloqueada && (
-          <span id={idMotivo} className={styles.motivo}>
-            {TEXTO_MODAL.sinMeta}
-          </span>
-        )}
+        {bloqueada && <MotivoBloqueo id={idMotivo} />}
       </span>
     </BotonCasilla>
   );
@@ -70,7 +74,7 @@ export function InformePdfModal({ informe }: { informe: EstadoInformePdf }) {
           ))}
         </div>
         <ErrorEnvio mensaje={informe.mensaje} />
-        <AccionesModal onCancelar={informe.cerrar}>
+        <AccionesModal onCancelar={informe.cerrar} cancelarDeshabilitado={informe.descargando}>
           <Button loading={informe.descargando} onClick={() => void informe.generar()}>
             {informe.descargando ? TEXTO_MODAL.generando : TEXTO_MODAL.generar}
           </Button>
