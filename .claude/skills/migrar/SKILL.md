@@ -22,9 +22,12 @@ checkout principal de dos formas:
 
 ## Pasos
 
-1. **Entorno.** Staging por defecto. Prod apenas se mergea el pase staging →
-   main, con confirmación explícita de Facu para ese push: la web nueva ya está
-   en prod y puede pedir columnas de esas migraciones.
+1. **Entorno.** Staging por defecto. Prod después de mergear el pase staging →
+   main, con confirmación explícita de Facu para ese push. El push va apenas
+   termina el deploy de la web de prod (check «Cloudflare Pages» del merge en
+   main en verde; el comando está en el checklist de `/deploy`): antes, la web
+   vieja puede usar lo que la migración saca; después, la nueva puede pedir lo
+   que la migración agrega.
 
 2. **Preparar.** Correr, con el entorno explícito:
 

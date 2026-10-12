@@ -303,17 +303,26 @@ Facu):
 
 ```markdown
 ## Post-merge (manual)
-- [ ] Si el release incluye migraciones supabase/**, esto va apenas se mergea:
-      la web nueva ya está en prod y puede pedir columnas de esas migraciones.
-      En el checkout principal (el único con `.env.migration`), con main
-      actualizado (`git switch main && git pull`):
+- [ ] Si el release incluye migraciones supabase/**: el push va apenas termina
+      el deploy de la web de prod, ni antes ni mucho después. Antes, la web
+      vieja puede usar lo que la migración saca; después, la nueva puede pedir
+      lo que la migración agrega. El deploy terminó cuando el check «Cloudflare
+      Pages» del merge en main da `completed success`:
+
+      ```sh
+      gh api repos/facundo-p/bayka-app/commits/main/check-runs \
+        --jq '.check_runs[] | select(.name == "Cloudflare Pages") | "\(.status) \(.conclusion)"'
+      ```
+
+      Mientras tanto, en el checkout principal (el único con `.env.migration`),
+      con main actualizado (`git switch main && git pull`):
       1. Drift check: `migration list` contra prod y contra staging. Lo
          registrado en prod tiene que ser lo de staging menos las migraciones de
          este release, sin huecos ni extras.
       2. `db push --dry-run` contra prod: tiene que listar justo las migraciones
          de este release.
-      3. Con confirmación dedicada, Facu corre el mismo push sin `--dry-run`
-         (nunca el SQL Editor; ver docs/db-baseline.md).
+      3. Con el deploy en verde y confirmación dedicada, Facu corre el mismo
+         push sin `--dry-run` (nunca el SQL Editor; ver docs/db-baseline.md).
 
       ```sh
       PROD="$(grep '^PROD_DB_URL=' .env.migration | cut -d= -f2-)"
@@ -339,8 +348,10 @@ Facu):
 gh pr checks <numero-pr> --watch    # correr con run_in_background y timeout amplio
 ```
 
-- **Verde** → reportar "PR de release listo para tu merge" con el link. FIN: el
-  merge es de Facu, a mano. No mergear, no aprobar, no tocar más staging.
+- **Verde** → reportar "PR de release listo para tu merge" con el link. Si el
+  release trae migraciones, el aviso recuerda que el push de prod va apenas el
+  check «Cloudflare Pages» del merge en main da verde. FIN: el merge es de
+  Facu, a mano. No mergear, no aprobar, no tocar más staging.
 - **Rojo** → reportar el check fallido y PARAR. No arreglar en caliente sin un
   nuevo OK (el fix entra por el flujo normal de PR a staging, y después se
   refresca el release).
