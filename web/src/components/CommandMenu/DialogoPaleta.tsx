@@ -1,4 +1,5 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { cerrarSoloEstaCapa } from '../../lib/escape';
 import { TECLA } from '../../lib/teclas';
 import { useBloquearScroll } from '../../hooks/useBloquearScroll';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -11,18 +12,12 @@ interface DialogoPaletaProps {
   children: ReactNode;
 }
 
-/** El Escape de adentro cierra solo la paleta: no llega al detalle o pantalla de atrás. */
-function cerrarSoloLaPaleta(evento: KeyboardEvent, onCerrar: () => void) {
-  evento.stopPropagation();
-  onCerrar();
-}
-
 function useTeclasDialogo({ onCerrar, onTecla }: Omit<DialogoPaletaProps, 'children'>) {
   const refDialog = useRef<HTMLDivElement>(null);
   const atraparFoco = useFocusTrap(refDialog);
   const alPresionar = (evento: KeyboardEvent) => {
-    if (evento.key === TECLA.escape) cerrarSoloLaPaleta(evento, onCerrar);
-    else if (evento.key === TECLA.tab) atraparFoco(evento);
+    if (cerrarSoloEstaCapa(evento, onCerrar)) return;
+    if (evento.key === TECLA.tab) atraparFoco(evento);
     else onTecla(evento);
   };
   return { refDialog, alPresionar };

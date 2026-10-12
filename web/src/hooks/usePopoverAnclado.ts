@@ -9,7 +9,7 @@ import {
   type RefObject,
 } from 'react';
 import { focoPerdido, tabulables } from '../lib/foco';
-import { TECLA } from '../lib/teclas';
+import { cerrarSoloEstaCapa } from '../lib/escape';
 import { useDesplegableAnclado } from './useDesplegableAnclado';
 import { MARGEN_VIEWPORT } from './usePosicionAnclada';
 
@@ -103,11 +103,8 @@ function useDevolverFoco(abierto: boolean, disparador: Ref<HTMLElement>) {
 /** Los cierres que llegan por teclado al contenedor: Escape, y el Tab que sale de él. */
 function cierresPorTeclado(cerrar: () => void, contenedor: Ref<HTMLElement>) {
   return {
-    // Detiene el Escape acá: si no, también cerraría el panel de detalle de atrás.
     alTeclear: (evento: KeyboardEvent) => {
-      if (evento.key !== TECLA.escape) return;
-      evento.stopPropagation();
-      cerrar();
+      cerrarSoloEstaCapa(evento, cerrar);
     },
     alPerderFoco: (evento: FocusEvent) => {
       const destino = evento.relatedTarget;

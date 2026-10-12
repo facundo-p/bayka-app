@@ -4,7 +4,7 @@ import { useBloquearScroll } from '../hooks/useBloquearScroll';
 import { useCerrarConEscape } from '../hooks/useCerrarConEscape';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { cx } from '../lib/classNames';
-import { TECLA } from '../lib/teclas';
+import { cerrarSoloEstaCapa } from '../lib/escape';
 import styles from './Modal.module.css';
 
 interface ModalProps {
@@ -50,12 +50,9 @@ function clasesDialogo(
   );
 }
 
-/** El Escape de adentro cierra solo el modal: no llega al panel o pantalla de atrás. */
 function useTeclado(onClose: () => void, atraparFoco: (evento: KeyboardEvent) => void) {
   return (evento: KeyboardEvent) => {
-    if (evento.key !== TECLA.escape) return atraparFoco(evento);
-    evento.stopPropagation();
-    onClose();
+    if (!cerrarSoloEstaCapa(evento, onClose)) atraparFoco(evento);
   };
 }
 
