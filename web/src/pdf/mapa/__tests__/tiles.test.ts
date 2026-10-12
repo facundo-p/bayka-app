@@ -22,8 +22,8 @@ function tileOsm({ lat, lng }: LatLng, zoom: number) {
   return { x: Math.floor(x), y: Math.floor(y), dentroX: x % 1, dentroY: y % 1 };
 }
 
-test('los topes son 16 tiles en la ficha y 36 en el informe', () => {
-  expect(TOPE_TILES).toEqual({ ficha: 16, informe: 36 });
+test('los topes son 36 tiles en la ficha y en el informe', () => {
+  expect(TOPE_TILES).toEqual({ ficha: 36, informe: 36 });
 });
 
 describe('elegirZoom', () => {
@@ -37,7 +37,7 @@ describe('elegirZoom', () => {
     expect(cantidadDeTiles(A_MANO, 13)).toBe(70);
   });
 
-  test('el más alto que entra en el tope de la ficha y en el del informe', () => {
+  test('el más alto que entra en el tope pedido', () => {
     expect(elegirZoom(A_MANO, 16)).toBe(11);
     expect(elegirZoom(A_MANO, 36)).toBe(12);
   });

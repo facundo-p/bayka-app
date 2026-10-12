@@ -15,7 +15,7 @@ import type {
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
 import type { FotoPdf } from '../estadoFoto';
-import { esMapaSatelital, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
+import { MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
 import { TEXTO_FICHA } from './textosFicha';
 
 export type EspecieFicha = {
@@ -104,15 +104,4 @@ export function datosFicha(arbol: ArbolParaFicha, contexto: ContextoFicha): Mode
 export function documentoDeFichas(cantidad: number): string {
   if (cantidad === 1) return TEXTO_FICHA.documentoUno;
   return `${TEXTO_FICHA.documentoVarias}${TEXTO_FICHA.separador}${pluralizar(cantidad, SUSTANTIVO.arbol)}`;
-}
-
-/** Las medidas de la ficha están hechas para que entren tres por hoja. */
-export const FICHAS_POR_HOJA = 3;
-
-/** Hojas, desde 1, con algún minimapa satelital: llevan la nota de la atribución. */
-export function hojasConSatelite(fichas: readonly ModeloFicha[]): Set<number> {
-  const hojas = fichas.flatMap((ficha, indice) =>
-    esMapaSatelital(ficha.mapa) ? [Math.floor(indice / FICHAS_POR_HOJA) + 1] : [],
-  );
-  return new Set(hojas);
 }

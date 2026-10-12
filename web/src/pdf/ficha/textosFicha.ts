@@ -4,6 +4,7 @@ import { TEXTO_PLANTILLA } from '../plantilla/textos';
 export const TEXTO_FICHA = {
   documentoUno: 'Ficha de árbol',
   documentoVarias: 'Fichas de árboles',
+  idArbol: 'ID Árbol',
   parcela: 'Parcela',
   grupo: 'Grupo',
   posicion: 'Posición',

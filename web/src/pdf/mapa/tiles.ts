@@ -7,7 +7,7 @@ import { cantidadDe, factorDe, LADO_TILE, type TileXYZ, zonaDelZoom } from '../.
 import type { Encuadre, Pixel } from './proyeccion';
 
 /** Tiles por mapa como máximo: acota la descarga y el tiempo de cada PDF. */
-export const TOPE_TILES = { ficha: 16, informe: 36 } as const;
+export const TOPE_TILES = { ficha: 36, informe: 36 } as const;
 
 /** Un tile y el cuadrado que ocupa en el encuadre, en sus unidades. */
 export type TileUbicado = TileXYZ & { destino: Pixel; lado: number };

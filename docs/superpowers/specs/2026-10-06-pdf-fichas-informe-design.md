@@ -13,7 +13,7 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 | Encabezado | Claro: logo horizontal a la izquierda, plantación a la derecha (lugar · período; código y organización debajo), filete oliva. |
 | Pie | `Bayka · <documento>` a la izquierda; `Emitido el DD/MM/AAAA · Página X de Y` a la derecha. Sin autor. |
 | Foto sin permiso de lectura | «Foto no disponible». Si la policy de Storage lo confirma, Issue aparte; esta épica no toca la DB. |
-| Fichas por hoja | 3 por hoja A4. La ficha suelta usa el mismo tamaño, sola arriba. |
+| Fichas por hoja | Una por hoja A4, a hoja entera (#850; antes eran tres). |
 | Minimapa de la ficha | Toda la parcela del árbol, con el árbol resaltado. |
 | Botón de la ficha | «Descargar ficha PDF», ancho, al final del panel de detalle. |
 | Selección | Botón «Seleccionar». Los checkboxes solo existen en ese modo. Al entrar aparece una barra azul bajo los filtros, con 0 marcados: «N árboles seleccionados · Cancelar · Generar fichas (N)». Con 0, «Generar fichas» queda deshabilitado y «Cancelar» disponible. Con la página entera marcada dice «Los N árboles de esta página». Vale para la página actual (≤ 50) y se limpia al cambiar de página o de filtro. |
@@ -25,13 +25,14 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 
 ## Contenido
 
-**Ficha.** Arriba a la izquierda, la especie: color, `código · nombre común`,
-nombre científico en itálica y `tipo · subtipo` (Flora · Árbol). Arriba a la
-derecha, el ID Árbol (`SubID-código de plantación`) en mono grande; sin ID
-Global desde #832. En el cuerpo, de izquierda a derecha: foto cuadrada de
-120 × 120 pt (≈ 4,2 cm; las 4:3 viejas se recortan al centro, #832), datos (parcela y grupo con
-código y nombre, posición, fecha de registro, técnico, GPS con precisión) y
-minimapa de 128 × 128 pt (≈ 4,5 cm), con las medidas del mockup aprobado.
+**Ficha.** Una por hoja A4 vertical (#850). A la derecha, la foto arriba y el
+minimapa abajo, cuadrados de 300 × 300 pt (≈ 10,6 cm) y rasterizados a 1050 px
+(252 ppp); las fotos 4:3 viejas se recortan al centro (#832). A la izquierda,
+junto a la foto: la especie (color, `código · nombre común`, nombre científico
+en itálica y `tipo · subtipo`), el ID Árbol (`SubID-código de plantación`) en
+mono grande, que se achica si no entra en un renglón, la fecha de registro y el
+técnico. Junto al mapa: parcela y grupo con código y nombre, posición y GPS con
+precisión. Sin ID Global desde #832.
 
 Casos borde: sin foto («Sin foto»), foto no legible («Foto no disponible»), sin
 GPS («Sin punto GPS» en el lugar del mapa y en el dato), mapa que no se pudo
@@ -82,7 +83,7 @@ rasteriza en el mismo canvas de `fotos.ts`.
 ## Satélite (#757)
 
 Se elige el zoom más alto cuya cobertura del encuadre entre en un tope de tiles:
-16 para la ficha y 36 para el informe. Los tiles se bajan en paralelo, se
+36 para la ficha (16 hasta #850) y 36 para el informe. Los tiles se bajan en paralelo, se
 componen en el canvas del mapa y los puntos van encima. Si falla cualquier tile,
 el mapa sale liso, sin atribución.
 
@@ -92,7 +93,7 @@ de bajar los tiles se consulta el `tilemap` del servicio y, si falta imagen, se
 baja de a un zoom, hasta tres. Con satélite el mapa sale en JPEG y lleva un
 asterisco bajo su esquina inferior derecha; la atribución, «* Imágenes © Esri,
 Maxar», va en letra mínima al centro del pie de cada hoja con un mapa satelital.
-Las fichas calculan esas hojas de a tres fichas por hoja; el informe, en la
+En las fichas son las hojas cuyo minimapa salió satelital; en el informe, la
 última, donde va el mapa.
 
 ## Errores

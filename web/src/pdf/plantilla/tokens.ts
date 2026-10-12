@@ -62,14 +62,11 @@ export const TAMANO_TEXTO = {
   pie: 7,
   pieMarca: 8,
   etiqueta: 7.2,
-  clasificacion: 7,
   secundario: 7.5,
   dato: 8.3,
   datoMono: 7.8,
-  cientifico: 8,
   especie: 9.5,
   encabezado: 14,
-  idArbol: 14,
   idTarjeta: 12,
   filaListado: 7.8,
   tituloInforme: 22,
@@ -111,29 +108,46 @@ export const MEDIDA_HOJA = {
   airePie: 6,
 } as const;
 
-/** Medidas de la ficha en pt: tres entran en una hoja A4. */
+/** Medidas de la ficha en pt: un árbol por hoja A4. */
 export const MEDIDA_FICHA = {
-  rellenoVertical: 8,
-  rellenoHorizontal: 12,
-  aireSuperior: 6,
-  separacionSuperior: 6,
-  separacionDatos: 3,
+  // Las de este primer grupo también las usa el informe.
   radioRecuadro: 3,
-  /** Cuadrada, como las fotos que saca la app. */
-  ladoFoto: 120,
-  ladoMapa: 128,
-  separacion: 12,
-  hueco: 12,
-  radio: 6,
   borde: 0.75,
   bordeFino: 0.5,
-  punto: 8,
   aireTrasPunto: 5,
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
-  anchoEtiqueta: 54,
   /** Interlineado justo: la llamada bajo el mapa satelital no suma alto. */
   interlineadoLlamada: 1,
+
+  /**
+   * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
+   * izquierda. Columna, hueco e imagen llenan el ancho del cuerpo.
+   */
+  ladoImagen: 300,
+  anchoTexto: 215,
+  huecoColumnas: 20,
+  huecoImagenes: 16,
+  punto: 11,
+  aireTrasPuntoEspecie: 8,
+  aireBajoTitulo: 2,
+  separacionBloques: 22,
+  rellenoDato: 8,
+  aireRotulo: 3,
+  aireIcono: 10,
+  ladoIcono: 30,
+  trazoIcono: 1.3,
+  /** Tamaños de letra: los de la ficha de hoja entera, más grandes que los de TAMANO_TEXTO. */
+  letra: {
+    especie: 18,
+    cientifico: 11.5,
+    clasificacion: 8,
+    rotulo: 7.5,
+    idArbol: 18,
+    dato: 11,
+    datoMono: 10.5,
+    vacio: 10.5,
+  },
 } as const;
 
 type Medidas = { ancho: number; alto: number };
