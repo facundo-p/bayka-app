@@ -3,7 +3,7 @@
 -- plantation_users por plantation_users, storage.objects de tree-photos por
 -- plantación, triggers de membresía admin acotados a la organización.
 begin;
-select plan(37);
+select plan(36);
 
 -- org1 es la organización de los fixtures; org2, una segunda para probar el
 -- aislamiento cross-org.
@@ -152,13 +152,6 @@ select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-0000000000b2
 select is(
   (select count(*)::int from stats_plantaciones()),
   0, 'stats_plantaciones() no devuelve nada para T2 (sin membresías)'
-);
-
--- ── plantation_ids_status() (032, SECURITY INVOKER): RLS lo filtra igual ──
-select is(
-  (select row(total, con_id, generados) from plantation_ids_status('10000000-0000-0000-0000-000000000010'::uuid)),
-  row(0, 0, false),
-  'plantation_ids_status de P1 da (0,0,false) para T2 (no miembro), pese a tener un árbol real'
 );
 reset role;
 -- Limpia el jwt.claim seteado por el bloque anterior: protect_profile_fields

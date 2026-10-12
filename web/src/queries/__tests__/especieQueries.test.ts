@@ -29,6 +29,13 @@ const FILA_ALGARROBO = {
   nombre_cientifico: null,
 };
 
+const FILA_NN = {
+  id: 'sp-nn',
+  codigo: 'NN',
+  nombre: 'N/N',
+  nombre_cientifico: null,
+};
+
 function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO, lugarColor = 0) {
   return { species_id: fila.id, lugar_color: lugarColor, species: fila };
 }
@@ -75,14 +82,22 @@ describe('listarEspeciesDePlantacion', () => {
     ]);
   });
 
-  test('en una base sin la columna del lugar, lee igual y deja el lugar en null (#845)', async () => {
-    const consultas = capturarConsultas(() => ({
-      data: [{ species_id: FILA_QUEBRACHO.id, species: FILA_QUEBRACHO }],
+  test('pide solo las columnas que mapea, sin `*` (#863)', async () => {
+    const consultas = capturarConsultas(() => ({ data: [] }));
+    await listarEspeciesDePlantacion('plant-1');
+
+    expect(consultas[0].columnas).toBe(
+      'species_id, lugar_color, species(codigo, nombre, nombre_cientifico)',
+    );
+  });
+
+  test('N/N no ocupa lugar en la paleta: llega con el lugar en null', async () => {
+    capturarConsultas(() => ({
+      data: [{ species_id: FILA_NN.id, lugar_color: null, species: FILA_NN }],
     }));
     const [especie] = await listarEspeciesDePlantacion('plant-1');
 
-    expect(consultas[0].columnas).not.toContain('lugar_color');
-    expect(especie.lugarColor).toBeNull();
+    expect(especie).toMatchObject({ codigo: 'NN', lugarColor: null });
   });
 
   test('propaga el error de Supabase', async () => {

@@ -80,8 +80,8 @@ no hacer nada (#823). Ahí `PanelLateral` se renderiza en un `Modal
 posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
 
 - Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
-  filas clickeables llevan `tabIndex={-1}`: el clic las enfoca sin sumarlas al
-  orden del Tab.
+  filas clickeables son enfocables (`tabIndex={0}`): el clic las enfoca, y con
+  teclado se llega con Tab y se abren con Enter o Espacio (#862).
 - Cruzar el umbral pasa de columna a hoja, o al revés, y remonta todo lo que
   está adentro de `PanelLateral`. Se conserva lo que vive por encima: la
   selección y los formularios de Especies, Científicas y Usuarios. Se descarta

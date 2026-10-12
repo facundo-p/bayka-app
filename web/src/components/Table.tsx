@@ -1,6 +1,7 @@
-import type { MouseEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { cx } from '../lib/classNames';
 import { esParcial, estanTodas, type EstadoMaestro } from '../lib/seleccionMaestro';
+import { activaComoBoton } from '../lib/teclas';
 import { BotonCasilla } from './Casilla';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
@@ -105,6 +106,28 @@ interface FilaTablaProps<T> extends Pick<TableProps<T>, 'columns' | 'onRowClick'
   abierta: boolean;
 }
 
+/**
+ * Enter o Espacio abren la fila como un clic, solo si el foco está en la fila:
+ * en un botón, link o campo de adentro la tecla es de ese control. Espacio no
+ * scrollea la página.
+ */
+function alTeclearFila(abrir: () => void) {
+  return (evento: KeyboardEvent<HTMLTableRowElement>) => {
+    if (evento.target !== evento.currentTarget || !activaComoBoton(evento.key)) return;
+    evento.preventDefault();
+    abrir();
+  };
+}
+
+/**
+ * La fila clickeable entra al orden del Tab y la hoja de detalle le devuelve
+ * el foco al cerrar. Sigue siendo una fila de la tabla, sin rol de botón, para
+ * que el lector de pantalla lea sus celdas con sus encabezados.
+ */
+function propsFilaClickeable(abrir: () => void) {
+  return { onClick: abrir, onKeyDown: alTeclearFila(abrir), tabIndex: 0 };
+}
+
 function FilaTabla<T>({ row, columns, abierta, onRowClick, seleccion }: FilaTablaProps<T>) {
   const marcada = seleccion?.marcada(row) ?? false;
   return (
@@ -114,10 +137,7 @@ function FilaTabla<T>({ row, columns, abierta, onRowClick, seleccion }: FilaTabl
         marcada && styles.filaMarcada,
         abierta && styles.filaSeleccionada,
       )}
-      onClick={onRowClick ? () => onRowClick(row) : undefined}
-      // Fuera del orden del Tab, pero enfocable: el clic la enfoca y la hoja de
-      // detalle le devuelve el foco al cerrar.
-      tabIndex={onRowClick ? -1 : undefined}
+      {...(onRowClick && propsFilaClickeable(() => onRowClick(row)))}
     >
       {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} marcada={marcada} />}
       {renderCells(columns, row)}

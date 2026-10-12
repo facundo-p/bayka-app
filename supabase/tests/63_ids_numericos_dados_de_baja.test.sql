@@ -1,8 +1,15 @@
--- sync_subgroup ignora `plantacion_id` y `global_id` del payload (#822): un APK
--- que todavía los mande sincroniza igual, un árbol nuevo queda sin IDs
--- numéricos y uno que ya los tenía los conserva.
+-- IDs numéricos de los árboles dados de baja (#822, #859): no quedan las
+-- columnas ni los RPC que las escribían, y un APK que todavía mande
+-- `plantacion_id` y `global_id` en el payload de sync_subgroup sincroniza igual.
 begin;
-select plan(7);
+select plan(10);
+
+select hasnt_column('public', 'trees', 'global_id', 'trees.global_id no existe');
+select hasnt_column('public', 'trees', 'plantacion_id', 'trees.plantacion_id no existe');
+select hasnt_function('public', 'generate_tree_ids', 'generate_tree_ids no existe');
+select hasnt_function('public', 'next_global_id_seed', 'next_global_id_seed no existe');
+select hasnt_function('public', 'plantation_ids_status', 'plantation_ids_status no existe');
+select hasnt_function('public', 'update_tree_ids', 'update_tree_ids no existe');
 
 insert into organizations (id, nombre) values
   ('b6300000-0000-0000-0000-000000000001', 'Org Test 63');
@@ -57,35 +64,15 @@ select is(
   'true',
   'un payload con plantacion_id y global_id sincroniza');
 
-reset role;
-
-select is((select (plantacion_id, global_id)::text from trees where id = 'b6300000-0000-0000-0000-0000000000d1'),
-  '(,)', 'el árbol nuevo queda sin IDs numéricos');
-select is((select sub_id from trees where id = 'b6300000-0000-0000-0000-0000000000d1'),
-  'P1L1T63A1', 'y con el resto de lo que mandó');
-
--- Un árbol numerado antes de #822.
-update trees set plantacion_id = 1, global_id = 1001
-  where id = 'b6300000-0000-0000-0000-0000000000d1';
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', 'b6300000-0000-0000-0000-0000000000a1', true);
-
 select is(
   ( select sync_subgroup((select g from grupo_63), jsonb_build_array((select t from arbol_63))) ->> 'success' ),
   'true',
-  'el re-sync de un árbol numerado con otros IDs en el payload sincroniza');
-
-select is(
-  ( select sync_subgroup((select g from grupo_63),
-      jsonb_build_array((select t from arbol_63) - 'plantacion_id' - 'global_id')) ->> 'success' ),
-  'true',
-  'y el re-sync sin los IDs, como el APK nuevo, también');
+  'y su re-sync también');
 
 reset role;
 
-select is((select (plantacion_id, global_id)::text from trees where id = 'b6300000-0000-0000-0000-0000000000d1'),
-  '(1,1001)', 'el árbol numerado conserva sus IDs');
+select is((select sub_id from trees where id = 'b6300000-0000-0000-0000-0000000000d1'),
+  'P1L1T63A1', 'el árbol queda con el resto de lo que mandó');
 select is((select count(*)::int from trees where group_id = 'b6300000-0000-0000-0000-0000000000c1'),
   1, 'sin árboles de más');
 

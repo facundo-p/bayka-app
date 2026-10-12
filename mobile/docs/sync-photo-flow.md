@@ -479,7 +479,7 @@ ella (y service_role) ejecuta. Un cambio en un paso redefine solo esa función.
 --    species_id, sub_id                                   -- resolución N/N
 --    sub_id que empieza con parcela_codigo + codigo       -- pasa a parcela y grupo vigentes
 --    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url) -- no borra foto existente
---    GPS también con COALESCE; plantacion_id y global_id no se escriben (#822)
+--    GPS también con COALESCE; ignora plantacion_id y global_id de un APK viejo (#822)
 -- sync_subgroup_habilitar_especies
 -- 10. Re-habilita en plantation_species la especie de los árboles que suben
 -- sync_subgroup_conservadas / sync_subgroup_conservados

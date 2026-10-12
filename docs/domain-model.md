@@ -789,9 +789,8 @@ Ejemplo:
 
 Era un número secuencial entre todas las plantaciones. Se sacó de la app y de
 las exportaciones en #822, sin reemplazo: identifica al árbol su ID
-(`<SubID>-<código de plantación>`). Las columnas `trees.global_id` y
-`trees.plantacion_id` quedan en la base, sin uso, hasta que ningún APK de prod
-las lea.
+(`<SubID>-<código de plantación>`). La base dejó de guardarlo, junto con el ID
+Parcial, en #859.
 
 ---
 

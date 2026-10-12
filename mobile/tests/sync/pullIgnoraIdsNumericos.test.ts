@@ -1,6 +1,6 @@
-// El server sigue mandando plantacion_id y global_id en el pull hasta que se
-// dropeen (#822): el upsert de árboles los ignora. Corre contra better-sqlite3 con
-// las migraciones reales, así ejercita el SQL de producción.
+// Un server sin la migración 081 (#859) todavía manda plantacion_id y global_id
+// en el pull: el upsert de árboles los ignora (#822). Corre contra better-sqlite3
+// con las migraciones reales, así ejercita el SQL de producción.
 
 import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import {
