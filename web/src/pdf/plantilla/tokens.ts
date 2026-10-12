@@ -103,7 +103,7 @@ export const MEDIDA_HOJA = {
 
 /** Medidas de la ficha en pt: un árbol por hoja A4. */
 export const MEDIDA_FICHA = {
-  // Hasta `interlineadoLlamada`, también las usa el informe.
+  // Las de este primer grupo también las usa el informe.
   radioRecuadro: 3,
   borde: 0.75,
   bordeFino: 0.5,
@@ -115,7 +115,7 @@ export const MEDIDA_FICHA = {
 
   /**
    * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
-   * izquierda. Con el hueco de 20 llenan el ancho del cuerpo (535).
+   * izquierda. Columna e imagen, con el hueco entre ellas, llenan el ancho del cuerpo.
    */
   ladoImagen: 300,
   anchoTexto: 215,

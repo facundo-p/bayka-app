@@ -111,6 +111,8 @@ test('con los casos borde, cada ficha va en su hoja', async () => {
 test('el peor caso realista, con la llamada del satélite, entra en una hoja', async () => {
   const pdf = await renderizar([ficha(PEOR_CASO, LISTA, MAPA_SATELITE, TECNICO_LARGO)]);
   expect(paginasDelPdf(pdf)).toBe(1);
+  // Entero en un tramo: el ID largo no se parte ni se mete debajo de la foto.
+  expect(textosDelPdf(pdf)).toContain(PEOR_CASO.idArbol);
 });
 
 test('N fichas del peor caso, N hojas', async () => {

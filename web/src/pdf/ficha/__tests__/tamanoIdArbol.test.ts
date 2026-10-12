@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { MEDIDA_FICHA } from '../../plantilla/tokens';
-import { tamanoIdArbol } from '../Ficha.styles';
+import { tamanoIdArbol } from '../tamanoIdArbol';
 
 /** IBM Plex Mono: cada glifo mide 0,6 em. */
 const ANCHO_GLIFO_EM = 0.6;

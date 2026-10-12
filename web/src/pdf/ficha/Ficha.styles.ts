@@ -11,9 +11,6 @@ const { letra } = M;
 
 const INTERLINEADO = { titulo: 1.25, id: 1.2, dato: 1.35 } as const;
 
-/** IBM Plex Mono: todos los glifos miden 0,6 em. */
-const ANCHO_GLIFO_MONO = 0.6;
-
 const imagen = {
   width: M.ladoImagen,
   height: M.ladoImagen,
@@ -29,15 +26,6 @@ const rotulo = {
 } as const;
 
 const mono = { fontFamily: FUENTE_PDF.mono, fontSize: letra.datoMono } as const;
-
-/**
- * El ID Árbol va en un renglón: react-pdf no lo parte en el guion y se
- * metería debajo de la foto. Si a tamaño pleno no entra en la columna, se achica.
- */
-export function tamanoIdArbol(idArbol: string): number {
-  const entra = M.anchoTexto / (idArbol.length * ANCHO_GLIFO_MONO);
-  return Math.min(letra.idArbol, entra);
-}
 
 export const fichaStyles = StyleSheet.create({
   fila: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -87,8 +75,7 @@ export const fichaStyles = StyleSheet.create({
     borderColor: COLOR_PDF.linea,
     backgroundColor: COLOR_PDF.papelHundido,
   },
-  icono: { width: M.ladoIcono, height: M.ladoIcono, marginBottom: M.aireIcono },
-  textoVacio: { fontSize: letra.vacio, color: COLOR_PDF.tenue },
+  textoVacio: { marginTop: M.aireIcono, fontSize: letra.vacio, color: COLOR_PDF.tenue },
   // Debajo del mapa, en el aire hasta el pie: no suma alto.
   llamada: {
     position: 'absolute',

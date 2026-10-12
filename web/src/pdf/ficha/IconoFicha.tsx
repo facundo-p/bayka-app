@@ -1,6 +1,6 @@
 import { Circle, Path, Svg } from '@react-pdf/renderer';
 import { COLOR_PDF, MEDIDA_FICHA } from '../plantilla/tokens';
-import { fichaStyles as styles } from './Ficha.styles';
+import { iconoFichaStyles as styles } from './IconoFicha.styles';
 
 /** Trazos de Lucide (ISC) en su caja de 24: un contorno y un círculo. */
 const CAJA_ICONO = '0 0 24 24';

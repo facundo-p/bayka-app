@@ -6,8 +6,9 @@ import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
 import { LlamadaSatelite } from '../mapa/LlamadaSatelite';
 import { ESTADO_MAPA, esMapaListo, type MapaPdf } from '../mapa/estadoMapa';
 import type { EspecieFicha, GpsFicha, ModeloFicha } from './datosFicha';
-import { fichaStyles as styles, tamanoIdArbol } from './Ficha.styles';
+import { fichaStyles as styles } from './Ficha.styles';
 import { ICONO_FICHA, IconoFicha, type TrazosIcono } from './IconoFicha';
+import { tamanoIdArbol } from './tamanoIdArbol';
 import { TEXTO_FICHA } from './textosFicha';
 
 const TEXTO_FOTO_FALTANTE = {

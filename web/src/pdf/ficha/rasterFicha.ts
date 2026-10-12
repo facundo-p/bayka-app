@@ -20,7 +20,7 @@ export const DIBUJO_MINIMAPA = {
 
 const LADO_FOTO_PX = Math.round(MEDIDA_FICHA.ladoImagen * PX_POR_PT_FICHA);
 
-/** Más chica que las fotos de la app (1200 px): se reduce, nunca se agranda. */
+/** Más chica que las fotos de la app (1200 px): esas se reducen, no se agrandan. */
 export const MEDIDA_FOTO_FICHA: MedidaImagen = {
   ancho: LADO_FOTO_PX,
   alto: LADO_FOTO_PX,
