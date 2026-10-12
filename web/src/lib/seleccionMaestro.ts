@@ -1,7 +1,4 @@
-/*
- * Selección con checkbox maestro sobre una lista visible: el checklist de
- * especies y el modo selección de árboles (#755).
- */
+/* Selección con checkbox maestro sobre una lista visible: el checklist de especies. */
 
 /** Tri-estado del checkbox maestro según las filas visibles. */
 export const ESTADO_MAESTRO = {
@@ -32,28 +29,4 @@ export function estadoMaestro(
 /** Con todas marcadas desmarca; con ninguna o algunas marca todo lo visible. */
 export function accionDesdeEstado(estado: EstadoMaestro): AccionMasiva {
   return estanTodas(estado) ? ACCION_MASIVA.desmarcar : ACCION_MASIVA.marcar;
-}
-
-export function alternarId(marcadas: ReadonlySet<string>, id: string): ReadonlySet<string> {
-  const proxima = new Set(marcadas);
-  if (proxima.has(id)) proxima.delete(id);
-  else proxima.add(id);
-  return proxima;
-}
-
-/** La selección que deja tocar el maestro: todas las visibles o ninguna. */
-export function aplicarMaestro(
-  idsVisibles: readonly string[],
-  marcadas: ReadonlySet<string>,
-): ReadonlySet<string> {
-  const accion = accionDesdeEstado(estadoMaestro(idsVisibles, marcadas));
-  return accion === ACCION_MASIVA.marcar ? new Set(idsVisibles) : new Set();
-}
-
-/** Las marcadas que siguen visibles, en el orden de la lista. */
-export function marcadasEnOrden(
-  idsVisibles: readonly string[],
-  marcadas: ReadonlySet<string>,
-): string[] {
-  return idsVisibles.filter((id) => marcadas.has(id));
 }

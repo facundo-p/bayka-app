@@ -1,10 +1,18 @@
 /*
- * Lo que necesitan las fichas PDF de árboles (#754): más datos por árbol que el listado
- * (científico, clasificación, nombres de parcela y grupo), leídos por ids.
+ * Lo que necesitan los PDF de árboles, la ficha (#754) y el reporte (#849): más
+ * datos por árbol que el listado (científico, clasificación, nombres de parcela
+ * y grupo).
  */
 import { idDeArbol } from '../../../shared/codigoPlantacion';
 import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import { supabase } from '../lib/supabase';
+import {
+  consultaArbolesFiltrados,
+  ordenarComoListado,
+  resolverBusquedaDeFiltros,
+  type FiltrosArboles,
+} from './dataExplorerQueries';
+import { conSenal, leerPaginado, type RespuestaPagina } from './leerPaginado';
 
 export type CodigoNombre = { codigo: string; nombre: string };
 
@@ -60,12 +68,16 @@ type FilaArbolFicha = {
   };
 };
 
-/** `parcelas.deleted_at` no puede filtrar con `!inner`: dejaría afuera a los grupos sin parcela. */
+/**
+ * `parcelas.deleted_at` no puede filtrar con `!inner`: dejaría afuera a los
+ * grupos sin parcela. `plantations` sí va con `!inner`: la búsqueda por ID
+ * Árbol completo filtra por su código.
+ */
 const SELECT_FICHA =
   'id, sub_id, posicion, foto_url, usuario_registro, created_at, ' +
   'latitude, longitude, gps_accuracy, ' +
   'species(codigo, nombre, nombre_cientifico, tipo, subtipo), ' +
-  'groups!inner(codigo, nombre, parcela_id, plantation_id, plantations(codigo), ' +
+  'groups!inner(codigo, nombre, parcela_id, plantation_id, plantations!inner(codigo), ' +
   'parcelas(codigo, nombre, deleted_at))';
 
 function parcelaVigente(parcela: FilaParcela | null): CodigoNombre | null {
@@ -103,26 +115,45 @@ function mapearArbolFicha(fila: FilaArbolFicha): ArbolParaFicha {
   };
 }
 
-/** Árboles de la plantación con esos ids, en el orden de `ids`; los que no existen se omiten. */
-export async function listarArbolesParaFichas(
+/** El árbol de la plantación con ese id; null si no existe o no es de la plantación. */
+export async function leerArbolParaFicha(
   plantationId: string,
-  ids: readonly string[],
-): Promise<ArbolParaFicha[]> {
-  if (ids.length === 0) return [];
+  arbolId: string,
+): Promise<ArbolParaFicha | null> {
   const { data, error } = await supabase
     .from('trees')
     .select(SELECT_FICHA)
     .eq('groups.plantation_id', plantationId)
-    .in('id', [...ids]);
+    .eq('id', arbolId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
-  const porId = new Map(
-    ((data ?? []) as unknown as FilaArbolFicha[]).map((fila) => [fila.id, fila]),
-  );
-  return ids.flatMap((id) => {
-    const fila = porId.get(id);
-    return fila ? [mapearArbolFicha(fila)] : [];
-  });
+  const fila = data as unknown as FilaArbolFicha | null;
+  return fila && mapearArbolFicha(fila);
+}
+
+/**
+ * Todos los árboles que deja el filtro del listado, en su orden, de a 1.000 por
+ * pedido. Con `senal` abortada corta la página en vuelo y no pide más.
+ */
+export async function listarArbolesDelFiltro(
+  plantationId: string,
+  filtros: FiltrosArboles,
+  senal?: AbortSignal,
+): Promise<ArbolParaFicha[]> {
+  senal?.throwIfAborted();
+  const busqueda = await resolverBusquedaDeFiltros(filtros);
+  const select = { columnas: SELECT_FICHA };
+  const pagina = (desde: number, hasta: number) => {
+    const consulta = consultaArbolesFiltrados(plantationId, filtros, busqueda, select);
+    // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
+    return conSenal(
+      ordenarComoListado(consulta).range(desde, hasta),
+      senal,
+    ) as unknown as PromiseLike<RespuestaPagina<FilaArbolFicha>>;
+  };
+  const filas = await leerPaginado(pagina, senal);
+  return filas.map(mapearArbolFicha);
 }
 
 /** Nombre de la organización dueña de la plantación; null si no se puede leer. */

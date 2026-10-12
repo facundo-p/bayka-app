@@ -4,18 +4,8 @@ import { Spinner } from './Spinner';
 import styles from './Button.module.css';
 
 type ButtonProps = ComponentProps<'button'> & {
-  /**
-   * `contorno`: acción liviana con borde; `destructiva`, la misma en rojo.
-   * `inverso` e `inversoSutil`: principal y secundaria sobre una franja primary.
-   */
-  variant?:
-    | 'primary'
-    | 'secondary'
-    | 'danger'
-    | 'contorno'
-    | 'destructiva'
-    | 'inverso'
-    | 'inversoSutil';
+  /** `contorno`: acción liviana con borde; `destructiva`, la misma en rojo. */
+  variant?: 'primary' | 'secondary' | 'danger' | 'contorno' | 'destructiva';
   /** `sm`: versión compacta para celdas de tabla y acciones secundarias. */
   size?: 'md' | 'sm';
   /** Deshabilita el botón y muestra un spinner inline. */

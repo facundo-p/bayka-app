@@ -83,3 +83,20 @@ export function porcentajeDeObjetivo(valor: number, objetivo: number | null): nu
   if (objetivo === null || objetivo <= 0) return null;
   return acotarPorcentaje(porcentaje(valor, objetivo));
 }
+
+/** Bytes de un KB y de un MB, en base 10 como los muestra el sistema. */
+export const BYTES = { kb: 1000, mb: 1000 * 1000 } as const;
+
+/** Debajo de esto el MB lleva un decimal: «1,4 MB» dice más que «1 MB». */
+const MB_CON_DECIMAL = 10;
+
+function formatearDecimal(valor: number, decimales: number): string {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: decimales }).format(valor);
+}
+
+/** Tamaño de un archivo, ej. «340 KB», «1,4 MB», «12 MB». */
+export function formatearPeso(bytes: number): string {
+  const mb = bytes / BYTES.mb;
+  if (mb < 1) return `${formatearEntero(Math.max(1, bytes / BYTES.kb))} KB`;
+  return `${formatearDecimal(mb, mb < MB_CON_DECIMAL ? 1 : 0)} MB`;
+}

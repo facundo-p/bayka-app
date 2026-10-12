@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CLAVE_QUERY, familia } from '../../queries/clavesQuery';
+import { CLAVE_QUERY, FAMILIAS_ARBOLES_FILTRADOS, familia } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { listarEspeciesDePlantacion, type EspecieDePlantacion } from '../../queries/especieQueries';
 import { mensajeDeErrorDeEdicion } from '../../repositories/edicionDePlantacion';
@@ -17,12 +17,13 @@ export interface EdicionDeEspecie {
   onActualizado: (arbol: ArbolDetalle) => void;
 }
 
-/** La especie aparece en la tabla, el dashboard y el mapa; el uso por especie
- *  (en la configuración) bloquea quitarla de la plantación. El selector se
- *  refresca por si la especie elegida ya no estaba habilitada. */
+/** La especie aparece en la tabla, el dashboard y el mapa, y cuenta en el
+ *  reporte filtrado por especie; el uso por especie (en la configuración)
+ *  bloquea quitarla de la plantación. El selector se refresca por si la especie
+ *  elegida ya no estaba habilitada. */
 function clavesAfectadas(plantationId: string) {
   return [
-    familia(CLAVE_QUERY.datosArboles),
+    ...FAMILIAS_ARBOLES_FILTRADOS,
     familia(CLAVE_QUERY.dashboard),
     familia(CLAVE_QUERY.mapa),
     CLAVE_QUERY.plantacionEspecies(plantationId),

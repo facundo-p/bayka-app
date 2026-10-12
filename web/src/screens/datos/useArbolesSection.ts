@@ -22,7 +22,6 @@ import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import type { EdicionDeEspecie } from './useCambioDeEspecie';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
-import { useSeleccionFichas } from './useSeleccionFichas';
 
 /** Retardo del debounce de la búsqueda por ID, en ms. */
 const RETARDO_BUSQUEDA_MS = 300;
@@ -41,7 +40,7 @@ function usePaginaArboles(plantationId: string, filtros: FiltrosUi) {
   // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
   const claveFiltros = filtrosAParams(aplicados).toString();
   useEffect(() => setPagina(1), [claveFiltros]);
-  return { arboles, pagina, setPagina, clavePagina: `${claveFiltros}#${pagina}` };
+  return { arboles, pagina, setPagina, filtrosAplicados: aFiltrosArboles(aplicados) };
 }
 
 function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fila: T) => string) {
@@ -90,16 +89,6 @@ function descargaFichaDe(contexto: ContextoFichasPdf | null) {
     contexto && (() => descargarFichaPdf(arbol.id, contexto));
 }
 
-function useSeleccionDeArboles(
-  { arboles, clavePagina }: ReturnType<typeof usePaginaArboles>,
-  contexto: ContextoFichasPdf | null,
-) {
-  // Mientras llega otra página se ven las filas viejas: no se pueden marcar.
-  const filas = arboles.isPlaceholderData ? [] : (arboles.data?.arboles ?? []);
-  const idsPagina = filas.map((arbol) => arbol.id);
-  return useSeleccionFichas(clavePagina, idsPagina, contexto);
-}
-
 /**
  * Estado y datos de la sección Árboles: filtros en la URL, página, catálogos
  * de los selects y el árbol abierto en el panel. El componente queda solo con
@@ -121,7 +110,6 @@ export function useArbolesSection() {
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
   const colores = useColoresEspecie(id);
   const contextoFichas = useContextoFichas(plantacion, mapas);
-  const seleccion = useSeleccionDeArboles(paginaArboles, contextoFichas);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -134,7 +122,6 @@ export function useArbolesSection() {
     setArbolSeleccionado,
     edicionDeEspecie,
     descargaFichaDe: descargaFichaDe(contextoFichas),
-    seleccion,
     colores,
   };
 }

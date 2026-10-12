@@ -30,6 +30,19 @@ test('cierra con Escape y click en overlay, no con click en el contenido', () =>
   expect(onClose).toHaveBeenCalledTimes(2);
 });
 
+test('sin cerrar al clickear afuera, el fondo no cierra y Escape sí', () => {
+  const onClose = vi.fn();
+  render(
+    <Modal open title="Generando" onClose={onClose} cerrarAlClickearAfuera={false}>
+      <p>contenido</p>
+    </Modal>,
+  );
+  fireEvent.click(screen.getByRole('dialog').parentElement!);
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 test('el Escape adentro cierra solo el modal: no le llega al panel de atrás', () => {
   const deAtras = vi.fn();
   document.addEventListener('keydown', deAtras);

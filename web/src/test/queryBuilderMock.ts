@@ -27,6 +27,8 @@ export type ConsultaCapturada = {
   ordenes?: { columna: string; ascending: boolean }[];
   rango?: { desde: number; hasta: number };
   limite?: number;
+  /** La de `.abortSignal()`. */
+  senal?: AbortSignal;
 };
 
 export type RespuestaMock = {
@@ -96,6 +98,10 @@ export function crearConsultaMock(tabla: string, resolver: ResolverConsulta) {
     },
     limit(cantidad: number) {
       consulta.limite = cantidad;
+      return builder;
+    },
+    abortSignal(senal: AbortSignal) {
+      consulta.senal = senal;
       return builder;
     },
     maybeSingle: async () => normalizar(resolver(consulta)),

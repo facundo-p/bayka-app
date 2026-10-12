@@ -22,6 +22,11 @@ interface ModalProps {
    * listado): el título queda solo como nombre accesible del diálogo.
    */
   encabezadoPropio?: boolean;
+  /**
+   * `false` mientras un clic de más en el fondo tiraría trabajo en curso (ej.
+   * un PDF a medio generar). Escape y los botones del contenido siguen cerrando.
+   */
+  cerrarAlClickearAfuera?: boolean;
   children: ReactNode;
 }
 
@@ -64,6 +69,7 @@ export function Modal({
   ancho = 'normal',
   capa = 'dialogo',
   encabezadoPropio = false,
+  cerrarAlClickearAfuera = true,
   children,
 }: ModalProps) {
   const dialogRef = useFocusOnOpen(open);
@@ -79,7 +85,7 @@ export function Modal({
         esHoja && styles.overlayHoja,
         capa === 'detalle' && styles.capaDetalle,
       )}
-      onClick={onClose}
+      onClick={cerrarAlClickearAfuera ? onClose : undefined}
     >
       <div
         ref={dialogRef}

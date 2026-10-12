@@ -31,7 +31,7 @@ test('firma solo las subidas, en una llamada, y reduce cada una', async () => {
 
   expect(fotos).toEqual([LISTA, SIN_FOTO, SIN_FOTO, LISTA]);
   expect(estadoMock.firmas.map((firma) => firma.path)).toEqual(['p/a.jpg', 'p/b.jpg']);
-  expect(fetchFalso).toHaveBeenCalledWith('https://firmada.test/p/a.jpg');
+  expect(fetchFalso.mock.calls[0][0]).toBe('https://firmada.test/p/a.jpg');
   expect(reducir).toHaveBeenCalledWith(expect.anything(), { ancho: 480, alto: 480, calidad: 0.75 });
 });
 
@@ -82,4 +82,39 @@ test('reduce a la medida pedida', async () => {
   const medida = { ancho: 360, alto: 360, calidad: 0.7 };
   await cargarFotos(['p/a.jpg'], { medida });
   expect(reducir).toHaveBeenCalledWith(expect.anything(), medida);
+});
+
+describe('cancelar', () => {
+  test('con la señal ya abortada no firma ni baja nada', async () => {
+    const control = new AbortController();
+    control.abort();
+    await expect(cargarFotos(['p/a.jpg'], { senal: control.signal })).rejects.toThrow();
+    expect(estadoMock.firmas).toEqual([]);
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  test('corta las descargas en curso, no lanza más y rechaza en vez de dejarlas no disponibles', async () => {
+    const control = new AbortController();
+    // Cada fetch queda colgado hasta que la señal lo corta, como el de verdad.
+    fetchFalso.mockImplementation(
+      (_url, init) =>
+        new Promise((_, rechazar) =>
+          init?.signal?.addEventListener('abort', () => rechazar(init.signal?.reason)),
+        ),
+    );
+    const urls = Array.from({ length: 20 }, (_, indice) => `p/${indice}.jpg`);
+    const carga = cargarFotos(urls, { senal: control.signal });
+    await vi.waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(5));
+    control.abort();
+
+    await expect(carga).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchFalso).toHaveBeenCalledTimes(5);
+    expect(reducir).not.toHaveBeenCalled();
+  });
+
+  test('cada fetch lleva la señal', async () => {
+    const control = new AbortController();
+    await cargarFotos(['p/a.jpg'], { senal: control.signal });
+    expect(fetchFalso.mock.calls[0][1]).toEqual({ signal: control.signal });
+  });
 });

@@ -51,5 +51,5 @@ export { RequireAccess, RequireSuperadmin } from './RequireAccess';
 export { Select } from './Select';
 export { SelectConDetalle, type OpcionConDetalle } from './SelectConDetalle/SelectConDetalle';
 export { Spinner } from './Spinner';
-export { Table, type SeleccionTabla, type TableColumn } from './Table';
+export { Table, type TableColumn } from './Table';
 export { Textarea } from './Textarea';

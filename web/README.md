@@ -14,7 +14,8 @@ Las decisiones de diseño y alcance están en
 - `@supabase/supabase-js` + TanStack Query (RLS de Postgres como autorización).
 - `react-router` v7 (modo librería) · Recharts (gráficos).
 - `@react-pdf/renderer` para los PDF de marca, armados en el navegador y
-  cargados con `import()` recién al pedir uno.
+  cargados con `import()` recién al pedir uno. El reporte de árboles, que
+  puede tener miles de filas, se arma en un Web Worker.
 - CSS Modules + tokens de marca en `src/theme/theme.css` (cero estilos inline,
   cero colores hardcodeados fuera del tema).
 - Vitest + Testing Library.
@@ -145,7 +146,8 @@ src/
   theme/         theme.css con los tokens de marca
   pdf/           Documentos PDF: plantilla y tokens de marca (`plantilla/`),
                  mapa de puntos sobre el satélite (`mapa/`), fotos y fichas
-                 de árbol (`ficha/`) e informe de la plantación (`informe/`)
+                 de árbol (`ficha/`), informe de la plantación (`informe/`)
+                 y reporte de los árboles de un filtro (`reporte/`)
 ```
 
 Reglas heredadas del proyecto: separación datos/presentación obligatoria,

@@ -5,6 +5,7 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import {
   ARBOLES_POR_PAGINA,
   ESPECIE_SIN_IDENTIFICAR,
+  contarArbolesDelFiltro,
   listarArboles,
   listarGrupos,
   listarParcelasConStats,
@@ -138,7 +139,11 @@ describe('listarArboles', () => {
     const pagina = await listarArboles('plant-1', {}, 2);
 
     expect(consultas[0].opciones).toEqual({ count: 'exact' });
-    expect(consultas[0].orden).toEqual({ columna: 'created_at', ascending: false });
+    // El id desempata: con un created_at repetido, paginar no repite ni saltea filas.
+    expect(consultas[0].ordenes).toEqual([
+      { columna: 'created_at', ascending: false },
+      { columna: 'id', ascending: false },
+    ]);
     expect(consultas[0].rango).toEqual({ desde: 50, hasta: 99 });
     expect(pagina.total).toBe(120);
     expect(pagina.totalPaginas).toBe(Math.ceil(120 / ARBOLES_POR_PAGINA));
@@ -268,5 +273,79 @@ describe('listarArboles', () => {
   test('propaga el error de Supabase', async () => {
     capturarConsultas(() => ({ error: { message: 'falló la red' } }));
     await expect(listarArboles('plant-1')).rejects.toThrow('falló la red');
+  });
+});
+
+describe('contarArbolesDelFiltro', () => {
+  /** Con foto = subida al bucket: no nula y sin esquema local. */
+  const esConFoto = (consulta: ConsultaCapturada) =>
+    consulta.filtros.some(({ metodo, columna }) => metodo === 'not' && columna === 'foto_url');
+
+  function responder(total: number, conFoto: number) {
+    return (consulta: ConsultaCapturada): RespuestaMock =>
+      consulta.tabla === 'trees'
+        ? { count: esConFoto(consulta) ? conFoto : total }
+        : { error: { message: `consulta inesperada a ${consulta.tabla}` } };
+  }
+
+  test('cuenta el total y los con foto sin traer filas, con los filtros del listado', async () => {
+    const consultas = capturarConsultas(responder(148, 37));
+    const conteo = await contarArbolesDelFiltro('plant-1', { parcelaId: 'parc-1', conGps: true });
+
+    expect(conteo).toEqual({ total: 148, conFoto: 37 });
+    expect(consultas).toHaveLength(2);
+    for (const consulta of consultas) {
+      expect(consulta.opciones).toEqual({ count: 'exact', head: true });
+      expect(consulta.columnas).toContain('groups!inner(');
+      expect(consulta.columnas).toContain('plantations!inner(codigo)');
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'eq',
+        columna: 'groups.parcela_id',
+        valor: 'parc-1',
+      });
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'not',
+        columna: 'latitude',
+        operador: 'is',
+        valor: null,
+      });
+    }
+    expect(consultas.filter(esConFoto)).toHaveLength(1);
+  });
+
+  test('con el filtro «sin foto», los con foto son 0 sin consultar', async () => {
+    const consultas = capturarConsultas(responder(20, 99));
+    expect(await contarArbolesDelFiltro('plant-1', { conFoto: false })).toEqual({
+      total: 20,
+      conFoto: 0,
+    });
+    expect(consultas).toHaveLength(1);
+  });
+
+  test('con el filtro «con foto», todos tienen foto y alcanza una consulta', async () => {
+    const consultas = capturarConsultas(responder(450, 450));
+    expect(await contarArbolesDelFiltro('plant-1', { conFoto: true })).toEqual({
+      total: 450,
+      conFoto: 450,
+    });
+    expect(consultas).toHaveLength(1);
+  });
+
+  test('la búsqueda por ID entra en los dos conteos', async () => {
+    const consultas = capturarConsultas(responder(3, 1));
+    await contarArbolesDelFiltro('plant-1', { busqueda: 'L23' });
+
+    for (const consulta of consultas) {
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'ilike',
+        columna: 'sub_id',
+        valor: '%L23%',
+      });
+    }
+  });
+
+  test('propaga el error de Supabase', async () => {
+    capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
+    await expect(contarArbolesDelFiltro('plant-1', {})).rejects.toThrow('sin permisos');
   });
 });

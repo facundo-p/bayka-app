@@ -17,7 +17,10 @@ export const TAMANO_PAGINA = 1000;
  */
 export const PAGINAS_EN_PARALELO = 4;
 
-type RespuestaPagina<T> = { data: T[] | null; error: { message: string; code?: string } | null };
+export type RespuestaPagina<T> = {
+  data: T[] | null;
+  error: { message: string; code?: string } | null;
+};
 
 /**
  * Acumula todas las filas pidiendo páginas de `TAMANO_PAGINA` con `.range()`
@@ -28,11 +31,14 @@ type RespuestaPagina<T> = { data: T[] | null; error: { message: string; code?: s
  * caller pueda distinguir, p.ej., UNDEFINED_COLUMN de la migración 023).
  * `consultar` tiene que ordenar por una clave única: sin ORDER BY, el OFFSET
  * puede repetir o saltear filas entre páginas (#682).
+ * Con `senal` abortada no pide más páginas y rechaza con su motivo; para cortar
+ * también la página en vuelo, `consultar` la encadena con `conSenal`.
  */
 export async function leerPaginado<T>(
   consultar: (desde: number, hasta: number) => PromiseLike<RespuestaPagina<T>>,
+  senal?: AbortSignal,
 ): Promise<T[]> {
-  const pedir = (pagina: number) => leerPagina(consultar, pagina);
+  const pedir = (pagina: number) => leerPagina(consultar, pagina, senal);
   const primera = await pedir(0);
   const filas = [...primera];
   if (primera.length < TAMANO_PAGINA) return filas;
@@ -48,9 +54,21 @@ export async function leerPaginado<T>(
 async function leerPagina<T>(
   consultar: (desde: number, hasta: number) => PromiseLike<RespuestaPagina<T>>,
   pagina: number,
+  senal: AbortSignal | undefined,
 ): Promise<T[]> {
+  senal?.throwIfAborted();
   const desde = pagina * TAMANO_PAGINA;
   const { data, error } = await consultar(desde, desde + TAMANO_PAGINA - 1);
+  // Cortada en vuelo, Supabase la devuelve como error: vale la cancelación.
+  senal?.throwIfAborted();
   if (error) throw errorDeSupabase(error);
   return data ?? [];
+}
+
+/** La consulta, cortable con `senal` si la hay. */
+export function conSenal<C extends { abortSignal: (senal: AbortSignal) => C }>(
+  consulta: C,
+  senal: AbortSignal | undefined,
+): C {
+  return senal ? consulta.abortSignal(senal) : consulta;
 }

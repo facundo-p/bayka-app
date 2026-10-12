@@ -1,17 +1,13 @@
-import { Download } from 'lucide-react';
 import {
-  Button,
   Cargando,
   CardTabla,
   ErrorConReintento,
   LayoutConPanel,
   Paginacion,
   Table,
-  type SeleccionTabla,
 } from '../../components';
 import { ColoresEspecieContext } from '../../hooks/useColoresEspecie';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
-import { useEnfocarAlMontar } from '../../hooks/useEnfocarAlMontar';
 import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { formatearEntero } from '../../lib/formato';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
@@ -21,29 +17,21 @@ import {
   type PaginaArboles,
 } from '../../queries/dataExplorerQueries';
 import { nombreArchivoFoto } from '../../services/descargas';
-import { TAMANO_ICONO } from '../../theme/iconos';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros, BuscadorArboles } from './ArbolesFiltros';
-import { BarraSeleccionFichas } from './BarraSeleccionFichas';
+import { BotonReportePdf } from './BotonReportePdf';
 import { nombreTecnicoDe, parcelaDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
+import { ReportePdfModal } from './ReportePdfModal';
 import { useArbolesSection } from './useArbolesSection';
+import { useReportePdf, type EstadoReportePdf } from './useReportePdf';
 import { useSoltarParcelaFantasma } from './useSoltarParcelaFantasma';
-import type { SeleccionFichas } from './useSeleccionFichas';
 import { VacioConFiltros } from './VacioConFiltros';
 
 type SeccionArboles = ReturnType<typeof useArbolesSection>;
 
 const VACIO_CON_FILTROS = 'Ningún árbol coincide con los filtros';
-
-const TEXTO_SELECCION = {
-  entrar: 'PDF',
-  // Incluye el «PDF» visible: el botón no descarga, entra en el modo selección.
-  entrarDescripcion: 'Elegir árboles para las fichas PDF',
-  maestro: 'Seleccionar todos los árboles de esta página',
-  fila: 'Seleccionar el árbol',
-} as const;
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
 function rangoVisible(pagina: number, total: number): string {
@@ -63,19 +51,6 @@ function useColumnasArboles(seccion: SeccionArboles) {
   return useColumnasVisibles(columnas, seccion.arbolSeleccionado !== null);
 }
 
-/** Sin modo selección, la tabla no tiene columna de checkboxes. */
-function seleccionDeTabla(seleccion: SeleccionFichas): SeleccionTabla<ArbolDetalle> | undefined {
-  if (!seleccion.activa) return undefined;
-  return {
-    marcada: (arbol) => seleccion.estaMarcado(arbol.id),
-    onAlternar: (arbol) => seleccion.alternar(arbol.id),
-    maestro: seleccion.maestro,
-    onMaestro: seleccion.alternarTodos,
-    etiquetaFila: (arbol) => `${TEXTO_SELECCION.fila} ${arbol.idArbol}`,
-    etiquetaMaestro: TEXTO_SELECCION.maestro,
-  };
-}
-
 function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: PaginaArboles }) {
   const { pagina, setPagina } = seccion;
   const columnas = useColumnasArboles(seccion);
@@ -91,7 +66,6 @@ function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: Pagi
         claveSeleccionada={seccion.arbolSeleccionado?.id}
         emptyMessage="Sin árboles para mostrar"
         onRowClick={seccion.setArbolSeleccionado}
-        seleccion={seleccionDeTabla(seccion.seleccion)}
       />
     </CardTabla>
   );
@@ -140,38 +114,30 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
-interface BotonSeleccionarProps {
-  seleccion: SeleccionFichas;
-  /** Del total de la query y no de la página a la vista: no parpadea al paginar. */
-  sinArboles: boolean;
+/**
+ * El reporte vive acá y no en la barra: la barra se rearma al cruzar el ancho
+ * de teléfono (al rotarlo, por ejemplo) y se llevaría puesto un reporte a medias.
+ */
+function useReporteDeArboles(seccion: SeccionArboles) {
+  const { parcelas, grupos, especies } = seccion;
+  return useReportePdf({
+    plantacion: seccion.plantacion,
+    filtros: seccion.filtrosAplicados,
+    catalogos: {
+      parcelas: parcelas.data ?? [],
+      grupos: grupos.data ?? [],
+      especies: especies.data ?? [],
+    },
+    hayArboles: (seccion.arboles.data?.total ?? 0) > 0,
+  });
 }
 
-function BotonSeleccionar({ seleccion, sinArboles }: BotonSeleccionarProps) {
-  const ref = useEnfocarAlMontar<HTMLButtonElement>(
-    seleccion.focoEnSeleccionar,
-    seleccion.focoTomado,
-  );
-  return (
-    <Button
-      ref={ref}
-      variant="contorno"
-      size="sm"
-      aria-label={TEXTO_SELECCION.entrarDescripcion}
-      title={TEXTO_SELECCION.entrarDescripcion}
-      disabled={sinArboles}
-      onClick={seleccion.entrar}
-    >
-      <Download size={TAMANO_ICONO.md} aria-hidden />
-      {TEXTO_SELECCION.entrar}
-    </Button>
-  );
+interface ConReporte {
+  seccion: SeccionArboles;
+  reporte: EstadoReportePdf;
 }
 
-function sinArboles({ arboles }: SeccionArboles): boolean {
-  return !arboles.data || arboles.data.total === 0;
-}
-
-function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
+function ToolbarArboles({ seccion, reporte }: ConReporte) {
   const { parcelas, filtros, setFiltro } = seccion;
   useSoltarParcelaFantasma(parcelas.data ?? [], filtros.parcelaId, (valor) =>
     setFiltro('parcelaId', valor),
@@ -183,12 +149,7 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
       busqueda={<BuscadorArboles filtros={seccion.filtros} onCambiar={seccion.setFiltro} />}
-      // En modo selección la salida es «Cancelar», en la franja azul.
-      acciones={
-        !seccion.seleccion.activa && (
-          <BotonSeleccionar seleccion={seccion.seleccion} sinArboles={sinArboles(seccion)} />
-        )
-      }
+      acciones={<BotonReportePdf reporte={reporte} />}
     >
       <ArbolesFiltros
         filtros={seccion.filtros}
@@ -201,9 +162,7 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
-/** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
-export function ArbolesSection() {
-  const seccion = useArbolesSection();
+function ContenidoArboles({ seccion, reporte }: ConReporte) {
   const { arboles } = seccion;
   if (arboles.isError) {
     return (
@@ -215,9 +174,20 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <ToolbarArboles seccion={seccion} />
-      {seccion.seleccion.activa && <BarraSeleccionFichas seleccion={seccion.seleccion} />}
+      <ToolbarArboles seccion={seccion} reporte={reporte} />
       <CuerpoArboles seccion={seccion} />
+    </>
+  );
+}
+
+/** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
+export function ArbolesSection() {
+  const seccion = useArbolesSection();
+  const reporte = useReporteDeArboles(seccion);
+  return (
+    <>
+      <ContenidoArboles seccion={seccion} reporte={reporte} />
+      <ReportePdfModal reporte={reporte} />
     </>
   );
 }

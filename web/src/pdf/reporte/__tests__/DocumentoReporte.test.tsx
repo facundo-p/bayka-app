@@ -38,9 +38,9 @@ const NO_DISPONIBLE: FotoPdf = { estado: ESTADO_FOTO.noDisponible };
 
 // Todo lo que podría partirse en dos líneas, largo: si esto entra, cualquier hoja entra.
 const PEOR_CASO = arbolParaFicha({
-  subId: 'LPN12L10ANCH123',
-  idArbol: 'LPN12L10ANCH123-SS2026B',
-  posicion: 123,
+  subId: 'LPN123L23BANCHC1234',
+  idArbol: 'LPN123L23BANCHC1234-SS2026B',
+  posicion: 1234,
   especie: {
     codigo: 'ANCHC',
     nombre: 'Anchico colorado de los montes misioneros del Alto Paraná',
@@ -48,8 +48,8 @@ const PEOR_CASO = arbolParaFicha({
     tipo: 'flora',
     subtipo: 'arbol',
   },
-  parcela: { codigo: 'LPN12', nombre: 'Loma de los Paraísos Norte, ladera del arroyo Itaembé' },
-  grupo: { codigo: 'L10', nombre: 'Línea 10 del sector bajo del bañado grande' },
+  parcela: { codigo: 'LPN123', nombre: 'Loma de los Paraísos Norte, ladera del arroyo Itaembé' },
+  grupo: { codigo: 'L23B', nombre: 'Línea 23B del sector bajo del bañado grande' },
   fotoUrl: 'p/arbol.jpg',
   createdAt: '2026-09-14T13:00:00Z',
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 12.5 },
@@ -130,17 +130,34 @@ test('en la tarjeta del peor caso se ven todos los datos y lo largo termina en �
   const textos = textosDelPdf(await renderizar([PEOR_CASO]));
   expect(textos).toEqual(
     expect.arrayContaining([
-      'LPN12L10ANCH123-SS2026B',
-      'LPN12',
-      'L10',
-      '123',
+      'LPN123L23BANCHC1234-SS2026B',
+      'LPN123',
+      'L23B',
+      '1234',
       '14/09/2026',
       '-27.360123, -55.897441',
-      'Loma de los Paraísos Norte, ladera…',
+      'Loma de los Paraísos Norte,…',
     ]),
   );
   const especie = textos.find((texto) => texto.startsWith('ANCHC · Anchico'));
   expect(especie).toMatch(/…$/);
+});
+
+test('las tarjetas van primero y el listado después, cada uno en el orden del filtro', async () => {
+  const arbol = (idArbol: string, fotoUrl: string | null) =>
+    arbolParaFicha({ id: idArbol, idArbol, fotoUrl });
+  const arboles = [
+    arbol('S1-SS26', null),
+    arbol('F1-SS26', 'p/f1.jpg'),
+    arbol('S2-SS26', null),
+    arbol('F2-SS26', 'p/f2.jpg'),
+  ];
+  const pdf = await renderizar(arboles);
+  const textos = textosDelPdf(pdf);
+  const posiciones = ['F1-SS26', 'F2-SS26', 'S1-SS26', 'S2-SS26'].map((id) => textos.indexOf(id));
+  expect(paginasDelPdf(pdf)).toBe(2);
+  expect(posiciones.every((posicion) => posicion >= 0)).toBe(true);
+  expect(posiciones).toEqual([...posiciones].sort((a, b) => a - b));
 });
 
 test('una tarjeta sin especie, parcela, posición ni GPS sale con N/N y guiones', async () => {
@@ -194,8 +211,9 @@ test('sin fotos, todo va al listado aunque los árboles tengan foto', async () =
   expect(paginasDelPdf(pdf)).toBe(1);
   // Solo el encabezado de columnas: ninguna tarjeta repite el rótulo.
   expect(ocurrencias(textos, 'PARCELA')).toBe(1);
-  expect(ocurrencias(textos, 'LPN12L10ANCH123-SS2026B')).toBe(TARJETAS_POR_HOJA);
-  expect(textos).toEqual(expect.arrayContaining(['123', '14/09/2026', '-27.360123, -55.897441']));
+  // El ID más largo entra entero en su columna, sin «…».
+  expect(ocurrencias(textos, 'LPN123L23BANCHC1234-SS2026B')).toBe(TARJETAS_POR_HOJA);
+  expect(textos).toEqual(expect.arrayContaining(['1234', '14/09/2026', '-27.360123, -55.897441']));
 });
 
 test('ni ID Global ni técnico (#822)', async () => {

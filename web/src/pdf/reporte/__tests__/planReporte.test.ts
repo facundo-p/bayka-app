@@ -7,6 +7,7 @@ import {
   repartirArboles,
   TARJETAS_POR_HOJA,
   TOPE_TARJETAS,
+  type EstimacionReporte,
   type ModoReporte,
 } from '../planReporte';
 
@@ -108,23 +109,40 @@ describe('estimarReporte', () => {
 
   const MODOS = Object.values(MODO_REPORTE) as ModoReporte[];
 
-  test('da lo mismo que el plan para cualquier total hasta pasar el tope, y cualquier cantidad con foto', () => {
-    const tope = TOPE_TARJETAS + TARJETAS_POR_HOJA + FILAS_POR_HOJA;
+  const sonIguales = (estimado: EstimacionReporte, plan: EstimacionReporte) =>
+    (['tarjetas', 'filasListado', 'hojas'] as const).every(
+      (campo) => estimado[campo] === plan[campo],
+    );
+
+  /** Cada corte de `paso` (uno antes, justo y uno después) hasta `hasta`, más 0 y 1. */
+  function cortes(paso: number, hasta: number, desde = 0): number[] {
+    const multiplos = rango(0, Math.floor((hasta - desde) / paso) + 1).map((k) => desde + k * paso);
+    const valores = [0, 1, ...multiplos.flatMap((m) => [m - 1, m, m + 1])];
+    return [...new Set(valores)].filter((valor) => valor >= 0 && valor <= hasta);
+  }
+
+  // Ralo a propósito: el plan solo cambia en los cortes de hoja y en el tope.
+  // Las fotos de más del tope van al listado, así que también se cruzan esos cortes.
+  const CON_FOTO = [
+    ...cortes(TARJETAS_POR_HOJA, TOPE_TARJETAS + TARJETAS_POR_HOJA),
+    ...cortes(FILAS_POR_HOJA, TOPE_TARJETAS + 2 * FILAS_POR_HOJA, TOPE_TARJETAS),
+  ];
+  const SIN_FOTO = cortes(FILAS_POR_HOJA, 3 * FILAS_POR_HOJA);
+
+  test('da lo mismo que el plan en cada corte de hoja y alrededor del tope', () => {
     const distintos = [];
-    for (let total = 0; total <= tope; total++) {
-      for (let cantidadConFoto = 0; cantidadConFoto <= total; cantidadConFoto++) {
+    for (const cantidadConFoto of CON_FOTO) {
+      for (const cantidadSinFoto of SIN_FOTO) {
+        const total = cantidadConFoto + cantidadSinFoto;
         const arboles = arbolesDe(total, cantidadConFoto);
         for (const modo of MODOS) {
           const conteo = { total, conFoto: cantidadConFoto, modo };
           const [estimado, plan] = [estimarReporte(conteo), delPlan(arboles, modo)];
-          const campos = ['tarjetas', 'filasListado', 'hojas'] as const;
-          if (campos.some((campo) => estimado[campo] !== plan[campo])) {
-            distintos.push({ conteo, estimado, plan });
-          }
+          if (!sonIguales(estimado, plan)) distintos.push({ conteo, estimado, plan });
         }
       }
     }
-    // Una sola aserción: con una por caso, las ~190.000 tardan más que las cuentas.
+    // Una sola aserción: con una por caso, miles de expect tardan más que las cuentas.
     expect(distintos).toEqual([]);
   });
 

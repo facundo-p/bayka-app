@@ -179,6 +179,7 @@ const CLAVES_CON_ESPECIES = [
   ['dashboard'],
   ['mapa'],
   ['datos-arboles'],
+  ['conteo-reporte'],
   ['especies-habilitadas'],
 ];
 

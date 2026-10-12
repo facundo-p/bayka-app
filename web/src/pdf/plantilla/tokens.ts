@@ -264,8 +264,8 @@ export const MEDIDA_REPORTE = {
   rellenoCelda: 4,
   /** Ancho relativo de cada columna del listado. */
   pesoColumna: {
-    idArbol: 15,
-    especie: 21,
+    idArbol: 18,
+    especie: 18,
     parcela: 16,
     grupo: 16,
     posicion: 6,
