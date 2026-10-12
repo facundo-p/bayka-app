@@ -22,8 +22,9 @@ checkout principal de dos formas:
 
 ## Pasos
 
-1. **Entorno.** Staging por defecto. Prod solo después de mergear el pase
-   staging → main y con confirmación explícita de Facu para ese push.
+1. **Entorno.** Staging por defecto. Prod apenas se mergea el pase staging →
+   main, con confirmación explícita de Facu para ese push: la web nueva ya está
+   en prod y puede pedir columnas de esas migraciones.
 
 2. **Preparar.** Correr, con el entorno explícito:
 

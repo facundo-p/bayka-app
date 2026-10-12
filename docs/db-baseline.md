@@ -39,8 +39,9 @@ npx --yes supabase@2.116.0 db push --db-url "$URL"                # aplica y reg
   desde cualquier directorio. Los de arriba, en cambio, solo funcionan en el
   checkout principal y en la rama del entorno: en un worktree no encuentran
   `.env.migration` y aplicarían las migraciones de otra rama.
-- **Orden:** staging primero; prod recién con el pase a `main` y confirmación
-  dedicada.
+- **Orden:** staging primero; prod apenas se mergea el pase a `main`, con
+  confirmación dedicada: la web nueva ya está en prod y puede pedir columnas de
+  esas migraciones.
 - **Una migración que figura antes de la última registrada** (porque falló o se
   salteó) solo se aplica con `--include-all`. El dry-run la muestra.
 - **`migration repair --status applied <versiones>`** marca como aplicadas

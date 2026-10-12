@@ -303,17 +303,10 @@ Facu):
 
 ```markdown
 ## Post-merge (manual)
-- [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
-      → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
-- [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
-      en PRs a main (el default branch es staging)
-- [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
-- [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
-      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
-      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
-- [ ] Si el release incluye migraciones supabase/**: en el checkout principal
-      (el único con `.env.migration`), con main actualizado (`git switch main &&
-      git pull`):
+- [ ] Si el release incluye migraciones supabase/**, esto va apenas se mergea:
+      la web nueva ya está en prod y puede pedir columnas de esas migraciones.
+      En el checkout principal (el único con `.env.migration`), con main
+      actualizado (`git switch main && git pull`):
       1. Drift check: `migration list` contra prod y contra staging. Lo
          registrado en prod tiene que ser lo de staging menos las migraciones de
          este release, sin huecos ni extras.
@@ -329,6 +322,14 @@ Facu):
       npx --yes supabase@2.116.0 migration list --db-url "$PROD"
       npx --yes supabase@2.116.0 db push --dry-run --db-url "$PROD"
       ```
+- [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
+      → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
+- [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
+      en PRs a main (el default branch es staging)
+- [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
+- [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
+      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
+      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 
