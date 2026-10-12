@@ -123,9 +123,11 @@ test('los colores de especie son los de la plantación', async () => {
   expect(colorDe('ANC')).toBe('#99b95b');
 });
 
-test('sin árboles falla sin cargar el motor', async () => {
+test('sin árboles falla antes de leer nada', async () => {
   await expect(
     generarPdfReporte({ arboles: [], modo: MODO_REPORTE.conFotos }, contexto()),
   ).rejects.toThrow(ERROR_REPORTE_SIN_ARBOLES);
+  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
+  expect(listarEspeciesDePlantacion).not.toHaveBeenCalled();
   expect(motor.renderizarReporte).not.toHaveBeenCalled();
 });

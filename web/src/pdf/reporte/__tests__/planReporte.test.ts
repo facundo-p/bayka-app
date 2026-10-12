@@ -96,30 +96,55 @@ describe('estimarReporte', () => {
   const arbolesDe = (total: number, cantidadConFoto: number) =>
     rango(0, total).map((id) => (id < cantidadConFoto ? conFoto(id) : sinFoto(id)));
 
+  /** Lo que da el plan con los árboles en la mano. */
+  function delPlan(arboles: ReturnType<typeof arbolesDe>, modo: ModoReporte) {
+    const reparto = repartirArboles(arboles, modo);
+    return {
+      tarjetas: reparto.tarjetas.length,
+      filasListado: reparto.listado.length,
+      hojas: paginarReporte(reparto).length,
+    };
+  }
+
+  const MODOS = Object.values(MODO_REPORTE) as ModoReporte[];
+
+  test('da lo mismo que el plan para cualquier total hasta pasar el tope, y cualquier cantidad con foto', () => {
+    const tope = TOPE_TARJETAS + TARJETAS_POR_HOJA + FILAS_POR_HOJA;
+    const distintos = [];
+    for (let total = 0; total <= tope; total++) {
+      for (let cantidadConFoto = 0; cantidadConFoto <= total; cantidadConFoto++) {
+        const arboles = arbolesDe(total, cantidadConFoto);
+        for (const modo of MODOS) {
+          const conteo = { total, conFoto: cantidadConFoto, modo };
+          const [estimado, plan] = [estimarReporte(conteo), delPlan(arboles, modo)];
+          const campos = ['tarjetas', 'filasListado', 'hojas'] as const;
+          if (campos.some((campo) => estimado[campo] !== plan[campo])) {
+            distintos.push({ conteo, estimado, plan });
+          }
+        }
+      }
+    }
+    // Una sola aserción: con una por caso, las ~190.000 tardan más que las cuentas.
+    expect(distintos).toEqual([]);
+  });
+
   test.each([
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [6, 6],
-    [7, 7],
-    [47, 7],
-    [31, 0],
-    [32, 0],
-    [400, 400],
-    [401, 401],
-    [450, 450],
-    [1000, 420],
     [7000, 0],
     [7000, 1500],
   ])('con %i árboles y %i con foto da lo mismo que el plan', (total, cantidadConFoto) => {
     const arboles = arbolesDe(total, cantidadConFoto);
-    for (const modo of Object.values(MODO_REPORTE) as ModoReporte[]) {
-      const reparto = repartirArboles(arboles, modo);
-      expect(estimarReporte({ total, conFoto: cantidadConFoto, modo })).toEqual({
-        tarjetas: reparto.tarjetas.length,
-        filasListado: reparto.listado.length,
-        hojas: paginarReporte(reparto).length,
-      });
+    for (const modo of MODOS) {
+      expect(estimarReporte({ total, conFoto: cantidadConFoto, modo })).toEqual(
+        delPlan(arboles, modo),
+      );
     }
+  });
+
+  test('un conteo con foto mayor que el total se acota al total', () => {
+    expect(estimarReporte({ total: 5, conFoto: 8, modo: MODO_REPORTE.conFotos })).toEqual({
+      tarjetas: 5,
+      filasListado: 0,
+      hojas: 1,
+    });
   });
 });

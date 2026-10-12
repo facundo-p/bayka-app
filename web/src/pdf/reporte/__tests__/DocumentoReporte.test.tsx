@@ -13,6 +13,7 @@ import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { MEDIDA_REPORTE, ORIENTACION_HOJA } from '../../plantilla/tokens';
 import { datosArbolReporte, datosTarjeta } from '../datosReporte';
 import { DocumentoReporte } from '../DocumentoReporte';
+import { NIVELES_DE_ESCALON } from '../Escalon';
 import { Listado } from '../Listado';
 import {
   estimarReporte,
@@ -142,6 +143,15 @@ test('en la tarjeta del peor caso se ven todos los datos y lo largo termina en �
   expect(especie).toMatch(/…$/);
 });
 
+test('una tarjeta sin especie, parcela, posición ni GPS sale con N/N y guiones', async () => {
+  const pdf = await renderizar([{ ...SIN_NADA, fotoUrl: 'p/arbol.jpg' }]);
+  const textos = textosDelPdf(pdf);
+  expect(paginasDelPdf(pdf)).toBe(1);
+  expect(textos).toEqual(expect.arrayContaining(['N/N · Sin identificar']));
+  // Parcela, posición y GPS.
+  expect(ocurrencias(textos, '—')).toBe(3);
+});
+
 test('el listado sigue en otra hoja, con el encabezado de columnas en cada una', async () => {
   const pdf = await renderizar(muchos(FILAS_POR_HOJA * 3 + 1, { ...PEOR_CASO, fotoUrl: null }));
   expect(paginasDelPdf(pdf)).toBe(4);
@@ -159,6 +169,15 @@ test('7 tarjetas y 40 filas: las hojas que estima el modal, y el pie con la cant
       'Emitido el 12/10/2026 · Página 4 de 4',
     ]),
   );
+});
+
+test('con más hojas que niveles de escalón, cada hoja del plan es una del PDF', async () => {
+  const hojas = NIVELES_DE_ESCALON + 1;
+  const pdf = await renderizar(
+    muchos(FILAS_POR_HOJA * (hojas - 1) + 1, { ...SIN_NADA, fotoUrl: null }),
+  );
+  expect(paginasDelPdf(pdf)).toBe(hojas);
+  expect(ocurrencias(textosDelPdf(pdf), 'ID ÁRBOL')).toBe(hojas);
 });
 
 test('una foto que no se bajó deja «Foto no disponible» y el PDF sale', async () => {

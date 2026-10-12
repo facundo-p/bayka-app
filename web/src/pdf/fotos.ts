@@ -37,7 +37,7 @@ async function bajarYReducir(url: string | null, medida: MedidaImagen): Promise<
   }
 }
 
-export type OpcionesCargarFotos = {
+export type OpcionesCargaFotos = {
   /** `MEDIDA_FOTO_PDF` si no se indica. */
   medida?: MedidaImagen;
   /** Fotos terminadas, bajadas o fallidas, sobre las que hay que bajar. Arranca en 0. */
@@ -47,7 +47,7 @@ export type OpcionesCargarFotos = {
 /** Baja de a pocas y avisa cada una que termina. */
 async function bajarTodas(
   firmadas: Array<string | null>,
-  { medida = MEDIDA_FOTO_PDF, alProgresar }: OpcionesCargarFotos,
+  { medida = MEDIDA_FOTO_PDF, alProgresar }: OpcionesCargaFotos,
 ): Promise<FotoPdf[]> {
   let listas = 0;
   return mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, async (url) => {
@@ -60,7 +60,7 @@ async function bajarTodas(
 /** Una foto por árbol, en el mismo orden que `fotoUrls`. */
 export async function cargarFotos(
   fotoUrls: ReadonlyArray<string | null>,
-  opciones: OpcionesCargarFotos = {},
+  opciones: OpcionesCargaFotos = {},
 ): Promise<FotoPdf[]> {
   const conFoto = fotoUrls.flatMap((fotoUrl, indice) => {
     const url = fotoSubida(fotoUrl);

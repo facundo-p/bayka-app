@@ -80,14 +80,22 @@ export function paginarReporte<Tarjeta, Fila>({
   ];
 }
 
-/** Lo que se sabe del filtro sin leer los árboles. `conFoto` cuenta solo las fotos subidas. */
+/**
+ * Lo que se sabe del filtro sin leer los árboles. `conFoto` cuenta con el criterio
+ * de `tieneFotoSubida`: una foto que sigue en el teléfono (`file://`, `content://`)
+ * no suma, o la estimación da más tarjetas que el PDF.
+ */
 export type ConteoReporte = { total: number; conFoto: number; modo: ModoReporte };
 
 export type EstimacionReporte = { tarjetas: number; filasListado: number; hojas: number };
 
-/** Lo mismo que daría `paginarReporte(repartirArboles(...))`, solo con los conteos. */
+/**
+ * Lo mismo que daría `paginarReporte(repartirArboles(...))`, solo con los conteos.
+ * Si los conteos salen de lecturas distintas, `conFoto` puede pasar a `total`: se acota.
+ */
 export function estimarReporte({ total, conFoto, modo }: ConteoReporte): EstimacionReporte {
-  const tarjetas = modo === MODO_REPORTE.conFotos ? Math.min(conFoto, TOPE_TARJETAS) : 0;
+  const conFotoPosible = Math.min(conFoto, total);
+  const tarjetas = modo === MODO_REPORTE.conFotos ? Math.min(conFotoPosible, TOPE_TARJETAS) : 0;
   const filasListado = total - tarjetas;
   const hojas = Math.ceil(tarjetas / TARJETAS_POR_HOJA) + Math.ceil(filasListado / FILAS_POR_HOJA);
   return { tarjetas, filasListado, hojas };

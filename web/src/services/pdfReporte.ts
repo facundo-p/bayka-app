@@ -5,6 +5,7 @@
  */
 import type { QueryClient } from '@tanstack/react-query';
 import { formatearFechaCorta } from '../lib/fechas';
+import type { FotoPdf } from '../pdf/estadoFoto';
 import { repartirArboles, type ModoReporte } from '../pdf/reporte/planReporte';
 import { leerNombreOrganizacion, type ArbolParaFicha } from '../queries/fichasQueries';
 import type { Plantacion } from '../queries/plantationQueries';
@@ -49,6 +50,21 @@ function leerInsumos({ plantacion, queryClient }: ContextoReportePdf) {
 
 type MotorReporte = typeof import('../pdf/reporte/motorReporte');
 
+async function bajarFotos(
+  motor: MotorReporte,
+  tarjetas: readonly ArbolParaFicha[],
+  alProgresar: PedidoReporte['alProgresar'],
+): Promise<FotoPdf[]> {
+  if (tarjetas.length === 0) return [];
+  return motor.cargarFotos(
+    tarjetas.map((arbol) => arbol.fotoUrl),
+    {
+      alProgresar: (listas, total) =>
+        alProgresar?.({ etapa: ETAPA_REPORTE.bajandoFotos, listas, total }),
+    },
+  );
+}
+
 /** Baja solo las fotos de los árboles que salen como tarjeta. */
 async function prepararReparto(
   motor: MotorReporte,
@@ -56,16 +72,7 @@ async function prepararReparto(
   colorDe: ColorEspecie,
 ) {
   const { tarjetas, listado } = repartirArboles(arboles, modo);
-  const fotos =
-    tarjetas.length === 0
-      ? []
-      : await motor.cargarFotos(
-          tarjetas.map((arbol) => arbol.fotoUrl),
-          {
-            alProgresar: (listas, total) =>
-              alProgresar?.({ etapa: ETAPA_REPORTE.bajandoFotos, listas, total }),
-          },
-        );
+  const fotos = await bajarFotos(motor, tarjetas, alProgresar);
   return {
     tarjetas: tarjetas.map((arbol, indice) => motor.datosTarjeta(arbol, fotos[indice], colorDe)),
     listado: listado.map((arbol) => motor.datosArbolReporte(arbol, colorDe)),
