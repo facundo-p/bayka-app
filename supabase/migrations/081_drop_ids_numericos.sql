@@ -4,8 +4,17 @@
 -- 1.3.0 los lee del pull con `select('*')` y `?? null`: sin las columnas sigue
 -- andando, pero no ofrece CSV/Excel en una plantación bajada desde cero.
 --
--- En prod va después del deploy de la web del pase: la anterior exporta con
--- `global_id` y llama a los RPC.
+-- En prod va apenas termina el deploy de la web del pase (check Cloudflare
+-- Pages del merge en main en verde), ni antes ni mucho después: la web anterior
+-- exporta con `global_id` y llama a los RPC, y la nueva necesita la 079, que va
+-- en el mismo push.
+--
+-- Antes del push a prod, esta consulta de solo lectura tiene que devolver solo
+-- los tres RPC: el dry-run no ve funciones creadas a mano.
+--   select p.oid::regprocedure from pg_proc p
+--     join pg_namespace n on n.oid = p.pronamespace
+--    where n.nspname not in ('pg_catalog', 'information_schema')
+--      and p.prosrc ~* '(global_id|plantacion_id|generate_tree_ids|next_global_id_seed|plantation_ids_status)';
 --
 -- Sin CASCADE: nada depende de las columnas, y si una base tuviera algo, la
 -- migración falla en vez de llevárselo.
