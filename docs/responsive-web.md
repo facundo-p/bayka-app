@@ -90,6 +90,15 @@ posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
   panel.
 - Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
   la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
+- Con la hoja abierta el documento no scrollea, y vale para todo `Modal` y para
+  la paleta ⌘K. Arrastrar el fondo o la cabecera de la hoja movía la lista de
+  atrás: de 200 a 540, medido a 390 (#861). Lo resuelve `useBloquearScroll`, que
+  lleva la cuenta de los modales anidados y libera al cerrar el último. Si algo
+  movió la lista igual, la devuelve a donde estaba al abrir. Solo toca `<html>`:
+  el cuerpo de la hoja sigue scrolleando con su `overscroll-behavior: contain`.
+  Con barra de scroll clásica (Windows), `scrollbar-gutter: stable` le guarda el
+  lugar y el layout no se corre de costado. A cambio, queda una franja del ancho
+  de la barra que el fondo oscuro no cubre, igual que antes no cubría la barra.
 - La hoja va en su propia capa (`--z-detalle`), debajo de `--z-modal`: un
   diálogo queda siempre adelante, sin depender del orden en el DOM. Vale para
   los que abre el detalle (foto ampliada, confirmaciones) y para uno de la
