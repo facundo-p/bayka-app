@@ -1,14 +1,23 @@
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { resetEstadoMock } from '../../test/supabaseMock';
-import { leerArbolParaFicha, leerNombreOrganizacion } from '../fichasQueries';
+import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
+import {
+  leerArbolParaFicha,
+  leerNombreOrganizacion,
+  listarArbolesDelFiltro,
+} from '../fichasQueries';
+import { TAMANO_PAGINA } from '../leerPaginado';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(resetEstadoMock);
+beforeEach(() => {
+  resetEstadoMock();
+  reiniciarCacheCodigosPlantacion();
+});
 
 function filaArbolFicha(id: string, sobre: Record<string, unknown> = {}) {
   return {
@@ -103,6 +112,86 @@ describe('leerArbolParaFicha', () => {
   test('propaga el error de la consulta', async () => {
     capturarConsultas(() => ({ error: { message: 'boom' } }));
     await expect(leerArbolParaFicha('plant-1', 't1')).rejects.toThrow('boom');
+  });
+});
+
+describe('listarArbolesDelFiltro', () => {
+  const consultasDeArboles = (consultas: ConsultaCapturada[]) =>
+    consultas.filter((consulta) => consulta.tabla === 'trees');
+
+  test('aplica los filtros del listado, con los embeds !inner que piden', async () => {
+    const consultas = capturarConsultas(() => ({ data: [filaArbolFicha('t1')] }));
+    await listarArbolesDelFiltro('plant-1', {
+      parcelaId: 'parc-1',
+      groupId: 'gr-1',
+      speciesId: 'sp-1',
+      conGps: true,
+      busqueda: 'L10',
+    });
+
+    const [consulta] = consultasDeArboles(consultas);
+    expect(consulta.columnas).toContain('groups!inner(');
+    expect(consulta.columnas).toContain('plantations!inner(codigo)');
+    expect(consulta.filtros).toEqual([
+      { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
+      { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
+      { metodo: 'eq', columna: 'group_id', valor: 'gr-1' },
+      { metodo: 'eq', columna: 'species_id', valor: 'sp-1' },
+      { metodo: 'not', columna: 'latitude', operador: 'is', valor: null },
+      { metodo: 'ilike', columna: 'sub_id', valor: '%L10%' },
+    ]);
+  });
+
+  test('un ID Árbol completo filtra por el código de la plantación embebida', async () => {
+    const consultas = capturarConsultas((consulta) =>
+      consulta.tabla === 'plantations'
+        ? { data: [{ codigo: 'SS26' }] }
+        : { data: [filaArbolFicha('t1')] },
+    );
+    await listarArbolesDelFiltro('plant-1', { busqueda: 'LP1L23BANC12-SS26' });
+
+    const [consulta] = consultasDeArboles(consultas);
+    expect(consulta.filtros).toContainEqual({
+      metodo: 'eq',
+      columna: 'groups.plantations.codigo',
+      valor: 'SS26',
+    });
+  });
+
+  test('ordena como el listado, con el id de desempate, y no pide count', async () => {
+    const consultas = capturarConsultas(() => ({ data: [filaArbolFicha('t1')] }));
+    await listarArbolesDelFiltro('plant-1', {});
+
+    const [consulta] = consultasDeArboles(consultas);
+    expect(consulta.ordenes).toEqual([
+      { columna: 'created_at', ascending: false },
+      { columna: 'id', ascending: false },
+    ]);
+    expect(consulta.opciones).toBeUndefined();
+  });
+
+  test('lee en lotes de 1.000 hasta agotar y mapea en orden', async () => {
+    const lote = (desde: number, cantidad: number) =>
+      Array.from({ length: cantidad }, (_, indice) => filaArbolFicha(`t${desde + indice}`));
+    // Una página llena y una de 3: la segunda corta la lectura.
+    const paginas = new Map([
+      [0, lote(0, TAMANO_PAGINA)],
+      [TAMANO_PAGINA, lote(TAMANO_PAGINA, 3)],
+    ]);
+    const consultas = capturarConsultas(({ rango }) => ({
+      data: paginas.get(rango?.desde ?? 0) ?? [],
+    }));
+    const arboles = await listarArbolesDelFiltro('plant-1', {});
+
+    expect(consultasDeArboles(consultas)[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(arboles).toHaveLength(TAMANO_PAGINA + 3);
+    expect(arboles[0]).toMatchObject({ id: 't0', idArbol: 'SUB-t0-SS26' });
+    expect(arboles.at(-1)?.id).toBe(`t${TAMANO_PAGINA + 2}`);
+  });
+
+  test('propaga el error de la consulta', async () => {
+    capturarConsultas(() => ({ error: { message: 'boom' } }));
+    await expect(listarArbolesDelFiltro('plant-1', {})).rejects.toThrow('boom');
   });
 });
 

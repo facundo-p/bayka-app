@@ -17,7 +17,10 @@ export const TAMANO_PAGINA = 1000;
  */
 export const PAGINAS_EN_PARALELO = 4;
 
-type RespuestaPagina<T> = { data: T[] | null; error: { message: string; code?: string } | null };
+export type RespuestaPagina<T> = {
+  data: T[] | null;
+  error: { message: string; code?: string } | null;
+};
 
 /**
  * Acumula todas las filas pidiendo páginas de `TAMANO_PAGINA` con `.range()`

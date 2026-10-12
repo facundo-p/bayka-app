@@ -1,10 +1,18 @@
 /*
- * Lo que necesita la ficha PDF de un árbol (#754): más datos que el listado
- * (científico, clasificación, nombres de parcela y grupo).
+ * Lo que necesitan los PDF de árboles, la ficha (#754) y el reporte (#849): más
+ * datos por árbol que el listado (científico, clasificación, nombres de parcela
+ * y grupo).
  */
 import { idDeArbol } from '../../../shared/codigoPlantacion';
 import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import { supabase } from '../lib/supabase';
+import {
+  consultaArbolesFiltrados,
+  ordenarComoListado,
+  resolverBusquedaDeFiltros,
+  type FiltrosArboles,
+} from './dataExplorerQueries';
+import { leerPaginado, type RespuestaPagina } from './leerPaginado';
 
 export type CodigoNombre = { codigo: string; nombre: string };
 
@@ -60,12 +68,16 @@ type FilaArbolFicha = {
   };
 };
 
-/** `parcelas.deleted_at` no puede filtrar con `!inner`: dejaría afuera a los grupos sin parcela. */
+/**
+ * `parcelas.deleted_at` no puede filtrar con `!inner`: dejaría afuera a los
+ * grupos sin parcela. `plantations` sí va con `!inner`: la búsqueda por ID
+ * Árbol completo filtra por su código.
+ */
 const SELECT_FICHA =
   'id, sub_id, posicion, foto_url, usuario_registro, created_at, ' +
   'latitude, longitude, gps_accuracy, ' +
   'species(codigo, nombre, nombre_cientifico, tipo, subtipo), ' +
-  'groups!inner(codigo, nombre, parcela_id, plantation_id, plantations(codigo), ' +
+  'groups!inner(codigo, nombre, parcela_id, plantation_id, plantations!inner(codigo), ' +
   'parcelas(codigo, nombre, deleted_at))';
 
 function parcelaVigente(parcela: FilaParcela | null): CodigoNombre | null {
@@ -118,6 +130,24 @@ export async function leerArbolParaFicha(
   // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
   const fila = data as unknown as FilaArbolFicha | null;
   return fila && mapearArbolFicha(fila);
+}
+
+/** Todos los árboles que deja el filtro del listado, en su orden, de a 1.000 por pedido. */
+export async function listarArbolesDelFiltro(
+  plantationId: string,
+  filtros: FiltrosArboles,
+): Promise<ArbolParaFicha[]> {
+  const busqueda = await resolverBusquedaDeFiltros(filtros);
+  const select = { columnas: SELECT_FICHA };
+  const filas = await leerPaginado<FilaArbolFicha>(
+    (desde, hasta) =>
+      // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
+      ordenarComoListado(consultaArbolesFiltrados(plantationId, filtros, busqueda, select)).range(
+        desde,
+        hasta,
+      ) as unknown as PromiseLike<RespuestaPagina<FilaArbolFicha>>,
+  );
+  return filas.map(mapearArbolFicha);
 }
 
 /** Nombre de la organización dueña de la plantación; null si no se puede leer. */
