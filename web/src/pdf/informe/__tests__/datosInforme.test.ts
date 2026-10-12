@@ -179,10 +179,17 @@ test('si los puntos no se pudieron leer, el mapa no está disponible', () => {
 });
 
 describe('las 16 combinaciones de casillas', () => {
+  const combinaciones = combinacionesDeOpciones();
   const entrada = (opciones: EntradaInforme['opciones']) =>
     entradaInforme({ parcelas: 3, especies: 3, nn: 2, opciones });
 
-  test.each(combinacionesDeOpciones().map((opciones) => [nombreCombinacion(opciones), opciones]))(
+  // Salen de la lista del código bajo prueba: el literal ataja una opción de más o de menos.
+  test('son 16, todas distintas', () => {
+    expect(combinaciones).toHaveLength(16);
+    expect(new Set(combinaciones.map(nombreCombinacion)).size).toBe(16);
+  });
+
+  test.each(combinaciones.map((opciones) => [nombreCombinacion(opciones), opciones]))(
     '%s: cada bloque elegido viene completo y ninguno sobra',
     (_, opciones) => {
       const modelo = datosInforme(entrada(opciones));

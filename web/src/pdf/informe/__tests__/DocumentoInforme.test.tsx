@@ -228,6 +228,9 @@ describe('las 16 combinaciones de casillas', () => {
   const conOpciones = (especies: number, opciones: OpcionesInforme) =>
     entradaInforme({ parcelas: 4, especies, nn: 3, opciones });
 
+  // Salen de la lista del código bajo prueba: el literal ataja una opción de más o de menos.
+  test('son 16', () => expect(combinaciones).toHaveLength(16));
+
   test.each(combinaciones)(
     '%s, informe corto: una hoja con todo lo elegido',
     async (_, opciones) => {
