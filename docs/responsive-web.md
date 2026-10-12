@@ -135,8 +135,9 @@ queda sin nombre accesible — que es lo que lee el lector de pantalla, y por do
 lo encuentran los tests y la auditoría.
 
 **Los filtros viven detrás de un botón** (#844). `BarraHerramientas` deja a la
-vista el buscador, el orden, el recuento y las acciones (el «PDF» de Árboles);
-todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los puestos.
+vista el buscador, el orden, el recuento y las acciones (el «Reporte PDF» de
+Árboles); todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los
+puestos.
 En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
 abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
 en la ventana y, si no entra en ninguno, se corre lo justo para dejar el margen:
