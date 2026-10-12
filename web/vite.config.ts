@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
 import { definirConstantesBuild } from './constantesBuild';
+import { pluginReact } from './pluginReact';
 import { diagnosticarEnvSupabase } from './src/lib/envSupabase';
 
 // Corta el build si el par VITE_SUPABASE_* es incoherente: las variables se
@@ -31,7 +31,7 @@ function chequearEnvSupabase(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), chequearEnvSupabase()],
+  plugins: [pluginReact(), chequearEnvSupabase()],
   define: definirConstantesBuild(),
   // Permite que vitest cargue los tests de fuera de web/.
   server: { fs: { allow: ['..'] } },
