@@ -1,28 +1,13 @@
+import { fotoSubida } from '../lib/fotoSubida';
 import { supabase } from '../lib/supabase';
-import { ESQUEMAS_FOTO_LOCAL } from '../queries/fotoConstantes';
+
+export { esFotoLocal, fotoSubida, tieneFotoSubida } from '../lib/fotoSubida';
 
 /** Bucket privado de Storage donde mobile sube las fotos de árboles. */
 const BUCKET_FOTOS_ARBOLES = 'tree-photos';
 
 /** Validez del enlace firmado: 1 hora. */
 const SEGUNDOS_VALIDEZ_URL = 3600;
-
-/** true si la foto sigue en el celular que la sacó (`file://`, `content://`): existe pero no se subió. */
-export function esFotoLocal(fotoUrl: string | null | undefined): boolean {
-  if (!fotoUrl) return false;
-  return ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema));
-}
-
-/** La URL si la foto está subida al bucket; null si está vacía o sigue en el celular. */
-export function fotoSubida(fotoUrl: string | null | undefined): string | null {
-  if (!fotoUrl || esFotoLocal(fotoUrl)) return null;
-  return fotoUrl;
-}
-
-/** true si el árbol tiene una foto subida al bucket (no local ni vacía). */
-export function tieneFotoSubida(fotoUrl: string | null | undefined): boolean {
-  return fotoSubida(fotoUrl) !== null;
-}
 
 /** De una URL completa del bucket extrae el path interno; un path directo queda igual. */
 function extraerPathDeFoto(fotoUrl: string): string {

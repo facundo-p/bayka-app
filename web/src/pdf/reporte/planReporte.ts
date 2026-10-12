@@ -3,7 +3,7 @@
  * pinta una hoja por cada una del plan, y la estimación por conteos da lo mismo
  * antes de leer los árboles. No carga react-pdf: se puede importar de entrada.
  */
-import { tieneFotoSubida } from '../../services/fotoService';
+import { tieneFotoSubida } from '../../lib/fotoSubida';
 import { CUERPO_REPORTE, MEDIDA_REPORTE as M } from '../plantilla/tokens';
 
 export const MODO_REPORTE = {
