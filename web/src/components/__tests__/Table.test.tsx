@@ -143,17 +143,26 @@ describe('con selección', () => {
     expect(onRowClick).not.toHaveBeenCalled();
   });
 
-  test('con teclado, el Tab pasa de la fila a su checkbox y Enter ahí solo alterna', async () => {
+  test('con teclado, el Tab pasa de la fila a su checkbox', async () => {
     const usuario = userEvent.setup();
-    const { onRowClick, seleccion } = renderConSeleccion();
+    renderConSeleccion();
     await usuario.tab();
     expect(screen.getByRole('checkbox', { name: 'Seleccionar todas' })).toHaveFocus();
     await usuario.tab();
     expect(filaDe('Lote Norte')).toHaveFocus();
-
     await usuario.tab();
     expect(screen.getByRole('checkbox', { name: 'Seleccionar Lote Norte' })).toHaveFocus();
-    await usuario.keyboard('{Enter}');
+  });
+
+  test.each([
+    ['Enter', '{Enter}'],
+    ['Espacio', ' '],
+  ])('%s en el checkbox de la fila solo alterna', async (_tecla, teclas) => {
+    const usuario = userEvent.setup();
+    const { onRowClick, seleccion } = renderConSeleccion();
+    screen.getByRole('checkbox', { name: 'Seleccionar Lote Norte' }).focus();
+    await usuario.keyboard(teclas);
+    expect(seleccion.onAlternar).toHaveBeenCalledTimes(1);
     expect(seleccion.onAlternar).toHaveBeenCalledWith(rows[0]);
     expect(onRowClick).not.toHaveBeenCalled();
   });

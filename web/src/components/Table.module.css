@@ -10,7 +10,9 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  /* Padding, renglón y borde suman --alto-encabezado-tabla: si cambian, cambia él. */
   padding: var(--space-lg) var(--space-2xl);
+  line-height: var(--line-height-relaxed);
   text-align: left;
   background-color: var(--color-surface-sunken);
   border-bottom: var(--border-thin) solid var(--color-border);
