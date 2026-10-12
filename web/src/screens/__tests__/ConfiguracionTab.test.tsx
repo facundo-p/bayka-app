@@ -30,16 +30,19 @@ const PERFILES = [
   { id: 'tec-2', nombre: 'Pablo Ríos', rol: 'tecnico', email: 'pablo@bayka.app', activo: true },
 ];
 
+/** Fila de plantation_species con las columnas que lee la web. */
+type Asignada = { species_id: string; lugar_color: number };
+
 /** Estado mutable del mock: los updates/inserts lo modifican como la base. */
 let plantacionGuardada: FilaPlantacion;
-let asignadas: Array<{ species_id: string; orden_visual: number }>;
+let asignadas: Asignada[];
 let tecnicosAsignados: string[];
 let arbolesPorEspecie: Record<string, number>;
 /** Si está, el RPC de edición responde esto en vez de aplicar los cambios. */
 let respuestaEdicion: RespuestaMock | null;
 let consultas: ConsultaCapturada[];
 
-function filaAsignadaConEmbed(asignada: { species_id: string; orden_visual: number }) {
+function filaAsignadaConEmbed(asignada: Asignada) {
   return { ...asignada, species: CATALOGO.find((especie) => especie.id === asignada.species_id) };
 }
 
@@ -58,6 +61,14 @@ function resolverPlantationSpecies(): RespuestaMock {
   return { data: asignadas.map(filaAsignadaConEmbed) };
 }
 
+/** Como el trigger: la especie que se habilita toma el menor lugar libre. */
+function menorLugarLibre(): number {
+  const ocupados = new Set(asignadas.map((fila) => fila.lugar_color));
+  let lugar = 0;
+  while (ocupados.has(lugar)) lugar += 1;
+  return lugar;
+}
+
 /** Doble del RPC: aplica altas y bajas sobre lo asignado, como la base. */
 function resolverCambiosEspecies(consulta: ConsultaCapturada): RespuestaMock {
   const { p_altas: altas, p_bajas: bajas } = consulta.payload as {
@@ -66,7 +77,7 @@ function resolverCambiosEspecies(consulta: ConsultaCapturada): RespuestaMock {
   };
   asignadas = asignadas.filter((fila) => !bajas.includes(fila.species_id));
   const nuevas = altas.filter((id) => !asignadas.some((fila) => fila.species_id === id));
-  asignadas.push(...nuevas.map((species_id) => ({ species_id, orden_visual: 0 })));
+  for (const species_id of nuevas) asignadas.push({ species_id, lugar_color: menorLugarLibre() });
   return { data: { success: true, rechazadas: [] } };
 }
 
@@ -127,8 +138,8 @@ beforeEach(() => {
     photo_capture_all_trees: false,
   });
   asignadas = [
-    { species_id: 'sp-1', orden_visual: 0 },
-    { species_id: 'sp-2', orden_visual: 1 },
+    { species_id: 'sp-1', lugar_color: 0 },
+    { species_id: 'sp-2', lugar_color: 1 },
   ];
   arbolesPorEspecie = { 'sp-1': 3 };
   tecnicosAsignados = [];
@@ -243,9 +254,9 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('desmarca todas dejando las bloqueadas y avisa con el conteo', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-1', orden_visual: 0 },
-      { species_id: 'sp-2', orden_visual: 1 },
-      { species_id: 'sp-3', orden_visual: 2 },
+      { species_id: 'sp-1', lugar_color: 0 },
+      { species_id: 'sp-2', lugar_color: 1 },
+      { species_id: 'sp-3', lugar_color: 2 },
     ];
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
@@ -269,9 +280,9 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('todas bloqueadas: no borra nada y avisa por todas', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-1', orden_visual: 0 },
-      { species_id: 'sp-2', orden_visual: 1 },
-      { species_id: 'sp-3', orden_visual: 2 },
+      { species_id: 'sp-1', lugar_color: 0 },
+      { species_id: 'sp-2', lugar_color: 1 },
+      { species_id: 'sp-3', lugar_color: 2 },
     ];
     arbolesPorEspecie = { 'sp-1': 3, 'sp-2': 1, 'sp-3': 5 };
     renderRutasEn('/plantaciones/plant-1/configuracion');
@@ -287,8 +298,8 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('sin bloqueadas: desmarcar vacía el checklist sin aviso', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-2', orden_visual: 0 },
-      { species_id: 'sp-3', orden_visual: 1 },
+      { species_id: 'sp-2', lugar_color: 0 },
+      { species_id: 'sp-3', lugar_color: 1 },
     ];
     arbolesPorEspecie = {};
     renderRutasEn('/plantaciones/plant-1/configuracion');

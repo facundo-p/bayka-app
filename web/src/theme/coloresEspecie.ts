@@ -48,6 +48,7 @@ function coloresPorCodigo(especies: readonly LugarDeEspecie[]): Map<string, stri
  *
  * - Sin código o N/N → ámbar de "sin identificar".
  * - Código que no está habilitado → gris: no le roba el color a una que sí.
+ * - Habilitada sin lugar que no sea N/N (no debería pasar) → gris.
  */
 export function coloresDeEspecies(especies: readonly LugarDeEspecie[]): ColorEspecie {
   const colores = coloresPorCodigo(especies);
