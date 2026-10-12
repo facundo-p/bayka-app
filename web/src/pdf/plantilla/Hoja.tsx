@@ -2,6 +2,7 @@ import { Image, Page, Text, View } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import { hojaStyles as styles } from './Hoja.styles';
 import { TEXTO_PLANTILLA, textoPiePagina, type EncabezadoPdf } from './textos';
+import { ORIENTACION_HOJA, type OrientacionHoja } from './tokens';
 
 const TAMANO_HOJA = 'A4';
 
@@ -32,9 +33,25 @@ function NotaPie({ nota }: { nota: NotaAlPie }) {
   );
 }
 
-type PieProps = { documento: string; emitido: string; nota?: NotaAlPie };
+/** Número de una hoja que se paginó antes de renderizar, y el total del documento. */
+export type PaginaFija = { numero: number; total: number };
 
-function Pie({ documento, emitido, nota }: PieProps) {
+/**
+ * Escrito, si la hoja ya sabe su número: con `render`, react-pdf vuelve a
+ * maquetar cada hoja para resolverlo, y con cientos de hojas se nota.
+ */
+function NumeroDePagina({ emitido, pagina }: { emitido: string; pagina?: PaginaFija }) {
+  if (pagina) return <Text>{textoPiePagina(emitido, pagina.numero, pagina.total)}</Text>;
+  return (
+    <Text
+      render={({ pageNumber, totalPages }) => textoPiePagina(emitido, pageNumber, totalPages)}
+    />
+  );
+}
+
+type PieProps = { documento: string; emitido: string; nota?: NotaAlPie; pagina?: PaginaFija };
+
+function Pie({ documento, emitido, nota, pagina }: PieProps) {
   return (
     <View style={styles.pie} fixed>
       <Text>
@@ -43,9 +60,7 @@ function Pie({ documento, emitido, nota }: PieProps) {
         {documento}
       </Text>
       {nota && <NotaPie nota={nota} />}
-      <Text
-        render={({ pageNumber, totalPages }) => textoPiePagina(emitido, pageNumber, totalPages)}
-      />
+      <NumeroDePagina emitido={emitido} pagina={pagina} />
     </View>
   );
 }
@@ -57,16 +72,28 @@ export type HojaProps = {
   /** Fecha de emisión ya formateada. */
   emitido: string;
   notaAlPie?: NotaAlPie;
+  /** Parada si no se indica. */
+  orientacion?: OrientacionHoja;
+  /** Para un documento que ya se paginó: el número de hoja va escrito. */
+  paginaFija?: PaginaFija;
   children: ReactNode;
 };
 
 /** Página A4 de marca: encabezado y pie se repiten en cada hoja si el cuerpo no entra en una. */
-export function Hoja({ encabezado, documento, emitido, notaAlPie, children }: HojaProps) {
+export function Hoja({
+  encabezado,
+  documento,
+  emitido,
+  notaAlPie,
+  orientacion = ORIENTACION_HOJA.vertical,
+  paginaFija,
+  children,
+}: HojaProps) {
   return (
-    <Page size={TAMANO_HOJA} style={styles.pagina}>
+    <Page size={TAMANO_HOJA} orientation={orientacion} style={styles.pagina}>
       <Encabezado encabezado={encabezado} />
       {children}
-      <Pie documento={documento} emitido={emitido} nota={notaAlPie} />
+      <Pie documento={documento} emitido={emitido} nota={notaAlPie} pagina={paginaFija} />
     </Page>
   );
 }

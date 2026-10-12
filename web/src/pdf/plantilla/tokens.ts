@@ -70,6 +70,8 @@ export const TAMANO_TEXTO = {
   especie: 9.5,
   encabezado: 14,
   idArbol: 14,
+  idTarjeta: 12,
+  filaListado: 7.8,
   tituloInforme: 22,
   tituloSeccion: 16,
   bloque: 11.5,
@@ -84,7 +86,15 @@ export const TAMANO_TEXTO = {
   notaAlPie: 4.5,
 } as const;
 
-/** Medidas de la hoja A4 en pt (595 × 842). */
+/** Cómo se gira la hoja: los valores son los de `orientation` de react-pdf. */
+export const ORIENTACION_HOJA = {
+  vertical: 'portrait',
+  horizontal: 'landscape',
+} as const;
+
+export type OrientacionHoja = (typeof ORIENTACION_HOJA)[keyof typeof ORIENTACION_HOJA];
+
+/** Medidas de la hoja A4 en pt (595 × 842), parada. */
 export const MEDIDA_HOJA = {
   ancho: 595,
   alto: 842,
@@ -126,16 +136,29 @@ export const MEDIDA_FICHA = {
   interlineadoLlamada: 1,
 } as const;
 
+type Medidas = { ancho: number; alto: number };
+
+/** Acostada, el ancho y el alto de la A4 se cruzan. */
+const DIMENSIONES_HOJA: Record<OrientacionHoja, Medidas> = {
+  [ORIENTACION_HOJA.vertical]: { ancho: MEDIDA_HOJA.ancho, alto: MEDIDA_HOJA.alto },
+  [ORIENTACION_HOJA.horizontal]: { ancho: MEDIDA_HOJA.alto, alto: MEDIDA_HOJA.ancho },
+};
+
 /** Lo que queda para el cuerpo de una hoja, entre encabezado y pie y entre márgenes. */
-export const CUERPO_HOJA = {
-  ancho: MEDIDA_HOJA.ancho - MEDIDA_HOJA.margenLateral * 2,
-  alto:
-    MEDIDA_HOJA.alto -
-    MEDIDA_HOJA.margenSuperior -
-    MEDIDA_HOJA.reservaEncabezado -
-    MEDIDA_HOJA.margenInferior -
-    MEDIDA_HOJA.reservaPie,
-} as const;
+export function cuerpoDeHoja(orientacion: OrientacionHoja): Medidas {
+  const { ancho, alto } = DIMENSIONES_HOJA[orientacion];
+  return {
+    ancho: ancho - MEDIDA_HOJA.margenLateral * 2,
+    alto:
+      alto -
+      MEDIDA_HOJA.margenSuperior -
+      MEDIDA_HOJA.reservaEncabezado -
+      MEDIDA_HOJA.margenInferior -
+      MEDIDA_HOJA.reservaPie,
+  };
+}
+
+export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
 
 /**
  * Medidas del informe en pt. Los renglones tienen alto fijo: con eso
@@ -205,3 +228,66 @@ export const CAJA_MAPA_INFORME = {
   alto:
     (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;
+
+/**
+ * Medidas del reporte de árboles en pt, en hoja horizontal. Todo renglón tiene
+ * alto fijo y una sola línea: así cada hoja lleva una cantidad fija de tarjetas
+ * o de filas, y la estimación previa coincide con el PDF.
+ */
+export const MEDIDA_REPORTE = {
+  columnasTarjetas: 2,
+  filasTarjetas: 3,
+  /** Entre tarjetas, a lo ancho y a lo alto. */
+  separacion: 10,
+  /** Colchón contra los redondeos del layout: sin él, la última fila podría saltar de hoja. */
+  holgura: 2,
+  rellenoTarjeta: 8,
+  borde: 0.75,
+  bordeFino: 0.5,
+  radio: 6,
+  radioFoto: 3,
+  aireFoto: 12,
+  /** Interlineado de los renglones de alto fijo: con el de Poppins por defecto no se dibujan. */
+  interlineado: 1.25,
+  altoIdArbol: 16,
+  altoEspecie: 13,
+  aireEspecie: 6,
+  altoDato: 16,
+  anchoEtiqueta: 62,
+  /** Baja el rótulo, más chico que el valor, a la línea del valor. */
+  aireSobreEtiqueta: 2,
+  punto: 7,
+  aireTrasPunto: 4,
+  espaciadoMayusculas: 0.4,
+  altoEncabezadoListado: 18,
+  altoFilaListado: 14,
+  rellenoCelda: 4,
+  /** Ancho relativo de cada columna del listado. */
+  pesoColumna: {
+    idArbol: 15,
+    especie: 21,
+    parcela: 16,
+    grupo: 16,
+    posicion: 6,
+    registrado: 8,
+    gps: 18,
+  },
+} as const;
+
+export const CUERPO_REPORTE = cuerpoDeHoja(ORIENTACION_HOJA.horizontal);
+
+/** Lo que mide cada tarjeta para que entren justas en la grilla de la hoja. */
+export const CAJA_TARJETA = {
+  ancho:
+    (CUERPO_REPORTE.ancho - MEDIDA_REPORTE.separacion * (MEDIDA_REPORTE.columnasTarjetas - 1)) /
+    MEDIDA_REPORTE.columnasTarjetas,
+  alto:
+    (CUERPO_REPORTE.alto -
+      MEDIDA_REPORTE.holgura -
+      MEDIDA_REPORTE.separacion * (MEDIDA_REPORTE.filasTarjetas - 1)) /
+    MEDIDA_REPORTE.filasTarjetas,
+} as const;
+
+/** La foto es cuadrada y ocupa todo el alto de la tarjeta, adentro del relleno y del borde. */
+export const LADO_FOTO_TARJETA =
+  CAJA_TARJETA.alto - 2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde);

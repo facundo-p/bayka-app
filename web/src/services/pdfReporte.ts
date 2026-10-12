@@ -1,0 +1,88 @@
+/*
+ * Reporte PDF de árboles (#848): tarjetas para los que tienen foto y un listado
+ * para el resto, a partir de los árboles ya leídos. Todo lo de PDF se carga
+ * recién acá, con `import()`; el plan es puro y viene de entrada.
+ */
+import type { QueryClient } from '@tanstack/react-query';
+import { formatearFechaCorta } from '../lib/fechas';
+import { repartirArboles, type ModoReporte } from '../pdf/reporte/planReporte';
+import { leerNombreOrganizacion, type ArbolParaFicha } from '../queries/fichasQueries';
+import type { Plantacion } from '../queries/plantationQueries';
+import type { ColorEspecie } from '../theme/coloresEspecie';
+import { leerColoresEspecie } from './coloresDePlantacion';
+
+/** Las etapas de la barra de progreso; la lectura de los árboles la avisa quien los lee. */
+export const ETAPA_REPORTE = {
+  leyendoArboles: 'leyendo-arboles',
+  bajandoFotos: 'bajando-fotos',
+  armandoPdf: 'armando-pdf',
+} as const;
+
+export type ProgresoReporte =
+  | { etapa: typeof ETAPA_REPORTE.leyendoArboles }
+  | { etapa: typeof ETAPA_REPORTE.bajandoFotos; listas: number; total: number }
+  | { etapa: typeof ETAPA_REPORTE.armandoPdf };
+
+export type ContextoReportePdf = {
+  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+  /** Los colores de especie salen de su caché si ya se leyeron. */
+  queryClient: QueryClient;
+};
+
+export type PedidoReporte = {
+  /** En el orden del filtro: así salen las tarjetas y el listado. */
+  arboles: readonly ArbolParaFicha[];
+  modo: ModoReporte;
+  alProgresar?: (progreso: ProgresoReporte) => void;
+};
+
+export const ERROR_REPORTE_SIN_ARBOLES = 'El reporte no tiene árboles';
+
+/** Sin organización legible, el encabezado lleva solo el código de la plantación. */
+function leerInsumos({ plantacion, queryClient }: ContextoReportePdf) {
+  return Promise.all([
+    leerNombreOrganizacion(plantacion.id).catch(() => null),
+    leerColoresEspecie(queryClient, plantacion.id),
+    import('../pdf/reporte/motorReporte'),
+  ]);
+}
+
+type MotorReporte = typeof import('../pdf/reporte/motorReporte');
+
+/** Baja solo las fotos de los árboles que salen como tarjeta. */
+async function prepararReparto(
+  motor: MotorReporte,
+  { arboles, modo, alProgresar }: PedidoReporte,
+  colorDe: ColorEspecie,
+) {
+  const { tarjetas, listado } = repartirArboles(arboles, modo);
+  const fotos =
+    tarjetas.length === 0
+      ? []
+      : await motor.cargarFotos(
+          tarjetas.map((arbol) => arbol.fotoUrl),
+          {
+            alProgresar: (listas, total) =>
+              alProgresar?.({ etapa: ETAPA_REPORTE.bajandoFotos, listas, total }),
+          },
+        );
+  return {
+    tarjetas: tarjetas.map((arbol, indice) => motor.datosTarjeta(arbol, fotos[indice], colorDe)),
+    listado: listado.map((arbol) => motor.datosArbolReporte(arbol, colorDe)),
+  };
+}
+
+/** El PDF del reporte; una foto que no se baja sale como «Foto no disponible». */
+export async function generarPdfReporte(
+  pedido: PedidoReporte,
+  contexto: ContextoReportePdf,
+): Promise<Blob> {
+  if (pedido.arboles.length === 0) throw new Error(ERROR_REPORTE_SIN_ARBOLES);
+  const [organizacion, colorDe, motor] = await leerInsumos(contexto);
+  const reparto = await prepararReparto(motor, pedido, colorDe);
+  pedido.alProgresar?.({ etapa: ETAPA_REPORTE.armandoPdf });
+  const logo = motor.logoNavegador();
+  const encabezado = motor.encabezadoDePlantacion(contexto.plantacion, organizacion, logo);
+  const emitido = formatearFechaCorta(new Date().toISOString());
+  return motor.renderizarReporte({ encabezado, emitido, reparto });
+}
