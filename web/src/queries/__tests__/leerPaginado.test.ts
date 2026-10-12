@@ -85,3 +85,40 @@ test('propaga el error de una página de la tanda', async () => {
   );
   await expect(error).rejects.toMatchObject({ message: 'timeout', code: '57014' });
 });
+
+describe('con señal', () => {
+  test('abortada antes de empezar, no pide nada', async () => {
+    const { rangos, consultar } = tabla(10);
+    const control = new AbortController();
+    control.abort();
+    await expect(leerPaginado(consultar, control.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(rangos).toHaveLength(0);
+  });
+
+  test('abortada en una tanda, no pide la siguiente', async () => {
+    const { rangos, consultar } = tabla(10 * TAMANO_PAGINA);
+    const control = new AbortController();
+    const ultimaDeLaTanda = PAGINAS_EN_PARALELO * TAMANO_PAGINA;
+    const cortarEnLaTanda = async (desde: number, hasta: number) => {
+      if (desde === ultimaDeLaTanda) control.abort();
+      return consultar(desde, hasta);
+    };
+    await expect(leerPaginado(cortarEnLaTanda, control.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(rangos).toHaveLength(1 + PAGINAS_EN_PARALELO);
+  });
+
+  test('una página cortada en vuelo rechaza como cancelación, no como error de red', async () => {
+    const control = new AbortController();
+    const cortada = async () => {
+      control.abort();
+      return { data: null, error: { message: 'AbortError: signal is aborted', code: '' } };
+    };
+    await expect(leerPaginado(cortada, control.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+  });
+});

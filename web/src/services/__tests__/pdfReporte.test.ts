@@ -212,7 +212,7 @@ describe('descargarReportePdf', () => {
 
   test('lee todo el filtro, arma el PDF y lo descarga con su nombre', async () => {
     const resultado = await descargarReportePdf(pedido(), contexto());
-    expect(listarArbolesDelFiltro).toHaveBeenCalledWith(PLANTACION.id, FILTROS);
+    expect(listarArbolesDelFiltro).toHaveBeenCalledWith(PLANTACION.id, FILTROS, undefined);
     expect(repartoRenderizado()).toEqual({ tarjetas: 1, listado: 1 });
     expect(descargarBlob).toHaveBeenCalledWith(
       BLOB,
@@ -231,16 +231,22 @@ describe('descargarReportePdf', () => {
     expect(etapas.at(-1)).toEqual({ etapa: 'armando-pdf' });
   });
 
-  test('cancelado mientras lee, no baja fotos ni descarga', async () => {
+  test('la señal llega a la lectura de los árboles y al armado del PDF', async () => {
     const control = new AbortController();
-    vi.mocked(listarArbolesDelFiltro).mockImplementation(async () => {
+    await descargarReportePdf(pedido({ senal: control.signal }), contexto());
+    expect(listarArbolesDelFiltro).toHaveBeenCalledWith(PLANTACION.id, FILTROS, control.signal);
+    expect(vi.mocked(motor.renderizarReporte).mock.lastCall![1]).toBe(control.signal);
+  });
+
+  test('si el PDF llega justo después de cancelar, no lo descarga', async () => {
+    const control = new AbortController();
+    vi.mocked(motor.renderizarReporte).mockImplementation(async () => {
       control.abort();
-      return [conFoto(1)];
+      return BLOB;
     });
     await expect(
       descargarReportePdf(pedido({ senal: control.signal }), contexto()),
     ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(motor.cargarFotos).not.toHaveBeenCalled();
     expect(descargarBlob).not.toHaveBeenCalled();
   });
 

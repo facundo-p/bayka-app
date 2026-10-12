@@ -48,6 +48,7 @@ interface ConsultaDemo extends PromiseLike<RespuestaDemo>, Record<Operador, Meto
   order: () => ConsultaDemo;
   limit: (cantidad: number) => ConsultaDemo;
   range: (desde: number, hasta: number) => ConsultaDemo;
+  abortSignal: (senal: AbortSignal) => ConsultaDemo;
   maybeSingle: () => Promise<RespuestaDemo>;
   single: () => Promise<RespuestaDemo>;
 }
@@ -134,6 +135,8 @@ function crearConsulta(tabla: string): ConsultaDemo {
       cambiar({ embebidos: embebidosDe(columnas), soloConteo: Boolean(opciones?.head) }),
     not: (columna, operador, valor) => agregar(negacion(columna, operador, valor)),
     or: (condiciones) => agregar(alternativasDe(condiciones)),
+    // Contesta en el acto: no hay pedido en vuelo que cortar.
+    abortSignal: () => consulta,
     maybeSingle: unaSola,
     single: unaSola,
     then: (alCumplir, alFallar) => Promise.resolve(resolver(estado)).then(alCumplir, alFallar),

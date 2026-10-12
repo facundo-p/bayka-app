@@ -12,7 +12,7 @@ import {
   resolverBusquedaDeFiltros,
   type FiltrosArboles,
 } from './dataExplorerQueries';
-import { leerPaginado, type RespuestaPagina } from './leerPaginado';
+import { conSenal, leerPaginado, type RespuestaPagina } from './leerPaginado';
 
 export type CodigoNombre = { codigo: string; nombre: string };
 
@@ -132,21 +132,26 @@ export async function leerArbolParaFicha(
   return fila && mapearArbolFicha(fila);
 }
 
-/** Todos los árboles que deja el filtro del listado, en su orden, de a 1.000 por pedido. */
+/**
+ * Todos los árboles que deja el filtro del listado, en su orden, de a 1.000 por
+ * pedido. Con `senal` abortada corta la página en vuelo y no pide más.
+ */
 export async function listarArbolesDelFiltro(
   plantationId: string,
   filtros: FiltrosArboles,
+  senal?: AbortSignal,
 ): Promise<ArbolParaFicha[]> {
   const busqueda = await resolverBusquedaDeFiltros(filtros);
   const select = { columnas: SELECT_FICHA };
-  const filas = await leerPaginado<FilaArbolFicha>(
-    (desde, hasta) =>
-      // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
-      ordenarComoListado(consultaArbolesFiltrados(plantationId, filtros, busqueda, select)).range(
-        desde,
-        hasta,
-      ) as unknown as PromiseLike<RespuestaPagina<FilaArbolFicha>>,
-  );
+  const pagina = (desde: number, hasta: number) => {
+    const consulta = consultaArbolesFiltrados(plantationId, filtros, busqueda, select);
+    // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
+    return conSenal(
+      ordenarComoListado(consulta).range(desde, hasta),
+      senal,
+    ) as unknown as PromiseLike<RespuestaPagina<FilaArbolFicha>>;
+  };
+  const filas = await leerPaginado(pagina, senal);
   return filas.map(mapearArbolFicha);
 }
 

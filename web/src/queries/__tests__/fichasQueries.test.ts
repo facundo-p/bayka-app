@@ -193,6 +193,35 @@ describe('listarArbolesDelFiltro', () => {
     capturarConsultas(() => ({ error: { message: 'boom' } }));
     await expect(listarArbolesDelFiltro('plant-1', {})).rejects.toThrow('boom');
   });
+
+  describe('con señal', () => {
+    const llena = () =>
+      Array.from({ length: TAMANO_PAGINA }, (_, indice) => filaArbolFicha(`t${indice}`));
+
+    test('cada página la lleva, para cortar la que esté en vuelo', async () => {
+      const control = new AbortController();
+      const consultas = capturarConsultas(({ rango }) => ({
+        data: rango?.desde === 0 ? llena() : [],
+      }));
+      await listarArbolesDelFiltro('plant-1', {}, control.signal);
+
+      const paginas = consultasDeArboles(consultas);
+      expect(paginas.length).toBeGreaterThan(1);
+      paginas.forEach((pagina) => expect(pagina.senal).toBe(control.signal));
+    });
+
+    test('cancelada a mitad, no pide más páginas y rechaza como cancelación', async () => {
+      const control = new AbortController();
+      const consultas = capturarConsultas(() => {
+        control.abort();
+        return { data: llena() };
+      });
+      await expect(listarArbolesDelFiltro('plant-1', {}, control.signal)).rejects.toMatchObject({
+        name: 'AbortError',
+      });
+      expect(consultasDeArboles(consultas)).toHaveLength(1);
+    });
+  });
 });
 
 describe('leerNombreOrganizacion', () => {

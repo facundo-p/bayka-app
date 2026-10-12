@@ -38,7 +38,7 @@ export type ContextoReportePdf = {
 
 type Seguimiento = {
   alProgresar?: (progreso: ProgresoReporte) => void;
-  /** Corta la lectura y la bajada de fotos; el armado del PDF no se puede cortar. */
+  /** Corta la lectura, la bajada de fotos o el armado del PDF, donde esté. */
   senal?: AbortSignal;
 };
 
@@ -110,7 +110,7 @@ export async function generarPdfReporte(
   const logo = motor.logoNavegador();
   const encabezado = motor.encabezadoDePlantacion(contexto.plantacion, organizacion, logo);
   const emitido = formatearFechaCorta(new Date().toISOString());
-  const blob = await motor.renderizarReporte({ encabezado, emitido, reparto });
+  const blob = await motor.renderizarReporte({ encabezado, emitido, reparto }, pedido.senal);
   return { blob, fotosFallidas: contarFallidas(reparto.tarjetas) };
 }
 
@@ -126,9 +126,10 @@ export async function descargarReportePdf(
   contexto: ContextoReportePdf,
 ): Promise<Pick<ReportePdf, 'fotosFallidas'>> {
   pedido.alProgresar?.({ etapa: ETAPA_REPORTE.leyendoArboles });
-  const arboles = await listarArbolesDelFiltro(contexto.plantacion.id, filtros);
-  pedido.senal?.throwIfAborted();
+  const arboles = await listarArbolesDelFiltro(contexto.plantacion.id, filtros, pedido.senal);
   const { blob, fotosFallidas } = await generarPdfReporte({ ...pedido, arboles }, contexto);
+  // El PDF pudo llegar justo después de cancelar.
+  pedido.senal?.throwIfAborted();
   descargarBlob(blob, nombreArchivo);
   return { fotosFallidas };
 }

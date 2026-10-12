@@ -11,6 +11,10 @@ export { encabezadoDePlantacion } from '../plantilla/textos';
 export { datosArbolReporte, datosTarjeta } from './datosReporte';
 export { logoNavegador };
 
-export function renderizarReporte(documento: DocumentoReporteProps): Promise<Blob> {
-  return renderizarEnWorker({ documento, fuentes: archivosFuentesNavegador() });
+/** Abortada `senal`, el armado se corta en el acto. */
+export function renderizarReporte(
+  documento: DocumentoReporteProps,
+  senal?: AbortSignal,
+): Promise<Blob> {
+  return renderizarEnWorker({ documento, fuentes: archivosFuentesNavegador() }, { senal });
 }
