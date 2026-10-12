@@ -2,6 +2,7 @@
  * Entradas del informe PDF de N parcelas y M especies, determinísticas: los
  * conteos del dashboard y los puntos del mapa cuentan lo mismo.
  */
+import { LISTA_OPCIONES_INFORME, opcionesCon, type OpcionesInforme } from '../lib/opcionesInforme';
 import type { EntradaInforme } from '../pdf/informe/datosInforme';
 import type { DashboardData, DistribucionEspecie } from '../queries/dashboardQueries';
 import type { PuntoGps } from '../queries/mapaQueries';
@@ -20,7 +21,25 @@ type OpcionesEntrada = {
   nn?: number;
   objetivo?: number | null;
   conGps?: boolean;
+  /** Por defecto, todas marcadas. */
+  opciones?: OpcionesInforme;
 };
+
+export const TODAS_LAS_OPCIONES = opcionesCon(LISTA_OPCIONES_INFORME);
+
+/** Las 16 combinaciones de casillas, de ninguna a todas. */
+export function combinacionesDeOpciones(): OpcionesInforme[] {
+  const total = 2 ** LISTA_OPCIONES_INFORME.length;
+  return Array.from({ length: total }, (_, bits) =>
+    opcionesCon(LISTA_OPCIONES_INFORME.filter((_, indice) => bits & (1 << indice))),
+  );
+}
+
+/** «meta + mapa», o «ninguna»: el nombre de la combinación en los tests. */
+export function nombreCombinacion(opciones: OpcionesInforme): string {
+  const marcadas = LISTA_OPCIONES_INFORME.filter((opcion) => opciones[opcion]);
+  return marcadas.length === 0 ? 'ninguna' : marcadas.join(' + ');
+}
 
 /** Pasadas las 18 con nombre, los códigos siguen numerados: E19, E20… */
 function codigosEspecie(cantidad: number): string[] {
@@ -98,13 +117,10 @@ export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
   return {
     dashboard: dashboard(porEspecie, opciones.parcelas, puntos.length),
     puntos,
-    parcelas: Array.from({ length: opciones.parcelas }, (_, indice) => ({
-      id: `parc-${indice}`,
-      grupos: 2,
-    })),
     plantacion: { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26', estado: 'Activa' },
     objetivo: opciones.objetivo === undefined ? 8000 : opciones.objetivo,
     organizacion: 'Bayka',
     colorDe: coloresDeLaLista(porEspecie),
+    opciones: opciones.opciones ?? TODAS_LAS_OPCIONES,
   };
 }

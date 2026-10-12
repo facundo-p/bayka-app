@@ -1,14 +1,13 @@
 /*
  * Informe PDF de la plantación (#756): reutiliza las lecturas cacheadas del
- * dashboard, del mapa, de las parcelas y de las especies, y arma el documento en
- * el navegador.
+ * dashboard, del mapa y de las especies, y arma el documento en el navegador.
  * Todo lo de PDF se carga recién acá, con `import()`.
  */
 import type { QueryClient } from '@tanstack/react-query';
 import { formatearFechaCorta } from '../lib/fechas';
+import type { OpcionesInforme } from '../lib/opcionesInforme';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { calcularDashboard, obtenerFuenteDashboard } from '../queries/dashboardQueries';
-import { listarParcelasConStats } from '../queries/dataExplorerQueries';
 import { leerNombreOrganizacion } from '../queries/fichasQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import { ETIQUETA_ESTADO_PLANTACION, type Plantacion } from '../queries/plantationQueries';
@@ -22,20 +21,18 @@ export type PlantacionDelInforme = Pick<
 
 const PREFIJO_ARCHIVO_INFORME = 'informe';
 
+/** Sin mapa elegido no se piden; si no se pueden leer, el informe sale con «Mapa no disponible». */
+function leerPuntos(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
+  if (!opciones.mapa) return Promise.resolve(null);
+  return queryClient
+    .fetchQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) })
+    .catch(() => null);
+}
+
 /** Lo que puede faltar: el informe sale igual, sin esa parte. */
-function leerAccesorios(id: string, queryClient: QueryClient) {
+function leerAccesorios(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
   return Promise.all([
-    // Sin mapa, el informe sale con «Mapa no disponible».
-    queryClient
-      .fetchQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) })
-      .catch(() => null),
-    // Sin parcelas legibles, la columna Grupos sale «—».
-    queryClient
-      .fetchQuery({
-        queryKey: CLAVE_QUERY.datosParcelas(id),
-        queryFn: () => listarParcelasConStats(id),
-      })
-      .catch(() => null),
+    leerPuntos(id, queryClient, opciones),
     // Sin organización legible, el encabezado lleva solo el código.
     leerNombreOrganizacion(id).catch(() => null),
   ]);
@@ -45,13 +42,13 @@ function leerAccesorios(id: string, queryClient: QueryClient) {
  * Las mismas claves y funciones que el dashboard: lo que ya leyó y sigue
  * vigente no se vuelve a pedir, y lo que se relee le llega también al dashboard.
  */
-function leerInsumos(id: string, queryClient: QueryClient) {
+function leerInsumos(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
   return Promise.all([
     queryClient.fetchQuery({
       queryKey: CLAVE_QUERY.dashboard(id),
       queryFn: () => obtenerFuenteDashboard(id),
     }),
-    leerAccesorios(id, queryClient),
+    leerAccesorios(id, queryClient, opciones),
     // Los colores del dashboard, el KML y la ficha; sin especies legibles, por hash.
     leerColoresEspecie(queryClient, id),
     import('../pdf/informe/motorInforme'),
@@ -62,19 +59,21 @@ function leerInsumos(id: string, queryClient: QueryClient) {
 export async function generarPdfInforme(
   plantacion: PlantacionDelInforme,
   queryClient: QueryClient,
+  opciones: OpcionesInforme,
 ): Promise<Blob> {
-  const [fuente, [puntos, parcelas, organizacion], colorDe, motor] = await leerInsumos(
+  const [fuente, [puntos, organizacion], colorDe, motor] = await leerInsumos(
     plantacion.id,
     queryClient,
+    opciones,
   );
   return motor.renderizarInforme({
     dashboard: calcularDashboard(fuente),
     puntos,
-    parcelas,
     plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },
     objetivo: plantacion.objetivoArboles,
     organizacion,
     colorDe,
+    opciones,
     emitido: formatearFechaCorta(new Date().toISOString()),
   });
 }
@@ -87,7 +86,8 @@ export function nombreArchivoInforme(lugar: string, periodo: string): string {
 export async function descargarInformePdf(
   plantacion: PlantacionDelInforme,
   queryClient: QueryClient,
+  opciones: OpcionesInforme,
 ): Promise<void> {
-  const blob = await generarPdfInforme(plantacion, queryClient);
+  const blob = await generarPdfInforme(plantacion, queryClient, opciones);
   descargarBlob(blob, nombreArchivoInforme(plantacion.lugar, plantacion.periodo));
 }

@@ -15,30 +15,17 @@
 }
 
 .fila {
-  display: flex;
+  composes: fila from './Casilla.module.css';
   align-items: center;
-  gap: var(--space-lg);
-  width: 100%;
   padding: 9px var(--space-xl);
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
-  font-family: var(--font-body);
-  text-align: left;
-  cursor: pointer;
 }
 
-/* Habilitada: fondo tenue para leer de un vistazo qué entra en la app. */
-.filaMarcada {
+/*
+ * Habilitada: fondo tenue para leer de un vistazo qué entra en la app. Dos
+ * clases para ganarle al fondo de la base sin depender del orden de los módulos.
+ */
+.fila.filaMarcada {
   background-color: var(--color-plantation-bg-light);
-}
-
-.fila:hover:not(:disabled) {
-  background-color: var(--color-surface-sunken);
-}
-
-.fila:disabled {
-  cursor: default;
 }
 
 /*

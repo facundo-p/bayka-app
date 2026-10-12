@@ -1,4 +1,3 @@
-import { SIN_DATO } from '../../lib/formato';
 import { ESPECIE_NO_RESUELTA } from '../../queries/especiesConstantes';
 import { TEXTO_PLANTILLA } from '../plantilla/textos';
 
@@ -13,20 +12,9 @@ export const TEXTO_INFORME = {
   deLaMeta: 'de la meta',
   conGps: 'Con GPS',
   conFoto: 'Con foto',
-  pendientes: 'N/N pendientes',
-  sinEspecie: 'Sin especie identificada',
   especies: 'Distribución por especie',
-  parcelas: 'Árboles por parcela',
-  columnaParcela: 'Parcela',
-  columnaGrupos: 'Grupos',
-  columnaArboles: 'Árboles',
-  columnaPorcentaje: '%',
-  total: 'Total',
-  sinParcela: 'Sin parcela',
-  sinDato: SIN_DATO,
   mapa: 'Puntos GPS por especie',
   sinArboles: 'Todavía no hay árboles registrados.',
-  sinParcelas: 'La plantación no tiene parcelas.',
   sinGps: 'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
   mapaNoDisponible: 'Mapa no disponible.',
   tienenCoordenadas: 'tienen coordenadas',

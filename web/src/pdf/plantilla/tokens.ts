@@ -91,10 +91,13 @@ export const ORIENTACION_HOJA = {
 
 export type OrientacionHoja = (typeof ORIENTACION_HOJA)[keyof typeof ORIENTACION_HOJA];
 
-/** Medidas de la hoja A4 en pt (595 × 842), parada. */
+/**
+ * Medidas de la hoja A4 en pt, parada. Ancho y alto son los del A4 de react-pdf,
+ * no los redondeados: con 842, un renglón que llegaba justo al borde parecía entrar.
+ */
 export const MEDIDA_HOJA = {
-  ancho: 595,
-  alto: 842,
+  ancho: 595.28,
+  alto: 841.89,
   margenSuperior: 34,
   margenInferior: 22,
   margenLateral: 30,
@@ -190,7 +193,7 @@ export const MEDIDA_INFORME = {
   aireTitulo: 2,
   altoIndicadores: 66,
   separacionIndicadores: 8,
-  /** El de árboles es más ancho que los otros tres. */
+  /** El de árboles es más ancho que los porcentajes. */
   pesoIndicadorPrincipal: 1.6,
   rellenoIndicador: { vertical: 8, horizontal: 10 },
   aireIndicador: 3,
@@ -210,12 +213,6 @@ export const MEDIDA_INFORME = {
   altoBarraEspecie: 7,
   radioBarra: 2,
   separacionColumnas: 8,
-  altoEncabezadoTabla: 14,
-  altoFilaTabla: 16,
-  altoBarraParcela: 4,
-  anchoColumnaNumero: 44,
-  anchoBarraParcela: 90,
-  rellenoCelda: 4,
   altoMensaje: 14,
   altoTituloMapa: 20,
   aireTituloMapa: 8,

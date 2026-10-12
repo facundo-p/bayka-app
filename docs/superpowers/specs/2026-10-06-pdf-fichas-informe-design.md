@@ -18,7 +18,7 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 | Botón de la ficha | «Descargar ficha PDF», ancho, al final del panel de detalle. |
 | Selección | Botón «Seleccionar». Los checkboxes solo existen en ese modo. Al entrar aparece una barra azul bajo los filtros, con 0 marcados: «N árboles seleccionados · Cancelar · Generar fichas (N)». Con 0, «Generar fichas» queda deshabilitado y «Cancelar» disponible. Con la página entera marcada dice «Los N árboles de esta página». Vale para la página actual (≤ 50) y se limpia al cambiar de página o de filtro. |
 | Colores del informe | Los de la plantación (#845): cada especie lleva el color de su lugar fijo, el mismo del dashboard, el KML y la ficha. La paleta son los 8 de `COLORES_GRAFICOS` y 4 extra (ciruela `#7d4e7a`, verde azulado `#3e8a85`, siena `#b0623a`, pizarra `#5b6b7c`). N/N siempre ámbar. |
-| Parcelas en el informe | Una tabla con barra por fila (sin gráfico de barras aparte). |
+| Opciones del informe (#847) | Sin tabla de parcelas ni N/N pendientes. Al tocar «Informe PDF», un modal con cuatro casillas: meta y avance, % con GPS, % con foto y mapa. Árboles registrados y especies salen siempre. El navegador recuerda la última elección; la primera vez, sin marcar. Sin objetivo, la casilla de meta queda deshabilitada. Mientras genera, el modal no se cierra: el render no se puede cortar. |
 | Disposición del informe | Todo fluye. El mapa es 16:9 horizontal al ancho de la hoja (#833). Si entra con su título, leyenda y nota en lo que queda de la última hoja, va ahí; si no, abre una hoja nueva al final. |
 | Satélite | Esri World Imagery, con «Imágenes © Esri, Maxar» al pie del mapa. Los términos permiten mapas estáticos en PDF e informes para clientes, y los tiles responden con CORS `*`. |
 | Flujo de PRs | Una PR por sub-issue. #754 contra `staging`. #755, #756 y #757 en Draft sobre la rama anterior hasta que se mergea su base. |
@@ -41,12 +41,12 @@ identificar», sin científico ni subtipo). Al encuadrar el minimapa se descarta
 los vecinos a más de 2 km del árbol: un GPS errado no achica la parcela.
 
 **Informe.** Título, línea con lugar, período, código, organización y estado.
-Cuatro indicadores: árboles contra la meta con barra de avance, % con GPS, % con
-foto y N/N pendientes. Especies con barra y %. Parcelas: tabla con grupos,
-árboles, barra y %, con fila de total. Mapa de puntos por especie con código de
-parcela en cada una, leyenda y la cantidad de árboles sin GPS que no aparecen.
-Siempre la plantación entera. Sin meta: se muestra el total, sin barra. Sin
-árboles o sin GPS: el bloque dice por qué está vacío.
+Fila de indicadores: árboles registrados siempre, con la meta y su barra de
+avance si se eligió; % con GPS y % con foto si se eligieron. Especies con barra
+y %, con la fila N/N si la hay. Si se eligió el mapa: puntos por especie con
+código de parcela en cada una, leyenda y la cantidad de árboles sin GPS que no
+aparecen. Siempre la plantación entera. Sin meta: se muestra el total, sin
+barra. Sin árboles o sin GPS: el bloque dice por qué está vacío.
 
 **Archivos.** `nombreArchivoDescarga`: `ficha-<lugar>-<periodo>-<subid>.pdf`,
 `fichas-<lugar>-<periodo>.pdf` e `informe-<lugar>-<periodo>.pdf`.
@@ -64,7 +64,7 @@ cambia.
 | `pdf/mapa/dibujarMapa.ts` | Dibuja fondo, puntos, árbol resaltado, códigos de parcela, escala y norte en un canvas y devuelve un PNG. Con 7600 puntos un raster pesa y tarda menos que 7600 círculos vectoriales, y en #757 el satélite se compone en el mismo canvas. | Encuadre y escala sí |
 | `pdf/fotos.ts` | `createSignedUrls` en una llamada, `fetch` con concurrencia acotada, reducción a JPEG de ~480 px. Un error por foto se vuelve placeholder; nunca corta el PDF. | Con mocks |
 | `pdf/ficha/` | `datosFicha` (puro: fila → modelo de ficha) y el componente `Ficha`. | `datosFicha` sí |
-| `pdf/informe/` | `datosInforme` (puro: `DashboardData` + puntos → modelo), `planificarInforme` (puro: dónde va el mapa según filas estimadas) y el documento. | Los dos puros sí |
+| `pdf/informe/` | `datosInforme` (puro: `DashboardData` + puntos + opciones → modelo), `planificarInforme` (puro: dónde va el mapa según filas estimadas; sin mapa no corre) y el documento. | Los dos puros sí |
 | `services/pdf*.ts` | Orquestan: leen lo que falta, cargan `pdf/` con `import()`, arman el blob y descargan con `descargarBlob`. | Con mocks |
 
 **Datos.**
@@ -72,7 +72,7 @@ cambia.
 - El minimapa toma los puntos de `listarPuntosGps`, cacheados con `CLAVE_QUERY.mapa`, filtrados por parcela.
 - La organización sale de una lectura de `organizations.nombre`.
 - El técnico sale del `nombresUsuario` del listado.
-- El informe reutiliza `CLAVE_QUERY.dashboard` con `calcularDashboard(fuente)`, y `listarPuntosGps` para el mapa. No lee árboles por su cuenta.
+- El informe reutiliza `CLAVE_QUERY.dashboard` con `calcularDashboard(fuente)`, y `listarPuntosGps` solo si se eligió el mapa. No lee árboles ni parcelas por su cuenta.
 
 **Fuentes.** Linux Biolinum (OTF de `public/fonts`; si react-pdf no la lee, se
 convierte a TTF), Poppins e IBM Plex Mono en TTF o WOFF locales. Nada de CDN.

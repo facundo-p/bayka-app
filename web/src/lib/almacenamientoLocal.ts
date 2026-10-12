@@ -2,6 +2,7 @@
 export const CLAVE_STORAGE = {
   novedadesUltimaVista: 'bayka.novedades.ultima-vista',
   recientesCommandMenu: 'bayka.command-menu.recientes',
+  opcionesInforme: 'bayka.informe.opciones',
 } as const;
 
 export type ClaveStorage = (typeof CLAVE_STORAGE)[keyof typeof CLAVE_STORAGE];

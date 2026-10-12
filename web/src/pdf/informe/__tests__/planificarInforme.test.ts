@@ -1,6 +1,6 @@
 import { entradaInforme } from '../../../test/informePdf';
 import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
-import { datosInforme } from '../datosInforme';
+import { datosInforme, tieneMapa } from '../datosInforme';
 import {
   altoEnUltimaHoja,
   libreMinimoAlPie,
@@ -8,8 +8,12 @@ import {
   planSegunLibre,
 } from '../planificarInforme';
 
-const modelo = (parcelas: number, especies: number) =>
-  datosInforme(entradaInforme({ parcelas, especies, nn: 3 }));
+function modelo(parcelas: number, especies: number) {
+  const calculado = datosInforme(entradaInforme({ parcelas, especies, nn: 3 }));
+  if (!tieneMapa(calculado)) throw new Error('El modelo no trae el mapa');
+  return calculado;
+}
+
 const plan = (parcelas: number, especies: number) => planificarInforme(modelo(parcelas, especies));
 
 test('la caja del mapa es 16:9 horizontal, al ancho del cuerpo', () => {
@@ -17,24 +21,14 @@ test('la caja del mapa es 16:9 horizontal, al ancho del cuerpo', () => {
   expect(CAJA_MAPA_INFORME.ancho / CAJA_MAPA_INFORME.alto).toBeCloseTo(16 / 9);
 });
 
-// El borde contra el render real está en DocumentoInforme.test.tsx.
+// Solo las especies empujan el mapa. El borde contra el render real está en
+// DocumentoInforme.test.tsx.
 test.each([
-  [4, 1, 'ultima-hoja'],
-  [5, 1, 'hoja-completa'],
-  [3, 2, 'ultima-hoja'],
-  [4, 2, 'hoja-completa'],
-  [1, 5, 'ultima-hoja'],
-  [1, 6, 'hoja-completa'],
-])('%i parcelas y %i especies: el mapa va a %s', (parcelas, especies, ubicacion) => {
-  expect(plan(parcelas, especies).ubicacion).toBe(ubicacion);
-});
-
-test('17 parcelas y 9 especies: el mapa va a hoja completa', () => {
-  expect(plan(17, 9).ubicacion).toBe('hoja-completa');
-});
-
-test('muchas especies empujan el mapa a hoja completa aunque haya pocas parcelas', () => {
-  expect(plan(2, 18).ubicacion).toBe('hoja-completa');
+  [1, 'ultima-hoja'],
+  [10, 'ultima-hoja'],
+  [11, 'hoja-completa'],
+])('%i especies y N/N: el mapa va a %s', (especies, ubicacion) => {
+  expect(plan(4, especies).ubicacion).toBe(ubicacion);
 });
 
 describe('en el umbral de lo libre', () => {
@@ -63,7 +57,7 @@ test('la leyenda pasa a dos renglones con 11 ítems', () => {
 });
 
 describe('altoEnUltimaHoja', () => {
-  const renglon = (alto: number, alEmpezarHoja = 0) => ({ alto, alEmpezarHoja });
+  const renglon = (alto: number) => ({ alto });
 
   test('un renglón que no entra empieza la hoja siguiente', () => {
     const casiLlena = CUERPO_HOJA.alto - 10;
@@ -73,13 +67,8 @@ describe('altoEnUltimaHoja', () => {
 
   test('la presencia decide si salta de hoja, pero no suma al alto ocupado', () => {
     const casiLlena = CUERPO_HOJA.alto - 30;
-    const titulo = { alto: 20, alEmpezarHoja: 0, presencia: 50 };
+    const titulo = { alto: 20, presencia: 50 };
     expect(altoEnUltimaHoja([renglon(100), titulo])).toBe(120);
     expect(altoEnUltimaHoja([renglon(casiLlena), titulo])).toBe(20);
-  });
-
-  test('si abre hoja, suma lo que se repite arriba (el encabezado de la tabla)', () => {
-    const casiLlena = CUERPO_HOJA.alto - 10;
-    expect(altoEnUltimaHoja([renglon(casiLlena), renglon(16, 14), renglon(16, 14)])).toBe(46);
   });
 });

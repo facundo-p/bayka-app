@@ -15,8 +15,12 @@ test.each(Object.entries(TOKEN_CSS_DE_COLOR_PDF))(
   },
 );
 
+// El A4 de react-pdf mide 595,28 × 841,89 pt.
 test('el cuerpo de la hoja, parada y acostada', () => {
-  expect(CUERPO_HOJA).toEqual({ ancho: 535, alto: 704 });
+  expect(CUERPO_HOJA.ancho).toBeCloseTo(535.28);
+  expect(CUERPO_HOJA.alto).toBeCloseTo(703.89);
   expect(cuerpoDeHoja(ORIENTACION_HOJA.vertical)).toEqual(CUERPO_HOJA);
-  expect(cuerpoDeHoja(ORIENTACION_HOJA.horizontal)).toEqual({ ancho: 782, alto: 457 });
+  const acostada = cuerpoDeHoja(ORIENTACION_HOJA.horizontal);
+  expect(acostada.ancho).toBeCloseTo(781.89);
+  expect(acostada.alto).toBeCloseTo(457.28);
 });

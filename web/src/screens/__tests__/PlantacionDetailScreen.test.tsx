@@ -206,24 +206,32 @@ test('ofrece las cuatro descargas habilitadas y ya no ofrece «Generar IDs»', a
   expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
 });
 
-test('«Informe PDF» genera el informe', async () => {
+test('«Informe PDF» abre las opciones y genera el informe con las elegidas', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1');
 
   const informe = await itemExportar(usuario, 'Informe PDF');
   expect(informe).toBeEnabled();
   await usuario.click(informe);
+  const modal = screen.getByRole('dialog', { name: 'Informe PDF' });
+  await usuario.click(within(modal).getByRole('checkbox', { name: 'Mapa de puntos GPS' }));
+  await usuario.click(within(modal).getByRole('button', { name: 'Generar informe' }));
   await vi.waitFor(() => expect(descargarInformePdf).toHaveBeenCalledTimes(1));
-  expect(vi.mocked(descargarInformePdf).mock.calls[0][0]).toMatchObject({ id: 'plant-1' });
+  const [plantacionPedida, , opciones] = vi.mocked(descargarInformePdf).mock.calls[0];
+  expect(plantacionPedida).toMatchObject({ id: 'plant-1' });
+  expect(opciones).toEqual({ meta: false, gps: false, foto: false, mapa: true });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 });
 
-test('si el informe falla, se avisa en la barra', async () => {
+test('si el informe falla, se avisa en el modal', async () => {
   const usuario = userEvent.setup();
   vi.mocked(descargarInformePdf).mockRejectedValueOnce(new Error('canvas'));
   renderRutasEn('/plantaciones/plant-1');
 
   await usuario.click(await itemExportar(usuario, 'Informe PDF'));
-  expect(await screen.findByText('No se pudo generar el informe PDF.')).toBeInTheDocument();
+  await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
+  const modal = screen.getByRole('dialog', { name: 'Informe PDF' });
+  expect(await within(modal).findByText('No se pudo generar el informe PDF.')).toBeInTheDocument();
 });
 
 test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {

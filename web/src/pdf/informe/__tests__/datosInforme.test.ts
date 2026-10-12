@@ -1,6 +1,18 @@
-import { entradaInforme } from '../../../test/informePdf';
+import { opcionesCon, SIN_OPCIONES } from '../../../lib/opcionesInforme';
+import {
+  combinacionesDeOpciones,
+  entradaInforme,
+  nombreCombinacion,
+} from '../../../test/informePdf';
 import { coloresDeEspecies } from '../../../theme/coloresEspecie';
-import { datosInforme, notaCoordenadas } from '../datosInforme';
+import { datosInforme, notaCoordenadas, type EntradaInforme } from '../datosInforme';
+
+/** El mapa de un modelo con el mapa elegido. */
+function mapaDe(entrada: EntradaInforme) {
+  const { mapa } = datosInforme(entrada);
+  if (!mapa) throw new Error('El modelo no trae el mapa');
+  return mapa;
+}
 
 describe('datosInforme', () => {
   test('arma la línea del título con lugar, período, código, organización y estado', () => {
@@ -36,12 +48,32 @@ describe('datosInforme', () => {
     expect(arboles).toEqual({ valor: '100', meta: null, avance: null, textoAvance: null });
   });
 
-  test('GPS, foto y N/N con porcentaje y cantidad', () => {
+  test('con meta elegida pero sin objetivo, solo el total', () => {
+    const entrada = entradaInforme({ parcelas: 2, especies: 4, objetivo: null });
+    expect(datosInforme(entrada).indicadores.arboles.meta).toBeNull();
+  });
+
+  test('sin la casilla de meta, solo el total aunque haya objetivo', () => {
+    const entrada = entradaInforme({
+      parcelas: 2,
+      especies: 4,
+      objetivo: 80,
+      opciones: SIN_OPCIONES,
+    });
+    expect(datosInforme(entrada).indicadores.arboles).toEqual({
+      valor: '100',
+      meta: null,
+      avance: null,
+      textoAvance: null,
+    });
+  });
+
+  test('GPS y foto con porcentaje y cantidad, en ese orden; N/N ya no es un indicador', () => {
     const entrada = entradaInforme({ parcelas: 2, especies: 2, nn: 5 });
-    const { gps, foto, pendientes } = datosInforme(entrada).indicadores;
-    expect(gps).toEqual({ valor: '17%', detalle: '6 árboles' });
-    expect(foto).toEqual({ valor: '50%', detalle: '17 árboles' });
-    expect(pendientes).toEqual({ valor: '5', detalle: 'Sin especie identificada', alerta: true });
+    expect(datosInforme(entrada).indicadores.porcentajes).toEqual([
+      { rotulo: 'Con GPS', valor: '17%', detalle: '6 árboles' },
+      { rotulo: 'Con foto', valor: '50%', detalle: '17 árboles' },
+    ]);
   });
 
   test('especies por cantidad, con color, barra relativa a la mayor y N/N rotulada', () => {
@@ -63,69 +95,17 @@ describe('datosInforme', () => {
       { codigo: 'LAP', lugarColor: 3 },
       { codigo: 'TIM', lugarColor: 0 },
     ]);
-    const modelo = datosInforme({ ...entradaInforme({ parcelas: 1, especies: 2 }), colorDe });
+    const entrada = { ...entradaInforme({ parcelas: 1, especies: 2 }), colorDe };
+    const modelo = datosInforme(entrada);
     expect(modelo.especies.filas.map((fila) => fila.color)).toEqual(['#6b8f3c', '#0a3760']);
-    expect(modelo.mapa.leyenda).toEqual([
+    expect(mapaDe(entrada).leyenda).toEqual([
       { texto: 'LAP', color: '#6b8f3c' },
       { texto: 'TIM', color: '#0a3760' },
     ]);
   });
 
-  test('parcelas con grupos, barra, % entero y fila de total', () => {
-    const { parcelas } = datosInforme(entradaInforme({ parcelas: 3, especies: 2 }));
-    expect(parcelas.filas[0]).toEqual({
-      codigo: 'P1',
-      nombre: 'Parcela 1',
-      grupos: '2',
-      arboles: '10',
-      fraccion: 1,
-      porcentaje: '33%',
-    });
-    expect(parcelas.total).toEqual({
-      titulo: 'Total · 3 parcelas',
-      grupos: '6',
-      arboles: '30',
-      porcentaje: '100%',
-    });
-  });
-
-  test('los árboles fuera de toda parcela van en «Sin parcela» y el total cierra', () => {
-    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
-    entrada.dashboard.porParcela[1].cantidad -= 5;
-    entrada.dashboard.totalGrupos += 1;
-    const { parcelas } = datosInforme(entrada);
-    expect(parcelas.filas.at(-1)).toMatchObject({
-      codigo: null,
-      nombre: 'Sin parcela',
-      grupos: '1',
-      arboles: '5',
-      porcentaje: '17%',
-    });
-    expect(parcelas.total).toMatchObject({ grupos: '5', arboles: '30', porcentaje: '100%' });
-  });
-
-  test('los grupos se cruzan por id de parcela: sin match, «—» en la fila y en el total', () => {
-    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
-    entrada.dashboard.porParcela[0].codigo = 'OTRO';
-    const conIdAjeno = { ...entrada, parcelas: [{ id: 'parc-1', grupos: 4 }] };
-    const { parcelas } = datosInforme(conIdAjeno);
-    expect(parcelas.filas.map((fila) => fila.grupos)).toEqual(['—', '4']);
-    expect(parcelas.total?.grupos).toBe('—');
-  });
-
-  test('sin parcelas legibles: Grupos en «—», el resto igual y el mapa con etiquetas', () => {
-    const entrada = { ...entradaInforme({ parcelas: 2, especies: 2 }), parcelas: null };
-    const modelo = datosInforme(entrada);
-    expect(modelo.parcelas.filas.map((fila) => [fila.grupos, fila.arboles])).toEqual([
-      ['—', '15'],
-      ['—', '15'],
-    ]);
-    expect(modelo.parcelas.total).toMatchObject({ grupos: '—', arboles: '30' });
-    expect(modelo.mapa.etiquetas.map((etiqueta) => etiqueta.texto)).toEqual(['P1', 'P2']);
-  });
-
   test('el mapa pinta cada punto con el color de su especie y deja la leyenda en el mismo orden', () => {
-    const { mapa } = datosInforme(entradaInforme({ parcelas: 2, especies: 2, nn: 5 }));
+    const mapa = mapaDe(entradaInforme({ parcelas: 2, especies: 2, nn: 5 }));
     expect(mapa.leyenda).toEqual([
       { texto: 'LAP', color: '#0a3760' },
       { texto: 'TIM', color: '#99b95b' },
@@ -138,18 +118,19 @@ describe('datosInforme', () => {
 
   test('sin árboles: indicadores en 0 y cada bloque dice por qué está vacío', () => {
     const modelo = datosInforme(entradaInforme({ parcelas: 2, especies: 0, objetivo: null }));
-    expect(modelo.indicadores.gps.valor).toBe('0%');
-    expect(modelo.indicadores.pendientes.alerta).toBe(false);
+    expect(modelo.indicadores.porcentajes.map((indicador) => indicador.valor)).toEqual([
+      '0%',
+      '0%',
+    ]);
     expect(modelo.especies).toMatchObject({
       filas: [],
       vacio: 'Todavía no hay árboles registrados.',
     });
-    expect(modelo.parcelas).toMatchObject({ filas: [], total: null });
     expect(modelo.mapa).toMatchObject({ vacio: 'Todavía no hay árboles registrados.', nota: null });
   });
 
   test('sin GPS el mapa explica que no hay puntos', () => {
-    const { mapa } = datosInforme(entradaInforme({ parcelas: 2, especies: 2, conGps: false }));
+    const mapa = mapaDe(entradaInforme({ parcelas: 2, especies: 2, conGps: false }));
     expect(mapa.vacio).toBe(
       'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
     );
@@ -158,20 +139,20 @@ describe('datosInforme', () => {
   test('«sin GPS» lo deciden los conteos, aunque la lectura de puntos traiga alguno', () => {
     const entrada = entradaInforme({ parcelas: 2, especies: 2 });
     entrada.dashboard.arbolesConGps = 0;
-    expect(datosInforme(entrada).mapa.vacio).toBe(
+    expect(mapaDe(entrada).vacio).toBe(
       'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
     );
   });
 
   test('con árboles con GPS pero sin puntos leídos, el mapa no está disponible', () => {
     const entrada = { ...entradaInforme({ parcelas: 2, especies: 2 }), puntos: [] };
-    expect(datosInforme(entrada).mapa.vacio).toBe('Mapa no disponible.');
+    expect(mapaDe(entrada).vacio).toBe('Mapa no disponible.');
   });
 
   test('descarta los puntos de especies que no están en los conteos', () => {
     const entrada = entradaInforme({ parcelas: 2, especies: 2 });
     const ajeno = { ...entrada.puntos![0], codigo: 'XYZ' };
-    const { mapa } = datosInforme({ ...entrada, puntos: [...entrada.puntos!, ajeno] });
+    const mapa = mapaDe({ ...entrada, puntos: [...entrada.puntos!, ajeno] });
     expect(mapa.puntos).toHaveLength(entrada.puntos!.length);
     expect(mapa.leyenda.map((item) => item.texto)).toEqual(['LAP', 'TIM']);
   });
@@ -194,5 +175,48 @@ describe('notaCoordenadas', () => {
 
 test('si los puntos no se pudieron leer, el mapa no está disponible', () => {
   const entrada = { ...entradaInforme({ parcelas: 2, especies: 2 }), puntos: null };
-  expect(datosInforme(entrada).mapa).toMatchObject({ vacio: 'Mapa no disponible.', puntos: [] });
+  expect(mapaDe(entrada)).toMatchObject({ vacio: 'Mapa no disponible.', puntos: [] });
+});
+
+describe('las 16 combinaciones de casillas', () => {
+  const combinaciones = combinacionesDeOpciones();
+  const entrada = (opciones: EntradaInforme['opciones']) =>
+    entradaInforme({ parcelas: 3, especies: 3, nn: 2, opciones });
+
+  // Salen de la lista del código bajo prueba: el literal ataja una opción de más o de menos.
+  test('son 16, todas distintas', () => {
+    expect(combinaciones).toHaveLength(16);
+    expect(new Set(combinaciones.map(nombreCombinacion)).size).toBe(16);
+  });
+
+  test.each(combinaciones.map((opciones) => [nombreCombinacion(opciones), opciones]))(
+    '%s: cada bloque elegido viene completo y ninguno sobra',
+    (_, opciones) => {
+      const modelo = datosInforme(entrada(opciones));
+      const rotulos = modelo.indicadores.porcentajes.map((indicador) => indicador.rotulo);
+      expect(rotulos).toEqual([
+        ...(opciones.gps ? ['Con GPS'] : []),
+        ...(opciones.foto ? ['Con foto'] : []),
+      ]);
+      expect(modelo.indicadores.porcentajes.every((indicador) => indicador.valor !== '')).toBe(
+        true,
+      );
+      expect(modelo.indicadores.arboles.valor).toBe('62');
+      expect(modelo.indicadores.arboles.meta).toBe(opciones.meta ? 'de 8.000' : null);
+      expect(modelo.especies.filas).toHaveLength(4);
+      expect(modelo.mapa === null).toBe(!opciones.mapa);
+      if (modelo.mapa)
+        expect(modelo.mapa).toMatchObject({ vacio: null, puntos: expect.any(Array) });
+      expect(Object.keys(modelo).sort()).toEqual(['especies', 'indicadores', 'linea', 'mapa']);
+    },
+  );
+});
+
+test('solo el mapa: sin porcentajes ni meta, y con sus puntos', () => {
+  const modelo = datosInforme(
+    entradaInforme({ parcelas: 2, especies: 2, opciones: opcionesCon(['mapa']) }),
+  );
+  expect(modelo.indicadores.porcentajes).toEqual([]);
+  expect(modelo.indicadores.arboles.meta).toBeNull();
+  expect(modelo.mapa?.puntos).toHaveLength(6);
 });

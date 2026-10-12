@@ -12,7 +12,6 @@ import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
 import { descargarXlsxExportacion } from '../services/exportarXlsx';
-import { descargarInformePdf } from '../services/pdfInforme';
 import {
   accionDeArchivado,
   CONFIRMACION_ARCHIVADO,
@@ -21,12 +20,12 @@ import {
 } from './plantaciones/archivado';
 import { ETIQUETA_MENU_ELIMINAR } from './plantaciones/eliminacion';
 import { ETIQUETA_MENU_REABRIR, esReabrible, puedeReabrir } from './plantaciones/reapertura';
+import { useInformePdf } from './plantaciones/useInformePdf';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
 const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
-const MENSAJE_ERROR_INFORME = 'No se pudo generar el informe PDF.';
 
 /** Descarga los puntos GPS como KML (Google Maps/Earth); no descarga si no hay puntos. */
 function useDescargaKml(plantacion: Plantacion) {
@@ -59,22 +58,16 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
   }, MENSAJE_ERROR_EXPORT);
 }
 
-/** El informe sale siempre, aun sin árboles: los bloques vacíos dicen por qué. */
-function useDescargaInforme(plantacion: Plantacion) {
-  const queryClient = useQueryClient();
-  return useDescarga(async () => {
-    await descargarInformePdf(plantacion, queryClient);
-    return null;
-  }, MENSAJE_ERROR_INFORME);
-}
-
 type Descarga = ReturnType<typeof useDescargaKml>;
+
+/** «Informe PDF» abre el modal de opciones; la descarga arranca desde ahí. */
+export type AccionInforme = { abrir: () => void; descargando: boolean };
 
 export interface AccionesProps {
   kml: Descarga;
   xlsx: Descarga;
   csv: Descarga;
-  pdf: Descarga;
+  pdf: AccionInforme;
   /** null = se puede editar; texto = por qué no (plantación archivada). Exportar sigue disponible. */
   motivoEdicion: string | null;
   onEditar: () => void;
@@ -103,9 +96,10 @@ function useDescargasDetalle(plantacion: Plantacion) {
   const kml = useDescargaKml(plantacion);
   const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
   const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
-  const pdf = useDescargaInforme(plantacion);
-  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje ?? pdf.mensaje;
-  return { kml, xlsx, csv, pdf, mensaje };
+  const informe = useInformePdf(plantacion);
+  const pdf = { abrir: informe.abrir, descargando: informe.descargando };
+  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
+  return { kml, xlsx, csv, pdf, mensaje, informe };
 }
 
 /** Solo superadmin, y solo sobre una finalizada que no esté archivada (#470). */
@@ -158,9 +152,9 @@ function useAdministracionDetalle(plantacion: Plantacion) {
   return { administracion, modalAdministracion, abrirArchivado, cerrarModal };
 }
 
-/** Descargas, administración y si la barra va plegada en un solo «⋯». */
+/** Descargas, el informe, administración y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
-  const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
+  const { mensaje, informe, ...descargas } = useDescargasDetalle(plantacion);
   const { administracion, ...modales } = useAdministracionDetalle(plantacion);
   const { perfil } = useAuth();
   const acciones: AccionesProps = {
@@ -170,5 +164,5 @@ export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void)
     administracion,
   };
   const plegado = useMediaQuery(BP.tablet);
-  return { acciones, mensaje, plegado, ...modales };
+  return { acciones, mensaje, plegado, informe, ...modales };
 }
