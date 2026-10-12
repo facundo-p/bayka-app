@@ -8,26 +8,10 @@
 
 /* Arriba y no al centro: la casilla queda a la altura de la etiqueta aunque el motivo baje a dos renglones. */
 .opcion {
-  display: flex;
+  composes: fila from '../../components/Casilla.module.css';
   align-items: flex-start;
-  gap: var(--space-lg);
-  width: 100%;
   min-height: var(--control-height);
   padding: var(--space-lg) var(--space-xl);
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
-  font-family: var(--font-body);
-  text-align: left;
-  cursor: pointer;
-}
-
-.opcion:hover:not(:disabled) {
-  background-color: var(--color-surface-sunken);
-}
-
-.opcion:disabled {
-  cursor: default;
 }
 
 .textos {
