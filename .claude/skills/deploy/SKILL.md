@@ -311,8 +311,11 @@ Facu):
 
       ```sh
       gh api repos/facundo-p/bayka-app/commits/main/check-runs \
-        --jq '.check_runs[] | select(.name == "Cloudflare Pages") | "\(.status) \(.conclusion)"'
+        --jq '.check_runs[] | select(.name == "Cloudflare Pages") | "\(.head_sha[0:7]) \(.status) \(.conclusion)"'
       ```
+
+      Sin salida, el deploy sigue en curso. Con `failure`, no pushear: la web
+      vieja sigue viva y la migración puede sacarle lo que usa.
 
       Mientras tanto, en el checkout principal (el único con `.env.migration`),
       con main actualizado (`git switch main && git pull`):
