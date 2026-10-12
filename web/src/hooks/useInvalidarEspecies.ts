@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { CLAVE_QUERY, familia } from '../queries/clavesQuery';
+import { CLAVE_QUERY, FAMILIAS_ARBOLES_FILTRADOS, familia } from '../queries/clavesQuery';
 
 /** Código y nombre de una especie se leen en el catálogo (checklist de
  *  Configuración, filtros de Árboles), en las pantallas de Especies y embebidos en
@@ -12,8 +12,7 @@ const CLAVES_CON_ESPECIES = [
   CLAVE_QUERY.especiesCientificas(),
   familia(CLAVE_QUERY.dashboard),
   familia(CLAVE_QUERY.mapa),
-  familia(CLAVE_QUERY.datosArboles),
-  familia(CLAVE_QUERY.conteoReporte),
+  ...FAMILIAS_ARBOLES_FILTRADOS,
   familia(CLAVE_QUERY.especiesHabilitadas),
 ];
 

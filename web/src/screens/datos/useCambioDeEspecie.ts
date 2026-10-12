@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CLAVE_QUERY, familia } from '../../queries/clavesQuery';
+import { CLAVE_QUERY, FAMILIAS_ARBOLES_FILTRADOS, familia } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { listarEspeciesDePlantacion, type EspecieDePlantacion } from '../../queries/especieQueries';
 import { mensajeDeErrorDeEdicion } from '../../repositories/edicionDePlantacion';
@@ -23,8 +23,7 @@ export interface EdicionDeEspecie {
  *  elegida ya no estaba habilitada. */
 function clavesAfectadas(plantationId: string) {
   return [
-    familia(CLAVE_QUERY.datosArboles),
-    familia(CLAVE_QUERY.conteoReporte),
+    ...FAMILIAS_ARBOLES_FILTRADOS,
     familia(CLAVE_QUERY.dashboard),
     familia(CLAVE_QUERY.mapa),
     CLAVE_QUERY.plantacionEspecies(plantationId),

@@ -44,3 +44,9 @@ export const CLAVE_QUERY = {
 export function familia(fabrica: (...args: never[]) => QueryKey): QueryKey {
   return [(fabrica as () => QueryKey)()[0]];
 }
+
+/** La tabla de Árboles y los conteos de su reporte: los dos filtran por especie. */
+export const FAMILIAS_ARBOLES_FILTRADOS: readonly QueryKey[] = [
+  familia(CLAVE_QUERY.datosArboles),
+  familia(CLAVE_QUERY.conteoReporte),
+];
