@@ -14,6 +14,7 @@ import {
 } from '../../../repositories/especieDeArbol';
 import type { EdicionDeEspecie } from '../useCambioDeEspecie';
 import { ErrorDeEdicion } from '../../../repositories/edicionDePlantacion';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 
 // Leaflet usa APIs de layout que jsdom no implementa.
 vi.mock('../../../components/mapa/MapaPuntos', () => ({
@@ -447,6 +448,22 @@ describe('cambiar la especie (#679)', () => {
       ),
     );
     expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
+  });
+
+  test('al guardar refresca los conteos del reporte, que filtran por especie', async () => {
+    const invalidaciones = espiarInvalidaciones();
+    const usuario = userEvent.setup();
+    vi.mocked(cambiarEspecieDeArbol).mockResolvedValue('P01G01TAL3');
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie: edicion() });
+
+    await elegirTala(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await vi.waitFor(() =>
+      expect(invalidaciones.mock.calls.map(([filtros]) => filtros?.queryKey)).toContainEqual([
+        'conteo-reporte',
+      ]),
+    );
   });
 
   test('si alguien la cambió desde otro lado avisa y muestra la del server', async () => {

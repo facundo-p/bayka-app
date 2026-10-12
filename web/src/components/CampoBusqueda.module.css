@@ -15,7 +15,7 @@
   flex-basis: var(--ancho-buscador-compacto);
 }
 
-/* Árboles: con el botón de fichas PDF, a 220px la fila envuelve a 1440. */
+/* Árboles: con el botón «Reporte PDF», a 220px la fila envuelve a 1440. */
 .minima {
   flex-basis: var(--ancho-buscador-min);
 }

@@ -6,8 +6,8 @@
  * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS` y, si otra la
  * embebe, la FK a `COLUMNA_QUE_APUNTA_A`.
  */
+import { tieneFotoSubida } from '../lib/fotoSubida';
 import type { TipoGrupo } from '../queries/dataExplorerQueries';
-import { ESQUEMAS_FOTO_LOCAL } from '../queries/fotoConstantes';
 import type { EstadoPlantacion } from '../queries/plantationQueries';
 import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
@@ -542,7 +542,7 @@ function conteosDeMuestra(plantationId: string): FilaDemo {
   const arboles = arbolesDeLaPlantacion({ p_plantation_id: plantationId });
   return {
     puntos_gps: arboles.filter((arbol) => arbol.latitude !== null).length,
-    fotos: arboles.filter((arbol) => fotoSubida(arbol.foto_url)).length,
+    fotos: arboles.filter((arbol) => tieneFotoSubida(arbol.foto_url as string | null)).length,
   };
 }
 
@@ -627,15 +627,6 @@ function arbolesDeLaPlantacion(parametros: FilaDemo): FilaDemo[] {
   return ARBOLES.filter((arbol) => grupos.has(String(arbol.group_id)));
 }
 
-/** Sin importar `fotoService`: trae el cliente de Supabase, que acá es esta demo. */
-function fotoSubida(fotoUrl: unknown): boolean {
-  return (
-    typeof fotoUrl === 'string' &&
-    fotoUrl !== '' &&
-    !ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema))
-  );
-}
-
 /** Como el RPC: árboles agrupados por parcela, especie, mes, GPS y foto. */
 function dashboardArbolesDemo(parametros: FilaDemo): FilaDemo[] {
   const conteos = new Map<string, FilaDemo>();
@@ -646,7 +637,7 @@ function dashboardArbolesDemo(parametros: FilaDemo): FilaDemo[] {
       species_id: arbol.species_id ?? null,
       mes: String(arbol.created_at).slice(0, LARGO_MES_ISO),
       con_gps: arbol.latitude !== null,
-      con_foto: fotoSubida(arbol.foto_url),
+      con_foto: tieneFotoSubida(arbol.foto_url as string | null),
     };
     const clave = JSON.stringify(fila);
     const cantidad = Number(conteos.get(clave)?.cantidad ?? 0);
