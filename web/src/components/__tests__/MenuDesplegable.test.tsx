@@ -72,3 +72,20 @@ test('Escape con el menú abierto lo cierra y el foco sigue en el disparador', a
   expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   expect(disparador).toHaveFocus();
 });
+
+test('Escape desde un ítem enfocado con Tab cierra el menú y devuelve el foco al disparador', async () => {
+  const usuario = userEvent.setup();
+  render(<MenuConModal />);
+  const disparador = screen.getByRole('button', { name: 'Exportar' });
+
+  await usuario.tab();
+  expect(disparador).toHaveFocus();
+  await usuario.keyboard('{Enter}');
+  await usuario.tab();
+  expect(screen.getByRole('menuitem', { name: 'Informe PDF' })).toHaveFocus();
+
+  await usuario.keyboard('{Escape}');
+
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  expect(disparador).toHaveFocus();
+});
