@@ -11,7 +11,10 @@ import { reducirImagen, type MedidaImagen } from './reducirImagen';
 const SIN_FOTO: FotoPdf = { estado: ESTADO_FOTO.sinFoto };
 const NO_DISPONIBLE: FotoPdf = { estado: ESTADO_FOTO.noDisponible };
 
-/** Cuadrada como el recuadro de la ficha (las 4:3 viejas se recortan al centro); 480 px alcanzan para 4 cm impresos. */
+/**
+ * Foto chica por defecto, la de las tarjetas del reporte; la ficha de hoja
+ * entera usa `MEDIDA_FOTO_FICHA`. Cuadrada: las 4:3 viejas se recortan al centro.
+ */
 export const MEDIDA_FOTO_PDF: MedidaImagen = { ancho: 480, alto: 480, calidad: 0.75 };
 
 /** Descargas simultáneas: más satura la conexión sin terminar antes. */

@@ -2,7 +2,7 @@ import { MEDIDA_FICHA } from '../plantilla/tokens';
 import type { MedidaImagen } from '../reducirImagen';
 
 /** px por pt impreso de la foto y el minimapa: 3,5 son 252 ppp. */
-export const PX_POR_PT_FICHA = 3.5;
+const PX_POR_PT_FICHA = 3.5;
 
 /**
  * El minimapa se dibuja chico y se imprime ampliado: los puntos, el anillo, el

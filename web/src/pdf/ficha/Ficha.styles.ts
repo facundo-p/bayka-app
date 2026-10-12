@@ -30,7 +30,7 @@ const mono = { fontFamily: FUENTE_PDF.mono, fontSize: letra.datoMono } as const;
 export const fichaStyles = StyleSheet.create({
   fila: { flexDirection: 'row', justifyContent: 'space-between' },
   filaFoto: { marginBottom: M.huecoImagenes },
-  texto: { width: M.anchoTexto },
+  texto: { width: M.anchoTexto, marginRight: M.huecoColumnas },
   filaEspecie: { flexDirection: 'row', alignItems: 'flex-start' },
   punto: {
     width: M.punto,

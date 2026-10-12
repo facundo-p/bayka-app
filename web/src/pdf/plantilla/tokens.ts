@@ -62,14 +62,11 @@ export const TAMANO_TEXTO = {
   pie: 7,
   pieMarca: 8,
   etiqueta: 7.2,
-  clasificacion: 7,
   secundario: 7.5,
   dato: 8.3,
   datoMono: 7.8,
-  cientifico: 8,
   especie: 9.5,
   encabezado: 14,
-  idArbol: 14,
   idTarjeta: 12,
   filaListado: 7.8,
   tituloInforme: 22,
@@ -125,10 +122,11 @@ export const MEDIDA_FICHA = {
 
   /**
    * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
-   * izquierda. Columna e imagen, con el hueco entre ellas, llenan el ancho del cuerpo.
+   * izquierda. Columna, hueco e imagen llenan justo el ancho del cuerpo.
    */
   ladoImagen: 300,
   anchoTexto: 215,
+  huecoColumnas: 20,
   huecoImagenes: 16,
   punto: 11,
   aireTrasPuntoEspecie: 8,
