@@ -114,7 +114,7 @@ caminos que mutan árboles existentes sin tocar ninguna columna de tiempo.
 2. La subida de foto hace `UPDATE trees SET foto_url`
    (`mobile/src/services/sync/photoService.ts:30-33`).
 3. `generate_tree_ids` actualizaba `global_id`/`plantacion_id`
-   (`supabase/migrations/032_ids_helpers.sql:78`); sin uso desde #822.
+   (`supabase/migrations/032_ids_helpers.sql:78`); dropeado en #859.
 
 Un device filtrando por `created_at` no vería ninguna de las tres. La resolución
 de especie de otro técnico, por ejemplo, no llegaría nunca.
