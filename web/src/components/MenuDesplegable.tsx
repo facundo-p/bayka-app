@@ -12,6 +12,9 @@ export interface ItemDesplegable {
   destructiva?: boolean;
 }
 
+/** Encuentra el disparador dentro del contenedor por el atributo que le inyecta el menú. */
+const SELECTOR_DISPARADOR = '[aria-haspopup="menu"]';
+
 /** Props que el menú inyecta en su disparador; el caller decide qué botón usar. */
 export interface PropsDisparador {
   'aria-haspopup': 'menu';
@@ -27,9 +30,23 @@ interface MenuDesplegableProps {
   items: ItemDesplegable[];
 }
 
+/**
+ * Al desmontarse el ítem elegido el foco cae al body; devolverlo antes al
+ * disparador deja a un modal abierto por el ítem un lugar al que volver.
+ */
+function enfocarDisparador(contenedor: HTMLElement | null) {
+  contenedor?.querySelector<HTMLElement>(SELECTOR_DISPARADOR)?.focus();
+}
+
 /** Menú flotante anclado a un disparador: cierra al clickear afuera o con Escape. */
 export function MenuDesplegable({ etiqueta, disparador, items }: MenuDesplegableProps) {
   const { abierto, cerrar, alternar, contenedorRef } = useDesplegableAnclado();
+
+  function elegir(item: ItemDesplegable) {
+    enfocarDisparador(contenedorRef.current);
+    cerrar();
+    item.onSeleccionar();
+  }
 
   return (
     <div className={styles.contenedor} ref={contenedorRef}>
@@ -49,10 +66,7 @@ export function MenuDesplegable({ etiqueta, disparador, items }: MenuDesplegable
               className={cx(styles.item, item.destructiva && styles.destructiva)}
               disabled={Boolean(item.motivo)}
               title={item.motivo ?? undefined}
-              onClick={() => {
-                cerrar();
-                item.onSeleccionar();
-              }}
+              onClick={() => elegir(item)}
             >
               {item.etiqueta}
             </button>
