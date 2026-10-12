@@ -34,5 +34,6 @@ test('las claves conservan el prefijo que ya tienen guardado los navegadores', (
   expect(CLAVE_STORAGE).toEqual({
     novedadesUltimaVista: 'bayka.novedades.ultima-vista',
     recientesCommandMenu: 'bayka.command-menu.recientes',
+    opcionesInforme: 'bayka.informe.opciones',
   });
 });

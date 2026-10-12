@@ -22,8 +22,6 @@ const barra = { borderRadius: M.radioBarra, overflow: 'hidden' } as const;
 /** Un renglón de alto fijo: lo que no entra termina en «…» en vez de perderse. */
 const recortado = { maxLines: 1, textOverflow: 'ellipsis' } as const;
 
-const celda = { paddingHorizontal: M.rellenoCelda } as const;
-
 const titulo = {
   fontFamily: FUENTE_PDF.titulo,
   fontWeight: PESO_FUENTE.bold,
@@ -64,7 +62,6 @@ export const informeStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.indicador,
     marginTop: M.aireIndicador,
   },
-  valorAlerta: { color: COLOR_PDF.ambarTexto },
   meta: {
     fontFamily: FUENTE_PDF.cuerpo,
     fontWeight: PESO_FUENTE.regular,
@@ -131,34 +128,6 @@ export const informeStyles = StyleSheet.create({
   cantidad: { ...numero, width: M.anchoCantidad },
   porcentajeEspecie: { ...numero, width: M.anchoPorcentaje, color: COLOR_PDF.apagado },
 
-  filaTabla: {
-    lineHeight: M.interlineado,
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: M.altoFilaTabla,
-    fontSize: TAMANO_TEXTO.filaInforme,
-    color: COLOR_PDF.tinta,
-    borderBottomWidth: MEDIDA_FICHA.bordeFino,
-    borderBottomColor: COLOR_PDF.linea,
-  },
-  encabezadoTabla: {
-    ...rotulo,
-    lineHeight: M.interlineado,
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: M.altoEncabezadoTabla,
-    borderBottomWidth: MEDIDA_FICHA.borde,
-    borderBottomColor: COLOR_PDF.linea,
-  },
-  filaTotal: { fontWeight: PESO_FUENTE.semibold, borderBottomWidth: 0 },
-  celdaParcela: { ...celda, ...recortado, flexGrow: 1, flexBasis: 0 },
-  celdaNumero: { ...celda, ...numero, width: M.anchoColumnaNumero },
-  celdaBarra: { ...celda, width: M.anchoBarraParcela },
-  codigo: { fontFamily: FUENTE_PDF.mono, color: COLOR_PDF.navy },
-  barraParcela: { ...barra, height: M.altoBarraParcela, backgroundColor: COLOR_PDF.papelHundido },
-  rellenoParcela: { height: '100%', backgroundColor: COLOR_PDF.navy },
-
-  bloqueMapa: { marginTop: M.separacionBloques },
   tituloMapa: { ...titulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
   notaTitulo: {
     lineHeight: M.interlineado,

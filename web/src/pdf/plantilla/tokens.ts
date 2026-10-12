@@ -153,7 +153,7 @@ export const MEDIDA_INFORME = {
   aireTitulo: 2,
   altoIndicadores: 66,
   separacionIndicadores: 8,
-  /** El de árboles es más ancho que los otros tres. */
+  /** El de árboles es más ancho que los porcentajes. */
   pesoIndicadorPrincipal: 1.6,
   rellenoIndicador: { vertical: 8, horizontal: 10 },
   aireIndicador: 3,
@@ -173,12 +173,6 @@ export const MEDIDA_INFORME = {
   altoBarraEspecie: 7,
   radioBarra: 2,
   separacionColumnas: 8,
-  altoEncabezadoTabla: 14,
-  altoFilaTabla: 16,
-  altoBarraParcela: 4,
-  anchoColumnaNumero: 44,
-  anchoBarraParcela: 90,
-  rellenoCelda: 4,
   altoMensaje: 14,
   altoTituloMapa: 20,
   aireTituloMapa: 8,

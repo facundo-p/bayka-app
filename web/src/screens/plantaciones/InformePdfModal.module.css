@@ -1,0 +1,52 @@
+/* Las casillas del modal del informe, una por renglón. */
+.opciones {
+  --casilla-color: var(--color-primary-accent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-lg) var(--space-xl);
+  border: none;
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcion:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+.opcion:disabled {
+  cursor: default;
+}
+
+/* La casilla queda a la altura del primer renglón aunque el motivo baje a dos. */
+.textos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.etiqueta {
+  font-size: var(--text-base);
+  color: var(--color-text-body);
+}
+
+.opcion:disabled .etiqueta {
+  color: var(--color-text-disabled);
+}
+
+.motivo {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

@@ -28,6 +28,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
 import { ReaperturaModal } from './plantaciones/ReaperturaModal';
 import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
+import { InformePdfModal } from './plantaciones/InformePdfModal';
 import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
@@ -75,7 +76,7 @@ function itemsExportar({ kml, xlsx, csv, pdf }: AccionesProps): ItemDesplegable[
     { clave: 'kml', etiqueta: 'Descargar KML', onSeleccionar: () => void kml.descargar() },
     { clave: 'xlsx', etiqueta: 'Exportar Excel', onSeleccionar: () => void xlsx.descargar() },
     { clave: 'csv', etiqueta: 'Exportar CSV', onSeleccionar: () => void csv.descargar() },
-    { clave: 'pdf', etiqueta: 'Informe PDF', onSeleccionar: () => void pdf.descargar() },
+    { clave: 'pdf', etiqueta: 'Informe PDF', onSeleccionar: pdf.abrir },
   ];
 }
 
@@ -223,6 +224,7 @@ function AccionesDetalle({ plantacion, onEditar }: AccionesDetalleProps) {
         </span>
       )}
       <ModalAdministracionDetalle plantacion={plantacion} detalle={detalle} />
+      {detalle.informe.abierto && <InformePdfModal informe={detalle.informe} />}
     </div>
   );
 }
