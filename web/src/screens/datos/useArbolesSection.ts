@@ -40,7 +40,7 @@ function usePaginaArboles(plantationId: string, filtros: FiltrosUi) {
   // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
   const claveFiltros = filtrosAParams(aplicados).toString();
   useEffect(() => setPagina(1), [claveFiltros]);
-  return { arboles, pagina, setPagina };
+  return { arboles, pagina, setPagina, filtrosAplicados: aFiltrosArboles(aplicados) };
 }
 
 function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fila: T) => string) {

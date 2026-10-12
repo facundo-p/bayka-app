@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArbolesSection } from '../ArbolesSection';
 import {
+  contarArbolesDelFiltro,
   listarArboles,
   listarGrupos,
   listarParcelasConStats,
@@ -23,6 +24,7 @@ vi.mock('../../../queries/dataExplorerQueries', async () => {
   );
   return {
     ...real,
+    contarArbolesDelFiltro: vi.fn(),
     listarArboles: vi.fn(),
     listarParcelasConStats: vi.fn(),
     listarGrupos: vi.fn(),
@@ -121,6 +123,40 @@ describe.each([ANCHO.desktop, ANCHO.movil])('la búsqueda, a %ipx', (ancho) => {
     await usuario.click(filtros.getByRole('button', { name: 'Limpiar' }));
     expect(botonFiltros()).toHaveTextContent(/^Filtros$/);
     expect(screen.getByLabelText(BUSCADOR)).toHaveValue('A1');
+  });
+});
+
+describe.each([ANCHO.desktop, ANCHO.movil])('el reporte PDF, a %ipx', (ancho) => {
+  const botonReporte = () => screen.getByRole('button', { name: 'Reporte PDF' });
+
+  test('está en la barra y cuenta con los filtros aplicados, búsqueda incluida', async () => {
+    simularAncho(ancho);
+    vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 2, conFoto: 0 });
+    const usuario = renderSeccion();
+    await screen.findByText('A1-SS26');
+    await usuario.type(screen.getByLabelText(BUSCADOR), 'A1');
+    await waitFor(() =>
+      expect(listarArboles).toHaveBeenLastCalledWith(
+        'plant-1',
+        expect.objectContaining({ busqueda: 'A1' }),
+        1,
+      ),
+    );
+    await usuario.click(botonReporte());
+    const modal = within(screen.getByRole('dialog', { name: 'Reporte PDF de árboles' }));
+    expect(await modal.findByText('2 árboles en el filtro, 0 con foto.')).toBeInTheDocument();
+    expect(contarArbolesDelFiltro).toHaveBeenCalledWith(
+      'plant-1',
+      expect.objectContaining({ busqueda: 'A1' }),
+    );
+  });
+
+  test('sin árboles en el filtro queda deshabilitado', async () => {
+    simularAncho(ancho);
+    vi.mocked(listarArboles).mockResolvedValue({ arboles: [], total: 0, totalPaginas: 0 });
+    renderSeccion();
+    await screen.findByText('Sin árboles para mostrar');
+    expect(botonReporte()).toBeDisabled();
   });
 });
 

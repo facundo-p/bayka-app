@@ -31,7 +31,7 @@ interface ResultadoConfirmacionProps {
 }
 
 /** Terminada la acción: el resultado y un solo botón para cerrar. */
-function ResultadoConfirmacion({ texto, extra, onClose }: ResultadoConfirmacionProps) {
+export function ResultadoConfirmacion({ texto, extra, onClose }: ResultadoConfirmacionProps) {
   return (
     <>
       <p className={styles.info} role="status">

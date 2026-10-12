@@ -35,8 +35,13 @@
   padding: var(--space-sm) var(--space-xl);
 }
 
-.option:hover:not(.active) {
+.option:hover:not(.active, :disabled) {
   background-color: var(--color-surface-sunken);
+}
+
+.option:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
 }
 
 .active {

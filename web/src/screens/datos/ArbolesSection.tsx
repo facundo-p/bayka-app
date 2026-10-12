@@ -19,6 +19,7 @@ import {
 import { nombreArchivoFoto } from '../../services/descargas';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros, BuscadorArboles } from './ArbolesFiltros';
+import { BotonReportePdf } from './BotonReportePdf';
 import { nombreTecnicoDe, parcelaDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
@@ -111,6 +112,22 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
+function AccionReportePdf({ seccion }: { seccion: SeccionArboles }) {
+  const { parcelas, grupos, especies } = seccion;
+  return (
+    <BotonReportePdf
+      plantacion={seccion.plantacion}
+      filtros={seccion.filtrosAplicados}
+      catalogos={{
+        parcelas: parcelas.data ?? [],
+        grupos: grupos.data ?? [],
+        especies: especies.data ?? [],
+      }}
+      hayArboles={(seccion.arboles.data?.total ?? 0) > 0}
+    />
+  );
+}
+
 function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
   const { parcelas, filtros, setFiltro } = seccion;
   useSoltarParcelaFantasma(parcelas.data ?? [], filtros.parcelaId, (valor) =>
@@ -123,6 +140,7 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
       busqueda={<BuscadorArboles filtros={seccion.filtros} onCambiar={seccion.setFiltro} />}
+      acciones={<AccionReportePdf seccion={seccion} />}
     >
       <ArbolesFiltros
         filtros={seccion.filtros}

@@ -1,4 +1,5 @@
 import type { QueryKey } from '@tanstack/react-query';
+import type { FiltrosArboles } from './dataExplorerQueries';
 
 /**
  * Claves de TanStack Query de toda la web. El primer segmento identifica la
@@ -19,6 +20,8 @@ export const CLAVE_QUERY = {
     ['datos-grupos', plantationId, parcelaId] as const,
   datosArboles: (plantationId: string, filtros: Readonly<Record<string, string>>, pagina: number) =>
     ['datos-arboles', plantationId, filtros, pagina] as const,
+  conteoReporte: (plantationId: string, filtros: FiltrosArboles) =>
+    ['conteo-reporte', plantationId, filtros] as const,
   foto: (fotoUrl: string) => ['foto', fotoUrl] as const,
 
   especiesCatalogo: () => ['especies-catalogo'] as const,
