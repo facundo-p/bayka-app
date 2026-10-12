@@ -4,9 +4,9 @@ import { useDescarga } from '../../hooks/useDescarga';
 import {
   guardarOpcionesInforme,
   leerOpcionesInforme,
+  opcionBloqueada,
   opcionesSegunObjetivo,
   SIN_OPCIONES,
-  tieneObjetivo,
   type OpcionInforme,
   type OpcionesInforme,
 } from '../../lib/opcionesInforme';
@@ -57,7 +57,7 @@ export function useInformePdf(plantacion: Plantacion) {
     },
     cerrar: () => mostrar(false),
     opciones: opcionesSegunObjetivo(eleccion, plantacion.objetivoArboles),
-    conMeta: tieneObjetivo(plantacion.objetivoArboles),
+    bloqueada: (opcion: OpcionInforme) => opcionBloqueada(opcion, plantacion.objetivoArboles),
     alternar,
     generar: descarga.descargar,
     descargando: descarga.descargando,

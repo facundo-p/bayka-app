@@ -3,6 +3,7 @@
  * distribución por especie), y la última elección de este navegador.
  */
 import { CLAVE_STORAGE, guardarLocal, leerLocal } from './almacenamientoLocal';
+import { porcentajeDeObjetivo } from './formato';
 
 /** En el orden del modal, que es el del documento. */
 export const OPCION_INFORME = {
@@ -28,23 +29,25 @@ export function opcionesCon(marcadas: Iterable<OpcionInforme>): OpcionesInforme 
 
 export const SIN_OPCIONES = opcionesCon([]);
 
-const marcadas = (opciones: OpcionesInforme) =>
+const soloMarcadas = (opciones: OpcionesInforme) =>
   LISTA_OPCIONES_INFORME.filter((opcion) => opciones[opcion]);
 
 const esOpcionInforme = (valor: unknown): valor is OpcionInforme =>
   LISTA_OPCIONES_INFORME.includes(valor as OpcionInforme);
 
-/** Igual que el dashboard: un objetivo en 0 tampoco es meta. */
-export const tieneObjetivo = (objetivo: number | null): objetivo is number =>
-  objetivo !== null && objetivo > 0;
+/** Con la regla del dashboard: hay meta si hay avance que medir, y un objetivo en 0 no es meta. */
+const tieneObjetivo = (objetivo: number | null) => porcentajeDeObjetivo(0, objetivo) !== null;
 
-/** Sin objetivo no hay meta que mostrar: la casilla cuenta como no marcada. */
+/** La meta, en una plantación sin objetivo: no se puede elegir. */
+export const opcionBloqueada = (opcion: OpcionInforme, objetivo: number | null): boolean =>
+  opcion === OPCION_INFORME.meta && !tieneObjetivo(objetivo);
+
+/** Lo que de verdad lleva el informe: una opción bloqueada cuenta como no marcada. */
 export function opcionesSegunObjetivo(
   eleccion: OpcionesInforme,
   objetivo: number | null,
 ): OpcionesInforme {
-  if (tieneObjetivo(objetivo)) return eleccion;
-  return { ...eleccion, [OPCION_INFORME.meta]: false };
+  return opcionesCon(soloMarcadas(eleccion).filter((opcion) => !opcionBloqueada(opcion, objetivo)));
 }
 
 /** Sin nada guardado, con el storage bloqueado o con un valor ilegible: ninguna marcada. */
@@ -61,5 +64,5 @@ export function leerOpcionesInforme(): OpcionesInforme {
 
 /** Se guardan las marcadas: una opción que se agregue después arranca sin marcar. */
 export function guardarOpcionesInforme(opciones: OpcionesInforme): void {
-  guardarLocal(CLAVE_STORAGE.opcionesInforme, JSON.stringify(marcadas(opciones)));
+  guardarLocal(CLAVE_STORAGE.opcionesInforme, JSON.stringify(soloMarcadas(opciones)));
 }

@@ -1,6 +1,7 @@
 import {
   guardarOpcionesInforme,
   leerOpcionesInforme,
+  opcionBloqueada,
   opcionesCon,
   opcionesSegunObjetivo,
   SIN_OPCIONES,
@@ -50,10 +51,23 @@ describe('opcionesSegunObjetivo', () => {
   const todas = opcionesCon(['foto', 'gps', 'mapa', 'meta']);
 
   test('con objetivo respeta la elección', () => {
-    expect(opcionesSegunObjetivo(todas, 8000)).toBe(todas);
+    expect(opcionesSegunObjetivo(todas, 8000)).toEqual(todas);
   });
 
   test.each([null, 0])('con objetivo %s la meta cuenta como no marcada', (objetivo) => {
     expect(opcionesSegunObjetivo(todas, objetivo)).toEqual({ ...todas, meta: false });
+  });
+});
+
+describe('opcionBloqueada', () => {
+  const otras = ['gps', 'foto', 'mapa'] as const;
+
+  test.each([null, 0, -5])('sin objetivo (%s) solo se bloquea la meta', (objetivo) => {
+    expect(opcionBloqueada('meta', objetivo)).toBe(true);
+    expect(otras.some((opcion) => opcionBloqueada(opcion, objetivo))).toBe(false);
+  });
+
+  test('con objetivo no se bloquea ninguna', () => {
+    expect(opcionBloqueada('meta', 1)).toBe(false);
   });
 });

@@ -175,6 +175,22 @@ test('mientras genera, el botón muestra la carga y no responde dos veces', asyn
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 });
 
+test('reabierto mientras genera, muestra la carga y se cierra al terminar', async () => {
+  const terminar = descargaPendiente();
+  const { usuario } = renderizar();
+  await abrir(usuario);
+  await usuario.click(casilla('Porcentaje con foto'));
+  await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
+  await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+  await abrir(usuario);
+  expect(screen.getByRole('button', { name: /Generando…/ })).toBeDisabled();
+  expect(marcadas()).toEqual(['Porcentaje con foto']);
+  terminar();
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(descargarInformePdf).toHaveBeenCalledTimes(1);
+});
+
 test('si falla, avisa en el modal, que queda abierto para reintentar', async () => {
   vi.mocked(descargarInformePdf).mockRejectedValueOnce(new Error('canvas'));
   const { usuario } = renderizar();

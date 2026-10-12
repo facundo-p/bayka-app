@@ -36,7 +36,7 @@ interface CasillaOpcionProps {
 /** La de meta, sin objetivo en la plantación, queda apagada y dice por qué. */
 function CasillaOpcion({ opcion, informe }: CasillaOpcionProps) {
   const idMotivo = useId();
-  const bloqueada = opcion === OPCION_INFORME.meta && !informe.conMeta;
+  const bloqueada = informe.bloqueada(opcion);
   return (
     <BotonCasilla
       marcada={informe.opciones[opcion]}

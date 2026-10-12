@@ -6,6 +6,7 @@
   gap: var(--space-xs);
 }
 
+/* Arriba y no al centro: la casilla queda a la altura de la etiqueta aunque el motivo baje a dos renglones. */
 .opcion {
   display: flex;
   align-items: flex-start;
@@ -29,7 +30,6 @@
   cursor: default;
 }
 
-/* La casilla queda a la altura del primer renglón aunque el motivo baje a dos. */
 .textos {
   display: flex;
   flex-direction: column;
