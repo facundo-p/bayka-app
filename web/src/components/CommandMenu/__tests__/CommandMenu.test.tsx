@@ -280,6 +280,22 @@ test('abierta, el fondo no mueve la lista de atrás: bloquea el scroll del docum
   );
 });
 
+test('arriba de 900 px, el Escape cierra solo la paleta: el detalle de al lado sigue abierto', async () => {
+  renderRutasEn('/especies');
+  const usuario = userEvent.setup();
+  await usuario.click(await screen.findByRole('cell', { name: FILA_ESPECIE.nombre }));
+  const detalle = await screen.findByRole('complementary', { name: 'Editar especie' });
+
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  await screen.findByRole('dialog', { name: 'Buscar' });
+  await usuario.keyboard('{Escape}');
+
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
+  );
+  expect(detalle).toBeInTheDocument();
+});
+
 test('el click afuera cierra la paleta y devuelve el foco al trigger; adentro no', async () => {
   renderRutasEn('/plantaciones');
   const usuario = userEvent.setup();
