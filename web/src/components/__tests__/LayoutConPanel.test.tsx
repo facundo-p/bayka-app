@@ -1,11 +1,20 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { useState } from 'react';
 import { vi } from 'vitest';
+import { ATRIBUTO_SCROLL_BLOQUEADO } from '../../hooks/useBloquearScroll';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { Modal } from '../Modal';
 import { LayoutConPanel, PanelLateral } from '../PanelLateral';
+import styles from '../PanelLateral.module.css';
 import { Table, type TableColumn } from '../Table';
+
+const CSS_PANEL = readFileSync(
+  join(process.cwd(), 'src/components/PanelLateral.module.css'),
+  'utf8',
+);
 
 interface Fila {
   id: string;
@@ -117,6 +126,22 @@ describe('a 900px o menos', () => {
     expect(screen.queryByRole('dialog', { name: 'Foto' })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Detalle' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ampliar foto' })).toHaveFocus();
+  });
+
+  test('la hoja bloquea el scroll del documento y su cuerpo sigue conteniendo el suyo', async () => {
+    const usuario = await abrirAnchico();
+    expect(document.documentElement).toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO);
+
+    const cuerpo = screen.getByRole('textbox', { name: 'Nota' }).parentElement!;
+    expect(cuerpo).toHaveClass(styles.cuerpo);
+    expect(cuerpo).not.toHaveAttribute('style');
+    expect(fireEvent.touchMove(cuerpo)).toBe(true);
+    expect(CSS_PANEL).toMatch(
+      /@media \(max-width: 900px\)[^@]*\.cuerpo \{\s*overscroll-behavior: contain;/,
+    );
+
+    await usuario.keyboard('{Escape}');
+    expect(document.documentElement).not.toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO);
   });
 
   test('el Escape lo atiende la hoja: el panel no cierra dos veces', () => {

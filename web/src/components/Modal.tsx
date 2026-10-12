@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { useBloquearScroll } from '../hooks/useBloquearScroll';
 import { useCerrarConEscape } from '../hooks/useCerrarConEscape';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { cx } from '../lib/classNames';
@@ -71,6 +72,7 @@ export function Modal({
   const dialogRef = useFocusOnOpen(open);
   const alTeclear = useTeclado(onClose, useFocusTrap(dialogRef));
   useCerrarConEscape(open, onClose);
+  useBloquearScroll(open);
   if (!open) return null;
   const esHoja = posicion === 'hoja';
   return createPortal(
