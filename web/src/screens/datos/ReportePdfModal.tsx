@@ -145,20 +145,32 @@ function Contenido({ reporte }: ConReporte) {
         <ResultadoConfirmacion
           texto={textoFotosFallidas(estado.fotosFallidas)}
           onClose={reporte.cerrar}
+          anunciar={false}
         />
       );
   }
 }
 
+/** Cada etapa y cómo terminó; el contador de fotos queda a la vista, sin anunciarse. */
+function textoDelAnuncio(estado: EstadoReporte): string {
+  switch (estado.fase) {
+    case FASE_REPORTE.eligiendo:
+      return '';
+    case FASE_REPORTE.generando:
+      return textoEtapa(estado.progreso);
+    case FASE_REPORTE.terminado:
+      return textoFotosFallidas(estado.fotosFallidas);
+  }
+}
+
 /**
  * Montada desde que abre el modal: una región que aparece junto con su texto
- * no siempre se anuncia. El contador de fotos queda a la vista, sin anunciarse.
+ * no siempre se anuncia.
  */
-function AnuncioDeEtapa({ estado }: { estado: EstadoReporte }) {
-  const progreso = estado.fase === FASE_REPORTE.generando ? estado.progreso : null;
+function Anuncio({ estado }: { estado: EstadoReporte }) {
   return (
     <p className={styles.anuncio} role="status">
-      {textoEtapa(progreso)}
+      {textoDelAnuncio(estado)}
     </p>
   );
 }
@@ -180,11 +192,18 @@ function useFocoAlCambiarDeFase(fase: EstadoReporte['fase']) {
 
 /** Reporte PDF de todos los árboles del filtro: elegir con o sin fotos, generar y bajar. */
 export function ReportePdfModal({ reporte }: ConReporte) {
-  const cuerpo = useFocoAlCambiarDeFase(reporte.estado.fase);
+  const { fase } = reporte.estado;
+  const cuerpo = useFocoAlCambiarDeFase(fase);
   return (
-    <Modal open={reporte.abierto} title={TEXTO.titulo} onClose={reporte.cerrar}>
+    <Modal
+      open={reporte.abierto}
+      title={TEXTO.titulo}
+      onClose={reporte.cerrar}
+      // Un clic de más en el fondo tiraría el trabajo; Escape y Cancelar son deliberados.
+      cerrarAlClickearAfuera={fase !== FASE_REPORTE.generando}
+    >
       <div ref={cuerpo} tabIndex={-1} className={styles.cuerpo}>
-        <AnuncioDeEtapa estado={reporte.estado} />
+        <Anuncio estado={reporte.estado} />
         <Contenido reporte={reporte} />
       </div>
     </Modal>

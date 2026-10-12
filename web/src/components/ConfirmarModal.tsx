@@ -28,13 +28,16 @@ interface ResultadoConfirmacionProps {
   texto: string;
   extra?: ReactNode;
   onClose: () => void;
+  /** `false` si otra región viva, montada de antes, ya lo anuncia. */
+  anunciar?: boolean;
 }
 
 /** Terminada la acción: el resultado y un solo botón para cerrar. */
-export function ResultadoConfirmacion({ texto, extra, onClose }: ResultadoConfirmacionProps) {
+export function ResultadoConfirmacion(props: ResultadoConfirmacionProps) {
+  const { texto, extra, onClose, anunciar = true } = props;
   return (
     <>
-      <p className={styles.info} role="status">
+      <p className={styles.info} role={anunciar ? 'status' : undefined}>
         {texto}
       </p>
       {extra}

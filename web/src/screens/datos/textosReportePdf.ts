@@ -69,12 +69,8 @@ export function textoProgreso(progreso: ProgresoReporte): string {
   }
 }
 
-/**
- * Lo que anuncian los lectores de pantalla: cambia con la etapa, no con cada
- * foto. Vacío fuera de la generación.
- */
-export function textoEtapa(progreso: ProgresoReporte | null): string {
-  if (!progreso) return '';
+/** Lo que anuncian los lectores de pantalla: cambia con la etapa, no con cada foto. */
+export function textoEtapa(progreso: ProgresoReporte): string {
   if (progreso.etapa === ETAPA_REPORTE.bajandoFotos) return TEXTO_REPORTE_PDF.bajando;
   return textoProgreso(progreso);
 }

@@ -50,7 +50,6 @@ test.each([
 });
 
 test('lo que se anuncia cambia con la etapa, no con cada foto', () => {
-  expect(textoEtapa(null)).toBe('');
   expect(textoEtapa({ etapa: ETAPA_REPORTE.leyendoArboles })).toBe('Leyendo árboles…');
   expect(textoEtapa({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 148 })).toBe(
     textoEtapa({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 90, total: 148 }),

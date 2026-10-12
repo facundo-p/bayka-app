@@ -1,6 +1,7 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, renderHook, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { contarArbolesDelFiltro, type FiltrosArboles } from '../../../queries/dataExplorerQueries';
 import {
   descargarReportePdf,
@@ -65,19 +66,20 @@ function Reporte(props: ReportePdfProps) {
   );
 }
 
-function renderReporte(props: Partial<ReportePdfProps> = {}) {
+const PROPS: ReportePdfProps = {
+  plantacion: PLANTACION,
+  filtros: FILTROS,
+  catalogos: CATALOGOS,
+  hayArboles: true,
+};
+
+function ConQueryClient({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <Reporte
-        plantacion={PLANTACION}
-        filtros={FILTROS}
-        catalogos={CATALOGOS}
-        hayArboles
-        {...props}
-      />
-    </QueryClientProvider>,
-  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+function renderReporte(props: Partial<ReportePdfProps> = {}) {
+  render(<Reporte {...PROPS} {...props} />, { wrapper: ConQueryClient });
   return userEvent.setup();
 }
 
@@ -106,6 +108,8 @@ beforeEach(() => {
   vi.mocked(contarArbolesDelFiltro).mockResolvedValue({ total: 7124, conFoto: 148 });
 });
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('el botón', () => {
   test('sin árboles en el filtro queda deshabilitado', () => {
     renderReporte({ hayArboles: false });
@@ -116,6 +120,14 @@ describe('el botón', () => {
     renderReporte({ plantacion: null });
     expect(screen.getByRole('button', { name: 'Reporte PDF' })).toBeDisabled();
     expect(contarArbolesDelFiltro).not.toHaveBeenCalled();
+  });
+
+  test('sin la plantación, generar no arranca nada aunque lo llamen', () => {
+    const { result } = renderHook(() => useReportePdf({ ...PROPS, plantacion: null }), {
+      wrapper: ConQueryClient,
+    });
+    act(() => result.current.generar());
+    expect(descargarReportePdf).not.toHaveBeenCalled();
   });
 });
 
@@ -211,7 +223,9 @@ describe('al generar', () => {
     const usuario = renderReporte();
     const modal = await generar(usuario);
     await act(async () => actual().terminar(2));
-    expect(modal.getByText(/2 fotos no se pudieron bajar/)).toBeInTheDocument();
+    expect(
+      modal.getByText(/2 fotos no se pudieron bajar/, { selector: 'p:not([role])' }),
+    ).toBeInTheDocument();
     await usuario.click(modal.getByRole('button', { name: 'Listo' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -224,7 +238,37 @@ describe('al generar', () => {
     expect(modal.getByRole('alert')).toHaveTextContent('No se pudo generar el reporte.');
     expect(modal.getByRole('button', { name: 'Generar PDF' })).toBeEnabled();
     expect(consola).toHaveBeenCalledWith(new Error('sin red'));
-    consola.mockRestore();
+  });
+
+  test('reintentar después de un error arranca una corrida nueva', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { actual } = generacionControlada();
+    const usuario = renderReporte();
+    const modal = await generar(usuario);
+    const primera = actual().pedido.senal;
+    await act(async () => actual().fallar());
+    await usuario.click(modal.getByRole('button', { name: 'Generar PDF' }));
+    expect(descargarReportePdf).toHaveBeenCalledTimes(2);
+    expect(actual().pedido.senal).not.toBe(primera);
+    expect(actual().pedido.senal?.aborted).toBe(false);
+    expect(modal.queryByRole('alert')).not.toBeInTheDocument();
+    expect(modal.getByText('Leyendo árboles…', { selector: 'p:not([role])' })).toBeInTheDocument();
+  });
+
+  test('mientras genera, un clic en el fondo no cierra ni corta nada', async () => {
+    const { actual } = generacionControlada();
+    const usuario = renderReporte();
+    await generar(usuario);
+    await usuario.click(dialogo().parentElement!);
+    expect(dialogo()).toBeInTheDocument();
+    expect(actual().pedido.senal?.aborted).toBe(false);
+  });
+
+  test('eligiendo, un clic en el fondo cierra como siempre', async () => {
+    const usuario = renderReporte();
+    await abrir(usuario);
+    await usuario.click(dialogo().parentElement!);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
 
@@ -236,6 +280,17 @@ describe('accesibilidad', () => {
     await act(async () => actual().terminar(1));
     expect(modal.getByRole('button', { name: 'Listo' })).toBeInTheDocument();
     expect(dialogo()).toContainElement(document.activeElement as HTMLElement);
+  });
+
+  test('dentro de una misma fase el foco no se mueve: el avance de las fotos no lo roba', async () => {
+    const { actual } = generacionControlada();
+    const modal = await generar(renderReporte());
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 1, total: 148 });
+    const cancelar = modal.getByRole('button', { name: 'Cancelar' });
+    act(() => cancelar.focus());
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 2, total: 148 });
+    actual().progresar({ etapa: ETAPA_REPORTE.bajandoFotos, listas: 3, total: 148 });
+    expect(cancelar).toHaveFocus();
   });
 
   test('la región viva está desde que abre y anuncia cada etapa, no cada foto', async () => {
@@ -252,6 +307,19 @@ describe('accesibilidad', () => {
     expect(region).toHaveTextContent(/^Bajando fotos…$/);
     actual().progresar({ etapa: ETAPA_REPORTE.armandoPdf });
     expect(region).toHaveTextContent(/^Armando el PDF…$/);
+  });
+
+  test('la misma región anuncia las fotos fallidas, y nadie más las anuncia', async () => {
+    const { actual } = generacionControlada();
+    const modal = await generar(renderReporte());
+    const region = anuncio(modal);
+    await act(async () => actual().terminar(2));
+    expect(anuncio(modal)).toBe(region);
+    expect(region).toHaveTextContent(/2 fotos no se pudieron bajar/);
+    const queLoAnuncian = modal
+      .getAllByRole('status')
+      .filter((otra) => /no se pudieron bajar/.test(otra.textContent ?? ''));
+    expect(queLoAnuncian).toEqual([region]);
   });
 });
 
@@ -283,6 +351,5 @@ describe('cancelar', () => {
     expect(otraVez.queryByRole('alert')).not.toBeInTheDocument();
     expect(otraVez.getByRole('button', { name: 'Generar PDF' })).toBeEnabled();
     expect(consola).not.toHaveBeenCalled();
-    consola.mockRestore();
   });
 });

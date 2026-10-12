@@ -105,19 +105,15 @@ type Avisos = {
   cerrar: () => void;
 };
 
-/** Cortada la corrida, lo que llegue tarde —un error, el avance de una foto— no se muestra. */
-function avisosDe(
-  senal: AbortSignal,
-  setEstado: (estado: EstadoReporte) => void,
-  alTerminar: () => void,
-): Avisos {
+/** Cortada la corrida, lo que llegue tarde —un error, el avance de una foto, el final— no se aplica. */
+function avisosDe(senal: AbortSignal, { mostrar, cerrar }: Avisos): Avisos {
   return {
     mostrar: (estado) => {
-      if (!senal.aborted) setEstado(estado);
+      if (!senal.aborted) mostrar(estado);
     },
     cerrar: () => {
-      setEstado(ELIGIENDO);
-      alTerminar();
+      if (senal.aborted) return;
+      cerrar();
     },
   };
 }
@@ -150,27 +146,28 @@ async function correr(
 type Generacion = {
   props: ReportePdfProps;
   modo: ModoReporte;
-  alTerminar: () => void;
+  alCerrar: () => void;
 };
 
-/** Solo arranca desde la elección, y cada corrida corta la anterior: nunca quedan dos vivas. */
-function useGeneracion({ props, modo, alTerminar }: Generacion) {
+/** Cada corrida corta la anterior: nunca quedan dos vivas. Cerrar corta la que esté. */
+function useGeneracion({ props, modo, alCerrar }: Generacion) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState<EstadoReporte>(ELIGIENDO);
   const abortador = useAbortador();
-  const generar = () => {
-    const { plantacion } = props;
-    if (!plantacion || estado.fase !== FASE_REPORTE.eligiendo) return;
-    const senal = abortador.nuevo();
-    const pedido = pedidoDeDescarga(plantacion, props, modo);
-    const avisos = avisosDe(senal, setEstado, alTerminar);
-    void correr(pedido, senal, { plantacion, queryClient }, avisos);
-  };
-  const reiniciar = () => {
+  const cerrar = () => {
     abortador.abortar();
     setEstado(ELIGIENDO);
+    alCerrar();
   };
-  return { estado, generar, reiniciar };
+  const generar = () => {
+    const { plantacion } = props;
+    if (!plantacion) return;
+    const senal = abortador.nuevo();
+    const pedido = pedidoDeDescarga(plantacion, props, modo);
+    const avisos = avisosDe(senal, { mostrar: setEstado, cerrar });
+    void correr(pedido, senal, { plantacion, queryClient }, avisos);
+  };
+  return { estado, generar, cerrar };
 }
 
 /**
@@ -182,12 +179,8 @@ export function useReportePdf(props: ReportePdfProps) {
   const [abierto, setAbierto] = useState(false);
   const conteo = useConteoReporte(props.plantacion?.id, props.filtros, abierto);
   const eleccion = useEleccion(conteo.data);
-  const alTerminar = () => setAbierto(false);
-  const { estado, generar, reiniciar } = useGeneracion({ props, modo: eleccion.modo, alTerminar });
-  const cerrar = () => {
-    reiniciar();
-    alTerminar();
-  };
+  const alCerrar = () => setAbierto(false);
+  const { estado, generar, cerrar } = useGeneracion({ props, modo: eleccion.modo, alCerrar });
   const disponible = Boolean(props.plantacion) && props.hayArboles;
   const abrir = () => setAbierto(true);
   return { disponible, abierto, abrir, cerrar, conteo, ...eleccion, estado, generar };
