@@ -1,7 +1,7 @@
 /*
  * Fotos de los árboles listas para el PDF: firmadas en una llamada, bajadas de a
  * pocas y reducidas a un JPEG chico. Una foto que falla queda como placeholder y
- * nunca corta el documento.
+ * nunca corta el documento; cancelar sí lo corta.
  */
 import { mapearConConcurrencia } from '../lib/concurrencia';
 import { firmarFotos, fotoSubida } from '../services/fotoService';
@@ -25,14 +25,20 @@ async function firmarSinFallar(fotoUrls: string[]): Promise<Array<string | null>
   }
 }
 
-async function bajarYReducir(url: string | null, medida: MedidaImagen): Promise<FotoPdf> {
+/** Un fetch cortado por la cancelación no es una foto fallida: se propaga. */
+async function bajarYReducir(
+  url: string | null,
+  medida: MedidaImagen,
+  senal?: AbortSignal,
+): Promise<FotoPdf> {
   if (!url) return NO_DISPONIBLE;
   try {
-    const respuesta = await fetch(url);
+    const respuesta = await fetch(url, { signal: senal });
     if (!respuesta.ok) return NO_DISPONIBLE;
     const src = await reducirImagen(await respuesta.blob(), medida);
     return { estado: ESTADO_FOTO.lista, src };
   } catch {
+    senal?.throwIfAborted();
     return NO_DISPONIBLE;
   }
 }
@@ -42,16 +48,19 @@ export type OpcionesCargaFotos = {
   medida?: MedidaImagen;
   /** Fotos terminadas, bajadas o fallidas, sobre las que hay que bajar. Arranca en 0. */
   alProgresar?: (listas: number, total: number) => void;
+  /** Al abortarla no se lanzan más descargas, se cortan las que siguen y se rechaza con su motivo. */
+  senal?: AbortSignal;
 };
 
 /** Baja de a pocas y avisa cada una que termina. */
 async function bajarTodas(
   firmadas: Array<string | null>,
-  { medida = MEDIDA_FOTO_PDF, alProgresar }: OpcionesCargaFotos,
+  { medida = MEDIDA_FOTO_PDF, alProgresar, senal }: OpcionesCargaFotos,
 ): Promise<FotoPdf[]> {
   let listas = 0;
   return mapearConConcurrencia(firmadas, DESCARGAS_SIMULTANEAS, async (url) => {
-    const foto = await bajarYReducir(url, medida);
+    senal?.throwIfAborted();
+    const foto = await bajarYReducir(url, medida, senal);
     alProgresar?.(++listas, firmadas.length);
     return foto;
   });
@@ -66,6 +75,7 @@ export async function cargarFotos(
     const url = fotoSubida(fotoUrl);
     return url ? [{ url, indice }] : [];
   });
+  opciones.senal?.throwIfAborted();
   opciones.alProgresar?.(0, conFoto.length);
   const firmadas = await firmarSinFallar(conFoto.map(({ url }) => url));
   const cargadas = await bajarTodas(firmadas, opciones);

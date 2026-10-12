@@ -3,11 +3,28 @@ import type { ModeloArbolReporte, ModeloTarjeta } from '../../pdf/reporte/datosR
 import * as motor from '../../pdf/reporte/motorReporte';
 import { MODO_REPORTE } from '../../pdf/reporte/planReporte';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
-import { leerNombreOrganizacion, type ArbolParaFicha } from '../../queries/fichasQueries';
+import {
+  leerNombreOrganizacion,
+  listarArbolesDelFiltro,
+  type ArbolParaFicha,
+} from '../../queries/fichasQueries';
 import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
-import { ERROR_REPORTE_SIN_ARBOLES, generarPdfReporte, type ProgresoReporte } from '../pdfReporte';
+import { descargarBlob } from '../descargas';
+import {
+  ERROR_REPORTE_SIN_ARBOLES,
+  descargarReportePdf,
+  generarPdfReporte,
+  type ProgresoReporte,
+} from '../pdfReporte';
 
-vi.mock('../../queries/fichasQueries', () => ({ leerNombreOrganizacion: vi.fn() }));
+vi.mock('../../queries/fichasQueries', () => ({
+  leerNombreOrganizacion: vi.fn(),
+  listarArbolesDelFiltro: vi.fn(),
+}));
+vi.mock('../descargas', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../descargas')>()),
+  descargarBlob: vi.fn(),
+}));
 vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
 vi.mock('../../pdf/reporte/motorReporte', () => ({
   cargarFotos: vi.fn(),
@@ -55,7 +72,7 @@ beforeEach(() => {
 
 test('con 450 árboles con foto baja solo las 400 de las tarjetas; los 50 restantes van al listado', async () => {
   const arboles = muchos(450, conFoto);
-  const blob = await generarPdfReporte({ arboles, modo: MODO_REPORTE.conFotos }, contexto());
+  const { blob } = await generarPdfReporte({ arboles, modo: MODO_REPORTE.conFotos }, contexto());
   expect(blob).toBe(BLOB);
   const [urls] = vi.mocked(motor.cargarFotos).mock.lastCall!;
   expect(urls).toEqual(arboles.slice(0, 400).map((arbol) => arbol.fotoUrl));
@@ -130,4 +147,106 @@ test('sin árboles falla antes de leer nada', async () => {
   expect(leerNombreOrganizacion).not.toHaveBeenCalled();
   expect(listarEspeciesDePlantacion).not.toHaveBeenCalled();
   expect(motor.renderizarReporte).not.toHaveBeenCalled();
+});
+
+test('cuenta las tarjetas que salieron con «Foto no disponible»', async () => {
+  vi.mocked(motor.cargarFotos).mockResolvedValue([
+    { estado: 'no-disponible' },
+    FOTO_LISTA,
+    { estado: 'no-disponible' },
+  ]);
+  const { fotosFallidas } = await generarPdfReporte(
+    { arboles: [conFoto(1), conFoto(2), conFoto(3), sinFoto(4)], modo: MODO_REPORTE.conFotos },
+    contexto(),
+  );
+  expect(fotosFallidas).toBe(2);
+});
+
+describe('cancelar', () => {
+  test('la señal llega a la bajada de fotos', async () => {
+    const control = new AbortController();
+    await generarPdfReporte(
+      { arboles: [conFoto(1)], modo: MODO_REPORTE.conFotos, senal: control.signal },
+      contexto(),
+    );
+    expect(vi.mocked(motor.cargarFotos).mock.lastCall![1]).toMatchObject({
+      senal: control.signal,
+    });
+  });
+
+  test('cancelado durante la bajada de fotos, no arma el PDF', async () => {
+    const control = new AbortController();
+    vi.mocked(motor.cargarFotos).mockImplementation(async (urls) => {
+      control.abort();
+      return urls.map(() => FOTO_LISTA);
+    });
+    const etapas: ProgresoReporte[] = [];
+    await expect(
+      generarPdfReporte(
+        {
+          arboles: [conFoto(1)],
+          modo: MODO_REPORTE.conFotos,
+          senal: control.signal,
+          alProgresar: (progreso) => etapas.push(progreso),
+        },
+        contexto(),
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(motor.renderizarReporte).not.toHaveBeenCalled();
+    expect(etapas).not.toContainEqual({ etapa: 'armando-pdf' });
+  });
+});
+
+describe('descargarReportePdf', () => {
+  const FILTROS = { parcelaId: 'parc-1', conFoto: true };
+  const pedido = (extra = {}) => ({
+    filtros: FILTROS,
+    modo: MODO_REPORTE.conFotos,
+    nombreArchivo: 'arboles-san-sebastian-2025-2026-con-foto.pdf',
+    ...extra,
+  });
+
+  beforeEach(() => {
+    vi.mocked(listarArbolesDelFiltro).mockResolvedValue([conFoto(1), sinFoto(2)]);
+  });
+
+  test('lee todo el filtro, arma el PDF y lo descarga con su nombre', async () => {
+    const resultado = await descargarReportePdf(pedido(), contexto());
+    expect(listarArbolesDelFiltro).toHaveBeenCalledWith(PLANTACION.id, FILTROS);
+    expect(repartoRenderizado()).toEqual({ tarjetas: 1, listado: 1 });
+    expect(descargarBlob).toHaveBeenCalledWith(
+      BLOB,
+      'arboles-san-sebastian-2025-2026-con-foto.pdf',
+    );
+    expect(resultado).toEqual({ fotosFallidas: 0 });
+  });
+
+  test('avisa la lectura antes que las demás etapas', async () => {
+    const etapas: ProgresoReporte[] = [];
+    await descargarReportePdf(
+      pedido({ alProgresar: (p: ProgresoReporte) => etapas.push(p) }),
+      contexto(),
+    );
+    expect(etapas[0]).toEqual({ etapa: 'leyendo-arboles' });
+    expect(etapas.at(-1)).toEqual({ etapa: 'armando-pdf' });
+  });
+
+  test('cancelado mientras lee, no baja fotos ni descarga', async () => {
+    const control = new AbortController();
+    vi.mocked(listarArbolesDelFiltro).mockImplementation(async () => {
+      control.abort();
+      return [conFoto(1)];
+    });
+    await expect(
+      descargarReportePdf(pedido({ senal: control.signal }), contexto()),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(motor.cargarFotos).not.toHaveBeenCalled();
+    expect(descargarBlob).not.toHaveBeenCalled();
+  });
+
+  test('si falla la lectura no descarga nada', async () => {
+    vi.mocked(listarArbolesDelFiltro).mockRejectedValue(new Error('red'));
+    await expect(descargarReportePdf(pedido(), contexto())).rejects.toThrow('red');
+    expect(descargarBlob).not.toHaveBeenCalled();
+  });
 });
