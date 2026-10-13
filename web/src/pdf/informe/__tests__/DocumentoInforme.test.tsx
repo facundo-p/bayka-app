@@ -13,7 +13,7 @@ import { esMapaEnHojaCompleta, UBICACION_MAPA } from '../planificarInforme';
 
 // El extractor lee la nota al pie en dos tramos: «* » y la atribución.
 const ATRIBUCION = 'Imágenes © Esri, Maxar';
-const TITULO_MAPA = 'Puntos GPS por especie';
+const TITULO_MAPA = 'Puntos GPS';
 
 /** Hoja, desde 1, del tramo en esa posición: cada hoja cierra con su pie de página. */
 function hojaDe(textos: string[], posicion: number) {
@@ -28,7 +28,7 @@ function posiciones(textos: string[], patron: RegExp) {
 }
 
 // Lo que no es encabezado ni pie: el rótulo de árboles, los títulos de bloque y las filas.
-const CONTENIDO = /^(ÁRBOLES REGISTRADOS|Distribución por especie|Puntos GPS por especie|\S+ · )/;
+const CONTENIDO = /^(ÁRBOLES REGISTRADOS|Distribución por especie|Puntos GPS|\S+ · )/;
 
 /** Las hojas con algo del cuerpo: si falta alguna, quedó una en blanco. */
 function hojasConContenido(textos: string[]) {

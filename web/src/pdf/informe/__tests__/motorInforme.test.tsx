@@ -50,7 +50,7 @@ test('dibuja el mapa con los puntos de la plantación y arma el PDF', async () =
   expect(contenido.puntos).toHaveLength(12);
   expect(planificarInforme).toHaveBeenCalledTimes(1);
   expect(await textosDe(blob)).toEqual(
-    expect.arrayContaining(['Puntos GPS por especie', 'San Sebastián · 2025-2026']),
+    expect.arrayContaining(['Puntos GPS', 'San Sebastián · 2025-2026']),
   );
 });
 
@@ -72,7 +72,7 @@ test('sin el mapa elegido no planifica ni dibuja, y el informe sale sin ese bloq
   expect(dibujarMapaInforme).not.toHaveBeenCalled();
   const textos = await textosDe(blob);
   expect(textos).toContain('CON GPS');
-  expect(textos).not.toContain('Puntos GPS por especie');
+  expect(textos).not.toContain('Puntos GPS');
 });
 
 // Si el motor midiera sin las fuentes leídas, los textos irían en un renglón y el plan no los contaría.

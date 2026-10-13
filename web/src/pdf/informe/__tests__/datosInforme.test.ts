@@ -147,17 +147,9 @@ describe('datosInforme', () => {
 });
 
 describe('notaCoordenadas', () => {
-  test('cuenta los que faltan en el mapa', () => {
-    expect(notaCoordenadas(7959, 8467)).toBe(
-      '7.959 de 8.467 árboles tienen coordenadas; los 508 restantes no aparecen en el mapa.',
-    );
-  });
-
-  test('uno solo sin coordenadas, o ninguno', () => {
-    expect(notaCoordenadas(9, 10)).toBe(
-      '9 de 10 árboles tienen coordenadas; el restante no aparece en el mapa.',
-    );
-    expect(notaCoordenadas(10, 10)).toBe('10 de 10 árboles tienen coordenadas.');
+  test('cuántos de todos tienen coordenadas, sin nombrar los que faltan', () => {
+    expect(notaCoordenadas(7959, 8467)).toBe('7.959 de 8.467 árboles tienen coordenadas');
+    expect(notaCoordenadas(10, 10)).toBe('10 de 10 árboles tienen coordenadas');
   });
 });
 

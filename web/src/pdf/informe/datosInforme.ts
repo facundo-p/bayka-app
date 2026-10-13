@@ -64,7 +64,7 @@ export type FilaEspecie = {
 
 export type MapaDelInforme = {
   puntos: PuntoMapa[];
-  /** «X de N árboles tienen coordenadas; …»; null si no hay puntos. */
+  /** «X de N árboles tienen coordenadas»; null si no hay puntos. */
   nota: string | null;
   /** Por qué no hay mapa; null si lo hay. */
   vacio: string | null;
@@ -157,14 +157,10 @@ function especies(dashboard: DashboardData, colores: ColorEspecie) {
   };
 }
 
-/** «7.959 de 8.467 árboles tienen coordenadas; los 508 restantes no aparecen en el mapa.» */
+/** «7.959 de 8.467 árboles tienen coordenadas». */
 export function notaCoordenadas(conGps: number, total: number): string {
-  const t = TEXTO_INFORME;
-  const base = `${formatearEntero(conGps)} ${t.de} ${pluralizar(total, SUSTANTIVO.arbol)} ${t.tienenCoordenadas}`;
-  const restantes = Math.max(0, total - conGps);
-  if (restantes === 0) return `${base}.`;
-  if (restantes === 1) return `${base}; ${t.restanteUno}.`;
-  return `${base}; ${t.restantesPrefijo} ${formatearEntero(restantes)} ${t.restantesSufijo}.`;
+  const { de, tienenCoordenadas } = TEXTO_INFORME;
+  return `${formatearEntero(conGps)} ${de} ${pluralizar(total, SUSTANTIVO.arbol)} ${tienenCoordenadas}`;
 }
 
 /** Los conteos mandan: los puntos solo dibujan. */
