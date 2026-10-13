@@ -50,7 +50,7 @@ function mapaDe(modelo: InformeEnRenglones, variante: VarianteInforme): MapaDelD
 /** El PDF, sus textos, el plan del mapa y el modelo en renglones con que se armó. */
 export async function armarInforme(entrada: EntradaInforme, variante: VarianteInforme = {}) {
   const props = {
-    encabezado: encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE),
+    encabezado: encabezadoDePlantacion(entrada.plantacion, LOGO_NODE),
     datos: datosInforme(entrada),
   };
   let armado: { modelo: InformeEnRenglones; plan: PlanInforme | null } | undefined;
@@ -80,7 +80,7 @@ export async function entraAlPie(entrada: EntradaInforme) {
 /** Las hojas que ocupa un cuerpo puesto en una hoja del informe: si no entra, salen más. */
 export async function hojasQueOcupa(cuerpo: ReactNode) {
   const plantacion = { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' };
-  const encabezado = encabezadoDePlantacion(plantacion, null, LOGO_NODE);
+  const encabezado = encabezadoDePlantacion(plantacion, LOGO_NODE);
   const pdf = await renderizarEnSerie(FUENTES_NODE, () =>
     renderToBuffer(
       <Document>

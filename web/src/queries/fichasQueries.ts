@@ -167,15 +167,3 @@ export async function listarArbolesDelFiltro(
   const filas = await leerPaginado(pagina, senal);
   return filas.map(mapearArbolFicha);
 }
-
-/** Nombre de la organización dueña de la plantación; null si no se puede leer. */
-export async function leerNombreOrganizacion(plantationId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .select('organizations(nombre)')
-    .eq('id', plantationId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  const fila = data as unknown as { organizations: { nombre: string } | null } | null;
-  return fila?.organizations?.nombre ?? null;
-}

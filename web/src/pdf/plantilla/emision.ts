@@ -5,11 +5,10 @@ import { encabezadoDePlantacion, type EmisionPdf, type PlantacionDelEncabezado }
 /** Encabezado con el logo del navegador y la fecha de emisión, la del momento en que se arma. */
 export function emisionDePlantacion(
   plantacion: PlantacionDelEncabezado,
-  organizacion: string | null,
   ahora = new Date(),
 ): EmisionPdf {
   return {
-    encabezado: encabezadoDePlantacion(plantacion, organizacion, logoNavegador()),
+    encabezado: encabezadoDePlantacion(plantacion, logoNavegador()),
     emitido: formatearFechaCorta(ahora.toISOString()),
   };
 }

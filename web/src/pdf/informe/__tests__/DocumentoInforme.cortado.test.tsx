@@ -4,30 +4,29 @@ import { entradaInforme, MEDIDORES_INFORME_EN_CERO } from '../../../test/informe
 import { paginasDelPdf } from '../../../test/pdfNode';
 import { armarInforme } from '../../../test/renderInforme';
 import { textosConGlifosCorridos } from '../../../test/textoPdf';
-import type { InformeConMapa } from '../renglonesInforme';
+import type { InformeEnRenglones } from '../renglonesInforme';
 
 vi.mock('../../plantilla/textoLargo', () => ({ CORTAR_TEXTO_LARGO: true }));
 
 const LARGOS = { parcelas: 4, nn: 3, largos: true, codigosLargos: true } as const;
 
-const textosEnRenglones = ({ linea, especies, mapa }: InformeConMapa) => [
+const textosEnRenglones = ({ linea, especies }: InformeEnRenglones) => [
   linea,
   ...especies.filas.map(({ titulo }) => titulo),
-  ...mapa.leyenda.map(({ texto }) => texto),
 ];
 
 /** Los renglones cortados con algún glifo corrido: los que textkit apretó. */
 const cortadosApretados = (pdf: Buffer) =>
   textosConGlifosCorridos(pdf).filter((texto) => texto.endsWith('…'));
 
-test('la línea, los nombres y los códigos largos terminan en «…», sin apretar los espacios', async () => {
+test('la línea y los nombres largos terminan en «…», sin apretar los espacios', async () => {
   const { pdf, textos, modelo } = await armarInforme(entradaInforme({ ...LARGOS, especies: 3 }));
-  for (const renglones of textosEnRenglones(modelo as InformeConMapa)) {
+  for (const renglones of textosEnRenglones(modelo)) {
     expect(renglones).toHaveLength(1);
   }
   const cortados = textos.filter((texto) => texto.endsWith('…'));
-  // La línea, los tres nombres y sus tres códigos.
-  expect(cortados).toHaveLength(7);
+  // La línea y los tres nombres.
+  expect(cortados).toHaveLength(4);
   expect(cortados.filter((texto) => texto.startsWith('LAPCOLORADO · Lapacho'))).toHaveLength(1);
   expect(cortadosApretados(pdf)).toEqual([]);
 });

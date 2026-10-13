@@ -54,7 +54,7 @@ test('la tarjeta es la fila con su foto', () => {
 });
 
 test('el pie nombra el documento con la cantidad de árboles', () => {
-  expect(documentoDeReporte(148)).toBe('Reporte de árboles · 148 árboles');
-  expect(documentoDeReporte(1)).toBe('Reporte de árboles · 1 árbol');
-  expect(documentoDeReporte(7000)).toBe('Reporte de árboles · 7.000 árboles');
+  expect(documentoDeReporte(148)).toBe('Reporte de plantación · 148 árboles');
+  expect(documentoDeReporte(1)).toBe('Reporte de plantación · 1 árbol');
+  expect(documentoDeReporte(7000)).toBe('Reporte de plantación · 7.000 árboles');
 });

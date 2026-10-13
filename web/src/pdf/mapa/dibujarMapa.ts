@@ -4,13 +4,7 @@
  */
 import { contexto2d, crearCanvas, exportarYLiberar, liberarCanvas } from '../canvas';
 import { COLOR_PDF, FUENTE_PDF, PESO_FUENTE } from '../plantilla/tokens';
-import {
-  planificarMapa,
-  type ContenidoMapa,
-  type EtiquetaUbicada,
-  type PlanMapa,
-  type PuntoUbicado,
-} from './planMapa';
+import { planificarMapa, type ContenidoMapa, type PlanMapa, type PuntoUbicado } from './planMapa';
 import type { Encuadre } from './proyeccion';
 
 /**
@@ -63,9 +57,6 @@ const ESTILO_MAPA = {
   rellenoInsignia: 3,
   margen: 6,
   letra: 5,
-  letraEtiqueta: 7,
-  rellenoEtiqueta: { vertical: 1.5, horizontal: 3 },
-  radioEtiqueta: 2,
   topeEscala: 1.5,
   grosorEscala: 0.7,
   radioNorte: 6,
@@ -80,9 +71,7 @@ const LETRA_NORTE = 'N';
 /** Colores de lo que va sobre el fondo: sobre una imagen, insignias oscuras y texto blanco. */
 type TemaMapa = {
   insignia: string;
-  insigniaEtiqueta: string;
   tinta: string;
-  textoEtiqueta: string;
   anillo: string;
   opacidadPunto: number;
 };
@@ -90,17 +79,13 @@ type TemaMapa = {
 const TEMA_MAPA = {
   liso: {
     insignia: COLOR_PDF.mapaInsignia,
-    insigniaEtiqueta: COLOR_PDF.mapaInsignia,
     tinta: COLOR_PDF.cuerpo,
-    textoEtiqueta: COLOR_PDF.navy,
     anillo: COLOR_PDF.navy,
     opacidadPunto: 0.85,
   },
   sobreImagen: {
     insignia: COLOR_PDF.mapaVeloInsignia,
-    insigniaEtiqueta: COLOR_PDF.mapaVeloEtiqueta,
     tinta: COLOR_PDF.blanco,
-    textoEtiqueta: COLOR_PDF.blanco,
     // Blanco: el navy se pierde sobre el monte oscuro.
     anillo: COLOR_PDF.blanco,
     opacidadPunto: 0.95,
@@ -167,7 +152,6 @@ function fuente(peso: number, tamano: number, familia: string): string {
 const FUENTES_DEL_MAPA = [
   fuente(PESO_FUENTE.medio, ESTILO_MAPA.letra, FUENTE_PDF.cuerpo),
   fuente(PESO_FUENTE.semibold, ESTILO_MAPA.letraNorte, FUENTE_PDF.cuerpo),
-  fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono),
 ];
 
 /** Las fuentes de la página cargan recién cuando algo las usa: el canvas no espera solo. */
@@ -176,36 +160,6 @@ async function esperarFuentes(): Promise<void> {
     await Promise.all(FUENTES_DEL_MAPA.map((descriptor) => document.fonts.load(descriptor)));
   } catch {
     // Con la fuente de respaldo el mapa se lee igual.
-  }
-}
-
-/** Insignia detrás de la etiqueta: sobre los puntos, el texto solo no se lee. */
-function pintarInsignia(
-  contexto: CanvasRenderingContext2D,
-  { x, y, texto }: EtiquetaUbicada,
-  color: string,
-) {
-  const { letraEtiqueta: letra, rellenoEtiqueta: relleno } = ESTILO_MAPA;
-  const ancho = contexto.measureText(texto).width + relleno.horizontal * 2;
-  const alto = letra + relleno.vertical * 2;
-  contexto.fillStyle = color;
-  contexto.beginPath();
-  contexto.roundRect(x - ancho / 2, y - alto / 2, ancho, alto, ESTILO_MAPA.radioEtiqueta);
-  contexto.fill();
-}
-
-function pintarEtiquetas(
-  contexto: CanvasRenderingContext2D,
-  { etiquetas }: PlanMapa,
-  tema: TemaMapa,
-) {
-  contexto.font = fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono);
-  contexto.textAlign = 'center';
-  contexto.textBaseline = 'middle';
-  for (const etiqueta of etiquetas) {
-    pintarInsignia(contexto, etiqueta, tema.insigniaEtiqueta);
-    contexto.fillStyle = tema.textoEtiqueta;
-    contexto.fillText(etiqueta.texto, etiqueta.x, etiqueta.y);
   }
 }
 
@@ -272,7 +226,7 @@ function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre, te
   contexto.fillText(LETRA_NORTE, cx, cy + ESTILO_MAPA.alturaLetraNorte);
 }
 
-/** Puntos, árbol resaltado, etiquetas, escala y norte, con los colores del tema. */
+/** Puntos, árbol resaltado, escala y norte, con los colores del tema. */
 function pintarEncima(
   contexto: CanvasRenderingContext2D,
   plan: PlanMapa,
@@ -281,7 +235,6 @@ function pintarEncima(
 ) {
   pintarPuntos(contexto, plan.puntos, radioPunto, tema.opacidadPunto);
   if (plan.resaltado) pintarResaltado(contexto, plan.resaltado, tema.anillo);
-  pintarEtiquetas(contexto, plan, tema);
   pintarEscala(contexto, plan, tema);
   pintarNorte(contexto, plan.encuadre, tema);
 }

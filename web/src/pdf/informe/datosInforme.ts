@@ -16,8 +16,8 @@ import type { DashboardData, DistribucionEspecie } from '../../queries/dashboard
 import { esSinIdentificar } from '../../queries/especiesConstantes';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
-import type { EtiquetaMapa, PuntoMapa } from '../mapa/planMapa';
-import { etiquetasDeParcelas } from './mapaInforme';
+import type { PuntoMapa } from '../mapa/planMapa';
+import { lugarYPeriodo, type PlantacionDelEncabezado } from '../plantilla/textos';
 import { TEXTO_INFORME } from './textosInforme';
 
 export type EntradaInforme = {
@@ -25,9 +25,8 @@ export type EntradaInforme = {
   dashboard: DashboardData;
   /** null si no se pudieron leer o no se pidió el mapa. */
   puntos: readonly PuntoGps[] | null;
-  plantacion: { lugar: string; periodo: string; codigo: string; estado: string };
+  plantacion: PlantacionDelEncabezado;
   objetivo: number | null;
-  organizacion: string | null;
   /** Los colores de la plantación, los mismos del dashboard (#845). */
   colorDe: ColorEspecie;
   /** Lo que se eligió sumar a los árboles registrados y las especies. */
@@ -63,12 +62,8 @@ export type FilaEspecie = {
   porcentaje: string;
 };
 
-export type ItemLeyenda = { texto: string; color: string };
-
 export type MapaDelInforme = {
   puntos: PuntoMapa[];
-  etiquetas: EtiquetaMapa[];
-  leyenda: ItemLeyenda[];
   /** «X de N árboles tienen coordenadas; …»; null si no hay puntos. */
   nota: string | null;
   /** Por qué no hay mapa; null si lo hay. */
@@ -92,19 +87,6 @@ const conPorciento = (valor: number | string) => `${valor}%`;
 
 function fraccionDe(parte: number, maximo: number): number {
   return maximo === 0 ? 0 : parte / maximo;
-}
-
-/** «San Sebastián · Período 2025-2026 · Plantación SS26 · Bayka · Estado: Activa». */
-function lineaDelTitulo({ plantacion, organizacion }: EntradaInforme): string {
-  const { periodo, plantacion: rotulo, estado, separador } = TEXTO_INFORME;
-  const partes = [
-    plantacion.lugar,
-    `${periodo} ${plantacion.periodo}`,
-    `${rotulo} ${plantacion.codigo}`,
-    ...(organizacion ? [organizacion] : []),
-    `${estado} ${plantacion.estado}`,
-  ];
-  return partes.join(separador);
 }
 
 function indicadorArboles(total: number, objetivo: number | null): IndicadorArboles {
@@ -185,13 +167,6 @@ export function notaCoordenadas(conGps: number, total: number): string {
   return `${base}; ${t.restantesPrefijo} ${formatearEntero(restantes)} ${t.restantesSufijo}.`;
 }
 
-function leyenda(dashboard: DashboardData, colores: ColorEspecie): ItemLeyenda[] {
-  return dashboard.porEspecie.map(({ codigo }) => ({
-    texto: esSinIdentificar(codigo) ? TEXTO_INFORME.nn : codigo,
-    color: colores(codigo),
-  }));
-}
-
 /** Los conteos mandan: los puntos solo dibujan. */
 function vacioDelMapa(dashboard: DashboardData, puntos: readonly PuntoGps[]): string | null {
   if (dashboard.totalArboles === 0) return TEXTO_INFORME.sinArboles;
@@ -210,8 +185,6 @@ function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColorEspec
   const vacio = vacioDelMapa(dashboard, puntos);
   return {
     puntos: puntos.map(({ lat, lng, codigo }) => ({ lat, lng, color: colores(codigo) })),
-    etiquetas: etiquetasDeParcelas(puntos, dashboard.porParcela),
-    leyenda: leyenda(dashboard, colores),
     nota: vacio ? null : notaCoordenadas(dashboard.arbolesConGps, dashboard.totalArboles),
     vacio,
   };
@@ -219,7 +192,7 @@ function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColorEspec
 
 export function datosInforme(entrada: EntradaInforme): ModeloInforme {
   return {
-    linea: lineaDelTitulo(entrada),
+    linea: lugarYPeriodo(entrada.plantacion),
     indicadores: indicadores(entrada),
     especies: especies(entrada.dashboard, entrada.colorDe),
     mapa: entrada.opciones.mapa ? mapa(entrada, entrada.colorDe) : null,

@@ -1,32 +1,11 @@
-import type { PuntoGps } from '../../queries/mapaQueries';
 import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa, FORMATO_MAPA } from '../mapa/dibujarMapa';
 import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
-import { planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
+import { planificarMapa, type PuntoMapa } from '../mapa/planMapa';
 import type { Pixel } from '../mapa/proyeccion';
 import { TOPE_TILES } from '../mapa/tiles';
 import { radioSegunVecinos } from '../mapa/vecinos';
 import { CAJA_MAPA_INFORME, MEDIDA_INFORME } from '../plantilla/tokens';
-
-type Acumulado = { lat: number; lng: number; cantidad: number };
-
-/** El código de cada parcela en el centro de sus puntos; las parcelas sin puntos no llevan. */
-export function etiquetasDeParcelas(
-  puntos: readonly PuntoGps[],
-  parcelas: readonly { id: string; codigo: string }[],
-): EtiquetaMapa[] {
-  const sumas = new Map<string, Acumulado>();
-  for (const { parcelaId, lat, lng } of puntos) {
-    if (!parcelaId) continue;
-    const suma = sumas.get(parcelaId) ?? { lat: 0, lng: 0, cantidad: 0 };
-    sumas.set(parcelaId, { lat: suma.lat + lat, lng: suma.lng + lng, cantidad: suma.cantidad + 1 });
-  }
-  return parcelas.flatMap(({ id, codigo }) => {
-    const suma = sumas.get(id);
-    if (!suma) return [];
-    return [{ lat: suma.lat / suma.cantidad, lng: suma.lng / suma.cantidad, texto: codigo }];
-  });
-}
 
 /** Radio de los puntos del mapa del informe, en pt. */
 export function radioDePuntos(pixeles: readonly Pixel[]): number {
@@ -41,7 +20,6 @@ export type MapaInformePdf = { mapa: MapaPdf };
  */
 export async function dibujarMapaInforme(contenido: {
   puntos: PuntoMapa[];
-  etiquetas: EtiquetaMapa[];
 }): Promise<MapaInformePdf> {
   if (contenido.puntos.length === 0) return { mapa: MAPA_SIN_GPS };
   try {

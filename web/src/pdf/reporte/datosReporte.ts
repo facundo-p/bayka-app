@@ -36,7 +36,7 @@ export function datosTarjeta(
   return { ...datosArbolReporte(arbol, colorDe), foto };
 }
 
-/** Nombre del documento en el pie: «Reporte de árboles · 148 árboles». */
+/** Nombre del documento en el pie: «Reporte de plantación · 148 árboles». */
 export function documentoDeReporte(cantidad: number): string {
   const { documento, separador } = TEXTO_REPORTE;
   return `${documento}${separador}${pluralizar(cantidad, SUSTANTIVO.arbol)}`;

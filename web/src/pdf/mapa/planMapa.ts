@@ -3,15 +3,12 @@ import type { LatLng } from '../../../../shared/distancia';
 import { encuadrar, proyectar, type Encuadre, type Pixel } from './proyeccion';
 
 export type PuntoMapa = LatLng & { color: string };
-export type EtiquetaMapa = LatLng & { texto: string };
 
 /** Lo que va en el mapa, en pt. */
 export type ContenidoMapa = {
   puntos: readonly PuntoMapa[];
   /** El árbol de la ficha: va encima de todo, con un anillo. */
   resaltado?: PuntoMapa;
-  /** Textos sobre el mapa, ej. el código de cada parcela. */
-  etiquetas?: readonly EtiquetaMapa[];
   ancho: number;
   alto: number;
   /** Aire mínimo entre lo encuadrado y el borde, en pt; por defecto `ENCUADRE_MAPA.margenPt`. */
@@ -19,13 +16,11 @@ export type ContenidoMapa = {
 };
 
 export type PuntoUbicado = Pixel & { color: string };
-export type EtiquetaUbicada = Pixel & { texto: string };
 
 export type PlanMapa = {
   encuadre: Encuadre;
   puntos: PuntoUbicado[];
   resaltado: PuntoUbicado | null;
-  etiquetas: EtiquetaUbicada[];
   escala: BarraEscala;
 };
 
@@ -38,8 +33,8 @@ export const ENCUADRE_MAPA = {
 } as const;
 
 function todasLasPosiciones(contenido: ContenidoMapa): LatLng[] {
-  const { puntos, resaltado, etiquetas = [] } = contenido;
-  return [...puntos, ...(resaltado ? [resaltado] : []), ...etiquetas];
+  const { puntos, resaltado } = contenido;
+  return [...puntos, ...(resaltado ? [resaltado] : [])];
 }
 
 /** Encuadre, posiciones y escala, sin dibujar nada; null si no hay nada que ubicar. */
@@ -55,10 +50,6 @@ export function planificarMapa(contenido: ContenidoMapa): PlanMapa | null {
     encuadre,
     puntos: contenido.puntos.map(ubicar),
     resaltado: contenido.resaltado ? ubicar(contenido.resaltado) : null,
-    etiquetas: (contenido.etiquetas ?? []).map((etiqueta) => ({
-      ...proyectar(encuadre, etiqueta),
-      texto: etiqueta.texto,
-    })),
     escala: barraDeEscala(encuadre, contenido.ancho * ENCUADRE_MAPA.fraccionEscala),
   };
 }

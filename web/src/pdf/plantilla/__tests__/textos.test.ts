@@ -1,17 +1,12 @@
 import { encabezadoDePlantacion, textoPiePagina } from '../textos';
 
-const PLANTACION = { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' };
+const PLANTACION = { lugar: 'San Sebastián', periodo: '2025-2026' };
 
-test('encabezado con lugar · período y el detalle con la organización', () => {
-  expect(encabezadoDePlantacion(PLANTACION, 'Bayka Forestal', '/logo.png')).toEqual({
+test('encabezado con lugar · período, sin código ni organización', () => {
+  expect(encabezadoDePlantacion(PLANTACION, '/logo.png')).toEqual({
     logo: '/logo.png',
     titulo: 'San Sebastián · 2025-2026',
-    detalle: 'Plantación SS26 · Organización Bayka Forestal',
   });
-});
-
-test('sin organización legible el detalle lleva solo el código', () => {
-  expect(encabezadoDePlantacion(PLANTACION, null, '/logo.png').detalle).toBe('Plantación SS26');
 });
 
 test('pie con fecha de emisión y paginado', () => {

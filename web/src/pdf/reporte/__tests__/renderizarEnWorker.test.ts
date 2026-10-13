@@ -4,7 +4,7 @@ import { renderizarEnWorker, type CrearWorker } from '../renderizarEnWorker';
 
 const PEDIDO: PedidoRender = {
   documento: {
-    encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+    encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026' },
     emitido: '12/10/2026',
     reparto: { tarjetas: [], listado: [] },
   },

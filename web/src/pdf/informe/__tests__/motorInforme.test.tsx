@@ -37,11 +37,7 @@ beforeEach(() => {
 const textosDe = async (blob: Blob) => textosDelPdf(Buffer.from(await blob.arrayBuffer()));
 
 const EMISION = {
-  encabezado: encabezadoDePlantacion(
-    { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-    'Bayka',
-    LOGO_NODE,
-  ),
+  encabezado: encabezadoDePlantacion({ lugar: 'San Sebastián', periodo: '2025-2026' }, LOGO_NODE),
   emitido: '06/10/2026',
 };
 
@@ -87,8 +83,7 @@ test('parte los textos largos con las fuentes leídas, y planifica con esos reng
   });
   const [modelo] = vi.mocked(planificarInforme).mock.calls[0];
   const [primera] = modelo.especies.filas;
-  const [codigo] = modelo.mapa.leyenda;
-  for (const partido of [modelo.linea, primera.titulo, codigo.texto]) {
+  for (const partido of [modelo.linea, primera.titulo]) {
     expect(partido.length).toBeGreaterThan(1);
   }
   const textos = await textosDe(blob);

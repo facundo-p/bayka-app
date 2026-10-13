@@ -3,11 +3,7 @@ import type { ModeloArbolReporte, ModeloTarjeta } from '../../pdf/reporte/datosR
 import * as motor from '../../pdf/reporte/motorReporte';
 import { MODO_REPORTE } from '../../pdf/reporte/planReporte';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
-import {
-  leerNombreOrganizacion,
-  listarArbolesDelFiltro,
-  type ArbolParaFicha,
-} from '../../queries/fichasQueries';
+import { listarArbolesDelFiltro, type ArbolParaFicha } from '../../queries/fichasQueries';
 import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
 import { descargarBlob } from '../descargas';
 import {
@@ -17,10 +13,7 @@ import {
   type ProgresoReporte,
 } from '../pdfReporte';
 
-vi.mock('../../queries/fichasQueries', () => ({
-  leerNombreOrganizacion: vi.fn(),
-  listarArbolesDelFiltro: vi.fn(),
-}));
+vi.mock('../../queries/fichasQueries', () => ({ listarArbolesDelFiltro: vi.fn() }));
 vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
@@ -36,7 +29,7 @@ vi.mock('../../pdf/reporte/motorReporte', () => ({
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
 const BLOB = new Blob(['%PDF']);
-const ENCABEZADO = { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' };
+const ENCABEZADO = { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026' };
 const EMISION = { encabezado: ENCABEZADO, emitido: '12/10/2026' };
 const FOTO_LISTA = { estado: 'lista', src: 'data:image/jpeg;base64,F' } as const;
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
@@ -56,7 +49,6 @@ function repartoRenderizado() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC]);
   vi.mocked(motor.cargarFotos).mockImplementation(async (urls) => urls.map(() => FOTO_LISTA));
   vi.mocked(motor.datosTarjeta).mockImplementation(
@@ -124,13 +116,10 @@ test('avisa el progreso de la bajada de fotos y después el armado del PDF', asy
   ]);
 });
 
-test('el encabezado lleva la plantación y su organización; sin organización legible sale igual', async () => {
+test('el encabezado lleva solo la plantación', async () => {
   await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(vi.mocked(motor.renderizarReporte).mock.lastCall![0]).toMatchObject(EMISION);
-  vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
-  await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.emisionDePlantacion).toHaveBeenLastCalledWith(PLANTACION, null);
 });
 
 test('los colores de especie son los de la plantación', async () => {
@@ -144,7 +133,6 @@ test('sin árboles falla antes de leer nada', async () => {
   await expect(
     generarPdfReporte({ arboles: [], modo: MODO_REPORTE.conFotos }, contexto()),
   ).rejects.toThrow(ERROR_REPORTE_SIN_ARBOLES);
-  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
   expect(listarEspeciesDePlantacion).not.toHaveBeenCalled();
   expect(motor.renderizarReporte).not.toHaveBeenCalled();
 });

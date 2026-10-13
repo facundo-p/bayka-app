@@ -10,8 +10,8 @@ import { tarjetaStyles as styles } from './Reporte.styles';
 function Datos({ tarjeta }: { tarjeta: TarjetaEnRenglones }) {
   return (
     <View style={styles.datos}>
-      <Renglones renglones={tarjeta.idArbol} style={styles.idArbol} />
       <RenglonEspecie especie={tarjeta.especie} styles={styles} />
+      <Renglones renglones={tarjeta.idArbol} style={styles.idArbol} />
       <DatosDeUbicacion modelo={tarjeta} styles={styles} />
       <Dato rotulo={TEXTO_ARBOL.registrado} styles={styles}>
         {tarjeta.registrado}

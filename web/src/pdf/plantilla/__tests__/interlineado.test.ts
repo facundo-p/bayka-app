@@ -9,7 +9,6 @@ const altoDibujado = ({ fontSize, lineHeight }: Renglon) => Number(fontSize) * N
 const RENGLONES: [string, Renglon, number][] = [
   ['la línea del informe', informeStyles.linea, ALTO_RENGLON_INFORME.linea],
   ['la especie del informe', informeStyles.filaEspecie, ALTO_RENGLON_INFORME.fila],
-  ['la leyenda del mapa', informeStyles.itemLeyenda, ALTO_RENGLON_INFORME.leyenda],
   ['la fila del listado', listadoStyles.fila, ALTO_RENGLON_REPORTE.fila],
   ['el ID de la tarjeta', tarjetaStyles.idArbol, ALTO_RENGLON_REPORTE.idTarjeta],
   ['la especie de la tarjeta', tarjetaStyles.nombreEspecie, ALTO_RENGLON_REPORTE.especieTarjeta],

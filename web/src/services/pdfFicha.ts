@@ -12,10 +12,9 @@ import type { Plantacion } from '../queries/plantationQueries';
 import type { ColorEspecie } from '../theme/coloresEspecie';
 import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
-import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
 export type ContextoFichaPdf = {
-  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo'>;
   /** Nombre visible de cada usuario por id, para el técnico de la ficha. */
   nombresUsuario: ReadonlyMap<string, string>;
   /** Los puntos del mapa salen de su caché si el dashboard ya los leyó. */
@@ -47,7 +46,6 @@ function leerInsumos(arbolId: string, contexto: ContextoFichaPdf) {
   const { id } = contexto.plantacion;
   return Promise.all([
     leerArbolParaFicha(id, arbolId),
-    leerOrganizacionDelEncabezado(id),
     leerPuntos(contexto),
     leerEspeciesHabilitadas(contexto.queryClient, id),
     import('../pdf/ficha/motorFicha'),
@@ -77,12 +75,12 @@ async function prepararFicha(
 }
 
 async function generarPdfFicha(arbolId: string, contexto: ContextoFichaPdf) {
-  const [arbol, organizacion, puntos, especies, motor] = await leerInsumos(arbolId, contexto);
+  const [arbol, puntos, especies, motor] = await leerInsumos(arbolId, contexto);
   if (!arbol) throw new Error(ERROR_FICHA_SIN_ARBOL);
   const colorDe = coloresDeHabilitadas(especies);
   const nombres = contexto.nombresUsuario;
   const ficha = await prepararFicha(motor, arbol, { puntos, colorDe, nombres });
-  const emision = motor.emisionDePlantacion(contexto.plantacion, organizacion);
+  const emision = motor.emisionDePlantacion(contexto.plantacion);
   return { blob: await motor.renderizarFicha({ ...emision, ficha }), arbol };
 }
 

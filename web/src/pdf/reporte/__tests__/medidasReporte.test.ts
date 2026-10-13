@@ -28,8 +28,8 @@ test('la grilla de tarjetas entra en el cuerpo de la hoja horizontal', () => {
 
 // Las cajas miden con borde y relleno adentro (border-box).
 test('los datos de la tarjeta entran en el alto de la foto', () => {
-  const especie = M.altoEspecie + M.aireEspecie + M.aireEspecie;
-  const datos = M.altoIdArbol + especie + M.altoDato * DATOS_POR_TARJETA;
+  const idArbol = M.altoIdArbol + M.aireFilete + M.aireFilete;
+  const datos = M.altoEspecie + idArbol + M.altoDato * DATOS_POR_TARJETA;
   expect(datos).toBeLessThanOrEqual(LADO_FOTO_TARJETA);
 });
 
@@ -40,9 +40,9 @@ test('el encabezado y las filas del listado entran en el cuerpo', () => {
 
 // react-pdf no dibuja un renglón que no entra en su caja.
 test.each([
-  ['ID árbol', TAMANO_TEXTO.idTarjeta, M.altoIdArbol],
+  ['especie', TAMANO_TEXTO.especieTarjeta, M.altoEspecie],
   // Lo que deja el filete de abajo.
-  ['especie', TAMANO_TEXTO.especie, M.altoEspecie - M.borde],
+  ['ID árbol', TAMANO_TEXTO.idTarjeta, M.altoIdArbol - M.borde],
   ['dato', TAMANO_TEXTO.dato, M.altoDato],
   ['fila del listado', TAMANO_TEXTO.filaListado, M.altoFilaListado],
   ['encabezado del listado', TAMANO_TEXTO.etiqueta, M.altoEncabezadoListado],

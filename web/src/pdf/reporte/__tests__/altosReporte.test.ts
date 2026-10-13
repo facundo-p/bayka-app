@@ -47,11 +47,11 @@ describe('altoTarjeta', () => {
     expect(altoTarjeta(arbol({ parcela: null }))).toBe(CAJA_TARJETA.alto);
   });
 
-  // 121 pt de datos y 17,5 de relleno y borde: hay 6,6 pt de aire antes de crecer.
+  // 119 pt de datos y 17,5 de relleno y borde: hay 8,6 pt de aire antes de crecer.
   test.each([
-    [{ grupo: 2 }, 148.875],
-    [{ especie: 2, parcela: 2, grupo: 2 }, 171.125],
-    [{ idArbol: 2, especie: 3, parcela: 3, grupo: 1 }, 198],
+    [{ grupo: 2 }, 146.875],
+    [{ especie: 2, parcela: 2, grupo: 2 }, 172.25],
+    [{ idArbol: 2, especie: 3, parcela: 3, grupo: 1 }, 197.25],
   ])('con %o, mide lo que sus datos', (cantidades, alto) => {
     expect(altoTarjeta(arbol(cantidades))).toBeCloseTo(alto);
   });

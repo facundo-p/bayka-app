@@ -4,22 +4,18 @@ import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
 import { DocumentoPdf } from '../plantilla/DocumentoPdf';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
 import type { EmisionPdf } from '../plantilla/textos';
-import { Renglones } from '../plantilla/Renglones';
 import { CAJA_MAPA_INFORME } from '../plantilla/tokens';
 import { informeStyles as styles } from './Informe.styles';
 import type { MapaInformePdf } from './mapaInforme';
 import { esMapaEnHojaCompleta, type PlanInforme } from './planificarInforme';
-import type {
-  InformeEnRenglones,
-  ItemLeyendaEnRenglones,
-  MapaEnRenglones,
-} from './renglonesInforme';
+import type { MapaDelInforme } from './datosInforme';
+import type { InformeEnRenglones } from './renglonesInforme';
 import { BloqueEspecies, EncabezadoBloque, FilaIndicadores, Titulo } from './SeccionesInforme';
 import { TEXTO_INFORME } from './textosInforme';
 
 /** El mapa elegido: lo que lo acompaña, dónde va y su imagen. */
 export type MapaDelDocumento = {
-  contenido: MapaEnRenglones;
+  contenido: MapaDelInforme;
   plan: PlanInforme;
   /** null si no hay puntos que dibujar. */
   imagen: MapaInformePdf | null;
@@ -30,20 +26,6 @@ export type DocumentoInformeProps = EmisionPdf & {
   /** null si no se eligió el mapa. */
   mapa: MapaDelDocumento | null;
 };
-
-/** Cada fila de la leyenda mide lo que su código más partido. */
-export function Leyenda({ items }: { items: readonly ItemLeyendaEnRenglones[] }) {
-  return (
-    <View style={styles.leyenda}>
-      {items.map((item, indice) => (
-        <View key={indice} style={styles.itemLeyenda}>
-          <View style={[styles.puntoLeyenda, { backgroundColor: item.color }]} />
-          <Renglones renglones={item.texto} style={styles.codigoLeyenda} />
-        </View>
-      ))}
-    </View>
-  );
-}
 
 type MapaListo = { src: string; conSatelite: boolean };
 
@@ -58,7 +40,7 @@ function ImagenMapa({ mapa }: { mapa: MapaListo }) {
   );
 }
 
-type MapaProps = { contenido: MapaEnRenglones; mapa: MapaListo };
+type MapaProps = { contenido: MapaDelInforme; mapa: MapaListo };
 
 /** Hoja propia al final: título y nota arriba, como un capítulo aparte. */
 function MapaEnHojaCompleta({ contenido, mapa }: MapaProps) {
@@ -67,7 +49,6 @@ function MapaEnHojaCompleta({ contenido, mapa }: MapaProps) {
       <Text style={styles.tituloMapa}>{TEXTO_INFORME.mapa}</Text>
       <Text style={styles.notaTitulo}>{contenido.nota}</Text>
       <ImagenMapa mapa={mapa} />
-      <Leyenda items={contenido.leyenda} />
     </View>
   );
 }
@@ -77,7 +58,6 @@ function MapaAlPie({ contenido, mapa }: MapaProps) {
     <View style={styles.bloqueMapa} wrap={false}>
       <EncabezadoBloque>{TEXTO_INFORME.mapa}</EncabezadoBloque>
       <ImagenMapa mapa={mapa} />
-      <Leyenda items={contenido.leyenda} />
       <Text style={styles.notaMapa}>{contenido.nota}</Text>
     </View>
   );

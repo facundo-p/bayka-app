@@ -35,6 +35,17 @@ test('en la tarjeta del peor caso se ven todos los datos y lo largo termina en �
   expect(especie).toMatch(/…$/);
 });
 
+const NOMBRES_DE_60 = DE_60.map((arbol) => arbol.especie!.nombre);
+
+/**
+ * `textosDelPdf` lee cada renglón con todas las fuentes: según los glifos de cada
+ * subset, otra fuente también lo «lee», con basura. Solo cuentan las lecturas reales.
+ */
+const esNombreCortado = (texto: string) => {
+  const nombre = texto.replace(/^ANCHC · /, '').replace(/…$/, '');
+  return texto.endsWith('…') && NOMBRES_DE_60.some((completo) => completo.startsWith(nombre));
+};
+
 /** Los renglones cortados con algún glifo corrido: los que textkit apretó. */
 const cortadosApretados = (pdf: Buffer) =>
   textosConGlifosCorridos(pdf).filter((texto) => texto.endsWith('…'));
@@ -46,7 +57,7 @@ test.each([
   'en $donde, los nombres de 60 caracteres terminan en «…» sin apretar los espacios',
   async ({ modo }) => {
     const pdf = await renderizar(DE_60, modo);
-    const cortados = textosDelPdf(pdf).filter((texto) => texto.endsWith('…'));
+    const cortados = textosDelPdf(pdf).filter(esNombreCortado);
     // Especie, parcela y grupo de cada árbol.
     expect(cortados).toHaveLength(3 * DE_60.length);
     expect(cortados.filter((texto) => texto.startsWith('ANCHC · '))).toHaveLength(DE_60.length);
