@@ -10,10 +10,10 @@ import type { EstimacionReporte } from './planReporte';
  * 226 hojas: el peso crece en línea recta con las hojas.
  */
 export const PESO_PDF = {
-  /** Fuentes embebidas y estructura del documento. */
-  base: 15 * BYTES.kb,
-  /** El logo se embebe de nuevo en cada hoja (8,4 KB); el resto es el texto. */
-  porHoja: 15 * BYTES.kb,
+  /** Fuentes y logo embebidos, y la estructura del documento. */
+  base: 22 * BYTES.kb,
+  /** El texto de la hoja: el logo se embebe una sola vez para todas. */
+  porHoja: 6 * BYTES.kb,
   /**
    * 25 fotos reales de SS26-1 en staging, reducidas como el PDF (480 px,
    * calidad 0,75, recorte al centro), promediaron 67 KB, entre 29 y 101.
