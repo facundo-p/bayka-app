@@ -1,5 +1,6 @@
-// La paginación del reporte es fija: si una medida se pasa, el contenido se
-// encima o desaparece sin que cambie la cantidad de hojas. Estas cuentas lo atajan.
+// El plan pagina con estas medidas: si una se pasa, el contenido se encima o
+// desaparece sin que cambie la cantidad de hojas. Estas cuentas, con todo en un
+// renglón, lo atajan.
 import {
   ANCHO_DATOS_TARJETA,
   anchoDeColumna,

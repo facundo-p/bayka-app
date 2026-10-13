@@ -74,9 +74,47 @@ describe('paginarReporte', () => {
   test('sin árboles no hay hojas', () => {
     expect(paginarReporte({ tarjetas: [], listado: [] })).toEqual([]);
   });
+
+  /** Cada número es el alto de su tarjeta o de su fila. */
+  const SU_ALTO = { tarjeta: (alto: number) => alto, fila: (alto: number) => alto };
+
+  // 437,28 pt debajo del encabezado de columnas, con 2 de colchón.
+  test('el listado llena cada hoja por alto: una fila que justo entra, entra', () => {
+    const hojas = paginarReporte({ tarjetas: [], listado: [100, 200, 137.28, 1] }, SU_ALTO);
+    expect(hojas).toEqual([
+      { tipo: 'listado', filas: [100, 200, 137.28] },
+      { tipo: 'listado', filas: [1] },
+    ]);
+  });
+
+  test('una fila más alta que la hoja va sola en la suya', () => {
+    const hojas = paginarReporte({ tarjetas: [], listado: [10, 500, 10] }, SU_ALTO);
+    expect(hojas.map((hoja) => hoja.tipo === 'listado' && hoja.filas)).toEqual([[10], [500], [10]]);
+  });
+
+  // 455,28 pt de cuerpo, con 2 de colchón, y 10 entre filas de tarjetas.
+  test('cada fila de tarjetas mide lo que la más alta, con la separación entre filas', () => {
+    const hojas = paginarReporte({ tarjetas: [200, 100, 50, 245.28, 1], listado: [] }, SU_ALTO);
+    expect(hojas).toEqual([
+      { tipo: 'tarjetas', tarjetas: [200, 100, 50, 245.28] },
+      { tipo: 'tarjetas', tarjetas: [1] },
+    ]);
+  });
 });
 
 describe('estimarReporte', () => {
+  test('es un piso: con filas de más de un renglón, el plan da más hojas', () => {
+    const listado = rango(0, FILAS_POR_HOJA + 1);
+    const estimado = estimarReporte({
+      total: listado.length,
+      conFoto: 0,
+      modo: MODO_REPORTE.sinFotos,
+    });
+    const deDosRenglones = { tarjeta: () => 0, fila: () => 2 * 14 };
+    expect(estimado.hojas).toBe(2);
+    expect(paginarReporte({ tarjetas: [], listado }, deDosRenglones)).toHaveLength(3);
+  });
+
   test('7.000 árboles sin foto van al listado en 226 hojas', () => {
     expect(estimarReporte({ total: 7000, conFoto: 0, modo: MODO_REPORTE.conFotos })).toEqual({
       tarjetas: 0,
