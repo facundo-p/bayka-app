@@ -39,7 +39,7 @@ describe('repartirArboles', () => {
     expect(ids(listado)).toEqual(rango(401, 50));
   });
 
-  test('los que pasan el tope se intercalan en el listado según el orden del filtro', () => {
+  test('los que pasan el tope se intercalan en el listado en el orden de entrada', () => {
     const arboles = [...rango(1, TOPE_TARJETAS).map(conFoto), sinFoto(1001), conFoto(1002)];
     arboles.splice(10, 0, sinFoto(1000));
     const { listado } = repartirArboles(arboles, MODO_REPORTE.conFotos);
