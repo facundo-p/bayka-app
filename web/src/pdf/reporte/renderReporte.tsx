@@ -4,16 +4,16 @@
  */
 import { pdf } from '@react-pdf/renderer';
 import { renderizarEnSerie, type ArchivosFuentes } from '../plantilla/fuentes';
-import { cortarReparto, leerMedidoresReporte } from './cortesReporte';
-import { DocumentoReporte, type DocumentoReporteProps } from './DocumentoReporte';
+import { DocumentoReporte, type DatosDocumentoReporte } from './DocumentoReporte';
+import { leerMedidoresReporte, repartoEnRenglones } from './renglonesReporte';
 
-export type PedidoRender = { documento: DocumentoReporteProps; fuentes: ArchivosFuentes };
+export type PedidoRender = { documento: DatosDocumentoReporte; fuentes: ArchivosFuentes };
 
 export type RespuestaRender = { blob: Blob } | { error: string };
 
 export function renderizarDocumento({ documento, fuentes }: PedidoRender): Promise<Blob> {
   return renderizarEnSerie(fuentes, async () => {
-    const reparto = cortarReparto(documento.reparto, await leerMedidoresReporte());
+    const reparto = repartoEnRenglones(documento.reparto, await leerMedidoresReporte());
     return pdf(<DocumentoReporte {...documento} reparto={reparto} />).toBlob();
   });
 }

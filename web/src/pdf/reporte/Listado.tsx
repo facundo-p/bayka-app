@@ -1,7 +1,8 @@
 import { Text, View } from '@react-pdf/renderer';
-import { ConCodigo, Gps, RenglonEspecie } from '../arbol/PartesArbol';
+import { Gps, NombreConCodigo, RenglonEspecie } from '../arbol/PartesArbol';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
-import type { ModeloArbolReporte } from './datosReporte';
+import { Renglones } from '../plantilla/Renglones';
+import type { FilaEnRenglones } from './renglonesReporte';
 import { columnaListadoStyles as columna, listadoStyles as styles } from './Reporte.styles';
 
 /** Cada hoja del listado es una página propia: el encabezado va explícito en todas. */
@@ -20,18 +21,17 @@ function EncabezadoListado() {
   );
 }
 
-/** Una sí y una no, sombreadas: guían la vista a lo largo de la fila. */
-function FilaListado({ fila, sombreada }: { fila: ModeloArbolReporte; sombreada: boolean }) {
+/**
+ * Una sí y una no, sombreadas: guían la vista a lo largo de la fila. Mide lo
+ * que su celda con más renglones; las demás quedan arriba.
+ */
+function FilaListado({ fila, sombreada }: { fila: FilaEnRenglones; sombreada: boolean }) {
   return (
     <View style={[styles.fila, sombreada ? styles.sombreada : {}]} wrap={false}>
-      <Text style={[columna.idArbol, styles.idArbol]}>{fila.idArbol}</Text>
+      <Renglones renglones={fila.idArbol} style={[columna.idArbol, styles.idArbol]} />
       <RenglonEspecie especie={fila.especie} styles={styles} />
-      <Text style={columna.parcela}>
-        <ConCodigo entidad={fila.parcela} styles={styles} />
-      </Text>
-      <Text style={columna.grupo}>
-        <ConCodigo entidad={fila.grupo} styles={styles} />
-      </Text>
+      <NombreConCodigo entidad={fila.parcela} style={columna.parcela} styles={styles} />
+      <NombreConCodigo entidad={fila.grupo} style={columna.grupo} styles={styles} />
       <Text style={[columna.posicion, styles.centrado]}>{fila.posicion}</Text>
       <Text style={columna.registrado}>{fila.registrado}</Text>
       <Text style={columna.gps}>
@@ -42,7 +42,7 @@ function FilaListado({ fila, sombreada }: { fila: ModeloArbolReporte; sombreada:
 }
 
 /** Las filas de una hoja, debajo del encabezado de columnas. */
-export function Listado({ filas }: { filas: readonly ModeloArbolReporte[] }) {
+export function Listado({ filas }: { filas: readonly FilaEnRenglones[] }) {
   return (
     <View>
       <EncabezadoListado />
