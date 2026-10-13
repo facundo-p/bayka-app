@@ -3,7 +3,7 @@
  * que necesita viaja en el pedido, que es serializable.
  */
 import { pdf } from '@react-pdf/renderer';
-import { renderizarEnSerie, type ArchivosFuentes } from '../plantilla/fuentes';
+import { renderizarSaneado, type ArchivosFuentes } from '../plantilla/fuentes';
 import { DocumentoReporte, type DocumentoReporteProps } from './DocumentoReporte';
 
 export type PedidoRender = { documento: DocumentoReporteProps; fuentes: ArchivosFuentes };
@@ -11,7 +11,9 @@ export type PedidoRender = { documento: DocumentoReporteProps; fuentes: Archivos
 export type RespuestaRender = { blob: Blob } | { error: string };
 
 export function renderizarDocumento({ documento, fuentes }: PedidoRender): Promise<Blob> {
-  return renderizarEnSerie(fuentes, () => pdf(<DocumentoReporte {...documento} />).toBlob());
+  return renderizarSaneado(fuentes, documento, (saneado) =>
+    pdf(<DocumentoReporte {...saneado} />).toBlob(),
+  );
 }
 
 /** Lo que el worker contesta: el PDF, o el mensaje del error (un Error no se clona entero). */

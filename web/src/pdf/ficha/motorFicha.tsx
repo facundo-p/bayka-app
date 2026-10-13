@@ -5,7 +5,7 @@
 import { pdf } from '@react-pdf/renderer';
 import type { FotoPdf } from '../estadoFoto';
 import { cargarFotos } from '../fotos';
-import { renderizarEnSerie } from '../plantilla/fuentes';
+import { renderizarSaneado } from '../plantilla/fuentes';
 import { archivosFuentesNavegador } from '../plantilla/recursosNavegador';
 import { DocumentoFicha, type DocumentoFichaProps } from './DocumentoFicha';
 import { MEDIDA_FOTO_FICHA } from './rasterFicha';
@@ -21,7 +21,7 @@ export async function cargarFoto(fotoUrl: string | null): Promise<FotoPdf> {
 }
 
 export async function renderizarFicha(props: DocumentoFichaProps): Promise<Blob> {
-  return renderizarEnSerie(archivosFuentesNavegador(), () =>
-    pdf(<DocumentoFicha {...props} />).toBlob(),
+  return renderizarSaneado(archivosFuentesNavegador(), props, (saneadas) =>
+    pdf(<DocumentoFicha {...saneadas} />).toBlob(),
   );
 }

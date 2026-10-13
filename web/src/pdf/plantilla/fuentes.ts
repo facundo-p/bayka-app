@@ -1,5 +1,12 @@
 import { Font } from '@react-pdf/renderer';
 import { ESTILO_FUENTE, FUENTE_PDF, PESO_FUENTE } from './tokens';
+import {
+  dibujableEnTodas,
+  saneadorDeTexto,
+  sanearTextos,
+  type FuenteConGlifos,
+  type PilaDeFuentes,
+} from './sanearTextos';
 
 /** Cada archivo de fuente que usa el PDF. react-pdf lee OTF, TTF y WOFF, no WOFF2. */
 const VARIANTES = [
@@ -28,15 +35,21 @@ export type ArchivosFuentes = Record<ArchivoFuente, string>;
 
 const FAMILIAS = Object.values(FUENTE_PDF);
 
+const estiloDe = (variante: Variante) =>
+  'estilo' in variante ? variante.estilo : ESTILO_FUENTE.normal;
+
 let registradas = false;
 
 /**
  * fontkit guarda sin su carácter los glifos que un PDF usó como parte de otro
- * («.» en «·», «a» en «á»): el PDF siguiente los perdería.
+ * («.» en «·», «a» en «á»): el PDF siguiente los perdería. Solo las nuestras:
+ * Helvetica, el respaldo de textkit, se lee una vez al cargar react-pdf y nadie
+ * la relee; sin ella, un carácter que no tiene la fuente tira el PDF (#882).
  */
 function descartarFuentesLeidas(): void {
-  for (const familia of Object.values(Font.getRegisteredFonts())) {
-    for (const fuente of familia.sources) {
+  const fuentesRegistradas = Font.getRegisteredFonts();
+  for (const familia of FAMILIAS) {
+    for (const fuente of fuentesRegistradas[familia].sources) {
       fuente.data = null;
       fuente.loadResultPromise = null;
     }
@@ -57,7 +70,7 @@ export function registrarFuentes(archivos: ArchivosFuentes): void {
       (variante: Variante) => ({
         src: archivos[variante.archivo],
         fontWeight: variante.peso,
-        fontStyle: 'estilo' in variante ? variante.estilo : ESTILO_FUENTE.normal,
+        fontStyle: estiloDe(variante),
       }),
     );
     Font.register({ family: familia, fonts });
@@ -65,6 +78,25 @@ export function registrarFuentes(archivos: ArchivosFuentes): void {
   // Sin guiones automáticos: cortarían IDs y nombres propios.
   Font.registerHyphenationCallback((palabra) => [palabra]);
   registradas = true;
+}
+
+/** La letra de un renglón, con los nombres de sus propiedades de estilo. */
+export type LetraDeRenglon = {
+  fontFamily: string;
+  fontWeight: number;
+  fontStyle?: (typeof ESTILO_FUENTE)[keyof typeof ESTILO_FUENTE];
+  fontSize: number;
+};
+
+/** Una fuente registrada, ya leída. */
+export async function leerFuente({
+  fontFamily,
+  fontWeight,
+  fontStyle,
+}: Omit<LetraDeRenglon, 'fontSize'>) {
+  const fuente = Font.getFont({ fontFamily, fontWeight, fontStyle });
+  await fuente.load();
+  return fuente.data!;
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();
@@ -80,4 +112,40 @@ export function renderizarEnSerie<T>(
   });
   enCurso = turno.catch(() => undefined);
   return turno;
+}
+
+/** La que @react-pdf/layout agrega al final de toda pila de fuentes. */
+const RESPALDO_TEXTKIT = 'Helvetica';
+
+/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
+const leerConGlifos = async (letra: Omit<LetraDeRenglon, 'fontSize'>) =>
+  (await leerFuente(letra)) as unknown as FuenteConGlifos;
+
+/** Para cada variante registrada, las fuentes que prueba textkit: ella y su Helvetica. */
+function pilasDeTextkit(): Promise<PilaDeFuentes[]> {
+  return Promise.all(
+    VARIANTES.map((variante) => {
+      const letra = {
+        fontFamily: variante.familia,
+        fontWeight: variante.peso,
+        fontStyle: estiloDe(variante),
+      };
+      return Promise.all([
+        leerConGlifos(letra),
+        leerConGlifos({ ...letra, fontFamily: RESPALDO_TEXTKIT }),
+      ]);
+    }),
+  );
+}
+
+/** `renderizarEnSerie` con los textos de `props` saneados contra las fuentes recién leídas (#882). */
+export function renderizarSaneado<P, T>(
+  archivos: ArchivosFuentes,
+  props: P,
+  renderizar: (saneadas: P) => Promise<T>,
+): Promise<T> {
+  return renderizarEnSerie(archivos, async () => {
+    const sanearTexto = saneadorDeTexto(dibujableEnTodas(await pilasDeTextkit()));
+    return renderizar(sanearTextos(props, sanearTexto));
+  });
 }

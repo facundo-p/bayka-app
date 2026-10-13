@@ -3,7 +3,7 @@
  * react-pdf y todo `pdf/` quedan fuera del bundle inicial.
  */
 import { pdf } from '@react-pdf/renderer';
-import { renderizarEnSerie } from '../plantilla/fuentes';
+import { renderizarSaneado } from '../plantilla/fuentes';
 import { archivosFuentesNavegador } from '../plantilla/recursosNavegador';
 import type { EmisionPdf } from '../plantilla/textos';
 import { datosInforme, tieneMapa, type EntradaInforme, type ModeloInforme } from './datosInforme';
@@ -32,6 +32,8 @@ export async function renderizarInforme({
 }: PedidoInforme): Promise<Blob> {
   const modelo = datosInforme(entrada);
   const mapa = await mapaDelDocumento(modelo);
-  const documento = <DocumentoInforme {...{ encabezado, emitido, modelo, mapa }} />;
-  return renderizarEnSerie(archivosFuentesNavegador(), () => pdf(documento).toBlob());
+  const props = { encabezado, emitido, modelo, mapa };
+  return renderizarSaneado(archivosFuentesNavegador(), props, (saneadas) =>
+    pdf(<DocumentoInforme {...saneadas} />).toBlob(),
+  );
 }
