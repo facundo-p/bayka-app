@@ -14,7 +14,7 @@ import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlanta
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
-export type ContextoFichasPdf = {
+export type ContextoFichaPdf = {
   plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
   /** Nombre visible de cada usuario por id, para el técnico de la ficha. */
   nombresUsuario: ReadonlyMap<string, string>;
@@ -33,7 +33,7 @@ const PREFIJO_ARCHIVO_FICHA = 'ficha';
 export const ERROR_FICHA_SIN_ARBOL = 'No se encontró el árbol de la ficha';
 
 /** Los vecinos del minimapa son accesorios: si no se leen, el mapa muestra solo el árbol. */
-function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<PuntoGps[]> {
+function leerPuntos({ plantacion, queryClient }: ContextoFichaPdf): Promise<PuntoGps[]> {
   return queryClient
     .fetchQuery({
       queryKey: CLAVE_QUERY.mapa(plantacion.id),
@@ -43,18 +43,18 @@ function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<Pun
     .catch(() => []);
 }
 
-function leerInsumos(arbolId: string, contexto: ContextoFichasPdf) {
+function leerInsumos(arbolId: string, contexto: ContextoFichaPdf) {
   const { id } = contexto.plantacion;
   return Promise.all([
     leerArbolParaFicha(id, arbolId),
     leerOrganizacionDelEncabezado(id),
     leerPuntos(contexto),
     leerEspeciesHabilitadas(contexto.queryClient, id),
-    import('../pdf/ficha/motorFichas'),
+    import('../pdf/ficha/motorFicha'),
   ]);
 }
 
-type MotorFichas = typeof import('../pdf/ficha/motorFichas');
+type MotorFicha = typeof import('../pdf/ficha/motorFicha');
 
 /** Lo de la plantación que necesita la ficha. */
 type InsumosFicha = {
@@ -65,25 +65,25 @@ type InsumosFicha = {
 
 /** Modelo de la ficha con su foto y su minimapa ya rasterizados. */
 async function prepararFicha(
-  motor: MotorFichas,
+  motor: MotorFicha,
   arbol: ArbolParaFicha,
   { puntos, colorDe, nombres }: InsumosFicha,
 ) {
-  const [[foto], mapa] = await Promise.all([
-    motor.cargarFotos([arbol.fotoUrl]),
+  const [foto, mapa] = await Promise.all([
+    motor.cargarFoto(arbol.fotoUrl),
     motor.minimapaDeArbol(arbol, puntos, colorDe),
   ]);
   return motor.datosFicha(arbol, { tecnico: nombreTecnicoDe(arbol, nombres), foto, mapa, colorDe });
 }
 
-async function generarPdfFicha(arbolId: string, contexto: ContextoFichasPdf) {
+async function generarPdfFicha(arbolId: string, contexto: ContextoFichaPdf) {
   const [arbol, organizacion, puntos, especies, motor] = await leerInsumos(arbolId, contexto);
   if (!arbol) throw new Error(ERROR_FICHA_SIN_ARBOL);
   const colorDe = coloresDeHabilitadas(especies);
   const nombres = contexto.nombresUsuario;
   const ficha = await prepararFicha(motor, arbol, { puntos, colorDe, nombres });
   const emision = motor.emisionDePlantacion(contexto.plantacion, organizacion);
-  return { blob: await motor.renderizarFichas({ ...emision, fichas: [ficha] }), arbol };
+  return { blob: await motor.renderizarFicha({ ...emision, ficha }), arbol };
 }
 
 /** `ficha-<lugar>-<periodo>-<subid>.pdf`. */
@@ -93,7 +93,7 @@ export function nombreArchivoFicha(lugar: string, periodo: string, subId: string
 
 export async function descargarFichaPdf(
   arbolId: string,
-  contexto: ContextoFichasPdf,
+  contexto: ContextoFichaPdf,
 ): Promise<void> {
   const { blob, arbol } = await generarPdfFicha(arbolId, contexto);
   const { lugar, periodo } = contexto.plantacion;
