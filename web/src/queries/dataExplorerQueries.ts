@@ -231,7 +231,7 @@ function consultaBaseArboles(plantationId: string, { columnas, opciones }: Selec
   return supabase.from('trees').select(columnas, opciones).eq('groups.plantation_id', plantationId);
 }
 
-type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
+export type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
 
 /** Patrón LIKE de un esquema local, ej. `file://%`. */
 function patronEsquemaLocal(esquema: string): string {

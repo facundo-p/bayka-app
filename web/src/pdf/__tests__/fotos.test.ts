@@ -104,11 +104,11 @@ describe('cancelar', () => {
     );
     const urls = Array.from({ length: 20 }, (_, indice) => `p/${indice}.jpg`);
     const carga = cargarFotos(urls, { senal: control.signal });
-    await vi.waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(5));
+    await vi.waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(10));
     control.abort();
 
     await expect(carga).rejects.toMatchObject({ name: 'AbortError' });
-    expect(fetchFalso).toHaveBeenCalledTimes(5);
+    expect(fetchFalso).toHaveBeenCalledTimes(10);
     expect(reducir).not.toHaveBeenCalled();
   });
 

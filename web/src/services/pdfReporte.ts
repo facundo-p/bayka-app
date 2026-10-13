@@ -39,7 +39,7 @@ type Seguimiento = {
 };
 
 export type PedidoReporte = Seguimiento & {
-  /** En el orden del filtro: así salen las tarjetas y el listado. */
+  /** Por grupo y posición: así salen las tarjetas y el listado. */
   arboles: readonly ArbolParaFicha[];
   modo: ModoReporte;
 };

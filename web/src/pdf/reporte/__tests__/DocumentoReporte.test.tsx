@@ -57,7 +57,7 @@ test('6 tarjetas llenan una hoja y la séptima abre otra', async () => {
   expect(paginasDelPdf(await renderizar(muchos(TARJETAS_POR_HOJA + 1, CORTO)))).toBe(2);
 });
 
-test('las tarjetas van primero y el listado después, cada uno en el orden del filtro', async () => {
+test('las tarjetas van primero y el listado después, cada uno en el orden de entrada', async () => {
   const arbol = (idArbol: string, fotoUrl: string | null) =>
     arbolParaFicha({ id: idArbol, idArbol, fotoUrl });
   const arboles = [
