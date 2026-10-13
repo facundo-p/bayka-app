@@ -1,6 +1,6 @@
 import { Image, Text, View } from '@react-pdf/renderer';
 import type { EspecieArbol } from '../arbol/datosArbol';
-import { ConCodigo, Dato, Foto, Gps, RenglonEspecie, Vacio } from '../arbol/PartesArbol';
+import { Dato, DatosDeUbicacion, Foto, Gps, RenglonEspecie, Vacio } from '../arbol/PartesArbol';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { LlamadaSatelite } from '../mapa/LlamadaSatelite';
 import { ESTADO_MAPA, esMapaListo, type MapaPdf } from '../mapa/estadoMapa';
@@ -72,19 +72,10 @@ function SinPunto() {
 
 /** Junto al mapa: dónde está. */
 function Ubicacion({ ficha }: { ficha: ModeloFicha }) {
-  const t = TEXTO_ARBOL;
   return (
     <View style={styles.texto}>
-      <Dato rotulo={t.parcela} styles={styles}>
-        <ConCodigo entidad={ficha.parcela} styles={styles} />
-      </Dato>
-      <Dato rotulo={t.grupo} styles={styles}>
-        <ConCodigo entidad={ficha.grupo} styles={styles} />
-      </Dato>
-      <Dato rotulo={t.posicion} styles={styles}>
-        {ficha.posicion}
-      </Dato>
-      <Dato rotulo={t.gps} styles={styles}>
+      <DatosDeUbicacion modelo={ficha} styles={styles} />
+      <Dato rotulo={TEXTO_ARBOL.gps} styles={styles}>
         <Gps gps={ficha.gps} styles={styles} sinPunto={<SinPunto />} />
       </Dato>
     </View>

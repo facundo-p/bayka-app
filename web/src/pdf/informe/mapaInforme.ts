@@ -28,7 +28,7 @@ export function etiquetasDeParcelas(
   });
 }
 
-/** Con los topes del informe, en pt. */
+/** Radio de los puntos del mapa del informe, en pt. */
 export function radioDePuntos(pixeles: readonly Pixel[]): number {
   return radioSegunVecinos(pixeles, MEDIDA_INFORME.radioPuntoMapa);
 }

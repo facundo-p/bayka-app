@@ -13,6 +13,7 @@ import type {
 } from '../../queries/fichasQueries';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
+import { TEXTO_PLANTILLA } from '../plantilla/textos';
 import { TEXTO_ARBOL } from './textosArbol';
 
 export type EspecieArbol = {
@@ -52,7 +53,7 @@ const ESPECIE_NN: EspecieArbol = {
 
 export function especieArbol(especie: EspecieDeFicha | null, colorDe: ColorEspecie): EspecieArbol {
   if (!especie) return ESPECIE_NN;
-  const { separador } = TEXTO_ARBOL;
+  const { separador } = TEXTO_PLANTILLA;
   return {
     color: colorDe(especie.codigo),
     titulo: etiquetaEspecie({ especieCodigo: especie.codigo, especieNombre: especie.nombre }),

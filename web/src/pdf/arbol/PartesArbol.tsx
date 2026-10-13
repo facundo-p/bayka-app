@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { SIN_DATO } from '../../lib/formato';
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
-import type { GpsArbol, RotuloEspecie } from './datosArbol';
+import type { GpsArbol, ModeloArbol, RotuloEspecie } from './datosArbol';
 import { partesArbolStyles as propios } from './PartesArbol.styles';
 import { TEXTO_ARBOL } from './textosArbol';
 
@@ -59,11 +59,9 @@ export function Gps({ gps, styles, sinPunto = SIN_DATO }: GpsProps) {
   );
 }
 
-type DatoProps = {
-  rotulo: string;
-  styles: Estilos<'dato' | 'rotulo' | 'valor'>;
-  children: ReactNode;
-};
+type EstilosDato = Estilos<'dato' | 'rotulo' | 'valor'>;
+
+type DatoProps = { rotulo: string; styles: EstilosDato; children: ReactNode };
 
 export function Dato({ rotulo, styles, children }: DatoProps) {
   return (
@@ -71,6 +69,28 @@ export function Dato({ rotulo, styles, children }: DatoProps) {
       <Text style={styles.rotulo}>{rotulo}</Text>
       <Text style={styles.valor}>{children}</Text>
     </View>
+  );
+}
+
+type DatosDeUbicacionProps = {
+  modelo: Pick<ModeloArbol, 'parcela' | 'grupo' | 'posicion'>;
+  styles: EstilosDato & Estilos<'codigo'>;
+};
+
+/** Parcela, grupo y posición, en ese orden. */
+export function DatosDeUbicacion({ modelo, styles }: DatosDeUbicacionProps) {
+  return (
+    <>
+      <Dato rotulo={TEXTO_ARBOL.parcela} styles={styles}>
+        <ConCodigo entidad={modelo.parcela} styles={styles} />
+      </Dato>
+      <Dato rotulo={TEXTO_ARBOL.grupo} styles={styles}>
+        <ConCodigo entidad={modelo.grupo} styles={styles} />
+      </Dato>
+      <Dato rotulo={TEXTO_ARBOL.posicion} styles={styles}>
+        {modelo.posicion}
+      </Dato>
+    </>
   );
 }
 

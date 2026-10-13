@@ -41,7 +41,7 @@ export function medianaAlVecino(pixeles: readonly Pixel[], tope = MUESTRA_VECINO
 const FACTOR_RADIO = 0.35;
 
 /** Topes del radio de los puntos, en las unidades del mapa: cada mapa pone los suyos. */
-export type TopesRadio = { minimo: number; maximo: number };
+type TopesRadio = { minimo: number; maximo: number };
 
 /**
  * Pocos puntos se pierden con un radio chico, y muchos juntos tapan el fondo:
