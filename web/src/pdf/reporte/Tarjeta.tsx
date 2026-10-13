@@ -6,12 +6,11 @@ import type { ModeloTarjeta } from './datosReporte';
 import { enTramos } from './planReporte';
 import { tarjetaStyles as styles } from './Reporte.styles';
 
-function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
+/** Un renglón por dato, debajo de la especie. */
+function Renglones({ tarjeta }: { tarjeta: ModeloTarjeta }) {
   const t = TEXTO_ARBOL;
   return (
-    <View style={styles.datos}>
-      <Text style={styles.idArbol}>{tarjeta.idArbol}</Text>
-      <RenglonEspecie especie={tarjeta.especie} styles={styles} />
+    <>
       <Dato rotulo={t.parcela} styles={styles}>
         <ConCodigo entidad={tarjeta.parcela} styles={styles} />
       </Dato>
@@ -27,6 +26,16 @@ function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
       <Dato rotulo={t.gps} styles={styles}>
         <Gps gps={tarjeta.gps} styles={styles} />
       </Dato>
+    </>
+  );
+}
+
+function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
+  return (
+    <View style={styles.datos}>
+      <Text style={styles.idArbol}>{tarjeta.idArbol}</Text>
+      <RenglonEspecie especie={tarjeta.especie} styles={styles} />
+      <Renglones tarjeta={tarjeta} />
     </View>
   );
 }
