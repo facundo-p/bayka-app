@@ -138,9 +138,9 @@ describe('al abrir', () => {
     expect(contarArbolesDelFiltro).toHaveBeenCalledWith('plant-1', FILTROS);
     expect(modal.getByText('7.124 árboles en el filtro, 148 con foto.')).toBeInTheDocument();
     expect(opcion(modal, /Con fotos/)).toHaveAccessibleName('Con fotos 148 tarjetas con foto');
-    expect(modal.getByText(/^251 hojas o más · 11 MB o más$/)).toBeInTheDocument();
+    expect(modal.getByText(/^251 hojas o más · ≈ 11 MB$/)).toBeInTheDocument();
     await userEvent.setup().click(opcion(modal, /Sin fotos/));
-    expect(modal.getByText(/^230 hojas o más · 1,4 MB o más$/)).toBeInTheDocument();
+    expect(modal.getByText(/^230 hojas o más · ≈ 1,4 MB$/)).toBeInTheDocument();
   });
 
   test('sin árboles con foto, «Con fotos» queda apagado y dice por qué', async () => {

@@ -159,4 +159,5 @@ test('las hojas salen como dice el plan, y el pie cuenta las reales', async () =
   // La estimación del modal cuenta todo en un renglón: es un piso, y lo avisa.
   expect(estimado.hojas).toBeLessThan(hojas);
   expect(estimado.esPiso).toBe(true);
+  expect(estimarReporte({ total: 0, conFoto: 0, modo: MODO_REPORTE.conFotos }).esPiso).toBe(false);
 });
