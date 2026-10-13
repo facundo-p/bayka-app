@@ -6,8 +6,9 @@ import { BYTES } from '../../lib/formato';
 import type { EstimacionReporte } from './planReporte';
 
 /**
- * Bytes de cada parte del PDF. Base y hoja salen de reportes reales de 2 y de
- * 226 hojas: el peso crece en línea recta con las hojas.
+ * Bytes de cada parte del PDF. Base y hoja salen de dos reportes sin fotos
+ * generados por la UI de dev:demo: 34.246 B con 2 hojas y 1.402.000 B con 226.
+ * El peso crece en línea recta con las hojas.
  */
 export const PESO_PDF = {
   /** Fuentes y logo embebidos, y la estructura del documento. */

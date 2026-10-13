@@ -18,11 +18,11 @@ test('las fotos que pasan el tope van al listado y no suman foto', () => {
   expect(peso(450, 450) - peso(450, 400)).toBe(0);
 });
 
-// Contra PDFs reales generados en la demo: 50 filas pesaron 34 KB y 7.000, 1,4 MB.
+// Los dos reportes de la demo con los que se calibró PESO_PDF.
 test.each([
-  [50, 34_000],
-  [7000, 1_400_000],
-])('%i árboles sin fotos se estiman a menos de 5%% del PDF real', (total, real) => {
+  [50, 34_246],
+  [7000, 1_402_000],
+])('reproduce el punto de calibración de %i árboles sin fotos', (total, real) => {
   expect(Math.abs(peso(total, 0) - real) / real).toBeLessThan(0.05);
 });
 
