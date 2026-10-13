@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { Font } from '@react-pdf/renderer';
 import { FUENTES_NODE } from '../../../test/pdfNode';
-import { registrarFuentes, renderizarEnSerie } from '../fuentes';
+import { registrarFuentes, renderizarEnSerie, renderizarSaneado } from '../fuentes';
 
 test('los documentos se renderizan de a uno, en el orden pedido', async () => {
   const orden: string[] = [];
@@ -27,4 +27,24 @@ test('Helvetica, el respaldo de textkit, sigue leída después de descartar las 
   registrarFuentes(FUENTES_NODE);
   registrarFuentes(FUENTES_NODE);
   expect(Font.getFont({ fontFamily: 'Helvetica', fontWeight: 700 }).data).not.toBeNull();
+});
+
+describe('con las fuentes reales, un carácter sale «?» si no lo dibujan todas las pilas', () => {
+  const sanear = (texto: string) =>
+    renderizarSaneado(FUENTES_NODE, { texto }, async (saneado) => saneado.texto);
+
+  test.each([
+    ['Ñandubay ¿á é í ó ú ü? «»·—…', 'Ñandubay ¿á é í ó ú ü? «»·—…'],
+    // Poppins no las tiene; Helvetica, sí.
+    ['Šiauliai ž ƒ', 'Šiauliai ž ƒ'],
+    // Helvetica no la tiene; las fuentes registradas, todas.
+    ['ı', 'ı'],
+    // Biolinum las tiene, pero Poppins y Helvetica no.
+    ['Ñu Guasũ ĩ', 'Ñu Guas? ?'],
+    ['Σ', '?'],
+    ['中文', '??'],
+    ['Yerba 😀', 'Yerba ?'],
+  ])('%s → %s', async (texto, saneado) => {
+    expect(await sanear(texto)).toBe(saneado);
+  });
 });
