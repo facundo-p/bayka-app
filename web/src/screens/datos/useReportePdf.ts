@@ -32,7 +32,7 @@ export type EstadoReporte =
 
 const ELIGIENDO: EstadoReporte = { fase: FASE_REPORTE.eligiendo, error: null };
 
-type PlantacionDelReporte = Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+type PlantacionDelReporte = Pick<Plantacion, 'id' | 'lugar' | 'periodo'>;
 
 export type ReportePdfProps = {
   /** Sin la plantación no hay lugar ni periodo para el nombre: no se puede abrir. */

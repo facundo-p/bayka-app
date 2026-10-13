@@ -36,7 +36,7 @@ const PLANTACION = plantacion({
 });
 const BLOB = new Blob(['%PDF']);
 const EMISION = {
-  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026' },
   emitido: '12/10/2026',
 };
 

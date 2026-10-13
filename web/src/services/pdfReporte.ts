@@ -26,7 +26,7 @@ export type ProgresoReporte =
   | { etapa: typeof ETAPA_REPORTE.armandoPdf };
 
 export type ContextoReportePdf = {
-  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo'>;
   /** Los colores de especie salen de su caché si ya se leyeron. */
   queryClient: QueryClient;
 };

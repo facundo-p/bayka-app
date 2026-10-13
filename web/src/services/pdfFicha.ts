@@ -14,7 +14,7 @@ import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlanta
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 
 export type ContextoFichaPdf = {
-  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
+  plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo'>;
   /** Nombre visible de cada usuario por id, para el técnico de la ficha. */
   nombresUsuario: ReadonlyMap<string, string>;
   /** Los puntos del mapa salen de su caché si el dashboard ya los leyó. */
