@@ -52,7 +52,7 @@ vi.mock('../../../queries/plantationQueries', async () => {
 vi.mock('../../../hooks/useAuth', () => ({
   useAuth: () => ({ estado: 'autenticado', perfil: null }),
 }));
-vi.mock('../../../services/pdfFichas', () => ({ descargarFichaPdf: vi.fn() }));
+vi.mock('../../../services/pdfFicha', () => ({ descargarFichaPdf: vi.fn() }));
 vi.mock('../../../services/pdfReporte', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../services/pdfReporte')>()),
   descargarReportePdf: vi.fn(),
