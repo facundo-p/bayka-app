@@ -12,7 +12,7 @@ import { renderizarFicha } from '../../ficha/motorFicha';
 import { renderizarInforme } from '../../informe/motorInforme';
 import { datosArbolReporte, datosTarjeta } from '../../reporte/datosReporte';
 import { renderizarDocumento } from '../../reporte/renderReporte';
-import { renderizarEnSerie } from '../fuentes';
+import { renderizarEnSerie, renderizarSaneado } from '../fuentes';
 import { encabezadoDePlantacion } from '../textos';
 import { FUENTE_PDF, PESO_FUENTE } from '../tokens';
 
@@ -100,18 +100,26 @@ test.each([
 
 const NEGRITA = { fontFamily: FUENTE_PDF.cuerpo, fontWeight: PESO_FUENTE.bold };
 
+const unRenglon = (texto: string) => (
+  <Document>
+    <Page>
+      <Text style={NEGRITA}>{texto}</Text>
+    </Page>
+  </Document>
+);
+
 /** Un renglón en Poppins negrita, sin sanear: acá se prueba el descarte de las fuentes. */
 function renglon(texto: string): Promise<Buffer> {
-  return renderizarEnSerie(FUENTES_NODE, () =>
-    renderToBuffer(
-      <Document>
-        <Page>
-          <Text style={NEGRITA}>{texto}</Text>
-        </Page>
-      </Document>,
-    ),
-  );
+  return renderizarEnSerie(FUENTES_NODE, () => renderToBuffer(unRenglon(texto)));
 }
+
+test('un texto que es solo un guion blando no tira el PDF', async () => {
+  // textkit saltea el guion blando: sin un carácter antes, el texto se queda sin fuente.
+  const pdf = renderizarSaneado(FUENTES_NODE, { texto: '\u00ad' }, (saneado) =>
+    renderToBuffer(unRenglon(saneado.texto)),
+  );
+  await expect(pdf).resolves.toBeInstanceOf(Buffer);
+});
 
 test('lo que solo tiene Helvetica sale en dos PDF seguidos, con Helvetica', async () => {
   // Poppins no tiene «Š» ni «ž»: textkit las toma de Helvetica, su respaldo.

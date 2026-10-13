@@ -11,7 +11,7 @@
  */
 export const REEMPLAZO_TEXTO = {
   sinGlifo: '?',
-  marcaSuelta: '',
+  quitado: '',
   blanco: ' ',
 } as const;
 
@@ -24,6 +24,13 @@ export type PilaDeFuentes = readonly FuenteConGlifos[];
 export type Dibujable = (codigo: number) => boolean;
 
 export type SanearTexto = (texto: string) => string;
+
+/**
+ * Invisibles por definición: guion blando, ZWSP, ZWJ, marcas de dirección,
+ * selectores de variante, BOM. Las fuentes dicen tener el guion blando, pero
+ * textkit lo saltea, y un texto que es solo eso tira el PDF.
+ */
+const INVISIBLES = /\p{Default_Ignorable_Code_Point}/gu;
 
 /** Rachas de controles y de blancos Unicode: saltos de línea y tabs incluidos. */
 const BLANCOS = /[\s\p{Cc}]+/gu;
@@ -72,7 +79,7 @@ const codigoDe = (caracter: string) => caracter.codePointAt(0)!;
  * Los nombres guaraníes se leen mejor sin la tilde que con un «?».
  */
 function sustituto(caracter: string, dibujable: Dibujable): string {
-  if (MARCA.test(caracter)) return REEMPLAZO_TEXTO.marcaSuelta;
+  if (MARCA.test(caracter)) return REEMPLAZO_TEXTO.quitado;
   const base = BASE_CON_MARCAS.exec(caracter.normalize('NFD'))?.[1];
   return base && dibujable(codigoDe(base)) ? base : REEMPLAZO_TEXTO.sinGlifo;
 }
@@ -82,7 +89,10 @@ const conGlifo = (caracter: string, dibujable: Dibujable) =>
 
 /** NFC primero: una «á» escrita como «a» más tilde pasa a la «á» que tienen las fuentes. */
 function sanear(texto: string, dibujable: Dibujable): string {
-  const compuesto = texto.normalize('NFC').replace(BLANCOS, REEMPLAZO_TEXTO.blanco);
+  const compuesto = texto
+    .normalize('NFC')
+    .replace(INVISIBLES, REEMPLAZO_TEXTO.quitado)
+    .replace(BLANCOS, REEMPLAZO_TEXTO.blanco);
   return Array.from(compuesto, (caracter) => conGlifo(caracter, dibujable)).join('');
 }
 

@@ -34,6 +34,13 @@ describe('cada texto', () => {
     expect(sanear('Línea\u00a0\u202f\u300010')).toBe('Línea 10');
   });
 
+  test('los invisibles se quitan', () => {
+    expect(sanear('\u00ad')).toBe('');
+    expect(sanear('Parcela\u200b10')).toBe('Parcela10');
+    expect(sanear('\ufeffNorte')).toBe('Norte');
+    expect(sanear('\u200eNorte\u200f')).toBe('Norte');
+  });
+
   test('se compone en NFC antes de buscar el glifo', () => {
     expect(sanear('n\u0303andu')).toBe('ñandu');
   });
@@ -60,6 +67,7 @@ describe('cada texto', () => {
   test('un emoji sale «?», y su selector de variante se quita', () => {
     expect(sanear('Yerba 😀')).toBe('Yerba ?');
     expect(sanear('Yerba \u2764\ufe0f')).toBe('Yerba ?');
+    expect(sanear('\ud83d\udc68\u200d\ud83d\udc69')).toBe('??');
   });
 
   test('el ASCII imprimible sale igual, sin preguntarle a las fuentes', () => {
@@ -68,10 +76,17 @@ describe('cada texto', () => {
     expect(dibujable).not.toHaveBeenCalled();
   });
 
-  test('cada texto y cada punto de código se resuelven una sola vez', () => {
-    const hasGlyphForCodePoint = vi.fn(() => true);
-    const sanearUno = saneadorDeTexto(dibujableEnTodas([[{ hasGlyphForCodePoint }]]));
+  test('cada texto se sanea una sola vez', () => {
+    const dibujable = vi.fn<Dibujable>(() => true);
+    const sanearUno = saneadorDeTexto(dibujable);
     for (let fila = 0; fila < 7000; fila++) sanearUno('Ñu Ñu');
+    expect(dibujable).toHaveBeenCalledTimes(5);
+  });
+
+  test('a las fuentes se les pregunta una sola vez por punto de código', () => {
+    const hasGlyphForCodePoint = vi.fn(() => true);
+    const dibujable = dibujableEnTodas([[{ hasGlyphForCodePoint }]]);
+    Array.from('Ñu Ñu', (caracter) => dibujable(caracter.codePointAt(0)!));
     expect(hasGlyphForCodePoint).toHaveBeenCalledTimes(3);
   });
 });
@@ -85,6 +100,16 @@ describe('el modelo entero', () => {
       vacio: null,
     });
     expect(sanearTextos(['Σ', true, 2], sanear)).toEqual(['?', true, 2]);
+  });
+
+  test('las URL de las imágenes salen iguales', () => {
+    const modelo = {
+      logo: 'https://staging.bayka-app.pages.dev/logo-bayka.png',
+      foto: { src: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ+/=' },
+    };
+    const saneado = sanearTextos(modelo, sanear);
+    expect(saneado.logo).toBe(modelo.logo);
+    expect(saneado.foto.src).toBe(modelo.foto.src);
   });
 
   test('deja tal cual lo que no es un objeto plano ni un array', () => {
