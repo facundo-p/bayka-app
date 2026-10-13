@@ -147,7 +147,7 @@ src/
   pdf/           Documentos PDF: plantilla y tokens de marca (`plantilla/`),
                  mapa de puntos sobre el satélite (`mapa/`), piezas de un
                  árbol que comparten la ficha y el reporte (`arbol/`), fotos
-                 y fichas de árbol (`ficha/`), informe de la plantación
+                 y ficha de un árbol (`ficha/`), informe de la plantación
                  (`informe/`) y reporte de los árboles de un filtro (`reporte/`)
 ```
 

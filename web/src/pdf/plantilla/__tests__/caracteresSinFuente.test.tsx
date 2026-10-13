@@ -8,7 +8,7 @@ import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_FOTO } from '../../estadoFoto';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
 import { datosFicha } from '../../ficha/datosFicha';
-import { renderizarFichas } from '../../ficha/motorFichas';
+import { renderizarFicha } from '../../ficha/motorFicha';
 import { renderizarInforme } from '../../informe/motorInforme';
 import { datosArbolReporte, datosTarjeta } from '../../reporte/datosReporte';
 import { renderizarDocumento } from '../../reporte/renderReporte';
@@ -56,10 +56,8 @@ const ARBOL = arbolParaFicha({
 const textosDe = async (blob: Blob) => textosDelPdf(Buffer.from(await blob.arrayBuffer()));
 
 function ficha() {
-  const fichas = [
-    datosFicha(ARBOL, { colorDe: COLOR_DE, tecnico: 'Lucía', foto: FOTO, mapa: MAPA }),
-  ];
-  return renderizarFichas({ ...EMISION, fichas });
+  const modelo = datosFicha(ARBOL, { colorDe: COLOR_DE, tecnico: 'Lucía', foto: FOTO, mapa: MAPA });
+  return renderizarFicha({ ...EMISION, ficha: modelo });
 }
 
 function informe() {
