@@ -3,7 +3,7 @@
  * que necesita viaja en el pedido, que es serializable.
  */
 import { pdf } from '@react-pdf/renderer';
-import { renderizarEnSerie, type ArchivosFuentes } from '../plantilla/fuentes';
+import { renderizarSaneado, type ArchivosFuentes } from '../plantilla/fuentes';
 import { DocumentoReporte, type DatosDocumentoReporte } from './DocumentoReporte';
 import { leerMedidoresReporte, repartoEnRenglones } from './renglonesReporte';
 
@@ -12,9 +12,10 @@ export type PedidoRender = { documento: DatosDocumentoReporte; fuentes: Archivos
 export type RespuestaRender = { blob: Blob } | { error: string };
 
 export function renderizarDocumento({ documento, fuentes }: PedidoRender): Promise<Blob> {
-  return renderizarEnSerie(fuentes, async () => {
-    const reparto = repartoEnRenglones(documento.reparto, await leerMedidoresReporte());
-    return pdf(<DocumentoReporte {...documento} reparto={reparto} />).toBlob();
+  // Se sanea antes de partir en renglones: se mide lo que se va a dibujar.
+  return renderizarSaneado(fuentes, documento, async (saneado) => {
+    const reparto = repartoEnRenglones(saneado.reparto, await leerMedidoresReporte());
+    return pdf(<DocumentoReporte {...saneado} reparto={reparto} />).toBlob();
   });
 }
 

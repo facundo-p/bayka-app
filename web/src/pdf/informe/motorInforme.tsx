@@ -3,7 +3,7 @@
  * react-pdf y todo `pdf/` quedan fuera del bundle inicial.
  */
 import { pdf } from '@react-pdf/renderer';
-import { renderizarEnSerie } from '../plantilla/fuentes';
+import { renderizarSaneado } from '../plantilla/fuentes';
 import { archivosFuentesNavegador } from '../plantilla/recursosNavegador';
 import type { EmisionPdf } from '../plantilla/textos';
 import { datosInforme, tieneMapa, type EntradaInforme, type ModeloInforme } from './datosInforme';
@@ -36,8 +36,8 @@ function mapaDelDocumento(
 }
 
 /**
- * Modelo y mapa rasterizado; después, con las fuentes leídas, los textos en
- * renglones, el plan y el documento.
+ * Modelo y mapa rasterizado; después, con las fuentes leídas, los textos
+ * saneados y en renglones, el plan y el documento.
  */
 export async function renderizarInforme({
   encabezado,
@@ -46,9 +46,15 @@ export async function renderizarInforme({
 }: PedidoInforme): Promise<Blob> {
   const datos = datosInforme(entrada);
   const imagen = await imagenDelMapa(datos);
-  return renderizarEnSerie(archivosFuentesNavegador(), async () => {
-    const modelo = informeEnRenglones(datos, await leerMedidoresInforme());
-    const mapa = mapaDelDocumento(modelo, imagen);
-    return pdf(<DocumentoInforme {...{ encabezado, emitido, modelo, mapa }} />).toBlob();
-  });
+  // Se sanea antes de partir en renglones: se mide lo que se va a dibujar.
+  const props = { encabezado, emitido, datos };
+  return renderizarSaneado(
+    archivosFuentesNavegador(),
+    props,
+    async ({ datos: saneados, ...emision }) => {
+      const modelo = informeEnRenglones(saneados, await leerMedidoresInforme());
+      const mapa = mapaDelDocumento(modelo, imagen);
+      return pdf(<DocumentoInforme {...emision} modelo={modelo} mapa={mapa} />).toBlob();
+    },
+  );
 }

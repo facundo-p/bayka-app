@@ -15,7 +15,7 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import type { Plantacion } from '../../queries/plantationQueries';
-import { descargarFichaPdf, type ContextoFichasPdf } from '../../services/pdfFichas';
+import { descargarFichaPdf, type ContextoFichaPdf } from '../../services/pdfFicha';
 import { puedeCambiarEspecie } from './cambioDeEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
@@ -72,19 +72,19 @@ function useEdicionDeEspecie(
 }
 
 /**
- * Lo que necesitan las fichas PDF. null (botones deshabilitados) hasta tener
- * la plantación y los técnicos: antes saldría «Técnico —».
+ * Lo que necesita la ficha PDF. null (botón deshabilitado) hasta tener la
+ * plantación y los técnicos: antes saldría «Técnico —».
  */
-function useContextoFichas(
+function useContextoFicha(
   plantacion: Plantacion | null | undefined,
   { nombresUsuario, perfilesCargando }: ReturnType<typeof useMapasArboles>,
-): ContextoFichasPdf | null {
+): ContextoFichaPdf | null {
   const queryClient = useQueryClient();
   if (!plantacion || perfilesCargando) return null;
   return { plantacion, nombresUsuario, queryClient };
 }
 
-function descargaFichaDe(contexto: ContextoFichasPdf | null) {
+function descargaFichaDe(contexto: ContextoFichaPdf | null) {
   return (arbol: ArbolDetalle): (() => Promise<void>) | null =>
     contexto && (() => descargarFichaPdf(arbol.id, contexto));
 }
@@ -109,7 +109,7 @@ export function useArbolesSection() {
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
   const colores = useColoresEspecie(id);
-  const contextoFichas = useContextoFichas(plantacion, mapas);
+  const contextoFicha = useContextoFicha(plantacion, mapas);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -121,7 +121,7 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
-    descargaFichaDe: descargaFichaDe(contextoFichas),
+    descargaFichaDe: descargaFichaDe(contextoFicha),
     colores,
   };
 }
