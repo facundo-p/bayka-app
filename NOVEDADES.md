@@ -9,7 +9,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · actualizado el 13 de octubre de 2026
-<!-- sincronizado-hasta: d9ac102 #898 -->
+<!-- sincronizado-hasta: 5bf05c1 #909 -->
 
 - **Cada plantación tiene su código.** Al crear o editar una plantación cargás
   un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
@@ -66,6 +66,13 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     dashboard. En una plantación finalizada «Cambiar» solo lo ve el
     superadmin, y en una archivada no aparece.
 - **Clasificá las especies en árbol o arbusto.** Cada especie tiene tipo, por
+  ahora Flora, y subtipo: Árbol o Arbusto. Las que ya existían quedan como
+  Árbol. El listado de Especies suma la columna Subtipo y un filtro por
+  subtipo. <!-- #775 -->
+  - En la web de pruebas, entrá a Especies y abrí una especie.
+  - Elegí «Arbusto» en Subtipo, guardá y filtrá por «Subtipo: arbusto».
+  - Esperá ver: la especie aparece en el filtro con subtipo Arbusto, las demás
+    siguen en Árbol y una especie nueva arranca en Árbol.
 - **Las especies científicas tienen su propia pestaña.** En Especies, la
   pestaña Científicas reúne cada nombre científico con los nombres comunes que
   agrupa. Ahí se crean, se renombran y se eliminan, la búsqueda (Ctrl/⌘ K) las
@@ -112,13 +119,24 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Pasá el mouse por el lápiz de Editar.
   - Esperá ver: el botón deshabilitado con «Solo el superadmin edita una
     plantación finalizada»; como superadmin, sigue habilitado.
-- **Descargá la foto de un árbol.** El detalle de un árbol suma el botón
+- **Descargá o eliminá la foto de un árbol.** El detalle de un árbol suma
+  Descargar debajo de la foto y en la foto ampliada; el archivo lleva la
+  plantación y el SubID en el nombre. Un administrador también elimina la
+  foto desde ahí, después de confirmar; en una plantación archivada no se
+  puede. <!-- #726 #907 -->
+  - En la web de pruebas, como administrador, abrí una plantación → Datos →
+    Árboles, filtrá «Con foto» y tocá un árbol.
+  - Tocá «Descargar foto»; después ampliá la foto, tocá «Eliminar foto» y
+    confirmá.
+  - Esperá ver: se descarga foto-<lugar>-<período>-<SubID>.jpg y, al
+    confirmar, el árbol queda «Sin foto». En una plantación archivada el
+    botón está gris y dice que hay que desarchivarla.
 - **Descargá la ficha PDF de un árbol.** El detalle de un árbol suma
   «Descargar ficha PDF», que arma una hoja con la foto y un minimapa satelital
   en dos cuadrados grandes, con el árbol resaltado. Junto a la foto van la
   especie, el ID Árbol, la fecha de registro y el técnico; junto al mapa, la
   parcela, el grupo, la posición y el GPS. Si el árbol no tiene foto o punto
-  GPS, la ficha lo dice en su lugar. <!-- #778 #835 #856 #868 #886 -->
+  GPS, la ficha lo dice en su lugar. <!-- #778 #835 #856 #868 #886 #904 -->
   - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
     árbol con foto y GPS.
   - Tocá «Descargar ficha PDF», al pie del detalle; repetí con un árbol sin
@@ -130,31 +148,36 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   arma un PDF apaisado con todos los árboles que deja el filtro, búsqueda
   incluida, y no solo los de la página. Con fotos, los árboles con foto salen
   en tarjetas, hasta seis por hoja y 400 en total, y el resto en un listado;
-  sin fotos, todo va al listado. Antes de generar te dice cuántos árboles
+  sin fotos, todo va al listado. Cada tarjeta encabeza con la especie y lleva
+  el ID más chico debajo, y los árboles salen por grupo y, dentro de cada
+  grupo, por posición. Antes de generar te dice cuántos árboles
   entran, cuántos tienen foto y cuántas hojas y cuánto peso esperar; mientras
   genera muestra el avance y lo podés cancelar. Los nombres largos salen
   enteros, en varios renglones, y el archivo lleva los filtros en el nombre.
-  <!-- #870 #874 #779 #787 #879 #881 #886 #894 -->
+  <!-- #870 #874 #779 #787 #879 #881 #886 #894 #901 #904 -->
   - En la web de pruebas, abrí una plantación con fotos → Datos → Árboles, sin
     filtros, y tocá «Reporte PDF».
   - Elegí «Con fotos» y tocá «Generar PDF». Después filtrá por una parcela y
     generá otro «Sin fotos».
   - Esperá ver: el conteo del filtro y la estimación «… hojas o más · ≈ … MB»;
-    el primer PDF con las tarjetas con foto y después el listado del resto, y
+    el primer PDF con las tarjetas con foto, con la especie arriba y
+    ordenadas por grupo y posición, y después el listado del resto, y
     el segundo solo con el listado de esa parcela y su código en el nombre del
     archivo.
 - **Informe PDF de la plantación.** En Exportar, «Informe PDF» arma un resumen
   con los árboles registrados y su distribución por especie, y te deja sumar
   la meta y el avance, el porcentaje con GPS, el porcentaje con foto y el mapa
-  de puntos por especie, apaisado y con el código de cada parcela. La web
-  recuerda lo que elegiste para la próxima vez.
-  <!-- #780 #784 #837 #869 #886 #890 -->
+  de puntos GPS. Debajo del título van el lugar y el período, y el mapa
+  muestra solo los puntos, sin códigos ni leyenda: el color de cada especie
+  se lee en la distribución. La web recuerda lo que elegiste para la próxima
+  vez. <!-- #780 #784 #837 #869 #886 #890 #904 #906 -->
   - En la web de pruebas, abrí una plantación con árboles y objetivo de
     árboles → Exportar → «Informe PDF».
   - Marcá las cuatro opciones, tocá «Generar informe» y volvé a abrir el
     modal.
   - Esperá ver: el PDF con los árboles contra la meta, «Con GPS», «Con foto»,
-    la distribución por especie y el mapa con su leyenda, con los mismos
+    la distribución por especie y el mapa «Puntos GPS» solo con los puntos y
+    «N de M árboles tienen coordenadas» debajo, con los mismos
     números que el dashboard sin filtro; al reabrir, las cuatro siguen
     marcadas. En una plantación sin objetivo, «Meta y avance» aparece apagada.
 - **Los mapas de los PDF tienen imagen satelital.** El minimapa de la ficha y
@@ -446,6 +469,14 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: la cámara sin menú previo, la foto de la galería pasa por el
     recorte, «Reintentar» vuelve a la cámara, y cerrar con la X o con atrás no
     registra nada.
+- **Con «Foto en todos los botones», la foto de las especies es opcional.**
+  Cada especie sigue abriendo la cámara, pero «Sin foto» registra el árbol
+  igual. N/N sigue pidiendo foto. <!-- #909 -->
+  - En la app Bayka TEST, en una plantación con «Foto en todos los botones»
+    activado, entrá a un grupo activo y tocá una especie.
+  - En la cámara tocá «Sin foto»; después tocá N/N y «Cancelar».
+  - Esperá ver: la especie registra un árbol sin foto, y N/N no registra
+    nada.
 - **Las fotos salen cuadradas.** La cámara muestra un marco cuadrado con lo de
   afuera oscurecido y el recorte arranca en ese mismo cuadrado: lo movés o lo
   agrandás y sigue cuadrado. Las fotos de la galería pasan por el mismo
