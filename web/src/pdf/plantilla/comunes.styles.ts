@@ -18,6 +18,13 @@ export const letraDeTitulo = {
   color: COLOR_PDF.navy,
 } as const;
 
+/** El marco de la imagen de un mapa; el tamaño lo pone cada documento. */
+export const marcoDeMapa = {
+  borderRadius: MEDIDA_PDF.radioRecuadro,
+  borderWidth: MEDIDA_PDF.bordeFino,
+  borderColor: COLOR_PDF.linea,
+} as const;
+
 /** Un rótulo en mayúsculas espaciadas, en el color apagado. */
 export const rotuloEnMayusculas = (fontSize: number) =>
   ({

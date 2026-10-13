@@ -1,6 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
-import { puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
+import { marcoDeMapa, puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
 import {
   COLOR_PDF,
   ESTILO_FUENTE,
@@ -52,7 +52,7 @@ export const fichaStyles = StyleSheet.create({
     color: COLOR_PDF.navy,
   },
   foto: imagen,
-  mapa: { ...imagen, borderWidth: M.bordeFino, borderColor: COLOR_PDF.linea },
+  mapa: { ...imagen, ...marcoDeMapa },
   vacio: { ...imagen, ...recuadroVacio },
   textoVacio: { marginTop: M.aireIcono, fontSize: letra.vacio, color: COLOR_PDF.tenue },
   // Debajo del mapa, en el aire hasta el pie.

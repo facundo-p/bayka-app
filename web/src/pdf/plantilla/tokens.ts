@@ -151,11 +151,11 @@ export const MEDIDA_HOJA = {
   airePie: 6,
 } as const;
 
-/** Medidas en pt que comparten los tres PDF: cada documento las suma a las suyas. */
+/** Medidas en pt que comparten los PDF: cada documento las suma a las suyas. */
 export const MEDIDA_PDF = {
   borde: 0.75,
   bordeFino: 0.5,
-  /** El de los recuadros de foto y de mapa. */
+  /** Radio de los recuadros de foto y de mapa. */
   radioRecuadro: 3,
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,

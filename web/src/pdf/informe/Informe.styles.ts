@@ -1,5 +1,10 @@
 import { StyleSheet } from '@react-pdf/renderer';
-import { letraDeTitulo, puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
+import {
+  letraDeTitulo,
+  marcoDeMapa,
+  puntoDeEspecie,
+  rotuloEnMayusculas,
+} from '../plantilla/comunes.styles';
 import {
   aireCentrado,
   ALTO_RENGLON_INFORME as ALTO,
@@ -137,13 +142,7 @@ export const informeStyles = StyleSheet.create({
     color: COLOR_PDF.apagado,
   },
   mapa: { alignSelf: 'center' },
-  imagenMapa: {
-    width: '100%',
-    height: '100%',
-    borderRadius: M.radioRecuadro,
-    borderWidth: M.bordeFino,
-    borderColor: COLOR_PDF.linea,
-  },
+  imagenMapa: { ...marcoDeMapa, width: '100%', height: '100%' },
   // En el aire entre la imagen y la leyenda.
   llamada: { top: '100%' },
   leyenda: {
