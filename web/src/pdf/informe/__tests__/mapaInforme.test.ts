@@ -1,6 +1,7 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
 import { planificarMapa } from '../../mapa/planMapa';
+import { medianaAlVecino } from '../../mapa/vecinos';
 import { CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
 import { dibujarMapaInforme, etiquetasDeParcelas, radioDePuntos } from '../mapaInforme';
 
@@ -61,6 +62,24 @@ describe('radioDePuntos', () => {
     expect(radioDePuntos(grilla(1))).toBe(1.1);
     expect(radioDePuntos(grilla(100))).toBe(4);
     expect(radioDePuntos([{ x: 0, y: 0 }])).toBe(4);
+  });
+
+  /** 300 puntos repartidos sin patrón, siempre los mismos. */
+  function dispersos(ancho: number, semilla: number) {
+    let estado = semilla;
+    const azar = () => (estado = (estado * 16807) % 2147483647) / 2147483647;
+    return Array.from({ length: 300 }, () => ({ x: azar() * ancho, y: azar() * ancho }));
+  }
+
+  test('es exactamente 0,35 de la mediana al vecino, entre 1,1 y 4 pt', () => {
+    const casos = [
+      ...[0.5, 1, 3, 3.14, 6, 7.5, 11.42, 20, 100].map((paso) => grilla(paso)),
+      ...[50, 200, 539, 2000, 9000].map((ancho, indice) => dispersos(ancho, indice + 1)),
+    ];
+    for (const pixeles of casos) {
+      const separacion = medianaAlVecino(pixeles)!;
+      expect(radioDePuntos(pixeles)).toBe(Math.min(4, Math.max(1.1, 0.35 * separacion)));
+    }
   });
 });
 

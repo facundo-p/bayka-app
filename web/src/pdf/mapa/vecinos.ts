@@ -37,8 +37,11 @@ export function medianaAlVecino(pixeles: readonly Pixel[], tope = MUESTRA_VECINO
   return distancias.length === 0 ? null : mediana(distancias);
 }
 
-/** Radio de los puntos en las unidades del mapa: una fracción de la separación, entre dos topes. */
-export type RadioSegunVecinos = { minimo: number; maximo: number; factor: number };
+/** Fracción de la distancia al vecino más cercano: deja aire entre dos puntos vecinos. */
+const FACTOR_RADIO = 0.35;
+
+/** Topes del radio de los puntos, en las unidades del mapa: cada mapa pone los suyos. */
+export type TopesRadio = { minimo: number; maximo: number };
 
 /**
  * Pocos puntos se pierden con un radio chico, y muchos juntos tapan el fondo:
@@ -46,9 +49,9 @@ export type RadioSegunVecinos = { minimo: number; maximo: number; factor: number
  */
 export function radioSegunVecinos(
   pixeles: readonly Pixel[],
-  { minimo, maximo, factor }: RadioSegunVecinos,
+  { minimo, maximo }: TopesRadio,
 ): number {
   const separacion = medianaAlVecino(pixeles);
   if (separacion === null) return maximo;
-  return Math.min(maximo, Math.max(minimo, factor * separacion));
+  return Math.min(maximo, Math.max(minimo, FACTOR_RADIO * separacion));
 }
