@@ -179,11 +179,12 @@ describe('useTreeRegistration', () => {
       });
 
       expect(result.current.photoCaptureAllTrees).toBe(true);
-      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(pickPhoto).toHaveBeenCalledWith({ optional: true });
       expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: FOTO }));
     });
 
-    it('con el flag prendido y sin foto no registra (la foto es obligatoria)', async () => {
+    // #908: fuera de N/N la foto es opcional; sin foto el árbol se registra igual.
+    it('con el flag prendido y sin foto registra el árbol sin foto', async () => {
       mockLiveQueries({ captureConfig: CONFIG_FOTO });
       pickPhoto.mockResolvedValue(null);
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -192,7 +193,7 @@ describe('useTreeRegistration', () => {
         await result.current.registerTree('esp-1', 'ANC');
       });
 
-      expect(insertTree).not.toHaveBeenCalled();
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: null }));
     });
 
     it('en solo lectura no abre el selector aunque el flag esté prendido', async () => {
