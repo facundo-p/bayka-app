@@ -1,12 +1,8 @@
 import { capturarConsultas } from '../../test/capturarConsultas';
-import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
+import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
-import {
-  leerArbolParaFicha,
-  leerNombreOrganizacion,
-  listarArbolesDelFiltro,
-} from '../fichasQueries';
+import { leerArbolParaFicha, listarArbolesDelFiltro } from '../fichasQueries';
 import { TAMANO_PAGINA } from '../leerPaginado';
 
 vi.mock('../../lib/supabase', async () => {
@@ -231,26 +227,5 @@ describe('listarArbolesDelFiltro', () => {
       });
       expect(consultasDeArboles(consultas)).toHaveLength(1);
     });
-  });
-});
-
-describe('leerNombreOrganizacion', () => {
-  function responder(nombre: string | null) {
-    return (consulta: ConsultaCapturada): RespuestaMock =>
-      consulta.tabla === 'plantations'
-        ? { data: { organizations: nombre ? { nombre } : null } }
-        : { error: { message: 'inesperada' } };
-  }
-
-  test('embebe la organización de la plantación', async () => {
-    const consultas = capturarConsultas(responder('Bayka Forestal'));
-    expect(await leerNombreOrganizacion('plant-1')).toBe('Bayka Forestal');
-    expect(consultas[0].columnas).toBe('organizations(nombre)');
-    expect(consultas[0].filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
-  });
-
-  test('null si la policy no deja leerla', async () => {
-    capturarConsultas(responder(null));
-    expect(await leerNombreOrganizacion('plant-1')).toBeNull();
   });
 });

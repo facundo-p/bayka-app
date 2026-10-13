@@ -24,7 +24,7 @@ type OpcionesEntrada = {
   conGps?: boolean;
   /** Por defecto, todas marcadas. */
   opciones?: OpcionesInforme;
-  /** Nombres de especie de hasta 60 caracteres, y lugar y organización que no entran en la línea del título. */
+  /** Nombres de especie de hasta 60 caracteres, y un lugar que no entra en la línea del título. */
   largos?: boolean;
   /** Códigos de especie largos: alargan el título de cada fila del listado. */
   codigosLargos?: boolean;
@@ -37,8 +37,9 @@ export const NOMBRES_LARGOS = [
   'Timbó colorado del bañado grande y de las lomadas del oeste',
 ];
 
-const LUGAR_LARGO = 'Loma de los Paraísos Norte, ladera del arroyo Itaembé';
-const ORGANIZACION_LARGA = 'Cooperativa Forestal y Agropecuaria del Alto Paraná Limitada';
+// No entra en un renglón de la línea del título.
+const LUGAR_LARGO =
+  'Loma de los Paraísos Norte, ladera del arroyo Itaembé, campo de la Cooperativa Forestal y Agropecuaria del Alto Paraná Limitada';
 const SUFIJO_CODIGO_LARGO = 'COLORADO';
 
 export const TODAS_LAS_OPCIONES = opcionesCon(LISTA_OPCIONES_INFORME);
@@ -132,8 +133,6 @@ function dashboard(porEspecie: DistribucionEspecie[], cantidadParcelas: number, 
 const plantacion = (largos = false) => ({
   lugar: largos ? LUGAR_LARGO : 'San Sebastián',
   periodo: '2025-2026',
-  codigo: 'SS26',
-  estado: 'Activa',
 });
 
 export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
@@ -148,7 +147,6 @@ export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
     puntos,
     plantacion: plantacion(opciones.largos),
     objetivo: opciones.objetivo === undefined ? 8000 : opciones.objetivo,
-    organizacion: opciones.largos ? ORGANIZACION_LARGA : 'Bayka',
     colorDe: coloresDeLaLista(porEspecie),
     opciones: opciones.opciones ?? TODAS_LAS_OPCIONES,
   };

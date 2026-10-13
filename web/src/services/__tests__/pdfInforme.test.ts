@@ -4,7 +4,6 @@ import * as motor from '../../pdf/informe/motorInforme';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { obtenerFuenteDashboard, type FuenteDashboard } from '../../queries/dashboardQueries';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
-import { leerNombreOrganizacion } from '../../queries/fichasQueries';
 import { listarPuntosGps } from '../../queries/mapaQueries';
 import { especieEnLugar, plantacion } from '../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
@@ -16,7 +15,6 @@ vi.mock('../../queries/dashboardQueries', async (importOriginal) => ({
   obtenerFuenteDashboard: vi.fn(),
 }));
 vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
-vi.mock('../../queries/fichasQueries', () => ({ leerNombreOrganizacion: vi.fn() }));
 vi.mock('../../queries/mapaQueries', () => ({ listarPuntosGps: vi.fn() }));
 vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
@@ -63,7 +61,6 @@ const CON_MAPA = opcionesCon(['mapa']);
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(obtenerFuenteDashboard).mockResolvedValue(FUENTE);
-  vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue([]);
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([especieEnLugar('LAP', 2)]);
   vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
@@ -76,16 +73,15 @@ test('nombre del archivo', () => {
   );
 });
 
-test('cubre la plantación entera, con la etiqueta del estado, y se descarga', async () => {
+test('cubre la plantación entera y se descarga', async () => {
   await descargarInformePdf(PLANTACION, new QueryClient(), CON_MAPA);
 
   const pedido = vi.mocked(motor.renderizarInforme).mock.calls[0][0];
   expect(pedido.dashboard.totalArboles).toBe(5);
   expect(pedido.dashboard.porParcela.map((parcela) => parcela.cantidad)).toEqual([3, 2]);
   expect(pedido.opciones).toBe(CON_MAPA);
-  expect(pedido.plantacion).toMatchObject({ lugar: 'San Sebastián', estado: 'Activa' });
+  expect(pedido.plantacion).toMatchObject({ lugar: 'San Sebastián', periodo: '2025-2026' });
   expect(pedido.objetivo).toBe(8000);
-  expect(pedido.organizacion).toBe('Bayka');
   expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(pedido).toMatchObject(EMISION);
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'informe-san-sebastian-2025-2026.pdf');
@@ -114,12 +110,10 @@ test('reutiliza las lecturas vigentes que el dashboard dejó en caché', async (
   expect(listarPuntosGps).not.toHaveBeenCalled();
 });
 
-test('sin organización ni puntos legibles, el informe sale igual', async () => {
-  vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
+test('sin puntos legibles, el informe sale igual', async () => {
   vi.mocked(listarPuntosGps).mockRejectedValue(new Error('red'));
   await descargarInformePdf(PLANTACION, new QueryClient(), CON_MAPA);
   const pedido = vi.mocked(motor.renderizarInforme).mock.calls[0][0];
-  expect(pedido.organizacion).toBeNull();
   expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(pedido.puntos).toBeNull();
   expect(descargarBlob).toHaveBeenCalled();

@@ -89,8 +89,7 @@ function pedidoInforme(nombre = ESPECIE_SIN_FUENTE): PedidoInforme {
   return {
     ...entrada,
     ...EMISION,
-    plantacion: { ...entrada.plantacion, lugar: PARCELA_GUARANI },
-    organizacion: GRUPO_CON_SALTO,
+    plantacion: { lugar: PARCELA_GUARANI, periodo: GRUPO_CON_SALTO },
     dashboard: { ...entrada.dashboard, porEspecie },
   };
 }

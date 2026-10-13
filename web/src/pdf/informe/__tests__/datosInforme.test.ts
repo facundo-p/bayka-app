@@ -15,19 +15,9 @@ function mapaDe(entrada: EntradaInforme) {
 }
 
 describe('datosInforme', () => {
-  test('arma la línea del título con lugar, período, código, organización y estado', () => {
+  test('la línea del título es la del encabezado: lugar y período', () => {
     const modelo = datosInforme(entradaInforme({ parcelas: 2, especies: 2 }));
-    expect(modelo.linea).toBe(
-      'San Sebastián · Período 2025-2026 · Plantación SS26 · Bayka · Estado: Activa',
-    );
-  });
-
-  test('sin organización la línea la omite', () => {
-    const modelo = datosInforme({
-      ...entradaInforme({ parcelas: 1, especies: 1 }),
-      organizacion: null,
-    });
-    expect(modelo.linea).not.toContain('Bayka');
+    expect(modelo.linea).toBe('San Sebastián · 2025-2026');
   });
 
   test('con meta: total, «de META», barra acotada y el % sin acotar', () => {

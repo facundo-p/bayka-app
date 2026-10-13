@@ -8,15 +8,11 @@ import type { OpcionesInforme } from '../lib/opcionesInforme';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { calcularDashboard, obtenerFuenteDashboard } from '../queries/dashboardQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
-import { ETIQUETA_ESTADO_PLANTACION, type Plantacion } from '../queries/plantationQueries';
+import type { Plantacion } from '../queries/plantationQueries';
 import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
-import { leerOrganizacionDelInforme } from './organizacionInforme';
 
-export type PlantacionDelInforme = Pick<
-  Plantacion,
-  'id' | 'lugar' | 'periodo' | 'codigo' | 'estado' | 'objetivoArboles'
->;
+export type PlantacionDelInforme = Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'objetivoArboles'>;
 
 const PREFIJO_ARCHIVO_INFORME = 'informe';
 
@@ -26,11 +22,6 @@ function leerPuntos(id: string, queryClient: QueryClient, opciones: OpcionesInfo
   return queryClient
     .fetchQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) })
     .catch(() => null);
-}
-
-/** Lo que puede faltar: el informe sale igual, sin esa parte. */
-function leerAccesorios(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
-  return Promise.all([leerPuntos(id, queryClient, opciones), leerOrganizacionDelInforme(id)]);
 }
 
 /**
@@ -43,7 +34,7 @@ function leerInsumos(id: string, queryClient: QueryClient, opciones: OpcionesInf
       queryKey: CLAVE_QUERY.dashboard(id),
       queryFn: () => obtenerFuenteDashboard(id),
     }),
-    leerAccesorios(id, queryClient, opciones),
+    leerPuntos(id, queryClient, opciones),
     // Los colores del dashboard, el KML y la ficha; sin especies legibles, por hash.
     leerColoresEspecie(queryClient, id),
     import('../pdf/informe/motorInforme'),
@@ -56,18 +47,13 @@ export async function generarPdfInforme(
   queryClient: QueryClient,
   opciones: OpcionesInforme,
 ): Promise<Blob> {
-  const [fuente, [puntos, organizacion], colorDe, motor] = await leerInsumos(
-    plantacion.id,
-    queryClient,
-    opciones,
-  );
+  const [fuente, puntos, colorDe, motor] = await leerInsumos(plantacion.id, queryClient, opciones);
   return motor.renderizarInforme({
     ...motor.emisionDePlantacion(plantacion),
     dashboard: calcularDashboard(fuente),
     puntos,
-    plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },
+    plantacion,
     objetivo: plantacion.objetivoArboles,
-    organizacion,
     colorDe,
     opciones,
   });

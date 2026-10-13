@@ -3,9 +3,6 @@ import { TEXTO_PLANTILLA } from '../plantilla/textos';
 /** Textos visibles del informe de plantación. */
 export const TEXTO_INFORME = {
   documento: 'Informe de plantación',
-  periodo: 'Período',
-  plantacion: 'Plantación',
-  estado: 'Estado:',
   arboles: 'Árboles registrados',
   de: TEXTO_PLANTILLA.de,
   deLaMeta: 'de la meta',

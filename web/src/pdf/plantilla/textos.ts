@@ -21,11 +21,16 @@ export type EmisionPdf = { encabezado: EncabezadoPdf; emitido: string };
 
 export type PlantacionDelEncabezado = { lugar: string; periodo: string };
 
+/** «San Sebastián · 2025-2026»: lo que el encabezado y el título del informe dicen de la plantación. */
+export function lugarYPeriodo({ lugar, periodo }: PlantacionDelEncabezado): string {
+  return `${lugar}${TEXTO_PLANTILLA.separador}${periodo}`;
+}
+
 export function encabezadoDePlantacion(
   plantacion: PlantacionDelEncabezado,
   logo: string,
 ): EncabezadoPdf {
-  return { logo, titulo: `${plantacion.lugar}${TEXTO_PLANTILLA.separador}${plantacion.periodo}` };
+  return { logo, titulo: lugarYPeriodo(plantacion) };
 }
 
 /** «Emitido el 06/10/2026 · Página 1 de 3». */

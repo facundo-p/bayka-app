@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import * as motor from '../../pdf/ficha/motorFicha';
 import { ESTADO_MAPA, type MapaPdf } from '../../pdf/mapa/estadoMapa';
-import { leerArbolParaFicha, leerNombreOrganizacion } from '../../queries/fichasQueries';
+import { leerArbolParaFicha } from '../../queries/fichasQueries';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -12,7 +12,6 @@ import { ERROR_FICHA_SIN_ARBOL, descargarFichaPdf, nombreArchivoFicha } from '..
 
 vi.mock('../../queries/fichasQueries', () => ({
   leerArbolParaFicha: vi.fn(),
-  leerNombreOrganizacion: vi.fn(),
 }));
 vi.mock('../../queries/mapaQueries', () => ({ listarPuntosGps: vi.fn() }));
 vi.mock('../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
@@ -86,7 +85,6 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
     colorDe: expect.any(Function),
   });
   expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
-  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
   expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining(EMISION));
   expect(descargarBlob).toHaveBeenCalledWith(
     BLOB,

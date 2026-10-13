@@ -3,11 +3,7 @@ import type { ModeloArbolReporte, ModeloTarjeta } from '../../pdf/reporte/datosR
 import * as motor from '../../pdf/reporte/motorReporte';
 import { MODO_REPORTE } from '../../pdf/reporte/planReporte';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
-import {
-  leerNombreOrganizacion,
-  listarArbolesDelFiltro,
-  type ArbolParaFicha,
-} from '../../queries/fichasQueries';
+import { listarArbolesDelFiltro, type ArbolParaFicha } from '../../queries/fichasQueries';
 import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
 import { descargarBlob } from '../descargas';
 import {
@@ -17,10 +13,7 @@ import {
   type ProgresoReporte,
 } from '../pdfReporte';
 
-vi.mock('../../queries/fichasQueries', () => ({
-  leerNombreOrganizacion: vi.fn(),
-  listarArbolesDelFiltro: vi.fn(),
-}));
+vi.mock('../../queries/fichasQueries', () => ({ listarArbolesDelFiltro: vi.fn() }));
 vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
@@ -56,7 +49,6 @@ function repartoRenderizado() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC]);
   vi.mocked(motor.cargarFotos).mockImplementation(async (urls) => urls.map(() => FOTO_LISTA));
   vi.mocked(motor.datosTarjeta).mockImplementation(
@@ -124,11 +116,10 @@ test('avisa el progreso de la bajada de fotos y después el armado del PDF', asy
   ]);
 });
 
-test('el encabezado lleva solo la plantación: la organización no se lee', async () => {
+test('el encabezado lleva solo la plantación', async () => {
   await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
   expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(vi.mocked(motor.renderizarReporte).mock.lastCall![0]).toMatchObject(EMISION);
-  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
 });
 
 test('los colores de especie son los de la plantación', async () => {
@@ -142,7 +133,6 @@ test('sin árboles falla antes de leer nada', async () => {
   await expect(
     generarPdfReporte({ arboles: [], modo: MODO_REPORTE.conFotos }, contexto()),
   ).rejects.toThrow(ERROR_REPORTE_SIN_ARBOLES);
-  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
   expect(listarEspeciesDePlantacion).not.toHaveBeenCalled();
   expect(motor.renderizarReporte).not.toHaveBeenCalled();
 });
