@@ -2,7 +2,8 @@
 import { FUENTES_NODE } from '../../../test/pdfNode';
 import { anchoDelRenglon, renglonesDeTextkit } from '../../../test/textkit';
 import { cortadorConMemoria, cortarTexto } from '../cortarTexto';
-import { comoMedible, leerFuente, registrarFuentes } from '../fuentes';
+import type { FuenteLeida } from '../fuenteLeida';
+import { leerFuente, registrarFuentes } from '../fuentes';
 import { medidorDeFuente, type EstiloMedido, type Medidor } from '../medirTexto';
 import { FUENTE_PDF, PESO_FUENTE, TAMANO_TEXTO } from '../tokens';
 
@@ -92,10 +93,8 @@ test('el cortador con memoria corta igual, sin volver a medir lo que ya cortó',
   expect(medir.mock.calls.filter(([texto]) => texto === 'Loma de los Paraísos')).toHaveLength(1);
 });
 
-type Fuente = Awaited<ReturnType<typeof leerFuente>>;
-
 /** El renglón que arma textkit con `maxLines: 1` y «…», como las celdas del texto cortado. */
-function renglonDeTextkit(texto: string, fuente: Fuente, estilo: EstiloMedido, ancho: number) {
+function renglonDeTextkit(texto: string, fuente: FuenteLeida, estilo: EstiloMedido, ancho: number) {
   const [renglon] = renglonesDeTextkit(texto, fuente, estilo, { ancho, unRenglon: true });
   return renglon;
 }
@@ -112,7 +111,7 @@ test.each([60, 90, 116, 167])('cortado a %s pt, textkit lo deja como está', asy
     fontWeight: PESO_FUENTE.regular,
   });
   const estilo = { tamano: TAMANO_TEXTO.filaListado };
-  const medir = medidorDeFuente(comoMedible(fuente), estilo);
+  const medir = medidorDeFuente(fuente, estilo);
   for (const texto of [NOMBRE_LARGO, NOMBRE_DE_60]) {
     const corte = cortarTexto(texto, medir, ancho);
     const renglon = renglonDeTextkit(corte, fuente, estilo, ancho);

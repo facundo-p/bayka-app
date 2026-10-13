@@ -4,6 +4,8 @@
  * agrega al final de toda pila. Si ninguna tiene el glifo, lo dibuja igual con
  * Helvetica: sale otro carácter, o nada.
  */
+import type { FuenteLeida } from './fuenteLeida';
+import { conMemoria } from './memoria';
 
 /**
  * Lo que va en lugar de lo que no se dibuja. «?» lo tienen todas las fuentes y
@@ -15,11 +17,8 @@ export const REEMPLAZO_TEXTO = {
   blanco: ' ',
 } as const;
 
-/** Lo que se le pregunta a una fuente leída: fontkit y el StandardFont de @react-pdf/font responden igual. */
-export type FuenteConGlifos = { hasGlyphForCodePoint(codigo: number): boolean };
-
-/** Las fuentes que textkit prueba para un texto, en orden. */
-export type PilaDeFuentes = readonly FuenteConGlifos[];
+/** Las fuentes que textkit prueba para un texto, en orden. Sanear solo les pregunta si tienen el glifo. */
+export type PilaDeFuentes = readonly Pick<FuenteLeida, 'hasGlyphForCodePoint'>[];
 
 export type Dibujable = (codigo: number) => boolean;
 
@@ -47,18 +46,6 @@ const MARCA = /^\p{M}$/u;
 
 /** Una letra y sus marcas combinantes, en NFD: «ĩ» es «i» más tilde. */
 const BASE_CON_MARCAS = /^(\P{M})\p{M}+$/u;
-
-function conMemoria<C, V>(calcular: (clave: C) => V): (clave: C) => V {
-  const hechos = new Map<C, V>();
-  return (clave) => {
-    let hecho = hechos.get(clave);
-    if (hecho === undefined) {
-      hecho = calcular(clave);
-      hechos.set(clave, hecho);
-    }
-    return hecho;
-  };
-}
 
 /**
  * Del modelo no se sabe en qué letra va cada texto: un punto de código se

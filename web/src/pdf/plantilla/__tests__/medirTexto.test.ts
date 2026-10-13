@@ -1,21 +1,13 @@
 // @vitest-environment node
 import { FUENTES_NODE } from '../../../test/pdfNode';
 import { anchoDelRenglon, renglonesDeTextkit } from '../../../test/textkit';
-import {
-  comoMedible,
-  FUENTE_RESPALDO,
-  leerFuente,
-  medidorRegistrado,
-  registrarFuentes,
-} from '../fuentes';
-import { conMemoria, medidorDeFuente, type FuenteMedible, type Medidor } from '../medirTexto';
+import type { FuenteLeida } from '../fuenteLeida';
+import { leerConRespaldo, leerFuente, medidorRegistrado, registrarFuentes } from '../fuentes';
+import { medidorDeFuente } from '../medirTexto';
 import { FUENTE_PDF, MEDIDA_REPORTE, PESO_FUENTE, TAMANO_TEXTO } from '../tokens';
 
-/** Un pt por unidad UTF-16. */
-const porUnidad: Medidor = (texto) => texto.length;
-
 /** Medio em por glifo, en una fuente de 1000 unidades por em; tiene las letras de `glifos`. */
-const fuenteFalsa = (glifos = 'abc'): FuenteMedible => ({
+const fuenteFalsa = (glifos = 'abc'): FuenteLeida => ({
   unitsPerEm: 1000,
   layout: (texto) => ({ positions: [...texto].map(() => ({ xAdvance: 500 })) }),
   hasGlyphForCodePoint: (codigo) => glifos.includes(String.fromCodePoint(codigo)),
@@ -28,7 +20,7 @@ test('mide cada glifo escalado al tamaño, más el espaciado, también tras el �
 
 test('lo que la fuente no tiene lo mide con la de respaldo, en su escala', () => {
   // Un em por glifo en 2000 unidades: medio em, como la principal, pero en otra escala.
-  const respaldo: FuenteMedible = {
+  const respaldo: FuenteLeida = {
     unitsPerEm: 2000,
     layout: (texto) => ({ positions: [...texto].map(() => ({ xAdvance: 3000 })) }),
     hasGlyphForCodePoint: () => true,
@@ -36,13 +28,6 @@ test('lo que la fuente no tiene lo mide con la de respaldo, en su escala', () =>
   const medir = medidorDeFuente(fuenteFalsa('ab'), { tamano: 10 }, respaldo);
   expect(medir('ab')).toBe(10);
   expect(medir('aŠbŠŠ')).toBe(10 + 3 * 15);
-});
-
-test('con memoria, mide cada texto una sola vez', () => {
-  const medir = vi.fn(porUnidad);
-  const conCache = conMemoria(medir);
-  expect([conCache('Loma'), conCache('Loma'), conCache('Línea')]).toEqual([4, 4, 5]);
-  expect(medir).toHaveBeenCalledTimes(2);
 });
 
 /** Sin caja que lo corte. */
@@ -71,7 +56,7 @@ test.each([
   for (const texto of [NOMBRE_LARGO, 'AVATAR Tolva · ffi', '—AVAV', '(Lote A)', 'LPN123', '…']) {
     const [renglon] = renglonesDeTextkit(texto, fuente, estilo, { ancho: ANCHO_LIBRE });
     const textkit = anchoDelRenglon(renglon);
-    expect(medidorDeFuente(comoMedible(fuente), estilo)(texto)).toBeCloseTo(textkit, 6);
+    expect(medidorDeFuente(fuente, estilo)(texto)).toBeCloseTo(textkit, 6);
   }
 });
 
@@ -82,8 +67,8 @@ test.each([
   ['semibold, que cae en Helvetica Bold', PESO_FUENTE.semibold],
 ])('con un carácter que Poppins no tiene, mide igual que textkit (%s)', async (_, peso) => {
   const letra = { fontFamily: FUENTE_PDF.cuerpo, fontWeight: peso, fontSize: TAMANO_TEXTO.dato };
-  const fuente = await leerFuente(letra);
-  const respaldo = [await leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO })];
+  const [fuente, helvetica] = await leerConRespaldo(letra);
+  const respaldo = [helvetica];
   const medir = await medidorRegistrado(letra);
   const estilo = { tamano: letra.fontSize };
   for (const texto of ['Šumava žlutý', 'ƒ Ñandutí', 'Yvyrapytã Ĩ', 'Š', '12 Šž', 'ŠAV To']) {

@@ -1,7 +1,7 @@
 /*
- * El informe en node, por el camino del motor: los textos en renglones con las
- * fuentes ya leídas, el plan y el documento, todo en el mismo turno. Con un PNG
- * cualquiera en lugar del canvas del mapa.
+ * El informe en node, por el camino del motor: los textos saneados y en
+ * renglones con las fuentes ya leídas, el plan y el documento, todo en el mismo
+ * turno. Con un PNG cualquiera en lugar del canvas del mapa.
  */
 import { Document, renderToBuffer } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
@@ -21,7 +21,7 @@ import {
 } from '../pdf/informe/renglonesInforme';
 import { TEXTO_INFORME } from '../pdf/informe/textosInforme';
 import { ESTADO_MAPA } from '../pdf/mapa/estadoMapa';
-import { renderizarEnSerie } from '../pdf/plantilla/fuentes';
+import { renderizarEnSerie, renderizarSaneado } from '../pdf/plantilla/fuentes';
 import { Hoja } from '../pdf/plantilla/Hoja';
 import { encabezadoDePlantacion } from '../pdf/plantilla/textos';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from './pdfNode';
@@ -49,10 +49,12 @@ function mapaDe(modelo: InformeEnRenglones, variante: VarianteInforme): MapaDelD
 
 /** El PDF, sus textos, el plan del mapa y el modelo en renglones con que se armó. */
 export async function armarInforme(entrada: EntradaInforme, variante: VarianteInforme = {}) {
-  const datos = datosInforme(entrada);
-  const encabezado = encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE);
+  const props = {
+    encabezado: encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE),
+    datos: datosInforme(entrada),
+  };
   let armado: { modelo: InformeEnRenglones; plan: PlanInforme | null } | undefined;
-  const pdf = await renderizarEnSerie(FUENTES_NODE, async () => {
+  const pdf = await renderizarSaneado(FUENTES_NODE, props, async ({ encabezado, datos }) => {
     const medidores = variante.medidores ?? (await leerMedidoresInforme());
     const modelo = informeEnRenglones(datos, medidores);
     const mapa = mapaDe(modelo, variante);

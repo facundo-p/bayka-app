@@ -4,14 +4,8 @@
  * ancho que la caja y textkit achica los espacios hasta pegar las palabras
  * (#876). Cortado antes, el renglón entra y textkit no lo toca.
  */
-import {
-  conMemoria,
-  grafemas,
-  mayorQueEntra,
-  entraEn,
-  saleEntero,
-  type Medidor,
-} from './medirTexto';
+import { conMemoria } from './memoria';
+import { grafemas, mayorQueEntra, entraEn, saleEntero, type Medidor } from './medirTexto';
 
 const ELIPSIS = '…';
 
