@@ -93,6 +93,7 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
       nombreFoto={nombreFotoDe(seccion, arbol)}
       descargarFicha={seccion.descargaFichaDe(arbol)}
       edicionDeEspecie={seccion.edicionDeEspecie}
+      eliminacionDeFoto={seccion.eliminacionDeFoto}
       onCerrar={() => seccion.setArbolSeleccionado(null)}
     />
   );

@@ -13,6 +13,8 @@ import {
   ConflictoDeEspecieError,
 } from '../../../repositories/especieDeArbol';
 import type { EdicionDeEspecie } from '../useCambioDeEspecie';
+import type { EliminacionDeFoto } from '../useEliminarFoto';
+import { FotoCambiadaError, quitarFotoDeArbol } from '../../../repositories/fotoDeArbol';
 import { ErrorDeEdicion } from '../../../repositories/edicionDePlantacion';
 import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 
@@ -42,6 +44,13 @@ vi.mock('../../../repositories/especieDeArbol', async () => {
     '../../../repositories/especieDeArbol',
   );
   return { ...actual, cambiarEspecieDeArbol: vi.fn() };
+});
+
+vi.mock('../../../repositories/fotoDeArbol', async () => {
+  const actual = await vi.importActual<typeof import('../../../repositories/fotoDeArbol')>(
+    '../../../repositories/fotoDeArbol',
+  );
+  return { ...actual, quitarFotoDeArbol: vi.fn() };
 });
 
 function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
@@ -91,6 +100,7 @@ function renderPanel(
     nombreFoto = 'foto-finca-2026-a-001.jpg' as string | null,
     descargarFicha = null as (() => Promise<void>) | null,
     edicionDeEspecie = undefined as EdicionDeEspecie | undefined,
+    eliminacionDeFoto = undefined as EliminacionDeFoto | undefined,
   } = {},
 ) {
   const onCerrar = vi.fn();
@@ -104,6 +114,7 @@ function renderPanel(
         nombreFoto={nombreFoto}
         descargarFicha={descargarFicha}
         edicionDeEspecie={edicionDeEspecie}
+        eliminacionDeFoto={eliminacionDeFoto}
         onCerrar={onCerrar}
       />
     </QueryClientProvider>,
@@ -366,6 +377,142 @@ describe('foto', () => {
 
     expect(await screen.findByText('No se pudo descargar la foto')).toBeInTheDocument();
     expect(descargarDesdeUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('eliminar la foto (#903)', () => {
+  const FOTO_SUBIDA = 'plantations/p1/trees/t1.jpg';
+  const MOTIVO = 'La plantación está archivada: desarchivala para eliminar la foto.';
+
+  function eliminacion(motivoBloqueo: string | null = null): EliminacionDeFoto {
+    return { motivoBloqueo, onActualizado: vi.fn() };
+  }
+
+  const tacho = () => screen.findByRole('button', { name: 'Eliminar foto' });
+  const confirmacion = () => screen.getByRole('dialog', { name: 'Eliminar foto' });
+
+  async function pedirYConfirmar(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(await tacho());
+    await usuario.click(within(confirmacion()).getByRole('button', { name: 'Eliminar foto' }));
+  }
+
+  beforeEach(() => {
+    vi.mocked(obtenerUrlFoto).mockResolvedValue('https://firmada.test/foto.jpg');
+    vi.mocked(quitarFotoDeArbol).mockReset();
+  });
+
+  test('sin la eliminación no se ofrece', async () => {
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+    await screen.findByRole('button', { name: 'Descargar foto' });
+    expect(screen.queryByRole('button', { name: 'Eliminar foto' })).not.toBeInTheDocument();
+  });
+
+  test('sin foto subida no se ofrece', () => {
+    renderPanel(arbol({ fotoUrl: 'file:///data/foto.jpg' }), { eliminacionDeFoto: eliminacion() });
+    expect(screen.queryByRole('button', { name: 'Eliminar foto' })).not.toBeInTheDocument();
+  });
+
+  test('el tacho pide confirmación y cancelar no borra', async () => {
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto: eliminacion() });
+
+    await usuario.click(await tacho());
+
+    expect(
+      within(confirmacion()).getByText(/foto del árbol A-001-SS26 para todos/),
+    ).toBeInTheDocument();
+    expect(within(confirmacion()).getByText('No se puede deshacer.')).toBeInTheDocument();
+    await usuario.click(within(confirmacion()).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(quitarFotoDeArbol).not.toHaveBeenCalled();
+  });
+
+  test('confirmar la quita con la foto vista como base y refresca lo que cuenta fotos', async () => {
+    const invalidaciones = espiarInvalidaciones();
+    const usuario = userEvent.setup();
+    const eliminacionDeFoto = eliminacion();
+    vi.mocked(quitarFotoDeArbol).mockResolvedValue();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto });
+
+    await pedirYConfirmar(usuario);
+
+    expect(quitarFotoDeArbol).toHaveBeenCalledWith(arbol().id, FOTO_SUBIDA);
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(eliminacionDeFoto.onActualizado).toHaveBeenCalledWith(
+      expect.objectContaining({ id: arbol().id, fotoUrl: null }),
+    );
+    const claves = invalidaciones.mock.calls.map(([filtros]) => filtros?.queryKey);
+    expect(claves).toEqual(
+      expect.arrayContaining([
+        ['datos-arboles'],
+        ['conteo-reporte'],
+        ['plantaciones'],
+        ['plantacion'],
+      ]),
+    );
+  });
+
+  test('desde la foto ampliada también, con la confirmación encima', async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(quitarFotoDeArbol).mockResolvedValue();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto: eliminacion() });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ampliar foto' }));
+    const ampliada = screen.getByRole('dialog', { name: 'Foto del árbol A-001-SS26' });
+    expect(within(ampliada).getByRole('button', { name: 'Descargar' })).toBeEnabled();
+    await usuario.click(within(ampliada).getByRole('button', { name: 'Eliminar foto' }));
+    await usuario.click(within(confirmacion()).getByRole('button', { name: 'Eliminar foto' }));
+
+    expect(quitarFotoDeArbol).toHaveBeenCalledWith(arbol().id, FOTO_SUBIDA);
+  });
+
+  test('sin permiso queda deshabilitado con el motivo, en la miniatura y ampliada', async () => {
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto: eliminacion(MOTIVO) });
+
+    expect(await tacho()).toBeDisabled();
+    expect(await tacho()).toHaveAttribute('title', MOTIVO);
+    await usuario.click(screen.getByRole('button', { name: 'Ampliar foto' }));
+    const ampliada = screen.getByRole('dialog', { name: 'Foto del árbol A-001-SS26' });
+    const boton = within(ampliada).getByRole('button', { name: 'Eliminar foto' });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveAttribute('title', MOTIVO);
+  });
+
+  test('si alguien cambió la foto, muestra la nueva y avisa', async () => {
+    const usuario = userEvent.setup();
+    const eliminacionDeFoto = eliminacion();
+    vi.mocked(quitarFotoDeArbol).mockRejectedValue(
+      new FotoCambiadaError('plantations/p1/trees/t1-v2.jpg'),
+    );
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto });
+
+    await pedirYConfirmar(usuario);
+
+    expect(await screen.findByText(/cambió la foto desde otro lado/)).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(eliminacionDeFoto.onActualizado).toHaveBeenCalledWith(
+      expect.objectContaining({ fotoUrl: 'plantations/p1/trees/t1-v2.jpg' }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('otro error queda en la confirmación', async () => {
+    const usuario = userEvent.setup();
+    const eliminacionDeFoto = eliminacion();
+    vi.mocked(quitarFotoDeArbol).mockRejectedValue(
+      new ErrorDeEdicion('No se pudo eliminar la foto.'),
+    );
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { eliminacionDeFoto });
+
+    await pedirYConfirmar(usuario);
+
+    expect(
+      await within(confirmacion()).findByText('No se pudo eliminar la foto.'),
+    ).toBeInTheDocument();
+    expect(eliminacionDeFoto.onActualizado).not.toHaveBeenCalled();
   });
 });
 
