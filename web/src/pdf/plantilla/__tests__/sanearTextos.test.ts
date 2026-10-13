@@ -31,23 +31,35 @@ describe('cada texto', () => {
     expect(sanear('Línea\r\n\t10')).toBe('Línea 10');
     expect(sanear('Línea  10')).toBe('Línea 10');
     expect(sanear('Línea\u000010\u007f')).toBe('Línea 10 ');
-    expect(sanear('Línea  　10')).toBe('Línea 10');
+    expect(sanear('Línea\u00a0\u202f\u300010')).toBe('Línea 10');
   });
 
   test('se compone en NFC antes de buscar el glifo', () => {
-    expect(sanear('ñandu')).toBe('ñandu');
+    expect(sanear('n\u0303andu')).toBe('ñandu');
   });
 
-  test('un punto de código que alguna pila no puede dibujar sale «?»', () => {
+  test('lo que dibujan todas las pilas sale igual', () => {
     expect(sanear('ñ')).toBe('ñ');
     expect(sanear('Š')).toBe('Š');
-    expect(sanear('Guasu ĩ')).toBe('Guasu ?');
-    expect(sanear('ĩ')).toBe('?');
-    expect(sanear('Σ 中文')).toBe('? ??');
   });
 
-  test('un emoji es un punto de código: un «?»', () => {
+  test('lo que alguna pila no dibuja queda en su letra base, sin las marcas', () => {
+    expect(sanear('Guas\u0169 \u0129')).toBe('Guasu i');
+    expect(sanear('i\u0303')).toBe('i');
+  });
+
+  test('una marca combinante suelta que no se dibuja se quita', () => {
+    expect(sanear('g\u0303uaraní')).toBe('guaraní');
+  });
+
+  test('sin letra base que se dibuje, sale «?»', () => {
+    expect(sanear('Σ 中文')).toBe('? ??');
+    expect(sanear('\u03ac')).toBe('?');
+  });
+
+  test('un emoji sale «?», y su selector de variante se quita', () => {
     expect(sanear('Yerba 😀')).toBe('Yerba ?');
+    expect(sanear('Yerba \u2764\ufe0f')).toBe('Yerba ?');
   });
 
   test('el ASCII imprimible sale igual, sin preguntarle a las fuentes', () => {
@@ -66,7 +78,7 @@ describe('cada texto', () => {
 
 describe('el modelo entero', () => {
   test('sanea cada string de objetos y arrays anidados', () => {
-    const modelo = { titulo: 'Ñu\nGuasu', filas: [{ nombre: 'ĩ', cantidad: 3 }], vacio: null };
+    const modelo = { titulo: 'Ñu\nGuasu', filas: [{ nombre: 'Σ', cantidad: 3 }], vacio: null };
     expect(sanearTextos(modelo, sanear)).toEqual({
       titulo: 'Ñu Guasu',
       filas: [{ nombre: '?', cantidad: 3 }],

@@ -29,7 +29,7 @@ test('Helvetica, el respaldo de textkit, sigue leída después de descartar las 
   expect(Font.getFont({ fontFamily: 'Helvetica', fontWeight: 700 }).data).not.toBeNull();
 });
 
-describe('con las fuentes reales, un carácter sale «?» si no lo dibujan todas las pilas', () => {
+describe('con las fuentes reales, lo que no dibujan todas las pilas se reemplaza', () => {
   const sanear = (texto: string) =>
     renderizarSaneado(FUENTES_NODE, { texto }, async (saneado) => saneado.texto);
 
@@ -39,8 +39,9 @@ describe('con las fuentes reales, un carácter sale «?» si no lo dibujan todas
     ['Šiauliai ž ƒ', 'Šiauliai ž ƒ'],
     // Helvetica no la tiene; las fuentes registradas, todas.
     ['ı', 'ı'],
-    // Biolinum las tiene, pero Poppins y Helvetica no.
-    ['Ñu Guasũ ĩ', 'Ñu Guas? ?'],
+    // Biolinum las tiene, pero Poppins y Helvetica no: quedan sus letras base.
+    ['Ñu Guasũ ĩ', 'Ñu Guasu i'],
+    ['ẽ ỹ g\u0303', 'e y g'],
     ['Σ', '?'],
     ['中文', '??'],
     ['Yerba 😀', 'Yerba ?'],

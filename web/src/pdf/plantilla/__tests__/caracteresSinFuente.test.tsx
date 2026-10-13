@@ -24,7 +24,7 @@ vi.mock('../recursosNavegador', async () => {
   };
 });
 
-/** «ĩ» y «ũ»: ni Poppins ni Helvetica. «Σ», CJK y el emoji: ninguna fuente del cuerpo. */
+/** «ĩ» y «ũ»: ni Poppins ni Helvetica, pero sí sus letras base. «Σ», CJK y el emoji: ninguna fuente del cuerpo. */
 const PARCELA_GUARANI = 'Ñu Guasũ ĩ';
 const ESPECIE_SIN_FUENTE = 'Yerba Σ 中文 😀';
 const GRUPO_CON_SALTO = 'Línea\n10';
@@ -91,9 +91,9 @@ test.each([
   ['la ficha', ficha],
   ['el informe', informe],
   ['el reporte', reporte],
-])('%s sale dos veces seguidas, con «?» donde no hay glifo', async (_, armar) => {
+])('%s sale dos veces seguidas, sin perder lo que no tiene glifo', async (_, armar) => {
   const textos = await textosDelSegundo(armar);
-  expect(textos).toContain('Ñu Guas? ?');
+  expect(textos).toContain('Ñu Guasu i');
   expect(textos).toContain('Yerba ? ?? ?');
   expect(textos).toContain('Línea 10');
 });
