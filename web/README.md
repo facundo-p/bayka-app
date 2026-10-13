@@ -145,9 +145,10 @@ src/
   lib/           Cliente supabase, constantes (PG_ERROR), helpers
   theme/         theme.css con los tokens de marca
   pdf/           Documentos PDF: plantilla y tokens de marca (`plantilla/`),
-                 mapa de puntos sobre el satélite (`mapa/`), fotos y fichas
-                 de árbol (`ficha/`), informe de la plantación (`informe/`)
-                 y reporte de los árboles de un filtro (`reporte/`)
+                 mapa de puntos sobre el satélite (`mapa/`), piezas de un
+                 árbol que comparten la ficha y el reporte (`arbol/`), fotos
+                 y fichas de árbol (`ficha/`), informe de la plantación
+                 (`informe/`) y reporte de los árboles de un filtro (`reporte/`)
 ```
 
 Reglas heredadas del proyecto: separación datos/presentación obligatoria,

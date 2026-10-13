@@ -6,24 +6,30 @@ import type { ModeloTarjeta } from './datosReporte';
 import { enTramos } from './planReporte';
 import { tarjetaStyles as styles } from './Reporte.styles';
 
-/** Un renglón por dato, debajo de la especie. */
-function Renglones({ tarjeta }: { tarjeta: ModeloTarjeta }) {
-  const t = TEXTO_ARBOL;
+function Ubicacion({ tarjeta }: { tarjeta: ModeloTarjeta }) {
   return (
     <>
-      <Dato rotulo={t.parcela} styles={styles}>
+      <Dato rotulo={TEXTO_ARBOL.parcela} styles={styles}>
         <ConCodigo entidad={tarjeta.parcela} styles={styles} />
       </Dato>
-      <Dato rotulo={t.grupo} styles={styles}>
+      <Dato rotulo={TEXTO_ARBOL.grupo} styles={styles}>
         <ConCodigo entidad={tarjeta.grupo} styles={styles} />
       </Dato>
-      <Dato rotulo={t.posicion} styles={styles}>
+      <Dato rotulo={TEXTO_ARBOL.posicion} styles={styles}>
         {tarjeta.posicion}
       </Dato>
-      <Dato rotulo={t.registrado} styles={styles}>
+    </>
+  );
+}
+
+/** El GPS va con la fecha: los dos los toma el registro. */
+function Registro({ tarjeta }: { tarjeta: ModeloTarjeta }) {
+  return (
+    <>
+      <Dato rotulo={TEXTO_ARBOL.registrado} styles={styles}>
         {tarjeta.registrado}
       </Dato>
-      <Dato rotulo={t.gps} styles={styles}>
+      <Dato rotulo={TEXTO_ARBOL.gps} styles={styles}>
         <Gps gps={tarjeta.gps} styles={styles} />
       </Dato>
     </>
@@ -35,7 +41,8 @@ function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
     <View style={styles.datos}>
       <Text style={styles.idArbol}>{tarjeta.idArbol}</Text>
       <RenglonEspecie especie={tarjeta.especie} styles={styles} />
-      <Renglones tarjeta={tarjeta} />
+      <Ubicacion tarjeta={tarjeta} />
+      <Registro tarjeta={tarjeta} />
     </View>
   );
 }
