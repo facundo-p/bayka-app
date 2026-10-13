@@ -50,6 +50,8 @@
   position: absolute;
   top: var(--space-md);
   right: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
 }
 
 .vacio {
@@ -100,6 +102,12 @@
   color: var(--color-danger);
 }
 
+.aviso {
+  font-size: var(--text-sm);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-secondary);
+}
+
 .coordenadas {
   display: flex;
   flex-wrap: wrap;
@@ -141,7 +149,14 @@
 
 .accionesModal {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* Lo destructivo, lejos de descargar y cerrar. */
+.accionApartada {
+  margin-right: auto;
 }
 
 .soloLectores {

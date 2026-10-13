@@ -590,6 +590,12 @@ export const RPC: Record<string, unknown> = {
   archivar_plantacion: { success: true },
   desarchivar_plantacion: { success: true },
   aplicar_cambios_especies: { success: true, rechazadas: [] },
+  quitar_fotos_arboles: {
+    success: true,
+    quitadas: 1,
+    rechazados: [],
+    conservados: { arboles: [] },
+  },
   // Siempre la variante más completa del modal (con datos, escribir el nombre).
   previsualizar_eliminacion_plantacion: {
     success: true,

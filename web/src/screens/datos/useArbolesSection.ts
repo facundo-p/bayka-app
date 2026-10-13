@@ -17,10 +17,12 @@ import {
 import type { Plantacion } from '../../queries/plantationQueries';
 import { descargarFichaPdf, type ContextoFichaPdf } from '../../services/pdfFicha';
 import { puedeCambiarEspecie } from './cambioDeEspecie';
+import { motivoParaNoEliminarFoto } from './eliminacionDeFoto';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import type { EdicionDeEspecie } from './useCambioDeEspecie';
+import type { EliminacionDeFoto } from './useEliminarFoto';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
 /** Retardo del debounce de la búsqueda por ID, en ms. */
@@ -71,6 +73,14 @@ function useEdicionDeEspecie(
   return { plantationId, codigoPlantacion: plantacion.codigo, onActualizado };
 }
 
+function useEliminacionDeFoto(
+  plantacion: Plantacion | null | undefined,
+  onActualizado: (arbol: ArbolDetalle) => void,
+): EliminacionDeFoto {
+  const { perfil } = useAuth();
+  return { motivoBloqueo: motivoParaNoEliminarFoto(perfil, plantacion), onActualizado };
+}
+
 /**
  * Lo que necesita la ficha PDF. null (botón deshabilitado) hasta tener la
  * plantación y los técnicos: antes saldría «Técnico —».
@@ -108,6 +118,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
+  const eliminacionDeFoto = useEliminacionDeFoto(plantacion, actualizarArbol);
   const colores = useColoresEspecie(id);
   const contextoFicha = useContextoFicha(plantacion, mapas);
   return {
@@ -121,6 +132,7 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
+    eliminacionDeFoto,
     descargaFichaDe: descargaFichaDe(contextoFicha),
     colores,
   };

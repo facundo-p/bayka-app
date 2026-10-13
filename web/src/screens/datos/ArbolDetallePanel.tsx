@@ -7,6 +7,7 @@ import { BloqueEspecie } from './BloqueEspecie';
 import { BotonFichaPdf } from './BotonFichaPdf';
 import { FotoYMapa } from './FotoYMapa';
 import type { EdicionDeEspecie } from './useCambioDeEspecie';
+import type { EliminacionDeFoto } from './useEliminarFoto';
 import styles from './ArbolDetallePanel.module.css';
 
 interface ArbolDetallePanelProps {
@@ -20,6 +21,8 @@ interface ArbolDetallePanelProps {
   descargarFicha: (() => Promise<void>) | null;
   /** Sin esto la especie es de solo lectura. */
   edicionDeEspecie?: EdicionDeEspecie;
+  /** Sin esto no se ofrece eliminar la foto. */
+  eliminacionDeFoto?: EliminacionDeFoto;
   onCerrar: () => void;
 }
 
@@ -78,7 +81,7 @@ function RegistroArbol({ createdAt, tecnico }: { createdAt: string; tecnico: str
   );
 }
 
-/** Detalle de un árbol al costado del listado: solo se edita la especie (#679). */
+/** Detalle de un árbol al costado del listado: se edita la especie (#679) y se elimina la foto (#903). */
 export function ArbolDetallePanel({
   arbol,
   parcela,
@@ -86,6 +89,7 @@ export function ArbolDetallePanel({
   nombreFoto,
   descargarFicha,
   edicionDeEspecie,
+  eliminacionDeFoto,
   onCerrar,
 }: ArbolDetallePanelProps) {
   return (
@@ -97,7 +101,7 @@ export function ArbolDetallePanel({
     >
       <BloqueEspecie arbol={arbol} edicion={edicionDeEspecie} />
       <UbicacionArbol arbol={arbol} parcela={parcela} />
-      <FotoYMapa arbol={arbol} nombreFoto={nombreFoto} />
+      <FotoYMapa arbol={arbol} nombreFoto={nombreFoto} eliminacion={eliminacionDeFoto} />
       <RegistroArbol createdAt={arbol.createdAt} tecnico={tecnicoNombre} />
     </PanelLateral>
   );

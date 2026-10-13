@@ -218,6 +218,9 @@ sobre DUPLICATE_CODE; un grupo que ya existe sigue la regla de 072 (074, #798).
 `plantation_ids_status` ni `update_tree_ids`, y un payload viejo de
 `sync_subgroup` que trae `plantacion_id` y `global_id` sincroniza igual, también
 al re-sincronizar (080, 081, #822, #859).
+`64` `quitar_fotos_arboles` en una finalizada: el admin y el superadmin quitan
+la foto, el técnico no, una archivada no admite a nadie y la base vieja se
+sigue respetando; `puede_editar_finalizada` no cambia para el admin (082, #903).
 
 ## Hallazgo fuera de alcance (no corregido)
 
