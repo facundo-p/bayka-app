@@ -1,55 +1,31 @@
-import { Image, Text, View } from '@react-pdf/renderer';
-import type { ReactNode } from 'react';
-import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
+import { Text, View } from '@react-pdf/renderer';
+import { ConCodigo, Dato, Foto, Gps, RenglonEspecie } from '../arbol/PartesArbol';
+import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { MEDIDA_REPORTE } from '../plantilla/tokens';
 import type { ModeloTarjeta } from './datosReporte';
-import { ConCodigo, Especie, Gps } from './PartesArbol';
 import { enTramos } from './planReporte';
-import { reporteStyles as styles } from './Reporte.styles';
-import { TEXTO_REPORTE } from './textosReporte';
-
-const TEXTO_FOTO_FALTANTE = {
-  [ESTADO_FOTO.sinFoto]: TEXTO_REPORTE.sinFoto,
-  [ESTADO_FOTO.noDisponible]: TEXTO_REPORTE.fotoNoDisponible,
-} as const;
-
-function Foto({ foto }: { foto: FotoPdf }) {
-  if (esFotoLista(foto)) return <Image style={styles.foto} src={foto.src} />;
-  return (
-    <View style={styles.fotoVacia}>
-      <Text style={styles.textoVacio}>{TEXTO_FOTO_FALTANTE[foto.estado]}</Text>
-    </View>
-  );
-}
-
-function Dato({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    <View style={styles.dato}>
-      <Text style={styles.etiqueta}>{etiqueta}</Text>
-      <Text style={styles.valor}>{children}</Text>
-    </View>
-  );
-}
+import { tarjetaStyles as styles } from './Reporte.styles';
 
 function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
+  const t = TEXTO_ARBOL;
   return (
     <View style={styles.datos}>
       <Text style={styles.idArbol}>{tarjeta.idArbol}</Text>
-      <Especie
-        especie={tarjeta.especie}
-        style={styles.especie}
-        estiloTexto={styles.nombreEspecie}
-      />
-      <Dato etiqueta={TEXTO_REPORTE.parcela}>
-        <ConCodigo entidad={tarjeta.parcela} />
+      <RenglonEspecie especie={tarjeta.especie} styles={styles} />
+      <Dato rotulo={t.parcela} styles={styles}>
+        <ConCodigo entidad={tarjeta.parcela} styles={styles} />
       </Dato>
-      <Dato etiqueta={TEXTO_REPORTE.grupo}>
-        <ConCodigo entidad={tarjeta.grupo} />
+      <Dato rotulo={t.grupo} styles={styles}>
+        <ConCodigo entidad={tarjeta.grupo} styles={styles} />
       </Dato>
-      <Dato etiqueta={TEXTO_REPORTE.posicion}>{tarjeta.posicion}</Dato>
-      <Dato etiqueta={TEXTO_REPORTE.registrado}>{tarjeta.registrado}</Dato>
-      <Dato etiqueta={TEXTO_REPORTE.gps}>
-        <Gps gps={tarjeta.gps} />
+      <Dato rotulo={t.posicion} styles={styles}>
+        {tarjeta.posicion}
+      </Dato>
+      <Dato rotulo={t.registrado} styles={styles}>
+        {tarjeta.registrado}
+      </Dato>
+      <Dato rotulo={t.gps} styles={styles}>
+        <Gps gps={tarjeta.gps} styles={styles} />
       </Dato>
     </View>
   );
@@ -59,7 +35,7 @@ function Datos({ tarjeta }: { tarjeta: ModeloTarjeta }) {
 export function Tarjeta({ tarjeta }: { tarjeta: ModeloTarjeta }) {
   return (
     <View style={styles.tarjeta} wrap={false}>
-      <Foto foto={tarjeta.foto} />
+      <Foto foto={tarjeta.foto} styles={styles} />
       <Datos tarjeta={tarjeta} />
     </View>
   );
@@ -70,7 +46,7 @@ export function GrillaTarjetas({ tarjetas }: { tarjetas: readonly ModeloTarjeta[
   return (
     <View style={styles.grilla}>
       {enTramos(tarjetas, MEDIDA_REPORTE.columnasTarjetas).map((fila, indiceFila) => (
-        <View key={indiceFila} style={styles.filaTarjetas}>
+        <View key={indiceFila} style={styles.fila}>
           {fila.map((tarjeta, indice) => (
             <Tarjeta key={indice} tarjeta={tarjeta} />
           ))}
