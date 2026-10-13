@@ -218,14 +218,16 @@ export function cuerpoDeHoja(orientacion: OrientacionHoja): Medidas {
 export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
 
 /**
- * Medidas del informe en pt. Los renglones tienen alto fijo: con eso
- * `planificarInforme` sabe cuánto ocupa cada bloque sin renderizar.
+ * Medidas del informe en pt. Los altos de la línea, de las filas de especie y
+ * de la leyenda son los de un renglón: un texto partido en más suma el alto de
+ * cada renglón de más. Con eso `planificarInforme` sabe cuánto ocupa cada
+ * bloque sin renderizar.
  */
 export const MEDIDA_INFORME = {
   separacionBloques: 14,
   /**
-   * Interlineado de los renglones de alto fijo: el de Poppins por defecto no
-   * entra, y react-pdf no dibuja una línea que no entra en su caja.
+   * Interlineado de los renglones: el de Poppins por defecto no entra en los
+   * bloques de alto fijo, y react-pdf no dibuja una línea que no entra en su caja.
    */
   interlineado: 1.25,
   altoTitulo: 26,
@@ -276,6 +278,44 @@ export const CAJA_MAPA_INFORME = {
   ancho: CUERPO_HOJA.ancho,
   alto:
     (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
+} as const;
+
+/** Lo que deja el punto de color, con su aire, en un renglón del informe. */
+const ANCHO_PUNTO_INFORME = MEDIDA_INFORME.puntoEspecie + MEDIDA_FICHA.aireTrasPunto;
+
+/** Ancho en pt de los renglones del informe que se parten o se cortan antes del render (#883). */
+export const ANCHO_TEXTO_INFORME = {
+  linea: CUERPO_HOJA.ancho,
+  especie: MEDIDA_INFORME.anchoNombreEspecie - ANCHO_PUNTO_INFORME,
+  leyenda: MEDIDA_INFORME.anchoItemLeyenda - ANCHO_PUNTO_INFORME,
+} as const;
+
+/** La letra de los textos del informe que se parten o se cortan antes del render (#883). */
+export const LETRA_INFORME = {
+  linea: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.lineaInforme,
+  },
+  fila: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaInforme,
+  },
+  leyenda: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.leyenda,
+  },
+} as const;
+
+const altoEnInforme = (tamano: number) => tamano * MEDIDA_INFORME.interlineado;
+
+/** Alto en pt de un renglón de cada letra del informe que se parte. */
+export const ALTO_RENGLON_INFORME = {
+  linea: altoEnInforme(LETRA_INFORME.linea.fontSize),
+  fila: altoEnInforme(LETRA_INFORME.fila.fontSize),
+  leyenda: altoEnInforme(LETRA_INFORME.leyenda.fontSize),
 } as const;
 
 /**
@@ -390,3 +430,14 @@ export const ALTO_RENGLON_REPORTE = {
   dato: altoDeRenglon(LETRA_REPORTE.dato.fontSize),
   etiqueta: altoDeRenglon(TAMANO_TEXTO.etiqueta),
 } as const;
+
+/**
+ * Lo que queda arriba de un renglón centrado en `alto`. Los bloques van
+ * arriba, con este aire: un texto de un renglón queda donde quedaba centrado,
+ * y uno de más crece hacia abajo.
+ */
+export const aireCentrado = (alto: number, altoRenglon: number) => (alto - altoRenglon) / 2;
+
+/** El alto de una caja con un renglón, más el de cada renglón de más. */
+export const altoConRenglones = (altoDeUno: number, altoRenglon: number, renglones: number) =>
+  altoDeUno + (renglones - 1) * altoRenglon;

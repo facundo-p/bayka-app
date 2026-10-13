@@ -83,9 +83,10 @@ export type ModeloInforme = {
   mapa: MapaDelInforme | null;
 };
 
-export type ModeloConMapa = ModeloInforme & { mapa: MapaDelInforme };
-
-export const tieneMapa = (modelo: ModeloInforme): modelo is ModeloConMapa => modelo.mapa !== null;
+/** Si se eligió el mapa, en el modelo o en el mismo con los textos en renglones. */
+export const tieneMapa = <T extends { mapa: object | null }>(
+  modelo: T,
+): modelo is T & { mapa: NonNullable<T['mapa']> } => modelo.mapa !== null;
 
 const conPorciento = (valor: number | string) => `${valor}%`;
 

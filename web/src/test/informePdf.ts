@@ -3,7 +3,8 @@
  * conteos del dashboard y los puntos del mapa cuentan lo mismo.
  */
 import { LISTA_OPCIONES_INFORME, opcionesCon, type OpcionesInforme } from '../lib/opcionesInforme';
-import type { EntradaInforme } from '../pdf/informe/datosInforme';
+import type { EntradaInforme, ModeloInforme } from '../pdf/informe/datosInforme';
+import { informeEnRenglones, type MedidoresInforme } from '../pdf/informe/renglonesInforme';
 import type { DashboardData, DistribucionEspecie } from '../queries/dashboardQueries';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { coloresEnOrden } from './fabricas';
@@ -23,7 +24,22 @@ type OpcionesEntrada = {
   conGps?: boolean;
   /** Por defecto, todas marcadas. */
   opciones?: OpcionesInforme;
+  /** Nombres de especie de hasta 60 caracteres, y lugar y organización que no entran en la línea del título. */
+  largos?: boolean;
+  /** Códigos de especie que no entran en la leyenda del mapa. */
+  codigosLargos?: boolean;
 };
+
+/** El primero, de 60 caracteres. */
+export const NOMBRES_LARGOS = [
+  'Lapacho rosado de la ladera alta del arroyo grande del monte',
+  'Anchico colorado de los montes misioneros del Alto Paraná',
+  'Timbó colorado del bañado grande y de las lomadas del oeste',
+];
+
+const LUGAR_LARGO = 'Loma de los Paraísos Norte, ladera del arroyo Itaembé';
+const ORGANIZACION_LARGA = 'Cooperativa Forestal y Agropecuaria del Alto Paraná Limitada';
+const SUFIJO_CODIGO_LARGO = 'COLORADO';
 
 export const TODAS_LAS_OPCIONES = opcionesCon(LISTA_OPCIONES_INFORME);
 
@@ -51,11 +67,17 @@ function codigosEspecie(cantidad: number): string[] {
   return [...conNombre, ...numerados].slice(0, cantidad);
 }
 
-function especies(cantidad: number, nn: number): DistribucionEspecie[] {
-  const codigos = codigosEspecie(cantidad);
+function especies({
+  especies: cantidad,
+  nn = 0,
+  largos,
+  codigosLargos,
+}: OpcionesEntrada): DistribucionEspecie[] {
+  const sufijo = codigosLargos ? SUFIJO_CODIGO_LARGO : '';
+  const codigos = codigosEspecie(cantidad).map((codigo) => `${codigo}${sufijo}`);
   const lista = codigos.map((codigo, indice) => ({
     codigo,
-    nombre: `Especie ${codigo}`,
+    nombre: largos ? NOMBRES_LARGOS[indice % NOMBRES_LARGOS.length] : `Especie ${codigo}`,
     cantidad: (cantidad - indice) * 10,
   }));
   return nn > 0
@@ -107,8 +129,15 @@ function dashboard(porEspecie: DistribucionEspecie[], cantidadParcelas: number, 
   return datos;
 }
 
+const plantacion = (largos = false) => ({
+  lugar: largos ? LUGAR_LARGO : 'San Sebastián',
+  periodo: '2025-2026',
+  codigo: 'SS26',
+  estado: 'Activa',
+});
+
 export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
-  const porEspecie = especies(opciones.especies, opciones.nn ?? 0);
+  const porEspecie = especies(opciones);
   const codigos = porEspecie.map((especie) => especie.codigo);
   const puntos =
     opciones.conGps === false || codigos.length === 0
@@ -117,10 +146,23 @@ export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
   return {
     dashboard: dashboard(porEspecie, opciones.parcelas, puntos.length),
     puntos,
-    plantacion: { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26', estado: 'Activa' },
+    plantacion: plantacion(opciones.largos),
     objetivo: opciones.objetivo === undefined ? 8000 : opciones.objetivo,
-    organizacion: 'Bayka',
+    organizacion: opciones.largos ? ORGANIZACION_LARGA : 'Bayka',
     colorDe: coloresDeLaLista(porEspecie),
     opciones: opciones.opciones ?? TODAS_LAS_OPCIONES,
   };
 }
+
+/** Miden 0: cada texto entra entero en un renglón. */
+const SIN_MEDIDA = () => 0;
+
+export const MEDIDORES_INFORME_EN_CERO: MedidoresInforme = {
+  linea: SIN_MEDIDA,
+  fila: SIN_MEDIDA,
+  leyenda: SIN_MEDIDA,
+};
+
+/** Cada texto en un solo renglón, sin medir: lo que no entra lo acomoda textkit. */
+export const informeEnUnRenglon = (modelo: ModeloInforme) =>
+  informeEnRenglones(modelo, MEDIDORES_INFORME_EN_CERO);

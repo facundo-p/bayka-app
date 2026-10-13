@@ -5,6 +5,7 @@
  */
 import {
   ALTO_RENGLON_REPORTE as ALTO,
+  altoConRenglones,
   CAJA_TARJETA,
   MEDIDA_REPORTE as M,
 } from '../plantilla/tokens';
@@ -15,10 +16,6 @@ import type {
   FilaEnRenglones,
   TarjetaEnRenglones,
 } from './renglonesReporte';
-
-/** El alto con un renglón, más el de cada renglón de más. */
-const conRenglones = (altoDeUno: number, altoRenglon: number, renglones: number) =>
-  altoDeUno + (renglones - 1) * altoRenglon;
 
 /** Lo único que cambia el alto: los textos que se parten. */
 export type TextosDelAlto = Pick<FilaEnRenglones, CampoEnRenglones>;
@@ -34,7 +31,7 @@ export function altoFila({ idArbol, especie, parcela, grupo }: TextosDelAlto): n
     renglonesDe(parcela),
     renglonesDe(grupo),
   );
-  return conRenglones(M.altoFilaListado, ALTO.fila, renglones);
+  return altoConRenglones(M.altoFilaListado, ALTO.fila, renglones);
 }
 
 /** Posición, registrado y GPS: de formato fijo, siempre en un renglón. */
@@ -43,10 +40,10 @@ const DATOS_DE_UN_RENGLON = 3;
 function altoDatos({ idArbol, especie, parcela, grupo }: TextosDelAlto): number {
   const altoEspecie = M.altoEspecie + 2 * M.aireEspecie;
   return (
-    conRenglones(M.altoIdArbol, ALTO.idTarjeta, idArbol.length) +
-    conRenglones(altoEspecie, ALTO.especieTarjeta, especie.titulo.length) +
-    conRenglones(M.altoDato, ALTO.dato, renglonesDe(parcela)) +
-    conRenglones(M.altoDato, ALTO.dato, renglonesDe(grupo)) +
+    altoConRenglones(M.altoIdArbol, ALTO.idTarjeta, idArbol.length) +
+    altoConRenglones(altoEspecie, ALTO.especieTarjeta, especie.titulo.length) +
+    altoConRenglones(M.altoDato, ALTO.dato, renglonesDe(parcela)) +
+    altoConRenglones(M.altoDato, ALTO.dato, renglonesDe(grupo)) +
     DATOS_DE_UN_RENGLON * M.altoDato
   );
 }
