@@ -3,7 +3,7 @@ import { Dato, DatosDeUbicacion, Foto, Gps, RenglonEspecie } from '../arbol/Part
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { Renglones } from '../plantilla/Renglones';
 import { MEDIDA_REPORTE } from '../plantilla/tokens';
-import { enTramos } from './planReporte';
+import { enTramos } from '../plantilla/tramos';
 import type { TarjetaEnRenglones } from './renglonesReporte';
 import { tarjetaStyles as styles } from './Reporte.styles';
 

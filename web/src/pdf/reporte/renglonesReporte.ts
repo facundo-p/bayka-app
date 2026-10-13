@@ -9,27 +9,17 @@ import type { CodigoNombre } from '../../queries/fichasQueries';
 import type { RotuloEspecie } from '../arbol/datosArbol';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { conMemoria, type Medidor } from '../plantilla/medirTexto';
-import { medidorRegistrado } from '../plantilla/fuentes';
+import { leerMedidores } from '../plantilla/medidores';
 import type { Partidor, TextoEnRenglones } from '../plantilla/partirTexto';
 import { renglonador } from '../plantilla/renglonador';
 import { ANCHO_TEXTO_REPORTE, LETRA_REPORTE } from '../plantilla/tokens';
 import type { ModeloArbolReporte, ModeloTarjeta } from './datosReporte';
 import type { Reparto } from './planReporte';
 
-type Letra = keyof typeof LETRA_REPORTE;
-
 /** Un medidor por cada letra de texto que se parte o se corta. */
-export type MedidoresReporte = Record<Letra, Medidor>;
+export type MedidoresReporte = Record<keyof typeof LETRA_REPORTE, Medidor>;
 
-export async function leerMedidoresReporte(): Promise<MedidoresReporte> {
-  const letras = Object.keys(LETRA_REPORTE) as Letra[];
-  const medidores = await Promise.all(
-    letras.map((letra) => medidorRegistrado(LETRA_REPORTE[letra])),
-  );
-  return Object.fromEntries(
-    letras.map((letra, indice) => [letra, medidores[indice]]),
-  ) as MedidoresReporte;
-}
+export const leerMedidoresReporte = (): Promise<MedidoresReporte> => leerMedidores(LETRA_REPORTE);
 
 /** Una parcela o un grupo: el primer renglón del nombre va detrás del código. */
 export type CodigoEnRenglones = { codigo: string; nombre: TextoEnRenglones };

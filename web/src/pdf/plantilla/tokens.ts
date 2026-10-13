@@ -390,3 +390,14 @@ export const ALTO_RENGLON_REPORTE = {
   dato: altoDeRenglon(LETRA_REPORTE.dato.fontSize),
   etiqueta: altoDeRenglon(TAMANO_TEXTO.etiqueta),
 } as const;
+
+/**
+ * Lo que queda arriba de un renglón centrado en `alto`. Los bloques van
+ * arriba, con este aire: un texto de un renglón queda donde quedaba centrado,
+ * y uno de más crece hacia abajo.
+ */
+export const aireCentrado = (alto: number, altoRenglon: number) => (alto - altoRenglon) / 2;
+
+/** El alto de una caja con un renglón, más el de cada renglón de más. */
+export const altoConRenglones = (altoDeUno: number, altoRenglon: number, renglones: number) =>
+  altoDeUno + (renglones - 1) * altoRenglon;

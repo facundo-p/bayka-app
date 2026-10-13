@@ -1,6 +1,7 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
 import {
+  aireCentrado,
   ALTO_RENGLON_REPORTE as ALTO,
   CAJA_TARJETA,
   COLOR_PDF,
@@ -22,13 +23,6 @@ const renglon = UN_RENGLON;
  * mismo estilo, y sin él usa 18 pt y el renglón no entra en su caja.
  */
 const interlineado = { lineHeight: M.interlineado } as const;
-
-/**
- * Lo que queda arriba de un renglón centrado en `alto`. Los bloques van
- * arriba, con este aire: un texto de un renglón queda donde quedaba centrado,
- * y uno de más crece hacia abajo.
- */
-const aireCentrado = (alto: number, altoRenglon: number) => (alto - altoRenglon) / 2;
 
 const mayusculas = {
   ...interlineado,
