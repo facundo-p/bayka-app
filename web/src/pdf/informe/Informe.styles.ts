@@ -1,12 +1,14 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import {
+  aireCentrado,
+  ALTO_RENGLON_INFORME as ALTO,
   COLOR_PDF,
   FUENTE_PDF,
+  LETRA_INFORME,
   MEDIDA_FICHA,
   MEDIDA_INFORME as M,
   PESO_FUENTE,
   TAMANO_TEXTO,
-  UN_RENGLON,
 } from '../plantilla/tokens';
 
 const rotulo = {
@@ -26,15 +28,28 @@ const titulo = {
   color: COLOR_PDF.navy,
 } as const;
 
+const punto = {
+  width: M.puntoEspecie,
+  height: M.puntoEspecie,
+  borderRadius: M.puntoEspecie / 2,
+  marginRight: MEDIDA_FICHA.aireTrasPunto,
+} as const;
+
+/*
+ * Los textos que se parten van arriba, con el aire que los dejaba centrados en
+ * su renglón: con uno solo quedan donde estaban, y con más crecen hacia abajo.
+ * El punto y lo demás de la fila se centran en el primero.
+ */
+const aireFila = aireCentrado(M.altoFilaEspecie, ALTO.fila);
+
 export const informeStyles = StyleSheet.create({
   titulo: { marginBottom: M.separacionBloques },
   tituloTexto: { ...titulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
-    ...UN_RENGLON,
+    ...LETRA_INFORME.linea,
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
-    height: M.altoLineaTitulo,
-    fontSize: TAMANO_TEXTO.lineaInforme,
+    paddingBottom: M.altoLineaTitulo - ALTO.linea,
     color: COLOR_PDF.apagado,
   },
 
@@ -96,32 +111,38 @@ export const informeStyles = StyleSheet.create({
   },
 
   filaEspecie: {
+    ...LETRA_INFORME.fila,
     lineHeight: M.interlineado,
     flexDirection: 'row',
-    alignItems: 'center',
-    height: M.altoFilaEspecie,
+    alignItems: 'flex-start',
+    minHeight: M.altoFilaEspecie,
     marginBottom: M.separacionFilaEspecie,
-    fontSize: TAMANO_TEXTO.filaInforme,
     color: COLOR_PDF.tinta,
   },
-  recortado: { ...UN_RENGLON, flexShrink: 1 },
-  nombreEspecie: { flexDirection: 'row', alignItems: 'center', width: M.anchoNombreEspecie },
-  punto: {
-    width: M.puntoEspecie,
-    height: M.puntoEspecie,
-    borderRadius: M.puntoEspecie / 2,
-    marginRight: MEDIDA_FICHA.aireTrasPunto,
+  nombreEspecie: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: M.anchoNombreEspecie,
+    paddingVertical: aireFila,
   },
+  tituloEspecie: { flexShrink: 1 },
+  puntoFila: { ...punto, marginTop: aireCentrado(ALTO.fila, M.puntoEspecie) },
   barraEspecie: {
     ...barra,
     flexGrow: 1,
     height: M.altoBarraEspecie,
+    marginTop: aireCentrado(M.altoFilaEspecie, M.altoBarraEspecie),
     marginHorizontal: M.separacionColumnas,
     backgroundColor: COLOR_PDF.papelHundido,
   },
   rellenoBarra: { height: '100%' },
-  cantidad: { ...numero, width: M.anchoCantidad },
-  porcentajeEspecie: { ...numero, width: M.anchoPorcentaje, color: COLOR_PDF.apagado },
+  cantidad: { ...numero, marginTop: aireFila, width: M.anchoCantidad },
+  porcentajeEspecie: {
+    ...numero,
+    marginTop: aireFila,
+    width: M.anchoPorcentaje,
+    color: COLOR_PDF.apagado,
+  },
 
   // Margen arriba del mapa y no relleno al pie de las especies: un relleno que no
   // entra en la hoja la parte y manda solo ese hueco a una hoja en blanco.
@@ -157,14 +178,17 @@ export const informeStyles = StyleSheet.create({
     columnGap: M.separacionLeyenda,
   },
   itemLeyenda: {
+    ...LETRA_INFORME.leyenda,
     lineHeight: M.interlineado,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: M.anchoItemLeyenda,
-    height: M.altoRenglonLeyenda,
-    fontSize: TAMANO_TEXTO.leyenda,
+    minHeight: M.altoRenglonLeyenda,
+    paddingVertical: aireCentrado(M.altoRenglonLeyenda, ALTO.leyenda),
     color: COLOR_PDF.tinta,
   },
+  puntoLeyenda: { ...punto, marginTop: aireCentrado(ALTO.leyenda, M.puntoEspecie) },
+  codigoLeyenda: { flexShrink: 1 },
   notaMapa: {
     lineHeight: M.interlineado,
     marginTop: M.aireMapa,

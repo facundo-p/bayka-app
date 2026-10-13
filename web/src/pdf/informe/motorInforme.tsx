@@ -8,30 +8,47 @@ import { archivosFuentesNavegador } from '../plantilla/recursosNavegador';
 import type { EmisionPdf } from '../plantilla/textos';
 import { datosInforme, tieneMapa, type EntradaInforme, type ModeloInforme } from './datosInforme';
 import { DocumentoInforme, type MapaDelDocumento } from './DocumentoInforme';
-import { dibujarMapaInforme } from './mapaInforme';
+import { dibujarMapaInforme, type MapaInformePdf } from './mapaInforme';
 import { planificarInforme } from './planificarInforme';
+import {
+  informeEnRenglones,
+  leerMedidoresInforme,
+  type InformeEnRenglones,
+} from './renglonesInforme';
 
 export { emisionDePlantacion } from '../plantilla/emision';
 
 export type PedidoInforme = EntradaInforme & EmisionPdf;
 
-/** Sin mapa elegido no hay plan ni imagen; sin puntos, no hay imagen. */
-async function mapaDelDocumento(modelo: ModeloInforme): Promise<MapaDelDocumento | null> {
-  if (!tieneMapa(modelo)) return null;
-  const plan = planificarInforme(modelo);
-  const contenido = modelo.mapa;
-  const imagen = contenido.vacio ? null : await dibujarMapaInforme(contenido);
-  return { contenido, plan, imagen };
+/** Sin mapa elegido o sin puntos, no hay imagen. */
+async function imagenDelMapa(modelo: ModeloInforme): Promise<MapaInformePdf | null> {
+  if (!tieneMapa(modelo) || modelo.mapa.vacio) return null;
+  return dibujarMapaInforme(modelo.mapa);
 }
 
-/** Modelo, plan, mapa rasterizado y documento, en ese orden. */
+/** Sin mapa elegido no hay plan: el plan cuenta los renglones de cada texto. */
+function mapaDelDocumento(
+  modelo: InformeEnRenglones,
+  imagen: MapaInformePdf | null,
+): MapaDelDocumento | null {
+  if (!tieneMapa(modelo)) return null;
+  return { contenido: modelo.mapa, plan: planificarInforme(modelo), imagen };
+}
+
+/**
+ * Modelo y mapa rasterizado; después, con las fuentes leídas, los textos en
+ * renglones, el plan y el documento.
+ */
 export async function renderizarInforme({
   encabezado,
   emitido,
   ...entrada
 }: PedidoInforme): Promise<Blob> {
-  const modelo = datosInforme(entrada);
-  const mapa = await mapaDelDocumento(modelo);
-  const documento = <DocumentoInforme {...{ encabezado, emitido, modelo, mapa }} />;
-  return renderizarEnSerie(archivosFuentesNavegador(), () => pdf(documento).toBlob());
+  const datos = datosInforme(entrada);
+  const imagen = await imagenDelMapa(datos);
+  return renderizarEnSerie(archivosFuentesNavegador(), async () => {
+    const modelo = informeEnRenglones(datos, await leerMedidoresInforme());
+    const mapa = mapaDelDocumento(modelo, imagen);
+    return pdf(<DocumentoInforme {...{ encabezado, emitido, modelo, mapa }} />).toBlob();
+  });
 }

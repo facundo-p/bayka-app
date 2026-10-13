@@ -278,6 +278,16 @@ export const CAJA_MAPA_INFORME = {
     (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;
 
+/** Lo que deja el punto de color, con su aire, en un renglón del informe. */
+const ANCHO_PUNTO_INFORME = MEDIDA_INFORME.puntoEspecie + MEDIDA_FICHA.aireTrasPunto;
+
+/** Ancho en pt de los renglones del informe que se parten o se cortan antes del render (#883). */
+export const ANCHO_TEXTO_INFORME = {
+  linea: CUERPO_HOJA.ancho,
+  especie: MEDIDA_INFORME.anchoNombreEspecie - ANCHO_PUNTO_INFORME,
+  leyenda: MEDIDA_INFORME.anchoItemLeyenda - ANCHO_PUNTO_INFORME,
+} as const;
+
 /**
  * Medidas del reporte de árboles en pt, en hoja horizontal. Los altos son los
  * de un renglón: un texto partido en más suma el alto de cada renglón de más, y
@@ -337,6 +347,25 @@ export const CAJA_TARJETA = {
     MEDIDA_REPORTE.filasTarjetas,
 } as const;
 
+/** La letra de los textos del informe que se parten o se cortan antes del render (#883). */
+export const LETRA_INFORME = {
+  linea: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.lineaInforme,
+  },
+  fila: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaInforme,
+  },
+  leyenda: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.leyenda,
+  },
+} as const;
+
 /** La foto es cuadrada y ocupa todo el alto de la tarjeta, adentro del relleno y del borde. */
 export const LADO_FOTO_TARJETA =
   CAJA_TARJETA.alto - 2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde);
@@ -380,15 +409,24 @@ export const ANCHO_TEXTO_REPORTE = {
   },
 } as const;
 
-const altoDeRenglon = (tamano: number) => tamano * MEDIDA_REPORTE.interlineado;
+const altoEnReporte = (tamano: number) => tamano * MEDIDA_REPORTE.interlineado;
 
 /** Alto en pt de un renglón de cada letra del reporte: lo que suma cada renglón de más. */
 export const ALTO_RENGLON_REPORTE = {
-  fila: altoDeRenglon(LETRA_REPORTE.fila.fontSize),
-  idTarjeta: altoDeRenglon(LETRA_REPORTE.idTarjeta.fontSize),
-  especieTarjeta: altoDeRenglon(LETRA_REPORTE.especieTarjeta.fontSize),
-  dato: altoDeRenglon(LETRA_REPORTE.dato.fontSize),
-  etiqueta: altoDeRenglon(TAMANO_TEXTO.etiqueta),
+  fila: altoEnReporte(LETRA_REPORTE.fila.fontSize),
+  idTarjeta: altoEnReporte(LETRA_REPORTE.idTarjeta.fontSize),
+  especieTarjeta: altoEnReporte(LETRA_REPORTE.especieTarjeta.fontSize),
+  dato: altoEnReporte(LETRA_REPORTE.dato.fontSize),
+  etiqueta: altoEnReporte(TAMANO_TEXTO.etiqueta),
+} as const;
+
+const altoEnInforme = (tamano: number) => tamano * MEDIDA_INFORME.interlineado;
+
+/** Alto en pt de un renglón de cada letra del informe que se parte. */
+export const ALTO_RENGLON_INFORME = {
+  linea: altoEnInforme(LETRA_INFORME.linea.fontSize),
+  fila: altoEnInforme(LETRA_INFORME.fila.fontSize),
+  leyenda: altoEnInforme(LETRA_INFORME.leyenda.fontSize),
 } as const;
 
 /**

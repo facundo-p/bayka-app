@@ -1,4 +1,4 @@
-import { entradaInforme } from '../../../test/informePdf';
+import { entradaInforme, informeEnUnRenglon } from '../../../test/informePdf';
 import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
 import { datosInforme, tieneMapa } from '../datosInforme';
 import {
@@ -6,10 +6,13 @@ import {
   libreMinimoAlPie,
   planificarInforme,
   planSegunLibre,
+  renglonesDelFlujo,
 } from '../planificarInforme';
+import type { InformeConMapa } from '../renglonesInforme';
 
-function modelo(parcelas: number, especies: number) {
-  const calculado = datosInforme(entradaInforme({ parcelas, especies, nn: 3 }));
+/** Con cada texto en un renglón. */
+function modelo(parcelas: number, especies: number): InformeConMapa {
+  const calculado = informeEnUnRenglon(datosInforme(entradaInforme({ parcelas, especies, nn: 3 })));
   if (!tieneMapa(calculado)) throw new Error('El modelo no trae el mapa');
   return calculado;
 }
@@ -70,5 +73,43 @@ describe('altoEnUltimaHoja', () => {
     const titulo = { alto: 20, presencia: 50 };
     expect(altoEnUltimaHoja([renglon(100), titulo])).toBe(120);
     expect(altoEnUltimaHoja([renglon(casiLlena), titulo])).toBe(20);
+  });
+});
+
+describe('con textos en más de un renglón', () => {
+  const base = modelo(4, 4);
+  const renglones = (cantidad: number) => Array.from({ length: cantidad }, () => 'Loma');
+  const altos = (otro: InformeConMapa) => renglonesDelFlujo(otro).map(({ alto }) => alto);
+  const diferencias = (otro: InformeConMapa) => {
+    const deBase = altos(base);
+    return altos(otro).map((alto, indice) => alto - deBase[indice]);
+  };
+
+  // 8,5 pt de letra con interlineado de 1,25.
+  test('la línea del título en 2 renglones suma 10,625 pt al título', () => {
+    expect(diferencias({ ...base, linea: renglones(2) })[0]).toBeCloseTo(10.625);
+  });
+
+  // 8 pt de letra con interlineado de 1,25: 10 pt por renglón de más.
+  test('un nombre de especie en 3 renglones suma 20 pt a su fila, y solo a la suya', () => {
+    const filas = base.especies.filas.map((fila, indice) =>
+      indice === 1 ? { ...fila, titulo: renglones(3) } : fila,
+    );
+    const partido = { ...base, especies: { ...base.especies, filas } };
+    // Título, indicadores, encabezado con la primera fila, y las demás.
+    expect(diferencias(partido)).toEqual([0, 0, 0, 20, 0, 0, 0]);
+  });
+
+  // 7,5 pt de letra con interlineado de 1,25.
+  test('un código en 2 renglones sube su fila de la leyenda, y dos en la misma fila también', () => {
+    const conCodigos = (partidos: number[]) => {
+      const leyenda = base.mapa.leyenda.map((item, indice) =>
+        partidos.includes(indice) ? { ...item, texto: renglones(2) } : item,
+      );
+      return { ...base, mapa: { ...base.mapa, leyenda } };
+    };
+    const umbral = libreMinimoAlPie(base);
+    expect(libreMinimoAlPie(conCodigos([0])) - umbral).toBeCloseTo(9.375);
+    expect(libreMinimoAlPie(conCodigos([0, 3])) - umbral).toBeCloseTo(9.375);
   });
 });
