@@ -1,5 +1,5 @@
 import { Font } from '@react-pdf/renderer';
-import { medidorDeFuente, type FuenteMedible, type Medidor } from './cortarTexto';
+import { medidorDeFuente, type FuenteMedible, type Medidor } from './medirTexto';
 import { ESTILO_FUENTE, FUENTE_PDF, PESO_FUENTE } from './tokens';
 
 /** Cada archivo de fuente que usa el PDF. react-pdf lee OTF, TTF y WOFF, no WOFF2. */
@@ -91,12 +91,20 @@ export async function leerFuente({
 export const comoMedible = (fuente: Awaited<ReturnType<typeof leerFuente>>) =>
   fuente as unknown as FuenteMedible;
 
+/** La que react-pdf suma al final de toda familia, para lo que la del estilo no tiene. */
+export const FUENTE_RESPALDO = 'Helvetica';
+
 /**
- * Mide con una fuente registrada. Va adentro del turno de `renderizarEnSerie`:
- * el documento que se arma a continuación reusa la fuente ya leída.
+ * Mide con una fuente registrada y, lo que no tiene, con la de respaldo, del
+ * mismo peso y estilo. Va adentro del turno de `renderizarEnSerie`: el
+ * documento que se arma a continuación reusa las fuentes ya leídas.
  */
 export async function medidorRegistrado(letra: LetraDeRenglon): Promise<Medidor> {
-  return medidorDeFuente(comoMedible(await leerFuente(letra)), { tamano: letra.fontSize });
+  const [fuente, respaldo] = await Promise.all([
+    leerFuente(letra),
+    leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO }),
+  ]);
+  return medidorDeFuente(comoMedible(fuente), { tamano: letra.fontSize }, comoMedible(respaldo));
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();
