@@ -6,7 +6,7 @@ import { getGroupById, getPlantationCaptureConfig } from '../queries/plantationD
 import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
-import { insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
+import { capturarGpsAlTap, insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
 import type { GpsFix } from '../services/gps/locationClient';
 import {
   NN_PHOTO_POLICY,
@@ -109,10 +109,11 @@ export interface UseTreeRegistrationResult {
 
 export type ErrorSink = (mensaje: string) => void;
 
-/** Ignora un toque nuevo con la cámara abierta: pickPhoto resolvería null al pedido anterior y, con foto opcional, registraría un árbol de más (#908). */
+/** Ignora un toque nuevo con la cámara abierta: pickPhoto resolvería null al pedido anterior y, con foto opcional, registraría un árbol de más (#908). `camaraAbierta` deja cortar antes, sin pedir GPS (#910). */
 function useResolvePhotoSinReentrada(pickPhoto: PickPhoto) {
   const pidiendoFoto = useRef(false);
-  return useCallback(async (policy: PhotoPolicy): Promise<PhotoForRegistration> => {
+  const camaraAbierta = useCallback(() => pidiendoFoto.current, []);
+  const resolvePhoto = useCallback(async (policy: PhotoPolicy): Promise<PhotoForRegistration> => {
     if (!policy.capture) return resolvePhotoForRegistration(policy, pickPhoto);
     if (pidiendoFoto.current) return { proceed: false };
     pidiendoFoto.current = true;
@@ -122,6 +123,7 @@ function useResolvePhotoSinReentrada(pickPhoto: PickPhoto) {
       pidiendoFoto.current = false;
     }
   }, [pickPhoto]);
+  return { resolvePhoto, camaraAbierta };
 }
 
 export function useTreeRegistration({
@@ -196,28 +198,29 @@ export function useTreeRegistration({
     [allTrees],
   );
 
-  // Camino único de alta (especie o N/N): foto según política y recién después el
-  // insert. El "tap" GPS es post-foto: el técnico sigue parado junto al árbol y
-  // el watcher pudo pausarse mientras la cámara tuvo el foco.
-  const resolvePhoto = useResolvePhotoSinReentrada(pickPhoto);
+  // Camino único de alta (especie o N/N): el punto GPS se fija al toque, antes de la
+  // cámara, para que alejarse a sacar la foto no lo mueva (#910); después la foto
+  // según política y recién ahí el insert. Sin alta, el punto se descarta.
+  const { resolvePhoto, camaraAbierta } = useResolvePhotoSinReentrada(pickPhoto);
   const registerWithPolicy = useCallback(async (
     policy: PhotoPolicy,
     especie: { especieId: string | null; especieCodigo: string },
     fallbackError: string,
   ) => {
-    if (isReadOnly || !userId) return;
+    if (isReadOnly || !userId || camaraAbierta()) return;
+    const gpsAlTap = capturarGpsAlTap(getLastGpsFix);
     const photo = await resolvePhoto(policy);
     if (!photo.proceed) return;
     try {
       await insertTreeWithGps(
         { grupoId, grupoCodigo, ...especie, fotoUrl: photo.fotoUrl, userId },
         gpsCaptureFrequency,
-        getLastGpsFix,
+        gpsAlTap,
       );
     } catch (e) {
       notifyError(e, fallbackError);
     }
-  }, [isReadOnly, userId, resolvePhoto, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
+  }, [isReadOnly, userId, camaraAbierta, resolvePhoto, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
 
   const registerTree = useCallback(
     (especieId: string, especieCodigo: string) =>
