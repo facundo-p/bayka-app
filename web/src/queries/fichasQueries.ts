@@ -8,8 +8,8 @@ import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import { supabase } from '../lib/supabase';
 import {
   consultaArbolesFiltrados,
-  ordenarComoListado,
   resolverBusquedaDeFiltros,
+  type ConsultaArboles,
   type FiltrosArboles,
 } from './dataExplorerQueries';
 import { conSenal, leerPaginado, type RespuestaPagina } from './leerPaginado';
@@ -133,8 +133,20 @@ export async function leerArbolParaFicha(
 }
 
 /**
- * Todos los árboles que deja el filtro del listado, en su orden, de a 1.000 por
- * pedido. Con `senal` abortada corta la página en vuelo y no pide más.
+ * Grupo por grupo y, adentro, por posición: como se recorren en campo. El id
+ * desempata para que paginar con `range` no repita ni saltee filas.
+ */
+function ordenarPorGrupoYPosicion(consulta: ConsultaArboles): ConsultaArboles {
+  return consulta
+    .order('groups(codigo)', { ascending: true })
+    .order('group_id', { ascending: true })
+    .order('posicion', { ascending: true })
+    .order('id', { ascending: true });
+}
+
+/**
+ * Todos los árboles que deja el filtro del listado, por grupo y posición, de a
+ * 1.000 por pedido. Con `senal` abortada corta la página en vuelo y no pide más.
  */
 export async function listarArbolesDelFiltro(
   plantationId: string,
@@ -148,7 +160,7 @@ export async function listarArbolesDelFiltro(
     const consulta = consultaArbolesFiltrados(plantationId, filtros, busqueda, select);
     // Embeds many-to-one: llegan como objeto, no array (cliente sin typegen).
     return conSenal(
-      ordenarComoListado(consulta).range(desde, hasta),
+      ordenarPorGrupoYPosicion(consulta).range(desde, hasta),
       senal,
     ) as unknown as PromiseLike<RespuestaPagina<FilaArbolFicha>>;
   };

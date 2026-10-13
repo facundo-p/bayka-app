@@ -35,7 +35,7 @@ export const FILAS_POR_HOJA = Math.floor(ALTO_UTIL_LISTADO / M.altoFilaListado);
 
 export type Reparto<Tarjeta, Fila = Tarjeta> = { tarjetas: Tarjeta[]; listado: Fila[] };
 
-/** Cada bloque conserva el orden de entrada, que es el del filtro. */
+/** Cada bloque conserva el orden de entrada: por grupo y posición. */
 export function repartirArboles<T extends { fotoUrl: string | null }>(
   arboles: readonly T[],
   modo: ModoReporte,

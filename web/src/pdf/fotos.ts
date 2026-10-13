@@ -18,7 +18,7 @@ const NO_DISPONIBLE: FotoPdf = { estado: ESTADO_FOTO.noDisponible };
 export const MEDIDA_FOTO_PDF: MedidaImagen = { ancho: 480, alto: 480, calidad: 0.75 };
 
 /** Descargas simultáneas: más satura la conexión sin terminar antes. */
-const DESCARGAS_SIMULTANEAS = 5;
+const DESCARGAS_SIMULTANEAS = 10;
 
 async function firmarSinFallar(fotoUrls: string[]): Promise<Array<string | null>> {
   try {

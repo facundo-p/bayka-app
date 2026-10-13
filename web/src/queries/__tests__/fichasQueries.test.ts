@@ -158,14 +158,16 @@ describe('listarArbolesDelFiltro', () => {
     });
   });
 
-  test('ordena como el listado, con el id de desempate, y no pide count', async () => {
+  test('ordena por código de grupo y posición asc, con el id de desempate, y no pide count', async () => {
     const consultas = capturarConsultas(() => ({ data: [filaArbolFicha('t1')] }));
     await listarArbolesDelFiltro('plant-1', {});
 
     const [consulta] = consultasDeArboles(consultas);
     expect(consulta.ordenes).toEqual([
-      { columna: 'created_at', ascending: false },
-      { columna: 'id', ascending: false },
+      { columna: 'groups(codigo)', ascending: true },
+      { columna: 'group_id', ascending: true },
+      { columna: 'posicion', ascending: true },
+      { columna: 'id', ascending: true },
     ]);
     expect(consulta.opciones).toBeUndefined();
   });
