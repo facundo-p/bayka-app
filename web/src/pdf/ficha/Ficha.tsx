@@ -1,36 +1,24 @@
 import { Image, Text, View } from '@react-pdf/renderer';
-import type { ReactNode } from 'react';
-import type { CodigoNombre } from '../../queries/fichasQueries';
-import { SIN_DATO } from '../../lib/formato';
-import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
+import type { EspecieArbol } from '../arbol/datosArbol';
+import { Dato, DatosDeUbicacion, Foto, Gps, RenglonEspecie, Vacio } from '../arbol/PartesArbol';
+import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { LlamadaSatelite } from '../mapa/LlamadaSatelite';
 import { ESTADO_MAPA, esMapaListo, type MapaPdf } from '../mapa/estadoMapa';
-import type { EspecieFicha, GpsFicha, ModeloFicha } from './datosFicha';
+import type { ModeloFicha } from './datosFicha';
 import { fichaStyles as styles } from './Ficha.styles';
-import { ICONO_FICHA, IconoFicha, type TrazosIcono } from './IconoFicha';
+import { ICONO_FICHA, IconoFicha } from './IconoFicha';
 import { tamanoIdArbol } from './tamanoIdArbol';
 import { TEXTO_FICHA } from './textosFicha';
-
-const TEXTO_FOTO_FALTANTE = {
-  [ESTADO_FOTO.sinFoto]: TEXTO_FICHA.sinFoto,
-  [ESTADO_FOTO.noDisponible]: TEXTO_FICHA.fotoNoDisponible,
-} as const;
 
 const TEXTO_MAPA_FALTANTE = {
   [ESTADO_MAPA.sinGps]: TEXTO_FICHA.sinPuntoGps,
   [ESTADO_MAPA.noDisponible]: TEXTO_FICHA.mapaNoDisponible,
 } as const;
 
-function Especie({ especie }: { especie: EspecieFicha }) {
+function Especie({ especie }: { especie: EspecieArbol }) {
   return (
     <View>
-      <View style={styles.filaEspecie}>
-        {/* El color sale del dato, no del tema. */}
-        <View style={[styles.punto, { backgroundColor: especie.color }]} />
-        <Text style={[styles.nombreEspecie, especie.sinIdentificar ? styles.sinIdentificar : {}]}>
-          {especie.titulo}
-        </Text>
-      </View>
+      <RenglonEspecie especie={especie} styles={styles} />
       {especie.cientifico && <Text style={styles.cientifico}>{especie.cientifico}</Text>}
       {especie.clasificacion && <Text style={styles.clasificacion}>{especie.clasificacion}</Text>}
     </View>
@@ -40,64 +28,23 @@ function Especie({ especie }: { especie: EspecieFicha }) {
 function IdArbol({ idArbol }: { idArbol: string }) {
   return (
     <View style={styles.id}>
-      <Text style={styles.rotulo}>{TEXTO_FICHA.idArbol}</Text>
+      <Text style={styles.rotulo}>{TEXTO_ARBOL.idArbol}</Text>
       {/* El tamaño sale del largo del ID. */}
       <Text style={[styles.idArbol, { fontSize: tamanoIdArbol(idArbol) }]}>{idArbol}</Text>
     </View>
   );
 }
 
-function Vacio({ icono, texto }: { icono: TrazosIcono; texto: string }) {
-  return (
-    <View style={styles.vacio}>
-      <IconoFicha icono={icono} />
-      <Text style={styles.textoVacio}>{texto}</Text>
-    </View>
-  );
-}
-
-function Foto({ foto }: { foto: FotoPdf }) {
-  if (esFotoLista(foto)) return <Image style={styles.foto} src={foto.src} />;
-  return <Vacio icono={ICONO_FICHA.camara} texto={TEXTO_FOTO_FALTANTE[foto.estado]} />;
-}
-
 function Mapa({ mapa }: { mapa: MapaPdf }) {
   if (!esMapaListo(mapa)) {
-    return <Vacio icono={ICONO_FICHA.pin} texto={TEXTO_MAPA_FALTANTE[mapa.estado]} />;
+    const texto = TEXTO_MAPA_FALTANTE[mapa.estado];
+    return <Vacio texto={texto} styles={styles} icono={<IconoFicha icono={ICONO_FICHA.pin} />} />;
   }
   return (
     <View>
       <Image style={styles.mapa} src={mapa.src} />
       {mapa.conSatelite && <LlamadaSatelite style={styles.llamada} />}
     </View>
-  );
-}
-
-function Dato({ rotulo, children }: { rotulo: string; children: ReactNode }) {
-  return (
-    <View style={styles.dato}>
-      <Text style={styles.rotulo}>{rotulo}</Text>
-      <Text style={styles.valor}>{children}</Text>
-    </View>
-  );
-}
-
-function ConCodigo({ entidad }: { entidad: CodigoNombre | null }) {
-  if (!entidad) return SIN_DATO;
-  return (
-    <>
-      <Text style={styles.codigo}>{entidad.codigo}</Text> {entidad.nombre}
-    </>
-  );
-}
-
-function Gps({ gps }: { gps: GpsFicha | null }) {
-  if (!gps) return <Text style={styles.tenue}>{TEXTO_FICHA.sinPunto}</Text>;
-  return (
-    <>
-      <Text style={styles.mono}>{gps.coordenadas}</Text>
-      {gps.precision && <Text style={styles.apagado}> {gps.precision}</Text>}
-    </>
   );
 }
 
@@ -108,26 +55,28 @@ function Identidad({ ficha }: { ficha: ModeloFicha }) {
       <Especie especie={ficha.especie} />
       <IdArbol idArbol={ficha.idArbol} />
       <View style={styles.registro}>
-        <Dato rotulo={TEXTO_FICHA.registrado}>{ficha.registrado}</Dato>
-        <Dato rotulo={TEXTO_FICHA.tecnico}>{ficha.tecnico}</Dato>
+        <Dato rotulo={TEXTO_ARBOL.registrado} styles={styles}>
+          {ficha.registrado}
+        </Dato>
+        <Dato rotulo={TEXTO_FICHA.tecnico} styles={styles}>
+          {ficha.tecnico}
+        </Dato>
       </View>
     </View>
   );
+}
+
+function SinPunto() {
+  return <Text style={styles.tenue}>{TEXTO_FICHA.sinPunto}</Text>;
 }
 
 /** Junto al mapa: dónde está. */
 function Ubicacion({ ficha }: { ficha: ModeloFicha }) {
   return (
     <View style={styles.texto}>
-      <Dato rotulo={TEXTO_FICHA.parcela}>
-        <ConCodigo entidad={ficha.parcela} />
-      </Dato>
-      <Dato rotulo={TEXTO_FICHA.grupo}>
-        <ConCodigo entidad={ficha.grupo} />
-      </Dato>
-      <Dato rotulo={TEXTO_FICHA.posicion}>{ficha.posicion}</Dato>
-      <Dato rotulo={TEXTO_FICHA.gps}>
-        <Gps gps={ficha.gps} />
+      <DatosDeUbicacion modelo={ficha} styles={styles} />
+      <Dato rotulo={TEXTO_ARBOL.gps} styles={styles}>
+        <Gps gps={ficha.gps} styles={styles} sinPunto={<SinPunto />} />
       </Dato>
     </View>
   );
@@ -139,7 +88,7 @@ export function Ficha({ ficha }: { ficha: ModeloFicha }) {
     <View wrap={false}>
       <View style={[styles.fila, styles.filaFoto]}>
         <Identidad ficha={ficha} />
-        <Foto foto={ficha.foto} />
+        <Foto foto={ficha.foto} styles={styles} icono={<IconoFicha icono={ICONO_FICHA.camara} />} />
       </View>
       <View style={styles.fila}>
         <Ubicacion ficha={ficha} />

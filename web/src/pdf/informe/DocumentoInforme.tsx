@@ -1,8 +1,9 @@
-import { Document, Image, Text, View } from '@react-pdf/renderer';
+import { Image, Text, View } from '@react-pdf/renderer';
 import { LlamadaSatelite, NOTA_SATELITE } from '../mapa/LlamadaSatelite';
 import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
+import { DocumentoPdf } from '../plantilla/DocumentoPdf';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import type { EmisionPdf } from '../plantilla/textos';
 import { CAJA_MAPA_INFORME } from '../plantilla/tokens';
 import type { ItemLeyenda, MapaDelInforme, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
@@ -19,9 +20,7 @@ export type MapaDelDocumento = {
   imagen: MapaInformePdf | null;
 };
 
-export type DocumentoInformeProps = {
-  encabezado: EncabezadoPdf;
-  emitido: string;
+export type DocumentoInformeProps = EmisionPdf & {
   modelo: ModeloInforme;
   /** null si no se eligió el mapa. */
   mapa: MapaDelDocumento | null;
@@ -108,11 +107,7 @@ function notaDelMapa(mapa: MapaDelDocumento | null): NotaAlPie | undefined {
 /** Resumen y especies fluyen; el mapa, si se eligió, va al pie o en hoja propia según su plan. */
 export function DocumentoInforme({ encabezado, emitido, modelo, mapa }: DocumentoInformeProps) {
   return (
-    <Document
-      title={`${TEXTO_INFORME.documento}${TEXTO_PLANTILLA.separador}${encabezado.titulo}`}
-      creator={TEXTO_PLANTILLA.marca}
-      producer={TEXTO_PLANTILLA.marca}
-    >
+    <DocumentoPdf documento={TEXTO_INFORME.documento} encabezado={encabezado}>
       <Hoja
         encabezado={encabezado}
         documento={TEXTO_INFORME.documento}
@@ -124,6 +119,6 @@ export function DocumentoInforme({ encabezado, emitido, modelo, mapa }: Document
         <BloqueEspecies especies={modelo.especies} />
         {mapa && <BloqueMapa {...mapa} />}
       </Hoja>
-    </Document>
+    </DocumentoPdf>
   );
 }

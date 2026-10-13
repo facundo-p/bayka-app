@@ -2,9 +2,10 @@
 // El motor del navegador con las fuentes y el logo de node, y el canvas simulado.
 import { opcionesCon } from '../../../lib/opcionesInforme';
 import { entradaInforme } from '../../../test/informePdf';
-import { PNG_DE_PRUEBA } from '../../../test/pdfNode';
+import { LOGO_NODE, PNG_DE_PRUEBA } from '../../../test/pdfNode';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
+import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { dibujarMapaInforme } from '../mapaInforme';
 import { renderizarInforme } from '../motorInforme';
 import { planificarInforme } from '../planificarInforme';
@@ -34,21 +35,32 @@ beforeEach(() => {
 
 const textosDe = async (blob: Blob) => textosDelPdf(Buffer.from(await blob.arrayBuffer()));
 
+const EMISION = {
+  encabezado: encabezadoDePlantacion(
+    { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
+    'Bayka',
+    LOGO_NODE,
+  ),
+  emitido: '06/10/2026',
+};
+
 test('dibuja el mapa con los puntos de la plantación y arma el PDF', async () => {
   const blob = await renderizarInforme({
     ...entradaInforme({ parcelas: 4, especies: 4 }),
-    emitido: '06/10/2026',
+    ...EMISION,
   });
   const [contenido] = vi.mocked(dibujarMapaInforme).mock.calls[0];
   expect(contenido.puntos).toHaveLength(12);
   expect(planificarInforme).toHaveBeenCalledTimes(1);
-  expect(await textosDe(blob)).toContain('Puntos GPS por especie');
+  expect(await textosDe(blob)).toEqual(
+    expect.arrayContaining(['Puntos GPS por especie', 'San Sebastián · 2025-2026']),
+  );
 });
 
 test('sin GPS no dibuja mapa y el informe sale igual', async () => {
   const blob = await renderizarInforme({
     ...entradaInforme({ parcelas: 2, especies: 2, conGps: false }),
-    emitido: '06/10/2026',
+    ...EMISION,
   });
   expect(dibujarMapaInforme).not.toHaveBeenCalled();
   expect(await textosDe(blob)).toContain('Distribución por especie · 2 especies');
@@ -57,7 +69,7 @@ test('sin GPS no dibuja mapa y el informe sale igual', async () => {
 test('sin el mapa elegido no planifica ni dibuja, y el informe sale sin ese bloque', async () => {
   const blob = await renderizarInforme({
     ...entradaInforme({ parcelas: 4, especies: 4, opciones: opcionesCon(['gps', 'foto', 'meta']) }),
-    emitido: '06/10/2026',
+    ...EMISION,
   });
   expect(planificarInforme).not.toHaveBeenCalled();
   expect(dibujarMapaInforme).not.toHaveBeenCalled();

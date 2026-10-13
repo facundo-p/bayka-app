@@ -1,4 +1,5 @@
 import { StyleSheet } from '@react-pdf/renderer';
+import { recuadroVacio } from '../arbol/PartesArbol.styles';
 import {
   CAJA_TARJETA,
   COLOR_PDF,
@@ -18,7 +19,7 @@ const renglon = { maxLines: 1, textOverflow: 'ellipsis' } as const;
  */
 const interlineado = { lineHeight: M.interlineado } as const;
 
-const rotulo = {
+const mayusculas = {
   ...interlineado,
   fontSize: TAMANO_TEXTO.etiqueta,
   color: COLOR_PDF.apagado,
@@ -36,9 +37,24 @@ const celda = { ...renglon, flexBasis: 0, paddingHorizontal: M.rellenoCelda } as
 
 const columna = (peso: number) => ({ ...celda, flexGrow: peso });
 
-export const reporteStyles = StyleSheet.create({
+const mono = { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono } as const;
+
+/** Lo que la tarjeta y la fila del listado pintan igual. */
+const deArbol = {
+  punto: {
+    width: M.punto,
+    height: M.punto,
+    borderRadius: M.punto / 2,
+    marginRight: M.aireTrasPunto,
+  },
+  codigo: { ...mono, color: COLOR_PDF.navy },
+  mono,
+} as const;
+
+export const tarjetaStyles = StyleSheet.create({
+  ...deArbol,
   grilla: { rowGap: M.separacion },
-  filaTarjetas: { flexDirection: 'row', columnGap: M.separacion },
+  fila: { flexDirection: 'row', columnGap: M.separacion },
   tarjeta: {
     flexDirection: 'row',
     width: CAJA_TARJETA.ancho,
@@ -49,15 +65,7 @@ export const reporteStyles = StyleSheet.create({
     borderRadius: M.radio,
   },
   foto: { ...recuadroFoto, objectFit: 'cover' },
-  fotoVacia: {
-    ...recuadroFoto,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: M.borde,
-    borderStyle: 'dashed',
-    borderColor: COLOR_PDF.linea,
-    backgroundColor: COLOR_PDF.papelHundido,
-  },
+  vacio: { ...recuadroFoto, ...recuadroVacio, borderWidth: M.borde },
   textoVacio: { fontSize: TAMANO_TEXTO.secundario, color: COLOR_PDF.tenue },
   datos: { flex: 1, marginLeft: M.aireFoto },
   idArbol: {
@@ -69,7 +77,7 @@ export const reporteStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.idTarjeta,
     color: COLOR_PDF.navy,
   },
-  especie: {
+  filaEspecie: {
     flexDirection: 'row',
     alignItems: 'center',
     height: M.altoEspecie + M.aireEspecie,
@@ -77,12 +85,6 @@ export const reporteStyles = StyleSheet.create({
     marginBottom: M.aireEspecie,
     borderBottomWidth: M.borde,
     borderBottomColor: COLOR_PDF.linea,
-  },
-  punto: {
-    width: M.punto,
-    height: M.punto,
-    borderRadius: M.punto / 2,
-    marginRight: M.aireTrasPunto,
   },
   nombreEspecie: {
     ...renglon,
@@ -92,9 +94,8 @@ export const reporteStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.especie,
     color: COLOR_PDF.tinta,
   },
-  sinIdentificar: { color: COLOR_PDF.ambarTexto },
   dato: { flexDirection: 'row', alignItems: 'center', height: M.altoDato },
-  etiqueta: { ...rotulo, ...renglon, width: M.anchoEtiqueta, paddingTop: M.aireSobreEtiqueta },
+  rotulo: { ...mayusculas, ...renglon, width: M.anchoEtiqueta, paddingTop: M.aireSobreEtiqueta },
   valor: {
     ...renglon,
     ...interlineado,
@@ -102,19 +103,19 @@ export const reporteStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.dato,
     color: COLOR_PDF.tinta,
   },
-  codigo: { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono, color: COLOR_PDF.navy },
-  mono: { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono },
-  apagado: { color: COLOR_PDF.apagado },
+});
 
-  encabezadoListado: {
-    ...rotulo,
+export const listadoStyles = StyleSheet.create({
+  ...deArbol,
+  encabezado: {
+    ...mayusculas,
     flexDirection: 'row',
     alignItems: 'center',
     height: M.altoEncabezadoListado,
     borderBottomWidth: M.borde,
     borderBottomColor: COLOR_PDF.oliva,
   },
-  filaListado: {
+  fila: {
     ...interlineado,
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,14 +125,14 @@ export const reporteStyles = StyleSheet.create({
     borderBottomWidth: M.bordeFino,
     borderBottomColor: COLOR_PDF.linea,
   },
-  filaSombreada: { backgroundColor: COLOR_PDF.papelHundido },
-  idListado: { fontFamily: FUENTE_PDF.mono, color: COLOR_PDF.navy },
-  celdaEspecie: {
+  sombreada: { backgroundColor: COLOR_PDF.papelHundido },
+  idArbol: { fontFamily: FUENTE_PDF.mono, color: COLOR_PDF.navy },
+  filaEspecie: {
     ...columna(M.pesoColumna.especie),
     flexDirection: 'row',
     alignItems: 'center',
   },
-  textoEspecie: { ...renglon, flex: 1 },
+  nombreEspecie: { ...renglon, flex: 1 },
   centrado: { textAlign: 'center' },
 });
 

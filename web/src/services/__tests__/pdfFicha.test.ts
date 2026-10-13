@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import * as motor from '../../pdf/ficha/motorFichas';
+import * as motor from '../../pdf/ficha/motorFicha';
 import { ESTADO_MAPA, type MapaPdf } from '../../pdf/mapa/estadoMapa';
 import { leerArbolParaFicha, leerNombreOrganizacion } from '../../queries/fichasQueries';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
@@ -8,7 +8,7 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { descargarBlob } from '../descargas';
-import { ERROR_FICHA_SIN_ARBOL, descargarFichaPdf, nombreArchivoFicha } from '../pdfFichas';
+import { ERROR_FICHA_SIN_ARBOL, descargarFichaPdf, nombreArchivoFicha } from '../pdfFicha';
 
 vi.mock('../../queries/fichasQueries', () => ({
   leerArbolParaFicha: vi.fn(),
@@ -20,13 +20,12 @@ vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
 }));
-vi.mock('../../pdf/ficha/motorFichas', () => ({
-  cargarFotos: vi.fn(),
+vi.mock('../../pdf/ficha/motorFicha', () => ({
+  cargarFoto: vi.fn(),
   minimapaDeArbol: vi.fn(),
   datosFicha: vi.fn(),
-  encabezadoDePlantacion: vi.fn(),
-  logoNavegador: vi.fn(),
-  renderizarFichas: vi.fn(),
+  emisionDePlantacion: vi.fn(),
+  renderizarFicha: vi.fn(),
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
@@ -38,6 +37,10 @@ const MAPA: MapaPdf = {
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
+const EMISION = {
+  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+  emitido: '12/10/2026',
+};
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
 const TIM = especieDePlantacion({ id: 's2', codigo: 'TIM', nombre: 'Timbó', lugarColor: 0 });
 
@@ -60,10 +63,10 @@ beforeEach(() => {
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue(PUNTOS);
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC, TIM]);
-  vi.mocked(motor.cargarFotos).mockResolvedValue([{ estado: 'sin-foto' }]);
+  vi.mocked(motor.cargarFoto).mockResolvedValue({ estado: 'sin-foto' });
   vi.mocked(motor.minimapaDeArbol).mockResolvedValue(MAPA);
-  vi.mocked(motor.logoNavegador).mockReturnValue('/logo.png');
-  vi.mocked(motor.renderizarFichas).mockResolvedValue(BLOB);
+  vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
+  vi.mocked(motor.renderizarFicha).mockResolvedValue(BLOB);
 });
 
 test('nombre de archivo de la ficha', () => {
@@ -76,25 +79,26 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
   await descargarFichaPdf('t1', contexto());
 
   expect(leerArbolParaFicha).toHaveBeenCalledWith(PLANTACION.id, 't1');
-  expect(motor.cargarFotos).toHaveBeenCalledWith([null]);
+  expect(motor.cargarFoto).toHaveBeenCalledWith(null);
   expect(motor.datosFicha).toHaveBeenCalledWith(ARBOL, {
     tecnico: 'Lucía Ferreyra',
     foto: { estado: 'sin-foto' },
     mapa: MAPA,
     colorDe: expect.any(Function),
   });
-  expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka', '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining(EMISION));
   expect(descargarBlob).toHaveBeenCalledWith(
     BLOB,
     'ficha-san-sebastian-2025-2026-lp12l10anc23.pdf',
   );
 });
 
-test('el documento recibe una sola ficha, la del árbol', async () => {
+test('el documento recibe la ficha del árbol', async () => {
   const ficha = { sentinela: 'ficha-t1' } as unknown as ReturnType<typeof motor.datosFicha>;
   vi.mocked(motor.datosFicha).mockReturnValue(ficha);
   await descargarFichaPdf('t1', contexto());
-  expect(motor.renderizarFichas).toHaveBeenCalledWith(expect.objectContaining({ fichas: [ficha] }));
+  expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining({ ficha }));
 });
 
 test('los puntos del mapa salen de la caché del dashboard', async () => {
@@ -109,7 +113,7 @@ test('sin organización ni puntos legibles, la ficha sale igual', async () => {
   vi.mocked(listarPuntosGps).mockRejectedValue(new Error('red'));
   await descargarFichaPdf('t1', contexto());
   expect(motor.minimapaDeArbol).toHaveBeenCalledWith(ARBOL, [], expect.any(Function));
-  expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, null, '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, null);
   expect(descargarBlob).toHaveBeenCalled();
 });
 

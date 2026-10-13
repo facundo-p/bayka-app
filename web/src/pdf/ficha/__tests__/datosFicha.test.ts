@@ -1,8 +1,7 @@
 import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
-import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
-import { datosFicha, documentoDeFichas } from '../datosFicha';
+import { datosFicha } from '../datosFicha';
 
 const FOTO: FotoPdf = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,AAA' };
 const MAPA: MapaPdf = {
@@ -64,31 +63,6 @@ test('sin GPS no hay coordenadas ni mapa, aunque llegue uno', () => {
   expect(ficha.mapa).toEqual({ estado: 'sin-gps' });
 });
 
-test('GPS sin precisión muestra solo las coordenadas', () => {
-  const gps = { lat: -27.36, lng: -55.89, precision: null };
-  expect(datosFicha({ ...COMPLETO, gps }, CONTEXTO).gps).toEqual({
-    coordenadas: '-27.360000, -55.890000',
-    precision: null,
-  });
-});
-
-test('N/N: ámbar, sin científico ni clasificación', () => {
-  expect(datosFicha({ ...COMPLETO, especie: null }, CONTEXTO).especie).toEqual({
-    color: COLOR_GRAFICO_NN,
-    titulo: 'N/N · Sin identificar',
-    cientifico: null,
-    clasificacion: null,
-    sinIdentificar: true,
-  });
-});
-
-test('sin científico conserva la clasificación', () => {
-  const especie = { ...COMPLETO.especie!, nombreCientifico: null };
-  const ficha = datosFicha({ ...COMPLETO, especie }, CONTEXTO);
-  expect(ficha.especie.cientifico).toBeNull();
-  expect(ficha.especie.clasificacion).toBe('Flora · Árbol');
-});
-
 test('sin posición, técnico ni parcela', () => {
   const ficha = datosFicha(
     { ...COMPLETO, posicion: null, parcela: null },
@@ -97,9 +71,4 @@ test('sin posición, técnico ni parcela', () => {
   expect(ficha.posicion).toBe('—');
   expect(ficha.tecnico).toBe('—');
   expect(ficha.parcela).toBeNull();
-});
-
-test('el pie nombra el documento según cuántas fichas lleva', () => {
-  expect(documentoDeFichas(1)).toBe('Ficha de árbol');
-  expect(documentoDeFichas(12)).toBe('Fichas de árboles · 12 árboles');
 });

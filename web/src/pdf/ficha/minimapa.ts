@@ -20,7 +20,7 @@ export const RADIO_VECINOS_M = 2000;
  * Radio de los puntos vecinos en unidades del dibujo: sigue a la separación
  * para que una parcela densa no tape el satélite, y queda debajo del resaltado.
  */
-const RADIO_PUNTO_VECINO = { minimo: 0.6, maximo: 1.4, factor: 0.35 } as const;
+const RADIO_PUNTO_VECINO = { minimo: 0.6, maximo: 1.4 } as const;
 
 function vecinosDe(arbol: ArbolParaFicha, centro: LatLng, puntos: readonly PuntoGps[]) {
   const { parcelaId } = arbol;

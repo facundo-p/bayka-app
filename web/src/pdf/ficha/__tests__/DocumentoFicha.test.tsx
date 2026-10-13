@@ -9,7 +9,7 @@ import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, type MapaPdf } from '../../mapa/estado
 import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { datosFicha, type ModeloFicha } from '../datosFicha';
-import { DocumentoFichas } from '../DocumentoFichas';
+import { DocumentoFicha } from '../DocumentoFicha';
 
 const COLOR_DE = coloresEnOrden('ANC');
 
@@ -56,9 +56,9 @@ const PEOR_CASO = arbolParaFicha({
 
 const TECNICO_LARGO = 'María Fernanda Etchegoyen Larrañaga';
 
-function renderizar(fichas: readonly ModeloFicha[]) {
+function renderizar(modelo: ModeloFicha) {
   return renderToBuffer(
-    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+    <DocumentoFicha encabezado={ENCABEZADO} emitido="06/10/2026" ficha={modelo} />,
   );
 }
 
@@ -71,88 +71,76 @@ function ficha(
   return datosFicha(arbol, { colorDe: COLOR_DE, tecnico, foto, mapa });
 }
 
-/** Posición de cada hoja en los textos del PDF: el número de página cierra cada hoja. */
-function cierresDeHoja(textos: string[], total: number): number[] {
-  return Array.from({ length: total }, (_, indice) =>
-    textos.findIndex((texto) => texto.includes(`Página ${indice + 1} de ${total}`)),
-  );
-}
-
 beforeAll(() => registrarFuentes(FUENTES_NODE));
 
-test('una ficha completa entra en una hoja', async () => {
-  const pdf = await renderizar([ficha(CON_TODO, LISTA, MAPA_SATELITE, 'Lucía')]);
+test('una ficha completa entra en una hoja, con el documento al pie', async () => {
+  const pdf = await renderizar(ficha(CON_TODO, LISTA, MAPA_SATELITE, 'Lucía'));
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   expect(paginasDelPdf(pdf)).toBe(1);
+  expect(textosDelPdf(pdf)).toContain('Ficha de árbol');
 });
 
-test('con los casos borde, cada ficha va en su hoja', async () => {
-  const fichas = [
-    ficha(CON_TODO, { estado: ESTADO_FOTO.sinFoto }, MAPA_SATELITE),
-    ficha(CON_TODO, { estado: ESTADO_FOTO.noDisponible }, MAPA_NO_DISPONIBLE),
-    ficha({ ...CON_TODO, gps: null }, LISTA, MAPA),
-    ficha({ ...CON_TODO, especie: null }, LISTA, MAPA),
-  ];
-  const pdf = await renderizar(fichas);
-  expect(paginasDelPdf(pdf)).toBe(4);
+test.each([
+  {
+    caso: 'sin foto',
+    modelo: ficha(CON_TODO, { estado: ESTADO_FOTO.sinFoto }, MAPA_SATELITE),
+    avisos: ['Sin foto'],
+  },
+  {
+    caso: 'foto y mapa no disponibles',
+    modelo: ficha(CON_TODO, { estado: ESTADO_FOTO.noDisponible }, MAPA_NO_DISPONIBLE),
+    avisos: ['Foto no disponible', 'Mapa no disponible'],
+  },
+  {
+    caso: 'sin GPS',
+    modelo: ficha({ ...CON_TODO, gps: null }, LISTA, MAPA),
+    avisos: ['Sin punto GPS', 'Sin punto'],
+  },
+  {
+    caso: 'sin especie',
+    modelo: ficha({ ...CON_TODO, especie: null }, LISTA, MAPA),
+    avisos: ['N/N · Sin identificar'],
+  },
+])('$caso: entra en una hoja y lo avisa', async ({ modelo, avisos }) => {
+  const pdf = await renderizar(modelo);
+  expect(paginasDelPdf(pdf)).toBe(1);
   expect(textosDelPdf(pdf)).toEqual(
-    expect.arrayContaining([
-      'Emitido el 06/10/2026 · Página 1 de 4',
-      'Emitido el 06/10/2026 · Página 4 de 4',
-      'Sin foto',
-      'Foto no disponible',
-      'Sin punto GPS',
-      'Mapa no disponible',
-      'N/N · Sin identificar',
-    ]),
+    expect.arrayContaining(['Emitido el 06/10/2026 · Página 1 de 1', ...avisos]),
   );
 });
 
 test('el peor caso realista, con la llamada del satélite, entra en una hoja', async () => {
-  const pdf = await renderizar([ficha(PEOR_CASO, LISTA, MAPA_SATELITE, TECNICO_LARGO)]);
+  const pdf = await renderizar(ficha(PEOR_CASO, LISTA, MAPA_SATELITE, TECNICO_LARGO));
   expect(paginasDelPdf(pdf)).toBe(1);
   // Entero en un tramo: el ID largo no se parte ni se mete debajo de la foto.
   expect(textosDelPdf(pdf)).toContain(PEOR_CASO.idArbol);
 });
 
-test('N fichas del peor caso, N hojas', async () => {
-  const fichas = [1, 2, 3].map(() => ficha(PEOR_CASO, LISTA, MAPA_SATELITE, TECNICO_LARGO));
-  expect(paginasDelPdf(await renderizar(fichas))).toBe(3);
-});
-
 test('con satélite, el minimapa lleva la llamada y la hoja la nota de Esri al pie', async () => {
   const textosCon = async (mapa: MapaPdf) =>
-    textosDelPdf(await renderizar([ficha(CON_TODO, LISTA, mapa)]));
+    textosDelPdf(await renderizar(ficha(CON_TODO, LISTA, mapa)));
   expect(await textosCon(MAPA_SATELITE)).toEqual(expect.arrayContaining(['*', ATRIBUCION]));
   const liso = await textosCon(MAPA);
   expect(liso).not.toContain(ATRIBUCION);
   expect(liso).not.toContain('*');
 });
 
-test('la nota de Esri va solo al pie de las hojas con minimapa satelital', async () => {
-  const fichas = [
-    ficha(CON_TODO, LISTA, MAPA),
-    ficha(CON_TODO, LISTA, MAPA_SATELITE),
-    ficha({ ...CON_TODO, gps: null }, LISTA, MAPA_SATELITE),
-    ficha(CON_TODO, LISTA, MAPA_SATELITE),
-  ];
-  const textos = textosDelPdf(await renderizar(fichas));
-  const cierres = cierresDeHoja(textos, fichas.length);
-  const hojasConNota = textos.flatMap((texto, indice) =>
-    texto === ATRIBUCION ? [cierres.findIndex((cierre) => cierre > indice) + 1] : [],
-  );
-  expect(hojasConNota).toEqual([2, 4]);
+test('sin GPS no hay minimapa ni nota de Esri, aunque el mapa sea satelital', async () => {
+  const sinGps = ficha({ ...CON_TODO, gps: null }, LISTA, MAPA_SATELITE);
+  const textos = textosDelPdf(await renderizar(sinGps));
+  expect(textos).not.toContain(ATRIBUCION);
+  expect(textos).not.toContain('*');
 });
 
 test('la ficha lleva el ID Árbol y no un ID Global (#822)', async () => {
-  const textos = textosDelPdf(await renderizar([ficha(CON_TODO, LISTA, MAPA)]));
+  const textos = textosDelPdf(await renderizar(ficha(CON_TODO, LISTA, MAPA)));
   expect(textos).toEqual(expect.arrayContaining(['ID ÁRBOL', CON_TODO.idArbol]));
   expect(textos.join(' ')).not.toMatch(/ID Global/i);
 });
 
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
   const renderizarSola = (arbol: typeof CON_TODO) =>
-    renderizarEnSerie(FUENTES_NODE, () => renderizar([ficha(arbol, LISTA, MAPA, 'Lucía')]));
+    renderizarEnSerie(FUENTES_NODE, () => renderizar(ficha(arbol, LISTA, MAPA, 'Lucía')));
   // La primera usa «·» en semibold sin «.»: fontkit guarda el punto sin su carácter.
   await renderizarSola(CON_TODO);
   const conPunto = { ...CON_TODO, especie: { ...CON_TODO.especie!, nombre: 'Anchico s.l.' } };

@@ -4,15 +4,14 @@
  * Todo lo de PDF se carga recién acá, con `import()`.
  */
 import type { QueryClient } from '@tanstack/react-query';
-import { formatearFechaCorta } from '../lib/fechas';
 import type { OpcionesInforme } from '../lib/opcionesInforme';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { calcularDashboard, obtenerFuenteDashboard } from '../queries/dashboardQueries';
-import { leerNombreOrganizacion } from '../queries/fichasQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import { ETIQUETA_ESTADO_PLANTACION, type Plantacion } from '../queries/plantationQueries';
 import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
+import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
 export type PlantacionDelInforme = Pick<
   Plantacion,
@@ -31,11 +30,7 @@ function leerPuntos(id: string, queryClient: QueryClient, opciones: OpcionesInfo
 
 /** Lo que puede faltar: el informe sale igual, sin esa parte. */
 function leerAccesorios(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
-  return Promise.all([
-    leerPuntos(id, queryClient, opciones),
-    // Sin organización legible, el encabezado lleva solo el código.
-    leerNombreOrganizacion(id).catch(() => null),
-  ]);
+  return Promise.all([leerPuntos(id, queryClient, opciones), leerOrganizacionDelEncabezado(id)]);
 }
 
 /**
@@ -67,6 +62,7 @@ export async function generarPdfInforme(
     opciones,
   );
   return motor.renderizarInforme({
+    ...motor.emisionDePlantacion(plantacion, organizacion),
     dashboard: calcularDashboard(fuente),
     puntos,
     plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },
@@ -74,7 +70,6 @@ export async function generarPdfInforme(
     organizacion,
     colorDe,
     opciones,
-    emitido: formatearFechaCorta(new Date().toISOString()),
   });
 }
 

@@ -4,19 +4,15 @@
  * recién acá, con `import()`; el plan es puro y viene de entrada.
  */
 import type { QueryClient } from '@tanstack/react-query';
-import { formatearFechaCorta } from '../lib/fechas';
 import { ESTADO_FOTO, type FotoPdf } from '../pdf/estadoFoto';
 import { repartirArboles, type ModoReporte } from '../pdf/reporte/planReporte';
 import type { FiltrosArboles } from '../queries/dataExplorerQueries';
-import {
-  leerNombreOrganizacion,
-  listarArbolesDelFiltro,
-  type ArbolParaFicha,
-} from '../queries/fichasQueries';
+import { listarArbolesDelFiltro, type ArbolParaFicha } from '../queries/fichasQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { ColorEspecie } from '../theme/coloresEspecie';
 import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob } from './descargas';
+import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
 /** Las etapas de la barra de progreso; la lectura de los árboles la avisa quien los lee. */
 export const ETAPA_REPORTE = {
@@ -56,10 +52,9 @@ export type ReportePdf = {
 
 export const ERROR_REPORTE_SIN_ARBOLES = 'El reporte no tiene árboles';
 
-/** Sin organización legible, el encabezado lleva solo el código de la plantación. */
 function leerInsumos({ plantacion, queryClient }: ContextoReportePdf) {
   return Promise.all([
-    leerNombreOrganizacion(plantacion.id).catch(() => null),
+    leerOrganizacionDelEncabezado(plantacion.id),
     leerColoresEspecie(queryClient, plantacion.id),
     import('../pdf/reporte/motorReporte'),
   ]);
@@ -107,10 +102,8 @@ export async function generarPdfReporte(
   const reparto = await prepararReparto(motor, pedido, colorDe);
   pedido.senal?.throwIfAborted();
   pedido.alProgresar?.({ etapa: ETAPA_REPORTE.armandoPdf });
-  const logo = motor.logoNavegador();
-  const encabezado = motor.encabezadoDePlantacion(contexto.plantacion, organizacion, logo);
-  const emitido = formatearFechaCorta(new Date().toISOString());
-  const blob = await motor.renderizarReporte({ encabezado, emitido, reparto }, pedido.senal);
+  const emision = motor.emisionDePlantacion(contexto.plantacion, organizacion);
+  const blob = await motor.renderizarReporte({ ...emision, reparto }, pedido.senal);
   return { blob, fotosFallidas: contarFallidas(reparto.tarjetas) };
 }
 
