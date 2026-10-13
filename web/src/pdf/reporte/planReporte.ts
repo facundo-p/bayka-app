@@ -5,6 +5,7 @@
  * No carga react-pdf: se puede importar de entrada.
  */
 import { tieneFotoSubida } from '../../lib/fotoSubida';
+import { CORTAR_TEXTO_LARGO } from '../plantilla/textoLargo';
 import { CAJA_TARJETA, CUERPO_REPORTE, MEDIDA_REPORTE as M } from '../plantilla/tokens';
 import { enTramos } from '../plantilla/tramos';
 
@@ -133,12 +134,19 @@ export function paginarReporte<Tarjeta, Fila>(
  */
 export type ConteoReporte = { total: number; conFoto: number; modo: ModoReporte };
 
-export type EstimacionReporte = { tarjetas: number; filasListado: number; hojas: number };
+export type EstimacionReporte = {
+  tarjetas: number;
+  filasListado: number;
+  hojas: number;
+  /** El PDF puede salir con más hojas que las estimadas. */
+  esPiso: boolean;
+};
 
 /**
  * Lo mismo que daría `paginarReporte(repartirArboles(...))` con todo en un
  * renglón, solo con los conteos. Con el texto entero, un nombre largo agranda su
- * fila o su tarjeta: las hojas, y el peso que sale de ellas, son un piso.
+ * fila o su tarjeta: las hojas, y el peso que sale de ellas, son un piso (`esPiso`).
+ * Sin árboles no hay nada que crezca.
  * Si los conteos salen de lecturas distintas, `conFoto` puede pasar a `total`: se acota.
  */
 export function estimarReporte({ total, conFoto, modo }: ConteoReporte): EstimacionReporte {
@@ -146,5 +154,5 @@ export function estimarReporte({ total, conFoto, modo }: ConteoReporte): Estimac
   const tarjetas = modo === MODO_REPORTE.conFotos ? Math.min(conFotoPosible, TOPE_TARJETAS) : 0;
   const filasListado = total - tarjetas;
   const hojas = Math.ceil(tarjetas / TARJETAS_POR_HOJA) + Math.ceil(filasListado / FILAS_POR_HOJA);
-  return { tarjetas, filasListado, hojas };
+  return { tarjetas, filasListado, hojas, esPiso: !CORTAR_TEXTO_LARGO && total > 0 };
 }
