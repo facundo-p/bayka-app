@@ -94,8 +94,8 @@ const altoItemLeyenda = ({ texto }: ItemLeyendaEnRenglones) =>
 /** Cada fila de la leyenda mide lo que su ítem más alto; sin ítems, igual ocupa una. */
 export function altoLeyenda({ mapa }: InformeConMapa): number {
   const filas = enTramos(mapa.leyenda, ITEMS_POR_FILA_LEYENDA);
-  const altos = filas.map((fila) => Math.max(...fila.map(altoItemLeyenda)));
-  const alto = altos.reduce((suma, altoFila) => suma + altoFila, 0);
+  const altosPorFila = filas.map((fila) => Math.max(...fila.map(altoItemLeyenda)));
+  const alto = altosPorFila.reduce((suma, deLaFila) => suma + deLaFila, 0);
   return M.aireMapa + Math.max(alto, M.altoRenglonLeyenda);
 }
 

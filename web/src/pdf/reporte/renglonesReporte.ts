@@ -9,7 +9,7 @@ import type { CodigoNombre } from '../../queries/fichasQueries';
 import type { RotuloEspecie } from '../arbol/datosArbol';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
 import { conMemoria, type Medidor } from '../plantilla/medirTexto';
-import { leerMedidores } from '../plantilla/medidores';
+import { leerMedidores, type MedidoresDe } from '../plantilla/medidores';
 import type { Partidor, TextoEnRenglones } from '../plantilla/partirTexto';
 import { renglonador } from '../plantilla/renglonador';
 import { ANCHO_TEXTO_REPORTE, LETRA_REPORTE } from '../plantilla/tokens';
@@ -17,7 +17,7 @@ import type { ModeloArbolReporte, ModeloTarjeta } from './datosReporte';
 import type { Reparto } from './planReporte';
 
 /** Un medidor por cada letra de texto que se parte o se corta. */
-export type MedidoresReporte = Record<keyof typeof LETRA_REPORTE, Medidor>;
+export type MedidoresReporte = MedidoresDe<typeof LETRA_REPORTE>;
 
 export const leerMedidoresReporte = (): Promise<MedidoresReporte> => leerMedidores(LETRA_REPORTE);
 

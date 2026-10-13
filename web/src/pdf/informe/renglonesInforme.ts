@@ -6,15 +6,14 @@
  * espacios hasta pegar las palabras. Va adentro del turno de
  * `renderizarEnSerie`, con las fuentes ya registradas.
  */
-import type { Medidor } from '../plantilla/medirTexto';
-import { leerMedidores } from '../plantilla/medidores';
+import { leerMedidores, type MedidoresDe } from '../plantilla/medidores';
 import type { Partidor, TextoEnRenglones } from '../plantilla/partirTexto';
 import { renglonador } from '../plantilla/renglonador';
 import { ANCHO_TEXTO_INFORME, LETRA_INFORME } from '../plantilla/tokens';
 import type { FilaEspecie, ItemLeyenda, MapaDelInforme, ModeloInforme } from './datosInforme';
 
 /** Un medidor por cada letra de texto que se parte o se corta. */
-export type MedidoresInforme = Record<keyof typeof LETRA_INFORME, Medidor>;
+export type MedidoresInforme = MedidoresDe<typeof LETRA_INFORME>;
 
 export const leerMedidoresInforme = (): Promise<MedidoresInforme> => leerMedidores(LETRA_INFORME);
 
