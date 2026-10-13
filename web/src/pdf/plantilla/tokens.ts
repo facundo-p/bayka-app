@@ -284,7 +284,7 @@ export const MEDIDA_INFORME = {
   /** Aire dentro del marco del mapa: el norte y la escala no tocan los puntos. */
   margenMapa: 24,
   /** Radio de los puntos del mapa: sigue a la separación entre vecinos, dentro de estos topes. */
-  radioPuntoMapa: { minimo: 1.1, maximo: 4 },
+  radioPuntoMapa: { minimo: 1.5, maximo: 4 },
 } as const;
 
 /** El mapa del informe: al ancho del cuerpo y con proporción fija; los puntos se encuadran adentro. */

@@ -26,7 +26,7 @@ describe('radioDePuntos', () => {
   });
 
   test('entre el mínimo y el máximo', () => {
-    expect(radioDePuntos(grilla(1))).toBe(1.1);
+    expect(radioDePuntos(grilla(1))).toBe(1.5);
     expect(radioDePuntos(grilla(100))).toBe(4);
     expect(radioDePuntos([{ x: 0, y: 0 }])).toBe(4);
   });
