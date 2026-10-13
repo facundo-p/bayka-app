@@ -42,9 +42,9 @@ const GRUPO_CON_SALTO = 'Línea\n10';
 
 /**
  * Sin fuente, «中» mide 0: el texto crudo entra en un renglón. Saneado, cada «?»
- * ocupa su ancho y no entra ni en la leyenda del mapa ni en la columna del listado.
+ * ocupa su ancho y no entra ni en el nombre de especie del informe ni en la
+ * columna del listado.
  */
-const CODIGO_SIN_FUENTE = `YER${'中'.repeat(8)}`;
 const NOMBRE_SIN_FUENTE = `Ladera ${'中'.repeat(32)}`;
 
 const ENCABEZADO = encabezadoDePlantacion(
@@ -81,20 +81,17 @@ function ficha() {
   return renderizarFicha({ ...EMISION, ficha: modelo });
 }
 
-/** Con mapa: el código de la primera especie va también en su leyenda. */
-function pedidoInforme(): PedidoInforme {
+/** Con mapa, y `nombre` en la primera especie. */
+function pedidoInforme(nombre = ESPECIE_SIN_FUENTE): PedidoInforme {
   const entrada = entradaInforme({ parcelas: 2, especies: 2 });
   const [primera, ...resto] = entrada.dashboard.porEspecie;
-  const conCodigo = <T extends { codigo: string }>(item: T) =>
-    item.codigo === primera.codigo ? { ...item, codigo: CODIGO_SIN_FUENTE } : item;
-  const porEspecie = [{ ...conCodigo(primera), nombre: ESPECIE_SIN_FUENTE }, ...resto];
+  const porEspecie = [{ ...primera, nombre }, ...resto];
   return {
     ...entrada,
     ...EMISION,
     plantacion: { ...entrada.plantacion, lugar: PARCELA_GUARANI },
     organizacion: GRUPO_CON_SALTO,
     dashboard: { ...entrada.dashboard, porEspecie },
-    puntos: entrada.puntos?.map(conCodigo) ?? null,
   };
 }
 
@@ -160,12 +157,12 @@ test('el reporte sanea antes de partir: parte lo que dibuja', async () => {
   await dibujaLoPartidoSaneado(await reporte(reparto), partido);
 });
 
-test('el informe sanea antes de partir: parte lo que dibuja en la leyenda del mapa', async () => {
-  const pedido = pedidoInforme();
+test('el informe sanea antes de partir: parte lo que dibuja en el nombre de especie', async () => {
+  const pedido = pedidoInforme(NOMBRE_SIN_FUENTE);
   const partido = await partidoAntesYDespues(
     datosInforme(pedido),
     async (props) => informeEnRenglones(props, await leerMedidoresInforme()),
-    ({ mapa }) => mapa!.leyenda[0].texto,
+    ({ especies }) => especies.filas[0].titulo,
   );
   await dibujaLoPartidoSaneado(await renderizarInforme(pedido), partido);
 });

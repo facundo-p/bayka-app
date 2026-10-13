@@ -98,21 +98,20 @@ describe('datosInforme', () => {
     const entrada = { ...entradaInforme({ parcelas: 1, especies: 2 }), colorDe };
     const modelo = datosInforme(entrada);
     expect(modelo.especies.filas.map((fila) => fila.color)).toEqual(['#6b8f3c', '#0a3760']);
-    expect(mapaDe(entrada).leyenda).toEqual([
-      { texto: 'LAP', color: '#6b8f3c' },
-      { texto: 'TIM', color: '#0a3760' },
+    expect(mapaDe(entrada).puntos.map((punto) => punto.color)).toEqual([
+      '#6b8f3c',
+      '#0a3760',
+      '#6b8f3c',
     ]);
   });
 
-  test('el mapa pinta cada punto con el color de su especie y deja la leyenda en el mismo orden', () => {
+  test('el mapa pinta cada punto con el color de su especie, N/N incluida', () => {
     const mapa = mapaDe(entradaInforme({ parcelas: 2, especies: 2, nn: 5 }));
-    expect(mapa.leyenda).toEqual([
-      { texto: 'LAP', color: '#0a3760' },
-      { texto: 'TIM', color: '#99b95b' },
-      { texto: 'N/N', color: '#e0a83b' },
+    expect(mapa.puntos.slice(0, 3).map((punto) => punto.color)).toEqual([
+      '#0a3760',
+      '#99b95b',
+      '#e0a83b',
     ]);
-    expect(mapa.puntos[0].color).toBe('#0a3760');
-    expect(mapa.etiquetas.map((etiqueta) => etiqueta.texto)).toEqual(['P1', 'P2']);
     expect(mapa.vacio).toBeNull();
   });
 
@@ -154,7 +153,6 @@ describe('datosInforme', () => {
     const ajeno = { ...entrada.puntos![0], codigo: 'XYZ' };
     const mapa = mapaDe({ ...entrada, puntos: [...entrada.puntos!, ajeno] });
     expect(mapa.puntos).toHaveLength(entrada.puntos!.length);
-    expect(mapa.leyenda.map((item) => item.texto)).toEqual(['LAP', 'TIM']);
   });
 });
 

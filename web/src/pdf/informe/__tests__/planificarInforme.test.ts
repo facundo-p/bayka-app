@@ -1,21 +1,18 @@
 import { entradaInforme, informeEnUnRenglon } from '../../../test/informePdf';
-import { CAJA_MAPA_INFORME, CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
-import { datosInforme, tieneMapa } from '../datosInforme';
+import { CAJA_MAPA_INFORME, CUERPO_HOJA } from '../../plantilla/tokens';
+import { datosInforme } from '../datosInforme';
 import {
   altoEnUltimaHoja,
-  libreMinimoAlPie,
+  LIBRE_MINIMO_AL_PIE,
   planificarInforme,
   planSegunLibre,
   renglonesDelFlujo,
 } from '../planificarInforme';
-import type { InformeConMapa } from '../renglonesInforme';
+import type { InformeEnRenglones } from '../renglonesInforme';
 
 /** Con cada texto en un renglón. */
-function modelo(parcelas: number, especies: number): InformeConMapa {
-  const calculado = informeEnUnRenglon(datosInforme(entradaInforme({ parcelas, especies, nn: 3 })));
-  if (!tieneMapa(calculado)) throw new Error('El modelo no trae el mapa');
-  return calculado;
-}
+const modelo = (parcelas: number, especies: number): InformeEnRenglones =>
+  informeEnUnRenglon(datosInforme(entradaInforme({ parcelas, especies, nn: 3 })));
 
 const plan = (parcelas: number, especies: number) => planificarInforme(modelo(parcelas, especies));
 
@@ -28,35 +25,25 @@ test('la caja del mapa es 16:9 horizontal, al ancho del cuerpo', () => {
 // DocumentoInforme.test.tsx.
 test.each([
   [1, 'ultima-hoja'],
-  [10, 'ultima-hoja'],
-  [11, 'hoja-completa'],
+  [12, 'ultima-hoja'],
+  [13, 'hoja-completa'],
 ])('%i especies y N/N: el mapa va a %s', (especies, ubicacion) => {
   expect(plan(4, especies).ubicacion).toBe(ubicacion);
 });
 
 describe('en el umbral de lo libre', () => {
-  const cuatro = modelo(4, 4);
-  const umbral = libreMinimoAlPie(cuatro);
+  // Separación 14, título de bloque 24, aire 4, nota 11 y holgura 8, más la caja del mapa.
+  test('lo libre que pide el mapa al pie no depende de las especies', () => {
+    expect(LIBRE_MINIMO_AL_PIE - CAJA_MAPA_INFORME.alto).toBe(61);
+  });
 
   test('justo en el umbral va al pie', () => {
-    expect(planSegunLibre(cuatro, umbral).ubicacion).toBe('ultima-hoja');
+    expect(planSegunLibre(LIBRE_MINIMO_AL_PIE).ubicacion).toBe('ultima-hoja');
   });
 
   test('medio punto menos ya va a hoja completa', () => {
-    expect(planSegunLibre(cuatro, umbral - 0.5).ubicacion).toBe('hoja-completa');
+    expect(planSegunLibre(LIBRE_MINIMO_AL_PIE - 0.5).ubicacion).toBe('hoja-completa');
   });
-
-  test('una leyenda de más renglones sube el umbral', () => {
-    const muchas = modelo(4, 18);
-    expect(libreMinimoAlPie(muchas)).toBeGreaterThan(umbral);
-    expect(planSegunLibre(muchas, umbral).ubicacion).toBe('hoja-completa');
-  });
-});
-
-test('la leyenda pasa a dos renglones con 11 ítems', () => {
-  // 9 y 10 especies, más N/N: entran 10 por renglón.
-  const diferencia = libreMinimoAlPie(modelo(4, 10)) - libreMinimoAlPie(modelo(4, 9));
-  expect(diferencia).toBe(MEDIDA_INFORME.altoRenglonLeyenda);
 });
 
 describe('altoEnUltimaHoja', () => {
@@ -79,8 +66,8 @@ describe('altoEnUltimaHoja', () => {
 describe('con textos en más de un renglón', () => {
   const base = modelo(4, 4);
   const renglones = (cantidad: number) => Array.from({ length: cantidad }, () => 'Loma');
-  const altos = (otro: InformeConMapa) => renglonesDelFlujo(otro).map(({ alto }) => alto);
-  const diferencias = (otro: InformeConMapa) => {
+  const altos = (otro: InformeEnRenglones) => renglonesDelFlujo(otro).map(({ alto }) => alto);
+  const diferencias = (otro: InformeEnRenglones) => {
     const deBase = altos(base);
     return altos(otro).map((alto, indice) => alto - deBase[indice]);
   };
@@ -98,19 +85,5 @@ describe('con textos en más de un renglón', () => {
     const partido = { ...base, especies: { ...base.especies, filas } };
     // Título, indicadores, encabezado con la primera fila, y las demás.
     expect(diferencias(partido)).toEqual([0, 0, 0, 20, 0, 0, 0]);
-  });
-
-  // 7,5 pt de letra con interlineado de 1,25.
-  test('un código en 2 renglones sube su fila de la leyenda, esté donde esté, y dos en la misma también', () => {
-    const conCodigos = (partidos: number[]) => {
-      const leyenda = base.mapa.leyenda.map((item, indice) =>
-        partidos.includes(indice) ? { ...item, texto: renglones(2) } : item,
-      );
-      return { ...base, mapa: { ...base.mapa, leyenda } };
-    };
-    const umbral = libreMinimoAlPie(base);
-    expect(libreMinimoAlPie(conCodigos([0])) - umbral).toBeCloseTo(9.375);
-    expect(libreMinimoAlPie(conCodigos([3])) - umbral).toBeCloseTo(9.375);
-    expect(libreMinimoAlPie(conCodigos([0, 3])) - umbral).toBeCloseTo(9.375);
   });
 });

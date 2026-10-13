@@ -22,7 +22,6 @@ export const COLOR_PDF = {
   mapaGrilla: '#e6edd8',
   mapaInsignia: 'rgba(255, 255, 255, 0.85)',
   // Sobre el satélite (#757), las insignias oscurecen la imagen y el texto va blanco.
-  mapaVeloEtiqueta: 'rgba(0, 0, 0, 0.45)',
   mapaVeloInsignia: 'rgba(0, 0, 0, 0.35)',
   blanco: '#ffffff',
 } as const;
@@ -80,7 +79,6 @@ export const TAMANO_TEXTO = {
   rotuloIndicador: 6.8,
   detalleIndicador: 7,
   filaInforme: 8,
-  leyenda: 7.5,
   /** El asterisco debajo del mapa satelital. */
   llamada: 7,
   notaAlPie: 4.5,
@@ -241,10 +239,10 @@ export function cuerpoDeHoja(orientacion: OrientacionHoja): Medidas {
 export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
 
 /**
- * Medidas del informe en pt. Los altos de la línea, de las filas de especie y
- * de la leyenda son los de un renglón: un texto partido en más suma el alto de
- * cada renglón de más. Con eso `planificarInforme` sabe cuánto ocupa cada
- * bloque sin renderizar.
+ * Medidas del informe en pt. Los altos de la línea y de las filas de especie
+ * son los de un renglón: un texto partido en más suma el alto de cada renglón
+ * de más. Con eso `planificarInforme` sabe cuánto ocupa cada bloque sin
+ * renderizar.
  */
 export const MEDIDA_INFORME = {
   ...MEDIDA_PDF,
@@ -278,15 +276,12 @@ export const MEDIDA_INFORME = {
   altoTituloMapa: 20,
   aireTituloMapa: 8,
   aireMapa: 4,
-  altoRenglonLeyenda: 11,
-  anchoItemLeyenda: 44,
-  separacionLeyenda: 10,
   altoNotaMapa: 11,
   /** Horizontal, como el mapa del dashboard. */
   proporcionMapa: { ancho: 16, alto: 9 },
   /** Colchón contra los redondeos del layout: si el cálculo se queda corto, el mapa salta solo. */
   holgura: 8,
-  /** Aire dentro del marco del mapa: las etiquetas, el norte y la escala no tocan los puntos. */
+  /** Aire dentro del marco del mapa: el norte y la escala no tocan los puntos. */
   margenMapa: 24,
   /** Radio de los puntos del mapa: sigue a la separación entre vecinos, dentro de estos topes. */
   radioPuntoMapa: { minimo: 1.1, maximo: 4 },
@@ -305,7 +300,6 @@ const ANCHO_PUNTO_INFORME = anchoDePunto(MEDIDA_INFORME.punto);
 export const ANCHO_TEXTO_INFORME = {
   linea: CUERPO_HOJA.ancho,
   especie: MEDIDA_INFORME.anchoNombreEspecie - ANCHO_PUNTO_INFORME,
-  leyenda: MEDIDA_INFORME.anchoItemLeyenda - ANCHO_PUNTO_INFORME,
 } as const;
 
 /** La letra de los textos del informe que se parten o se cortan antes del render (#883). */
@@ -320,18 +314,12 @@ export const LETRA_INFORME = {
     fontWeight: PESO_FUENTE.regular,
     fontSize: TAMANO_TEXTO.filaInforme,
   },
-  leyenda: {
-    fontFamily: FUENTE_PDF.cuerpo,
-    fontWeight: PESO_FUENTE.regular,
-    fontSize: TAMANO_TEXTO.leyenda,
-  },
 } as const;
 
 /** Alto en pt de un renglón de cada letra del informe que se parte. */
 export const ALTO_RENGLON_INFORME = {
   linea: altoDeRenglon(LETRA_INFORME.linea.fontSize),
   fila: altoDeRenglon(LETRA_INFORME.fila.fontSize),
-  leyenda: altoDeRenglon(LETRA_INFORME.leyenda.fontSize),
 } as const;
 
 /**

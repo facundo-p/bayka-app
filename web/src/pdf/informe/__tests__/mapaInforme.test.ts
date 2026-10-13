@@ -1,8 +1,7 @@
-import type { PuntoGps } from '../../../queries/mapaQueries';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
 import { planificarMapa } from '../../mapa/planMapa';
 import { CUERPO_HOJA, MEDIDA_INFORME } from '../../plantilla/tokens';
-import { dibujarMapaInforme, etiquetasDeParcelas, radioDePuntos } from '../mapaInforme';
+import { dibujarMapaInforme, radioDePuntos } from '../mapaInforme';
 
 vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../mapa/dibujarMapa')>()),
@@ -10,37 +9,6 @@ vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
 }));
 
 beforeEach(() => vi.clearAllMocks());
-
-function punto(lat: number, lng: number, parcelaId: string | null): PuntoGps {
-  return { lat, lng, parcelaId, codigo: 'LAP', nombre: '', idArbol: 'x', subId: 'x' };
-}
-
-describe('etiquetasDeParcelas', () => {
-  test('pone el código de cada parcela en el centro de sus puntos', () => {
-    const puntos = [punto(-27, -55, 'a'), punto(-27.2, -55.4, 'a'), punto(-28, -56, 'b')];
-    const parcelas = [
-      { id: 'a', codigo: 'LP12' },
-      { id: 'b', codigo: 'BA03' },
-    ];
-    const etiquetas = etiquetasDeParcelas(puntos, parcelas);
-    expect(etiquetas).toHaveLength(2);
-    expect(etiquetas[0].texto).toBe('LP12');
-    expect(etiquetas[0].lat).toBeCloseTo(-27.1);
-    expect(etiquetas[0].lng).toBeCloseTo(-55.2);
-    expect(etiquetas[1]).toEqual({ lat: -28, lng: -56, texto: 'BA03' });
-  });
-
-  test('sin puntos la parcela no lleva etiqueta, y un punto sin parcela no cuenta', () => {
-    const puntos = [punto(-27, -55, null), punto(-27, -55, 'a')];
-    const parcelas = [
-      { id: 'a', codigo: 'LP12' },
-      { id: 'c', codigo: 'CN07' },
-    ];
-    expect(etiquetasDeParcelas(puntos, parcelas).map((etiqueta) => etiqueta.texto)).toEqual([
-      'LP12',
-    ]);
-  });
-});
 
 describe('radioDePuntos', () => {
   const grilla = (paso: number, desde = 0) =>
@@ -66,7 +34,7 @@ describe('radioDePuntos', () => {
 
 describe('dibujarMapaInforme', () => {
   const color = '#000';
-  const contenido = { puntos: [{ lat: -27.47, lng: -55.9, color }], etiquetas: [] };
+  const contenido = { puntos: [{ lat: -27.47, lng: -55.9, color }] };
 
   beforeEach(() => {
     vi.mocked(dibujarMapa).mockResolvedValue({ src: 'data:image/jpeg;base64,M', conFondo: true });
@@ -77,7 +45,7 @@ describe('dibujarMapaInforme', () => {
 
   /** Lo que recibió el canvas, encuadrado como lo encuadra él. */
   async function dibujado(puntos: typeof contenido.puntos) {
-    await dibujarMapaInforme({ puntos, etiquetas: [] });
+    await dibujarMapaInforme({ puntos });
     const opciones = vi.mocked(dibujarMapa).mock.calls[0][0];
     return { opciones, ubicados: planificarMapa(opciones)!.puntos };
   }
@@ -134,7 +102,7 @@ describe('dibujarMapaInforme', () => {
   });
 
   test('sin puntos no dibuja nada', async () => {
-    const { mapa } = await dibujarMapaInforme({ puntos: [], etiquetas: [] });
+    const { mapa } = await dibujarMapaInforme({ puntos: [] });
     expect(mapa.estado).toBe('sin-gps');
     expect(dibujarMapa).not.toHaveBeenCalled();
   });

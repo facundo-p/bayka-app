@@ -26,7 +26,7 @@ type OpcionesEntrada = {
   opciones?: OpcionesInforme;
   /** Nombres de especie de hasta 60 caracteres, y lugar y organización que no entran en la línea del título. */
   largos?: boolean;
-  /** Códigos de especie que no entran en la leyenda del mapa. */
+  /** Códigos de especie largos: alargan el título de cada fila del listado. */
   codigosLargos?: boolean;
 };
 
@@ -160,7 +160,6 @@ const SIN_MEDIDA = () => 0;
 export const MEDIDORES_INFORME_EN_CERO: MedidoresInforme = {
   linea: SIN_MEDIDA,
   fila: SIN_MEDIDA,
-  leyenda: SIN_MEDIDA,
 };
 
 /** Cada texto en un solo renglón, sin medir: lo que no entra lo acomoda textkit. */

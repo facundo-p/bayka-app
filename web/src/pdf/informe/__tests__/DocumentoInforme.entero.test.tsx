@@ -7,14 +7,8 @@ import { armarInforme, entraAlPie, hojasQueOcupa } from '../../../test/renderInf
 import { textosConGlifosCorridos } from '../../../test/textoPdf';
 import { CUERPO_HOJA } from '../../plantilla/tokens';
 import { datosInforme } from '../datosInforme';
-import { Leyenda } from '../DocumentoInforme';
-import {
-  altoEnUltimaHoja,
-  altoLeyenda,
-  renglonesDelFlujo,
-  UBICACION_MAPA,
-} from '../planificarInforme';
-import type { InformeConMapa } from '../renglonesInforme';
+import { altoEnUltimaHoja, renglonesDelFlujo, UBICACION_MAPA } from '../planificarInforme';
+import type { InformeEnRenglones } from '../renglonesInforme';
 import { BloqueEspecies, FilaIndicadores, Titulo } from '../SeccionesInforme';
 
 vi.mock('../../plantilla/textoLargo', () => ({ CORTAR_TEXTO_LARGO: false }));
@@ -22,7 +16,7 @@ vi.mock('../../plantilla/textoLargo', () => ({ CORTAR_TEXTO_LARGO: false }));
 const LARGOS = { parcelas: 4, nn: 3, largos: true, codigosLargos: true } as const;
 
 /** Los textos del usuario como salen del modelo y como quedaron en renglones. */
-function textosPartidos(entrada: Parameters<typeof datosInforme>[0], modelo: InformeConMapa) {
+function textosPartidos(entrada: Parameters<typeof datosInforme>[0], modelo: InformeEnRenglones) {
   const datos = datosInforme(entrada);
   return [
     { original: datos.linea, renglones: modelo.linea },
@@ -37,7 +31,7 @@ test('la línea y los nombres de especie salen enteros, en renglones que se dibu
   const entrada = entradaInforme({ ...LARGOS, especies: 3 });
   const { pdf, textos, modelo } = await armarInforme(entrada);
   const apretados = textosConGlifosCorridos(pdf);
-  const partidos = textosPartidos(entrada, modelo as InformeConMapa);
+  const partidos = textosPartidos(entrada, modelo);
   expect(partidos[1].original).toBe(`LAPCOLORADO · ${NOMBRES_LARGOS[0]}`);
   // La línea y los tres nombres largos se parten; la fila de las NN entra en uno.
   expect(partidos.map(({ renglones }) => renglones.length > 1)).toEqual([
@@ -55,15 +49,6 @@ test('la línea y los nombres de especie salen enteros, en renglones que se dibu
     }
   }
   expect(textos.some((texto) => texto.endsWith('…'))).toBe(false);
-});
-
-test('un código que no entra en la leyenda se parte en renglones', async () => {
-  const { pdf, textos, modelo } = await armarInforme(entradaInforme({ ...LARGOS, especies: 3 }));
-  const [primero] = (modelo as InformeConMapa).mapa.leyenda;
-  expect(primero.texto.length).toBeGreaterThan(1);
-  expect(primero.texto.join('')).toBe('LAPCOLORADO');
-  expect(textos).toEqual(expect.arrayContaining([...primero.texto]));
-  expect(textosConGlifosCorridos(pdf)).toEqual(expect.not.arrayContaining([...primero.texto]));
 });
 
 /** Lo que cabe debajo, hasta el pie: con `margen` de más, no entra. */
@@ -89,20 +74,8 @@ test.each([-0.5, 0.5])(
   },
 );
 
-test.each([-0.5, 0.5])('la leyenda mide lo que dice el plan, a %s pt del pie', async (margen) => {
-  const { modelo } = await armarInforme(entradaInforme({ ...LARGOS, especies: 12 }));
-  const conMapa = modelo as InformeConMapa;
-  const cuerpo = (
-    <>
-      <Leyenda items={conMapa.mapa.leyenda} />
-      {relleno(altoLeyenda(conMapa), margen)}
-    </>
-  );
-  expect(await hojasQueOcupa(cuerpo)).toBe(margen < 0 ? 1 : 2);
-});
-
-// Con 3 especies el mapa entra al pie; con 5, ya no.
-test.each([3, 5])(
+// Con 4 especies el mapa entra al pie; con 5, ya no.
+test.each([4, 5])(
   'con %i especies de nombre largo, el plan acierta si el mapa entra al pie',
   async (especies) => {
     const entrada = entradaInforme({ ...LARGOS, especies, codigosLargos: false });

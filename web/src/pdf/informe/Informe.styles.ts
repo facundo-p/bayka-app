@@ -144,26 +144,8 @@ export const informeStyles = StyleSheet.create({
   },
   mapa: { alignSelf: 'center' },
   imagenMapa: { ...marcoDeMapa, width: '100%', height: '100%' },
-  // En el aire entre la imagen y la leyenda.
+  // En el aire bajo la imagen.
   llamada: { top: '100%' },
-  leyenda: {
-    marginTop: M.aireMapa,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: M.separacionLeyenda,
-  },
-  itemLeyenda: {
-    ...LETRA_INFORME.leyenda,
-    ...interlineadoDeRenglon,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    width: M.anchoItemLeyenda,
-    minHeight: M.altoRenglonLeyenda,
-    paddingVertical: aireCentrado(M.altoRenglonLeyenda, ALTO.leyenda),
-    color: COLOR_PDF.tinta,
-  },
-  puntoLeyenda: puntoDeEspecie(M.punto, ALTO.leyenda),
-  codigoLeyenda: { flexShrink: 1 },
   notaMapa: {
     ...interlineadoDeRenglon,
     marginTop: M.aireMapa,

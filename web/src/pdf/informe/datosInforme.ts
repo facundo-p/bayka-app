@@ -16,8 +16,7 @@ import type { DashboardData, DistribucionEspecie } from '../../queries/dashboard
 import { esSinIdentificar } from '../../queries/especiesConstantes';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
-import type { EtiquetaMapa, PuntoMapa } from '../mapa/planMapa';
-import { etiquetasDeParcelas } from './mapaInforme';
+import type { PuntoMapa } from '../mapa/planMapa';
 import { TEXTO_INFORME } from './textosInforme';
 
 export type EntradaInforme = {
@@ -63,12 +62,8 @@ export type FilaEspecie = {
   porcentaje: string;
 };
 
-export type ItemLeyenda = { texto: string; color: string };
-
 export type MapaDelInforme = {
   puntos: PuntoMapa[];
-  etiquetas: EtiquetaMapa[];
-  leyenda: ItemLeyenda[];
   /** «X de N árboles tienen coordenadas; …»; null si no hay puntos. */
   nota: string | null;
   /** Por qué no hay mapa; null si lo hay. */
@@ -185,13 +180,6 @@ export function notaCoordenadas(conGps: number, total: number): string {
   return `${base}; ${t.restantesPrefijo} ${formatearEntero(restantes)} ${t.restantesSufijo}.`;
 }
 
-function leyenda(dashboard: DashboardData, colores: ColorEspecie): ItemLeyenda[] {
-  return dashboard.porEspecie.map(({ codigo }) => ({
-    texto: esSinIdentificar(codigo) ? TEXTO_INFORME.nn : codigo,
-    color: colores(codigo),
-  }));
-}
-
 /** Los conteos mandan: los puntos solo dibujan. */
 function vacioDelMapa(dashboard: DashboardData, puntos: readonly PuntoGps[]): string | null {
   if (dashboard.totalArboles === 0) return TEXTO_INFORME.sinArboles;
@@ -210,8 +198,6 @@ function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColorEspec
   const vacio = vacioDelMapa(dashboard, puntos);
   return {
     puntos: puntos.map(({ lat, lng, codigo }) => ({ lat, lng, color: colores(codigo) })),
-    etiquetas: etiquetasDeParcelas(puntos, dashboard.porParcela),
-    leyenda: leyenda(dashboard, colores),
     nota: vacio ? null : notaCoordenadas(dashboard.arbolesConGps, dashboard.totalArboles),
     vacio,
   };

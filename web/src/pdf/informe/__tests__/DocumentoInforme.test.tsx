@@ -50,8 +50,8 @@ test('1 especie: todo en una hoja, con el mapa al pie', async () => {
   );
 });
 
-test('11 especies y N/N: el mapa 16:9 no entra al pie y abre la hoja 2', async () => {
-  const { pdf, textos } = await armarInforme(entradaInforme({ parcelas: 4, especies: 11, nn: 3 }));
+test('13 especies y N/N: el mapa 16:9 no entra al pie y abre la hoja 2', async () => {
+  const { pdf, textos } = await armarInforme(entradaInforme({ parcelas: 4, especies: 13, nn: 3 }));
   expect(paginasDelPdf(pdf)).toBe(2);
   expect(hojaDeTexto(textos, 'N/N · Sin identificar')).toBe(1);
   expect(hojaDeTexto(textos, TITULO_MAPA)).toBe(2);
@@ -100,7 +100,7 @@ test('con satélite, el mapa lleva la llamada y la última hoja la nota de Esri 
 });
 
 test('la nota de Esri va solo al pie de la hoja del mapa', async () => {
-  const { pdf, textos } = await armarInforme(entradaInforme({ parcelas: 4, especies: 11, nn: 3 }), {
+  const { pdf, textos } = await armarInforme(entradaInforme({ parcelas: 4, especies: 13, nn: 3 }), {
     conSatelite: true,
   });
   expect(paginasDelPdf(pdf)).toBe(2);
@@ -128,7 +128,7 @@ test('un PDF anterior no rompe los caracteres del siguiente', async () => {
 });
 
 test('cuando el plan pone el mapa al pie, entra en la última hoja', async () => {
-  for (let especies = 1; especies <= 12; especies += 1) {
+  for (let especies = 1; especies <= 14; especies += 1) {
     const entrada = entradaInforme({ parcelas: 4, especies, nn: 3 });
     const { pdf, plan } = await armarInforme(entrada);
     if (!plan || esMapaEnHojaCompleta(plan)) continue;
@@ -148,14 +148,14 @@ test.each([38, 39, 57, 58])(
 );
 
 describe('en el borde de los informes cortos, con N/N', () => {
-  test('con 10 especies el plan lo pone al pie y de verdad entra', async () => {
-    const entrada = entradaInforme({ parcelas: 4, especies: 10, nn: 3 });
+  test('con 12 especies el plan lo pone al pie y de verdad entra', async () => {
+    const entrada = entradaInforme({ parcelas: 4, especies: 12, nn: 3 });
     expect((await armarInforme(entrada)).plan?.ubicacion).toBe(UBICACION_MAPA.ultimaHoja);
     expect(await entraAlPie(entrada)).toBe(true);
   });
 
-  test('con 11 especies el plan abre hoja nueva porque de verdad no entra', async () => {
-    const entrada = entradaInforme({ parcelas: 4, especies: 11, nn: 3 });
+  test('con 13 especies el plan abre hoja nueva porque de verdad no entra', async () => {
+    const entrada = entradaInforme({ parcelas: 4, especies: 13, nn: 3 });
     expect((await armarInforme(entrada)).plan?.ubicacion).toBe(UBICACION_MAPA.hojaCompleta);
     expect(await entraAlPie(entrada)).toBe(false);
   });
@@ -193,7 +193,7 @@ describe('las 16 combinaciones de casillas', () => {
   );
 
   test.each(combinaciones)('%s, informe largo: sin hojas en blanco', async (_, opciones) => {
-    const { pdf, textos } = await armarInforme(conOpciones(11, opciones));
+    const { pdf, textos } = await armarInforme(conOpciones(13, opciones));
     expect(paginasDelPdf(pdf)).toBe(opciones.mapa ? 2 : 1);
     expect(hojasConContenido(textos)).toEqual(hojasDel(pdf));
     if (opciones.mapa) expect(hojaDeTexto(textos, TITULO_MAPA)).toBe(2);

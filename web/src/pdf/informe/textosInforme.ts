@@ -1,4 +1,3 @@
-import { ESPECIE_NO_RESUELTA } from '../../queries/especiesConstantes';
 import { TEXTO_PLANTILLA } from '../plantilla/textos';
 
 /** Textos visibles del informe de plantación. */
@@ -21,6 +20,5 @@ export const TEXTO_INFORME = {
   restanteUno: 'el restante no aparece en el mapa',
   restantesPrefijo: 'los',
   restantesSufijo: 'restantes no aparecen en el mapa',
-  nn: ESPECIE_NO_RESUELTA,
   separador: TEXTO_PLANTILLA.separador,
 } as const;

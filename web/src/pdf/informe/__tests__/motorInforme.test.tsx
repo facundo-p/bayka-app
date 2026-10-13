@@ -83,8 +83,7 @@ test('parte los textos largos con las fuentes leídas, y planifica con esos reng
   });
   const [modelo] = vi.mocked(planificarInforme).mock.calls[0];
   const [primera] = modelo.especies.filas;
-  const [codigo] = modelo.mapa.leyenda;
-  for (const partido of [modelo.linea, primera.titulo, codigo.texto]) {
+  for (const partido of [modelo.linea, primera.titulo]) {
     expect(partido.length).toBeGreaterThan(1);
   }
   const textos = await textosDe(blob);

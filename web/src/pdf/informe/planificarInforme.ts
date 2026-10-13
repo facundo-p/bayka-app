@@ -10,13 +10,7 @@ import {
   CUERPO_HOJA,
   MEDIDA_INFORME as M,
 } from '../plantilla/tokens';
-import { enTramos } from '../plantilla/tramos';
-import type {
-  FilaEspecieEnRenglones,
-  InformeConMapa,
-  InformeEnRenglones,
-  ItemLeyendaEnRenglones,
-} from './renglonesInforme';
+import type { FilaEspecieEnRenglones, InformeEnRenglones } from './renglonesInforme';
 
 export const UBICACION_MAPA = {
   /** Al pie de la última hoja, en lo que queda libre. */
@@ -84,39 +78,20 @@ export function altoEnUltimaHoja(renglones: readonly Renglon[]): number {
   );
 }
 
-const ITEMS_POR_FILA_LEYENDA = Math.floor(
-  (CUERPO_HOJA.ancho + M.separacionLeyenda) / (M.anchoItemLeyenda + M.separacionLeyenda),
-);
-
-const altoItemLeyenda = ({ texto }: ItemLeyendaEnRenglones) =>
-  altoConRenglones(M.altoRenglonLeyenda, ALTO.leyenda, texto.length);
-
-/** Cada fila de la leyenda mide lo que su ítem más alto; sin ítems, igual ocupa una. */
-export function altoLeyenda({ mapa }: InformeConMapa): number {
-  const filas = enTramos(mapa.leyenda, ITEMS_POR_FILA_LEYENDA);
-  const altosPorFila = filas.map((fila) => Math.max(...fila.map(altoItemLeyenda)));
-  const alto = altosPorFila.reduce((suma, deLaFila) => suma + deLaFila, 0);
-  return M.aireMapa + Math.max(alto, M.altoRenglonLeyenda);
-}
-
-/** Lo que acompaña al mapa al pie: separación, título de bloque, leyenda, nota y el colchón. */
-function altoQueAcompana(modelo: InformeConMapa): number {
-  const titulo = M.separacionBloques + ALTO_ENCABEZADO_BLOQUE;
-  return titulo + altoLeyenda(modelo) + M.aireMapa + M.altoNotaMapa + M.holgura;
-}
+/** Lo que acompaña al mapa al pie: separación, título de bloque, nota y el colchón. */
+const ALTO_QUE_ACOMPANA_AL_MAPA =
+  M.separacionBloques + ALTO_ENCABEZADO_BLOQUE + M.aireMapa + M.altoNotaMapa + M.holgura;
 
 /** Lo que tiene que quedar libre en la última hoja para que el mapa 16:9 vaya al pie. */
-export function libreMinimoAlPie(modelo: InformeConMapa): number {
-  return altoQueAcompana(modelo) + CAJA_MAPA_INFORME.alto;
-}
+export const LIBRE_MINIMO_AL_PIE = ALTO_QUE_ACOMPANA_AL_MAPA + CAJA_MAPA_INFORME.alto;
 
 /** Al pie si en lo que queda `libre` entran el mapa y lo que lo acompaña; si no, en hoja nueva. */
-export function planSegunLibre(modelo: InformeConMapa, libre: number): PlanInforme {
+export function planSegunLibre(libre: number): PlanInforme {
   const ubicacion =
-    libre < libreMinimoAlPie(modelo) ? UBICACION_MAPA.hojaCompleta : UBICACION_MAPA.ultimaHoja;
+    libre < LIBRE_MINIMO_AL_PIE ? UBICACION_MAPA.hojaCompleta : UBICACION_MAPA.ultimaHoja;
   return { ubicacion };
 }
 
-export function planificarInforme(modelo: InformeConMapa): PlanInforme {
-  return planSegunLibre(modelo, CUERPO_HOJA.alto - altoEnUltimaHoja(renglonesDelFlujo(modelo)));
+export function planificarInforme(modelo: InformeEnRenglones): PlanInforme {
+  return planSegunLibre(CUERPO_HOJA.alto - altoEnUltimaHoja(renglonesDelFlujo(modelo)));
 }

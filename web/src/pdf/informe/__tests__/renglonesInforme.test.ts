@@ -20,7 +20,6 @@ const porCaracter =
 const MEDIDORES: MedidoresInforme = {
   linea: porCaracter(5),
   fila: porCaracter(4),
-  leyenda: porCaracter(6),
 };
 
 const LARGO = datosInforme(
@@ -30,18 +29,13 @@ const CORTO = datosInforme(entradaInforme({ parcelas: 2, especies: 3, nn: 2 }));
 
 /** Cada texto que se parte, con la letra y el ancho de su caja. */
 function textosDe(modelo: ModeloInforme) {
-  const { linea, especie, leyenda } = ANCHO_TEXTO_INFORME;
+  const { linea, especie } = ANCHO_TEXTO_INFORME;
   return [
     { texto: modelo.linea, medir: MEDIDORES.linea, ancho: linea },
     ...modelo.especies.filas.map(({ titulo }) => ({
       texto: titulo,
       medir: MEDIDORES.fila,
       ancho: especie,
-    })),
-    ...modelo.mapa!.leyenda.map(({ texto }) => ({
-      texto,
-      medir: MEDIDORES.leyenda,
-      ancho: leyenda,
     })),
   ];
 }
@@ -50,7 +44,6 @@ function textosDe(modelo: ModeloInforme) {
 const renglonesDe = (modelo: ReturnType<typeof informeEnRenglones>) => [
   modelo.linea,
   ...modelo.especies.filas.map(({ titulo }) => titulo),
-  ...modelo.mapa!.leyenda.map(({ texto }) => texto),
 ];
 
 test('con el texto entero, cada uno se parte a su ancho y junto rearma el original', () => {
@@ -62,9 +55,8 @@ test('con el texto entero, cada uno se parte a su ancho y junto rearma el origin
     expect(renglones.join(separador)).toBe(texto);
     for (const renglon of renglones) expect(medir(renglon)).toBeLessThan(ancho);
   });
-  // La línea, el nombre de la primera especie y su código.
-  const primerCodigo = 1 + LARGO.especies.filas.length;
-  for (const indice of [0, 1, primerCodigo]) expect(partidos[indice].length).toBeGreaterThan(1);
+  // La línea y el nombre de la primera especie.
+  for (const indice of [0, 1]) expect(partidos[indice].length).toBeGreaterThan(1);
 });
 
 test('con el texto cortado, cada uno va en un renglón con «…», a su ancho', () => {
@@ -92,10 +84,6 @@ describe.each([false, true])('cortar: %s', (cortar) => {
       especies: {
         ...CORTO.especies,
         filas: CORTO.especies.filas.map((fila) => ({ ...fila, titulo: [fila.titulo] })),
-      },
-      mapa: {
-        ...CORTO.mapa,
-        leyenda: CORTO.mapa!.leyenda.map((item) => ({ ...item, texto: [item.texto] })),
       },
     });
   });
