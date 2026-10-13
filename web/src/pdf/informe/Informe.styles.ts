@@ -1,39 +1,19 @@
 import { StyleSheet } from '@react-pdf/renderer';
+import { letraDeTitulo, puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
 import {
   aireCentrado,
   ALTO_RENGLON_INFORME as ALTO,
   COLOR_PDF,
   FUENTE_PDF,
   LETRA_INFORME,
-  MEDIDA_FICHA,
   MEDIDA_INFORME as M,
   PESO_FUENTE,
   TAMANO_TEXTO,
 } from '../plantilla/tokens';
 
-const rotulo = {
-  fontSize: TAMANO_TEXTO.rotuloIndicador,
-  color: COLOR_PDF.apagado,
-  textTransform: 'uppercase',
-  letterSpacing: MEDIDA_FICHA.espaciadoMayusculas,
-} as const;
-
 const numero = { textAlign: 'right' } as const;
 
 const barra = { borderRadius: M.radioBarra, overflow: 'hidden' } as const;
-
-const titulo = {
-  fontFamily: FUENTE_PDF.titulo,
-  fontWeight: PESO_FUENTE.bold,
-  color: COLOR_PDF.navy,
-} as const;
-
-const punto = {
-  width: M.puntoEspecie,
-  height: M.puntoEspecie,
-  borderRadius: M.puntoEspecie / 2,
-  marginRight: MEDIDA_FICHA.aireTrasPunto,
-} as const;
 
 /*
  * Los textos que se parten van arriba, con el aire que los dejaba centrados en
@@ -44,7 +24,7 @@ const aireFila = aireCentrado(M.altoFilaEspecie, ALTO.fila);
 
 export const informeStyles = StyleSheet.create({
   titulo: { marginBottom: M.separacionBloques },
-  tituloTexto: { ...titulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
+  tituloTexto: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
     ...LETRA_INFORME.linea,
     lineHeight: M.interlineado,
@@ -64,14 +44,14 @@ export const informeStyles = StyleSheet.create({
     marginLeft: M.separacionIndicadores,
     paddingVertical: M.rellenoIndicador.vertical,
     paddingHorizontal: M.rellenoIndicador.horizontal,
-    borderWidth: MEDIDA_FICHA.borde,
+    borderWidth: M.borde,
     borderColor: COLOR_PDF.linea,
     borderRadius: M.radio,
   },
   indicadorPrincipal: { flexGrow: M.pesoIndicadorPrincipal, marginLeft: 0 },
-  rotulo,
+  rotulo: rotuloEnMayusculas(TAMANO_TEXTO.rotuloIndicador),
   valorIndicador: {
-    ...titulo,
+    ...letraDeTitulo,
     fontSize: TAMANO_TEXTO.indicador,
     marginTop: M.aireIndicador,
   },
@@ -95,12 +75,12 @@ export const informeStyles = StyleSheet.create({
   rellenoAvance: { height: '100%', backgroundColor: COLOR_PDF.oliva },
 
   encabezadoBloque: {
-    ...titulo,
+    ...letraDeTitulo,
     fontSize: TAMANO_TEXTO.bloque,
     height: M.altoEncabezadoBloque + M.aireEncabezadoBloque,
     paddingBottom: M.aireEncabezadoBloque,
     marginBottom: M.separacionEncabezadoBloque,
-    borderBottomWidth: MEDIDA_FICHA.borde,
+    borderBottomWidth: M.borde,
     borderBottomColor: COLOR_PDF.linea,
   },
   mensaje: {
@@ -126,7 +106,7 @@ export const informeStyles = StyleSheet.create({
     paddingVertical: aireFila,
   },
   tituloEspecie: { flexShrink: 1 },
-  puntoFila: { ...punto, marginTop: aireCentrado(ALTO.fila, M.puntoEspecie) },
+  puntoFila: puntoDeEspecie(M.punto, ALTO.fila),
   barraEspecie: {
     ...barra,
     flexGrow: 1,
@@ -147,7 +127,7 @@ export const informeStyles = StyleSheet.create({
   // Margen arriba del mapa y no relleno al pie de las especies: un relleno que no
   // entra en la hoja la parte y manda solo ese hueco a una hoja en blanco.
   bloqueMapa: { marginTop: M.separacionBloques },
-  tituloMapa: { ...titulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
+  tituloMapa: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
   notaTitulo: {
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
@@ -160,17 +140,12 @@ export const informeStyles = StyleSheet.create({
   imagenMapa: {
     width: '100%',
     height: '100%',
-    borderRadius: MEDIDA_FICHA.radioRecuadro,
-    borderWidth: MEDIDA_FICHA.bordeFino,
+    borderRadius: M.radioRecuadro,
+    borderWidth: M.bordeFino,
     borderColor: COLOR_PDF.linea,
   },
-  // En el aire entre la imagen y la leyenda: no suma alto.
-  llamada: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    lineHeight: MEDIDA_FICHA.interlineadoLlamada,
-  },
+  // En el aire entre la imagen y la leyenda.
+  llamada: { top: '100%' },
   leyenda: {
     marginTop: M.aireMapa,
     flexDirection: 'row',
@@ -187,7 +162,7 @@ export const informeStyles = StyleSheet.create({
     paddingVertical: aireCentrado(M.altoRenglonLeyenda, ALTO.leyenda),
     color: COLOR_PDF.tinta,
   },
-  puntoLeyenda: { ...punto, marginTop: aireCentrado(ALTO.leyenda, M.puntoEspecie) },
+  puntoLeyenda: puntoDeEspecie(M.punto, ALTO.leyenda),
   codigoLeyenda: { flexShrink: 1 },
   notaMapa: {
     lineHeight: M.interlineado,

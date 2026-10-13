@@ -151,18 +151,27 @@ export const MEDIDA_HOJA = {
   airePie: 6,
 } as const;
 
-/** Medidas de la ficha en pt: un árbol por hoja A4. */
-export const MEDIDA_FICHA = {
-  // Las de este primer grupo también las usa el informe.
-  radioRecuadro: 3,
+/** Medidas en pt que comparten los tres PDF: cada documento las suma a las suyas. */
+export const MEDIDA_PDF = {
   borde: 0.75,
   bordeFino: 0.5,
-  aireTrasPunto: 5,
+  /** El de los recuadros de foto y de mapa. */
+  radioRecuadro: 3,
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   /** Interlineado justo: la llamada bajo el mapa satelital no suma alto. */
   interlineadoLlamada: 1,
+} as const;
 
+/** El punto de color de la especie y el aire que lo separa del nombre. */
+export type MedidaPunto = { diametro: number; aire: number };
+
+/** Lo que ocupa el punto, con su aire, a lo ancho de un renglón. */
+const anchoDePunto = ({ diametro, aire }: MedidaPunto) => diametro + aire;
+
+/** Medidas de la ficha en pt: un árbol por hoja A4. */
+export const MEDIDA_FICHA = {
+  ...MEDIDA_PDF,
   /**
    * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
    * izquierda. Columna, hueco e imagen llenan el ancho del cuerpo.
@@ -171,8 +180,7 @@ export const MEDIDA_FICHA = {
   anchoTexto: 215,
   huecoColumnas: 20,
   huecoImagenes: 16,
-  punto: 11,
-  aireTrasPuntoEspecie: 8,
+  punto: { diametro: 11, aire: 8 },
   aireBajoTitulo: 2,
   separacionBloques: 22,
   rellenoDato: 8,
@@ -224,6 +232,7 @@ export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
  * bloque sin renderizar.
  */
 export const MEDIDA_INFORME = {
+  ...MEDIDA_PDF,
   separacionBloques: 14,
   /**
    * Interlineado de los renglones: el de Poppins por defecto no entra en los
@@ -247,7 +256,7 @@ export const MEDIDA_INFORME = {
   aireEncabezadoBloque: 3,
   separacionEncabezadoBloque: 6,
   altoFilaEspecie: 11,
-  puntoEspecie: 7,
+  punto: { diametro: 7, aire: 5 },
   separacionFilaEspecie: 3,
   anchoNombreEspecie: 140,
   anchoCantidad: 46,
@@ -280,8 +289,7 @@ export const CAJA_MAPA_INFORME = {
     (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;
 
-/** Lo que deja el punto de color, con su aire, en un renglón del informe. */
-const ANCHO_PUNTO_INFORME = MEDIDA_INFORME.puntoEspecie + MEDIDA_FICHA.aireTrasPunto;
+const ANCHO_PUNTO_INFORME = anchoDePunto(MEDIDA_INFORME.punto);
 
 /** Ancho en pt de los renglones del informe que se parten o se cortan antes del render (#883). */
 export const ANCHO_TEXTO_INFORME = {
@@ -324,6 +332,7 @@ export const ALTO_RENGLON_INFORME = {
  * la hoja se llena por alto acumulado.
  */
 export const MEDIDA_REPORTE = {
+  ...MEDIDA_PDF,
   columnasTarjetas: 2,
   filasTarjetas: 3,
   /** Entre tarjetas, a lo ancho y a lo alto. */
@@ -331,10 +340,7 @@ export const MEDIDA_REPORTE = {
   /** Colchón contra los redondeos del layout: sin él, la última fila podría saltar de hoja. */
   holgura: 2,
   rellenoTarjeta: 8,
-  borde: 0.75,
-  bordeFino: 0.5,
   radio: 6,
-  radioFoto: 3,
   aireFoto: 12,
   /** Interlineado de los renglones: con el de Poppins por defecto no se dibujan. */
   interlineado: 1.25,
@@ -345,9 +351,7 @@ export const MEDIDA_REPORTE = {
   anchoEtiqueta: 62,
   /** Baja el rótulo, más chico que el valor, a la línea del valor. */
   aireSobreEtiqueta: 2,
-  punto: 7,
-  aireTrasPunto: 4,
-  espaciadoMayusculas: 0.4,
+  punto: { diametro: 7, aire: 4 },
   altoEncabezadoListado: 18,
   altoFilaListado: 14,
   rellenoCelda: 4,
@@ -396,8 +400,7 @@ export const ANCHO_DATOS_TARJETA =
   LADO_FOTO_TARJETA -
   MEDIDA_REPORTE.aireFoto;
 
-/** El punto de color de la especie, con su aire. */
-const ANCHO_PUNTO = MEDIDA_REPORTE.punto + MEDIDA_REPORTE.aireTrasPunto;
+const ANCHO_PUNTO = anchoDePunto(MEDIDA_REPORTE.punto);
 
 const ANCHO_VALOR_TARJETA = ANCHO_DATOS_TARJETA - MEDIDA_REPORTE.anchoEtiqueta;
 
