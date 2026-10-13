@@ -3,9 +3,13 @@
  * muestra el botón deshabilitado. Puro: se testea sin renderizar.
  */
 import { esArchivada, type Plantacion } from '../../queries/plantationQueries';
-import { ROL, type Perfil } from '../../repositories/profileRepository';
+import type { Perfil } from '../../repositories/profileRepository';
+import { ROLES_QUE_EDITAN_ARBOLES } from './cambioDeEspecie';
 
-const ROLES_QUE_ELIMINAN_FOTOS: ReadonlyArray<Perfil['rol']> = [ROL.ADMIN, ROL.SUPERADMIN];
+export const TEXTO_ELIMINAR_FOTO = {
+  eliminar: 'Eliminar foto',
+  avisoEliminar: 'No se puede deshacer.',
+} as const;
 
 export const MOTIVO_NO_ELIMINA_FOTO = {
   sinPermiso: 'Tu usuario no tiene permisos para eliminar fotos.',
@@ -21,7 +25,7 @@ export function motivoParaNoEliminarFoto(
   perfil: Pick<Perfil, 'rol' | 'activo'> | null,
   plantacion: Pick<Plantacion, 'archivadaEn'> | null | undefined,
 ): string | null {
-  if (!perfil?.activo || !ROLES_QUE_ELIMINAN_FOTOS.includes(perfil.rol)) {
+  if (!perfil?.activo || !ROLES_QUE_EDITAN_ARBOLES.includes(perfil.rol)) {
     return MOTIVO_NO_ELIMINA_FOTO.sinPermiso;
   }
   if (!plantacion) return MOTIVO_NO_ELIMINA_FOTO.cargando;

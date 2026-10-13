@@ -12,9 +12,10 @@ export interface EliminacionDeFoto {
   onActualizado: (arbol: ArbolDetalle) => void;
 }
 
-/** La foto cuenta en la tabla (filtro con/sin foto), el reporte y los stats de la plantación. */
+/** La foto cuenta en la tabla (filtro con/sin foto), el reporte, el dashboard y los stats de la plantación. */
 const CLAVES_AFECTADAS = [
   ...FAMILIAS_ARBOLES_FILTRADOS,
+  familia(CLAVE_QUERY.dashboard),
   familia(CLAVE_QUERY.plantaciones),
   familia(CLAVE_QUERY.plantacion),
 ];

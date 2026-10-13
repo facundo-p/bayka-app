@@ -10,14 +10,15 @@ import { esArchivada, ESTADO_PLANTACION, type Plantacion } from '../../queries/p
 import type { EspecieDelArbol } from '../../repositories/especieDeArbol';
 import { ROL, type Perfil } from '../../repositories/profileRepository';
 
-const ROLES_QUE_CAMBIAN_ESPECIE: ReadonlyArray<Perfil['rol']> = [ROL.ADMIN, ROL.SUPERADMIN];
+/** Quienes editan un árbol ya cargado desde la web: su especie y su foto. */
+export const ROLES_QUE_EDITAN_ARBOLES: ReadonlyArray<Perfil['rol']> = [ROL.ADMIN, ROL.SUPERADMIN];
 
 /** Espeja la RPC: admin o superadmin; una finalizada solo el superadmin y una archivada nadie. */
 export function puedeCambiarEspecie(
   perfil: Pick<Perfil, 'rol' | 'activo'> | null,
   plantacion: Pick<Plantacion, 'estado' | 'archivadaEn'> | undefined,
 ): boolean {
-  if (!perfil?.activo || !ROLES_QUE_CAMBIAN_ESPECIE.includes(perfil.rol)) return false;
+  if (!perfil?.activo || !ROLES_QUE_EDITAN_ARBOLES.includes(perfil.rol)) return false;
   if (!plantacion || esArchivada(plantacion)) return false;
   return plantacion.estado === ESTADO_PLANTACION.activa || perfil.rol === ROL.SUPERADMIN;
 }

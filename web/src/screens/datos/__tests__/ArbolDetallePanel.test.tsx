@@ -446,6 +446,7 @@ describe('eliminar la foto (#903)', () => {
       expect.arrayContaining([
         ['datos-arboles'],
         ['conteo-reporte'],
+        ['dashboard'],
         ['plantaciones'],
         ['plantacion'],
       ]),

@@ -1,15 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CameraOff, Download, ExternalLink, MapPinOff, Smartphone, Trash2 } from 'lucide-react';
-import {
-  BotonCopiar,
-  BotonIcono,
-  Button,
-  ConfirmarModal,
-  MapaPuntos,
-  Modal,
-  Spinner,
-} from '../../components';
+import { CameraOff, Download, ExternalLink, MapPinOff, Smartphone } from 'lucide-react';
+import { BotonCopiar, BotonIcono, Button, MapaPuntos, Modal, Spinner } from '../../components';
 import { useColorEspecie } from '../../hooks/useColoresEspecie';
 import { useDescarga } from '../../hooks/useDescarga';
 import { cx } from '../../lib/classNames';
@@ -32,7 +24,11 @@ import {
   type ArbolConGps,
 } from './arbolFormato';
 import { BloqueDetalle } from './BloqueDetalle';
-import { descripcionEliminarFoto } from './eliminacionDeFoto';
+import {
+  BotonEliminarFoto,
+  BotonEliminarFotoAmpliada,
+  ConfirmarEliminarFoto,
+} from './EliminarFoto';
 import { useEliminarFoto, type EliminacionDeFoto, type EliminarFoto } from './useEliminarFoto';
 import styles from './FotoYMapa.module.css';
 
@@ -46,8 +42,6 @@ export const TEXTO_FOTO_Y_MAPA = {
   descargar: 'Descargar foto',
   descargarCorto: 'Descargar',
   errorDescarga: 'No se pudo descargar la foto',
-  eliminar: 'Eliminar foto',
-  avisoEliminar: 'No se puede deshacer.',
   sinGps: 'Sin punto GPS',
   googleMaps: 'Google Maps',
   pestanaNueva: ' (abre en una pestaña nueva)',
@@ -135,23 +129,6 @@ function BotonDescargarFoto({
   );
 }
 
-/** Deshabilitado, el tooltip dice por qué. */
-function BotonEliminarFoto({ eliminar }: { eliminar: EliminarFoto }) {
-  return (
-    <BotonIcono
-      variante="contorno"
-      tamano="sm"
-      destructiva
-      etiqueta={T.eliminar}
-      title={eliminar.motivoBloqueo ?? T.eliminar}
-      disabled={eliminar.motivoBloqueo !== null}
-      onClick={eliminar.pedir}
-    >
-      <Trash2 size={TAMANO_ICONO.md} aria-hidden />
-    </BotonIcono>
-  );
-}
-
 interface AccionesFotoProps {
   descarga: ReturnType<typeof useDescargaFoto>;
   nombreFoto: string | null;
@@ -168,16 +145,7 @@ function AccionesFotoAmpliada({
   return (
     <div className={styles.accionesModal}>
       {eliminar.disponible && (
-        <Button
-          variant="destructiva"
-          className={styles.accionApartada}
-          title={eliminar.motivoBloqueo ?? undefined}
-          disabled={eliminar.motivoBloqueo !== null}
-          onClick={eliminar.pedir}
-        >
-          <Trash2 size={TAMANO_ICONO.md} aria-hidden />
-          {T.eliminar}
-        </Button>
+        <BotonEliminarFotoAmpliada eliminar={eliminar} className={styles.accionApartada} />
       )}
       <Button
         variant="contorno"
@@ -285,22 +253,6 @@ function FotoSubida(props: FotoProps) {
   }
   if (!foto.data) return <SinFoto titulo={T.noCargo} />;
   return <FotoCargada {...props} src={foto.data} />;
-}
-
-function ConfirmarEliminarFoto({ idArbol, eliminar }: { idArbol: string; eliminar: EliminarFoto }) {
-  if (!eliminar.confirmando) return null;
-  return (
-    <ConfirmarModal
-      titulo={T.eliminar}
-      descripcion={descripcionEliminarFoto(idArbol)}
-      aviso={T.avisoEliminar}
-      confirmarEtiqueta={T.eliminar}
-      destructiva
-      accion={eliminar.eliminar}
-      alCompletar={eliminar.alCompletar}
-      onClose={eliminar.cerrar}
-    />
-  );
 }
 
 interface CeldaFotoProps {
