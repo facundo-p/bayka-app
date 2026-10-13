@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
@@ -12,6 +12,7 @@ import {
   NN_PHOTO_POLICY,
   resolvePhotoForRegistration,
   speciesPhotoPolicy,
+  type PhotoForRegistration,
   type PhotoPolicy,
   type PickPhoto,
 } from '../services/photo/photoCaptureRules';
@@ -108,6 +109,21 @@ export interface UseTreeRegistrationResult {
 
 export type ErrorSink = (mensaje: string) => void;
 
+/** Ignora un toque nuevo con la cámara abierta: pickPhoto resolvería null al pedido anterior y, con foto opcional, registraría un árbol de más (#908). */
+function useResolvePhotoSinReentrada(pickPhoto: PickPhoto) {
+  const pidiendoFoto = useRef(false);
+  return useCallback(async (policy: PhotoPolicy): Promise<PhotoForRegistration> => {
+    if (!policy.capture) return resolvePhotoForRegistration(policy, pickPhoto);
+    if (pidiendoFoto.current) return { proceed: false };
+    pidiendoFoto.current = true;
+    try {
+      return await resolvePhotoForRegistration(policy, pickPhoto);
+    } finally {
+      pidiendoFoto.current = false;
+    }
+  }, [pickPhoto]);
+}
+
 export function useTreeRegistration({
   grupoId,
   plantacionId,
@@ -183,13 +199,14 @@ export function useTreeRegistration({
   // Camino único de alta (especie o N/N): foto según política y recién después el
   // insert. El "tap" GPS es post-foto: el técnico sigue parado junto al árbol y
   // el watcher pudo pausarse mientras la cámara tuvo el foco.
+  const resolvePhoto = useResolvePhotoSinReentrada(pickPhoto);
   const registerWithPolicy = useCallback(async (
     policy: PhotoPolicy,
     especie: { especieId: string | null; especieCodigo: string },
     fallbackError: string,
   ) => {
     if (isReadOnly || !userId) return;
-    const photo = await resolvePhotoForRegistration(policy, pickPhoto);
+    const photo = await resolvePhoto(policy);
     if (!photo.proceed) return;
     try {
       await insertTreeWithGps(
@@ -200,7 +217,7 @@ export function useTreeRegistration({
     } catch (e) {
       notifyError(e, fallbackError);
     }
-  }, [isReadOnly, userId, pickPhoto, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
+  }, [isReadOnly, userId, resolvePhoto, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
 
   const registerTree = useCallback(
     (especieId: string, especieCodigo: string) =>
