@@ -1,5 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import {
+  interlineadoDeRenglon,
   letraDeTitulo,
   marcoDeMapa,
   puntoDeEspecie,
@@ -32,7 +33,7 @@ export const informeStyles = StyleSheet.create({
   tituloTexto: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
     ...LETRA_INFORME.linea,
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     marginTop: M.aireTitulo,
     paddingBottom: M.altoLineaTitulo - ALTO.linea,
     color: COLOR_PDF.apagado,
@@ -90,14 +91,14 @@ export const informeStyles = StyleSheet.create({
   },
   mensaje: {
     height: M.altoMensaje,
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     fontSize: TAMANO_TEXTO.filaInforme,
     color: COLOR_PDF.tenue,
   },
 
   filaEspecie: {
     ...LETRA_INFORME.fila,
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     flexDirection: 'row',
     alignItems: 'flex-start',
     minHeight: M.altoFilaEspecie,
@@ -134,7 +135,7 @@ export const informeStyles = StyleSheet.create({
   bloqueMapa: { marginTop: M.separacionBloques },
   tituloMapa: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
   notaTitulo: {
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     marginTop: M.aireTitulo,
     marginBottom: M.aireTituloMapa,
     height: M.altoLineaTitulo,
@@ -153,7 +154,7 @@ export const informeStyles = StyleSheet.create({
   },
   itemLeyenda: {
     ...LETRA_INFORME.leyenda,
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     flexDirection: 'row',
     alignItems: 'flex-start',
     width: M.anchoItemLeyenda,
@@ -164,7 +165,7 @@ export const informeStyles = StyleSheet.create({
   puntoLeyenda: puntoDeEspecie(M.punto, ALTO.leyenda),
   codigoLeyenda: { flexShrink: 1 },
   notaMapa: {
-    lineHeight: M.interlineado,
+    ...interlineadoDeRenglon,
     marginTop: M.aireMapa,
     height: M.altoNotaMapa,
     fontSize: TAMANO_TEXTO.secundario,

@@ -18,6 +18,13 @@ export const letraDeTitulo = {
   color: COLOR_PDF.navy,
 } as const;
 
+/**
+ * El interlineado de los renglones del informe y del reporte. Va junto al
+ * `fontSize`: react-pdf lo multiplica por el tamaño del mismo estilo, y sin él
+ * usa 18 pt y el renglón no entra en su caja.
+ */
+export const interlineadoDeRenglon = { lineHeight: MEDIDA_PDF.interlineado } as const;
+
 /** El marco de la imagen de un mapa; el tamaño lo pone cada documento. */
 export const marcoDeMapa = {
   borderRadius: MEDIDA_PDF.radioRecuadro,

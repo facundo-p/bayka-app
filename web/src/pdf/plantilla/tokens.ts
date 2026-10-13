@@ -159,9 +159,22 @@ export const MEDIDA_PDF = {
   radioRecuadro: 3,
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
+  /**
+   * Interlineado de los renglones del informe y del reporte: con el de Poppins
+   * por defecto no entran en sus cajas de alto fijo, y react-pdf no dibuja una
+   * línea que no entra. Los estilos y el alto con que se reparten las hojas
+   * salen de este mismo valor.
+   */
+  interlineado: 1.25,
+  /** El del título del encabezado de todas las hojas. */
+  interlineadoEncabezado: 1.2,
   /** Interlineado justo: la llamada bajo el mapa satelital no suma alto. */
   interlineadoLlamada: 1,
 } as const;
+
+/** Alto en pt de un renglón de esa letra: lo que suma cada renglón de más. */
+export const altoDeRenglon = (tamano: number, interlineado: number = MEDIDA_PDF.interlineado) =>
+  tamano * interlineado;
 
 /** El punto de color de la especie y el aire que lo separa del nombre. */
 export type MedidaPunto = { diametro: number; aire: number };
@@ -234,11 +247,6 @@ export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
 export const MEDIDA_INFORME = {
   ...MEDIDA_PDF,
   separacionBloques: 14,
-  /**
-   * Interlineado de los renglones: el de Poppins por defecto no entra en los
-   * bloques de alto fijo, y react-pdf no dibuja una línea que no entra en su caja.
-   */
-  interlineado: 1.25,
   altoTitulo: 26,
   altoLineaTitulo: 12,
   aireTitulo: 2,
@@ -317,13 +325,11 @@ export const LETRA_INFORME = {
   },
 } as const;
 
-const altoEnInforme = (tamano: number) => tamano * MEDIDA_INFORME.interlineado;
-
 /** Alto en pt de un renglón de cada letra del informe que se parte. */
 export const ALTO_RENGLON_INFORME = {
-  linea: altoEnInforme(LETRA_INFORME.linea.fontSize),
-  fila: altoEnInforme(LETRA_INFORME.fila.fontSize),
-  leyenda: altoEnInforme(LETRA_INFORME.leyenda.fontSize),
+  linea: altoDeRenglon(LETRA_INFORME.linea.fontSize),
+  fila: altoDeRenglon(LETRA_INFORME.fila.fontSize),
+  leyenda: altoDeRenglon(LETRA_INFORME.leyenda.fontSize),
 } as const;
 
 /**
@@ -342,8 +348,6 @@ export const MEDIDA_REPORTE = {
   rellenoTarjeta: 8,
   radio: 6,
   aireFoto: 12,
-  /** Interlineado de los renglones: con el de Poppins por defecto no se dibujan. */
-  interlineado: 1.25,
   altoIdArbol: 16,
   altoEspecie: 13,
   aireEspecie: 6,
@@ -422,8 +426,6 @@ export const ANCHO_TEXTO_REPORTE = {
     grupo: ANCHO_VALOR_TARJETA,
   },
 } as const;
-
-const altoDeRenglon = (tamano: number) => tamano * MEDIDA_REPORTE.interlineado;
 
 /** Alto en pt de un renglón de cada letra del reporte: lo que suma cada renglón de más. */
 export const ALTO_RENGLON_REPORTE = {
