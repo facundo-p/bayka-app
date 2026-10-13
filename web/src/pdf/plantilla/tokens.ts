@@ -165,7 +165,7 @@ export const MEDIDA_PDF = {
    * línea que no entra. Los estilos y el alto con que se reparten las hojas
    * salen de este mismo valor.
    */
-  interlineado: 1.25,
+  interlineadoRenglon: 1.25,
   /** El del título del encabezado de todas las hojas. */
   interlineadoEncabezado: 1.2,
   /** Interlineado justo: la llamada bajo el mapa satelital no suma alto. */
@@ -173,8 +173,10 @@ export const MEDIDA_PDF = {
 } as const;
 
 /** Alto en pt de un renglón de esa letra: lo que suma cada renglón de más. */
-export const altoDeRenglon = (tamano: number, interlineado: number = MEDIDA_PDF.interlineado) =>
-  tamano * interlineado;
+export const altoDeRenglon = (
+  tamano: number,
+  interlineado: number = MEDIDA_PDF.interlineadoRenglon,
+) => tamano * interlineado;
 
 /** El punto de color de la especie y el aire que lo separa del nombre. */
 export type MedidaPunto = { diametro: number; aire: number };

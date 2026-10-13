@@ -12,7 +12,7 @@ import {
 
 const { letra } = M;
 
-/** A la medida de la letra grande de la ficha de hoja entera: nada reparte hojas con ellos. */
+/** Valores de diseño de la ficha, una por hoja: ningún reparto de hojas los usa. */
 const INTERLINEADO = { titulo: 1.25, id: 1.2, dato: 1.35 } as const;
 
 const imagen = {
