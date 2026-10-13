@@ -71,7 +71,7 @@ test('un vecino a más de 2 km es un GPS errado y no entra al encuadre', () => {
   expect(contenidoMinimapa(ARBOL, puntos, COLOR_DE)?.puntos).toHaveLength(1);
 });
 
-test('si el canvas falla, ese mapa queda no disponible en vez de cortar las fichas', async () => {
+test('si el canvas falla, el mapa queda no disponible en vez de cortar la ficha', async () => {
   vi.mocked(dibujarMapa).mockRejectedValueOnce(new Error('canvas'));
   await expect(minimapaDeArbol(ARBOL, [], COLOR_DE)).resolves.toEqual({ estado: 'no-disponible' });
 });

@@ -12,7 +12,7 @@ import {
 import { listarCatalogo } from '../../../queries/especieQueries';
 import { listarPerfiles } from '../../../queries/usuarioQueries';
 import { obtenerPlantacion } from '../../../queries/plantationQueries';
-import { descargarFichaPdf } from '../../../services/pdfFichas';
+import { descargarFichaPdf } from '../../../services/pdfFicha';
 import { arbolDetalle, plantacion } from '../../../test/fabricas';
 
 vi.mock('../../../queries/dataExplorerQueries', async () => {
@@ -48,7 +48,7 @@ vi.mock('../../../queries/plantationQueries', async () => {
   );
   return { ...real, obtenerPlantacion: vi.fn() };
 });
-vi.mock('../../../services/pdfFichas', () => ({ descargarFichaPdf: vi.fn() }));
+vi.mock('../../../services/pdfFicha', () => ({ descargarFichaPdf: vi.fn() }));
 
 const PARCELA = {
   id: 'parc-1',

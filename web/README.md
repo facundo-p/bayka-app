@@ -15,7 +15,9 @@ Las decisiones de diseño y alcance están en
 - `react-router` v7 (modo librería) · Recharts (gráficos).
 - `@react-pdf/renderer` para los PDF de marca, armados en el navegador y
   cargados con `import()` recién al pedir uno. El reporte de árboles, que
-  puede tener miles de filas, se arma en un Web Worker.
+  puede tener miles de filas, se arma en un Web Worker. `pluginClaveImagenPdf.ts`
+  parchea react-pdf en dev y en el build: sin él, el navegador embebe el logo
+  de nuevo en cada hoja (#875).
 - CSS Modules + tokens de marca en `src/theme/theme.css` (cero estilos inline,
   cero colores hardcodeados fuera del tema).
 - Vitest + Testing Library.
@@ -147,7 +149,7 @@ src/
   pdf/           Documentos PDF: plantilla y tokens de marca (`plantilla/`),
                  mapa de puntos sobre el satélite (`mapa/`), piezas de un
                  árbol que comparten la ficha y el reporte (`arbol/`), fotos
-                 y fichas de árbol (`ficha/`), informe de la plantación
+                 y ficha de un árbol (`ficha/`), informe de la plantación
                  (`informe/`) y reporte de los árboles de un filtro (`reporte/`)
 ```
 

@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { definirConstantesBuild } from './constantesBuild';
+import { pluginClaveImagenPdf } from './pluginClaveImagenPdf';
 import { pluginReact } from './pluginReact';
 import { diagnosticarEnvSupabase } from './src/lib/envSupabase';
 
@@ -31,7 +32,9 @@ function chequearEnvSupabase(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [pluginReact(), chequearEnvSupabase()],
+  plugins: [pluginReact(), pluginClaveImagenPdf(), chequearEnvSupabase()],
+  // En el build, el worker no hereda `plugins`.
+  worker: { plugins: () => [pluginClaveImagenPdf()] },
   define: definirConstantesBuild(),
   // Permite que vitest cargue los tests de fuera de web/.
   server: { fs: { allow: ['..'] } },
@@ -44,6 +47,8 @@ export default defineConfig({
     // lógica pura que comparte con mobile.
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
+      // Los de la config de Vite, junto a sus archivos.
+      '*.test.ts',
       '../supabase/functions/**/*.test.ts',
       '../scripts/**/*.test.ts',
       '../shared/**/*.test.ts',
