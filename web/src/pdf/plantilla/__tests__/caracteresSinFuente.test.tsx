@@ -48,8 +48,7 @@ const CODIGO_SIN_FUENTE = `YER${'中'.repeat(8)}`;
 const NOMBRE_SIN_FUENTE = `Ladera ${'中'.repeat(32)}`;
 
 const ENCABEZADO = encabezadoDePlantacion(
-  { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-  'Bayka',
+  { lugar: 'San Sebastián', periodo: '2025-2026' },
   LOGO_NODE,
 );
 const EMISION = { encabezado: ENCABEZADO, emitido: '12/10/2026' };

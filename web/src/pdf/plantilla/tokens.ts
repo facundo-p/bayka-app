@@ -68,9 +68,9 @@ export const TAMANO_TEXTO = {
   secundario: 7.5,
   dato: 8.3,
   datoMono: 7.8,
-  especie: 9.5,
+  especieTarjeta: 12,
   encabezado: 14,
-  idTarjeta: 12,
+  idTarjeta: 8,
   filaListado: 7.8,
   tituloInforme: 22,
   tituloSeccion: 16,
@@ -104,7 +104,7 @@ export const LETRA_REPORTE = {
   especieTarjeta: {
     fontFamily: FUENTE_PDF.cuerpo,
     fontWeight: PESO_FUENTE.semibold,
-    fontSize: TAMANO_TEXTO.especie,
+    fontSize: TAMANO_TEXTO.especieTarjeta,
   },
   codigo: {
     fontFamily: FUENTE_PDF.mono,
@@ -118,7 +118,7 @@ export const LETRA_REPORTE = {
   },
   idTarjeta: {
     fontFamily: FUENTE_PDF.mono,
-    fontWeight: PESO_FUENTE.medio,
+    fontWeight: PESO_FUENTE.regular,
     fontSize: TAMANO_TEXTO.idTarjeta,
   },
 } as const;
@@ -350,9 +350,10 @@ export const MEDIDA_REPORTE = {
   rellenoTarjeta: 8,
   radio: 6,
   aireFoto: 12,
-  altoIdArbol: 16,
-  altoEspecie: 13,
-  aireEspecie: 6,
+  /** La especie encabeza la tarjeta; el ID, chico, va debajo con el filete. */
+  altoEspecie: 16,
+  altoIdArbol: 11,
+  aireFilete: 6,
   altoDato: 16,
   anchoEtiqueta: 62,
   /** Baja el rótulo, más chico que el valor, a la línea del valor. */

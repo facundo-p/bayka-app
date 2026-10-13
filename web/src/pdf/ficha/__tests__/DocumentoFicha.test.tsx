@@ -14,8 +14,7 @@ import { DocumentoFicha } from '../DocumentoFicha';
 const COLOR_DE = coloresEnOrden('ANC');
 
 const ENCABEZADO = encabezadoDePlantacion(
-  { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-  'Bayka',
+  { lugar: 'San Sebastián', periodo: '2025-2026' },
   LOGO_NODE,
 );
 

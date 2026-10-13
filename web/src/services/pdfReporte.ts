@@ -12,7 +12,6 @@ import type { Plantacion } from '../queries/plantationQueries';
 import type { ColorEspecie } from '../theme/coloresEspecie';
 import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob } from './descargas';
-import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
 /** Las etapas de la barra de progreso; la lectura de los árboles la avisa quien los lee. */
 export const ETAPA_REPORTE = {
@@ -54,7 +53,6 @@ export const ERROR_REPORTE_SIN_ARBOLES = 'El reporte no tiene árboles';
 
 function leerInsumos({ plantacion, queryClient }: ContextoReportePdf) {
   return Promise.all([
-    leerOrganizacionDelEncabezado(plantacion.id),
     leerColoresEspecie(queryClient, plantacion.id),
     import('../pdf/reporte/motorReporte'),
   ]);
@@ -98,11 +96,11 @@ export async function generarPdfReporte(
   contexto: ContextoReportePdf,
 ): Promise<ReportePdf> {
   if (pedido.arboles.length === 0) throw new Error(ERROR_REPORTE_SIN_ARBOLES);
-  const [organizacion, colorDe, motor] = await leerInsumos(contexto);
+  const [colorDe, motor] = await leerInsumos(contexto);
   const reparto = await prepararReparto(motor, pedido, colorDe);
   pedido.senal?.throwIfAborted();
   pedido.alProgresar?.({ etapa: ETAPA_REPORTE.armandoPdf });
-  const emision = motor.emisionDePlantacion(contexto.plantacion, organizacion);
+  const emision = motor.emisionDePlantacion(contexto.plantacion);
   const blob = await motor.renderizarReporte({ ...emision, reparto }, pedido.senal);
   return { blob, fotosFallidas: contarFallidas(reparto.tarjetas) };
 }

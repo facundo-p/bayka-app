@@ -37,11 +37,7 @@ beforeEach(() => {
 const textosDe = async (blob: Blob) => textosDelPdf(Buffer.from(await blob.arrayBuffer()));
 
 const EMISION = {
-  encabezado: encabezadoDePlantacion(
-    { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-    'Bayka',
-    LOGO_NODE,
-  ),
+  encabezado: encabezadoDePlantacion({ lugar: 'San Sebastián', periodo: '2025-2026' }, LOGO_NODE),
   emitido: '06/10/2026',
 };
 

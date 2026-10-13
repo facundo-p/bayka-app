@@ -38,7 +38,7 @@ const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro:
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
 const EMISION = {
-  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026' },
   emitido: '12/10/2026',
 };
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
@@ -60,7 +60,6 @@ function contexto() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(leerArbolParaFicha).mockResolvedValue(ARBOL);
-  vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue(PUNTOS);
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC, TIM]);
   vi.mocked(motor.cargarFoto).mockResolvedValue({ estado: 'sin-foto' });
@@ -86,7 +85,8 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
     mapa: MAPA,
     colorDe: expect.any(Function),
   });
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
+  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
   expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining(EMISION));
   expect(descargarBlob).toHaveBeenCalledWith(
     BLOB,
@@ -108,12 +108,11 @@ test('los puntos del mapa salen de la caché del dashboard', async () => {
   expect(listarPuntosGps).not.toHaveBeenCalled();
 });
 
-test('sin organización ni puntos legibles, la ficha sale igual', async () => {
-  vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
+test('sin puntos legibles, la ficha sale igual', async () => {
   vi.mocked(listarPuntosGps).mockRejectedValue(new Error('red'));
   await descargarFichaPdf('t1', contexto());
   expect(motor.minimapaDeArbol).toHaveBeenCalledWith(ARBOL, [], expect.any(Function));
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, null);
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(descargarBlob).toHaveBeenCalled();
 });
 

@@ -43,8 +43,8 @@ const mono = LETRA_REPORTE.codigo;
 /** Lo que la tarjeta y la fila del listado pintan igual. */
 const deArbol = { codigo: { ...mono, color: COLOR_PDF.navy }, mono } as const;
 
-/** Lo que el filete de abajo deja para el nombre de la especie. */
-const aireEspecie = aireCentrado(M.altoEspecie - M.borde, ALTO.especieTarjeta);
+/** Lo que el filete de abajo deja para el ID. */
+const aireId = aireCentrado(M.altoIdArbol - M.borde, ALTO.idTarjeta);
 
 export const tarjetaStyles = StyleSheet.create({
   ...deArbol,
@@ -63,27 +63,27 @@ export const tarjetaStyles = StyleSheet.create({
   vacio: { ...recuadroFoto, ...recuadroVacio },
   textoVacio: { fontSize: TAMANO_TEXTO.secundario, color: COLOR_PDF.tenue },
   datos: { flex: 1, marginLeft: M.aireFoto },
-  idArbol: {
-    ...interlineadoDeRenglon,
-    ...LETRA_REPORTE.idTarjeta,
-    paddingBottom: M.altoIdArbol - ALTO.idTarjeta,
-    color: COLOR_PDF.navy,
-  },
   filaEspecie: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingTop: aireEspecie,
-    paddingBottom: M.aireEspecie + aireEspecie,
-    marginBottom: M.aireEspecie,
-    borderBottomWidth: M.borde,
-    borderBottomColor: COLOR_PDF.linea,
+    paddingBottom: M.altoEspecie - ALTO.especieTarjeta,
   },
   punto: puntoDeEspecie(M.punto, ALTO.especieTarjeta),
   nombreEspecie: {
     ...interlineadoDeRenglon,
     ...LETRA_REPORTE.especieTarjeta,
     flex: 1,
-    color: COLOR_PDF.tinta,
+    color: COLOR_PDF.navy,
+  },
+  idArbol: {
+    ...interlineadoDeRenglon,
+    ...LETRA_REPORTE.idTarjeta,
+    paddingTop: aireId,
+    paddingBottom: M.aireFilete + aireId,
+    marginBottom: M.aireFilete,
+    borderBottomWidth: M.borde,
+    borderBottomColor: COLOR_PDF.linea,
+    color: COLOR_PDF.apagado,
   },
   dato: {
     flexDirection: 'row',

@@ -12,7 +12,6 @@ function Encabezado({ encabezado }: { encabezado: EncabezadoPdf }) {
       <Image style={styles.logo} src={encabezado.logo} />
       <View style={styles.plantacion}>
         <Text style={styles.titulo}>{encabezado.titulo}</Text>
-        <Text style={styles.detalle}>{encabezado.detalle}</Text>
       </View>
     </View>
   );

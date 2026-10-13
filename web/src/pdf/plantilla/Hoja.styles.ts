@@ -38,7 +38,6 @@ export const hojaStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.encabezado,
     lineHeight: MEDIDA_PDF.interlineadoEncabezado,
   },
-  detalle: { fontSize: TAMANO_TEXTO.pieMarca, color: COLOR_PDF.apagado },
   pie: {
     position: 'absolute',
     bottom: margenInferior,

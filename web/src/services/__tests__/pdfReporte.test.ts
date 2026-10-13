@@ -36,7 +36,7 @@ vi.mock('../../pdf/reporte/motorReporte', () => ({
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
 const BLOB = new Blob(['%PDF']);
-const ENCABEZADO = { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' };
+const ENCABEZADO = { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026' };
 const EMISION = { encabezado: ENCABEZADO, emitido: '12/10/2026' };
 const FOTO_LISTA = { estado: 'lista', src: 'data:image/jpeg;base64,F' } as const;
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
@@ -124,13 +124,11 @@ test('avisa el progreso de la bajada de fotos y después el armado del PDF', asy
   ]);
 });
 
-test('el encabezado lleva la plantación y su organización; sin organización legible sale igual', async () => {
+test('el encabezado lleva solo la plantación: la organización no se lee', async () => {
   await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(vi.mocked(motor.renderizarReporte).mock.lastCall![0]).toMatchObject(EMISION);
-  vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
-  await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.emisionDePlantacion).toHaveBeenLastCalledWith(PLANTACION, null);
+  expect(leerNombreOrganizacion).not.toHaveBeenCalled();
 });
 
 test('los colores de especie son los de la plantación', async () => {

@@ -86,7 +86,7 @@ test('cubre la plantación entera, con la etiqueta del estado, y se descarga', a
   expect(pedido.plantacion).toMatchObject({ lugar: 'San Sebastián', estado: 'Activa' });
   expect(pedido.objetivo).toBe(8000);
   expect(pedido.organizacion).toBe('Bayka');
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(pedido).toMatchObject(EMISION);
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'informe-san-sebastian-2025-2026.pdf');
 });
@@ -120,7 +120,7 @@ test('sin organización ni puntos legibles, el informe sale igual', async () => 
   await descargarInformePdf(PLANTACION, new QueryClient(), CON_MAPA);
   const pedido = vi.mocked(motor.renderizarInforme).mock.calls[0][0];
   expect(pedido.organizacion).toBeNull();
-  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, null);
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION);
   expect(pedido.puntos).toBeNull();
   expect(descargarBlob).toHaveBeenCalled();
 });

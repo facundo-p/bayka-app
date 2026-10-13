@@ -38,10 +38,10 @@ export function altoFila({ idArbol, especie, parcela, grupo }: TextosDelAlto): n
 const DATOS_DE_UN_RENGLON = 3;
 
 function altoDatos({ idArbol, especie, parcela, grupo }: TextosDelAlto): number {
-  const altoEspecie = M.altoEspecie + 2 * M.aireEspecie;
+  const altoId = M.altoIdArbol + 2 * M.aireFilete;
   return (
-    altoConRenglones(M.altoIdArbol, ALTO.idTarjeta, idArbol.length) +
-    altoConRenglones(altoEspecie, ALTO.especieTarjeta, especie.titulo.length) +
+    altoConRenglones(M.altoEspecie, ALTO.especieTarjeta, especie.titulo.length) +
+    altoConRenglones(altoId, ALTO.idTarjeta, idArbol.length) +
     altoConRenglones(M.altoDato, ALTO.dato, renglonesDe(parcela)) +
     altoConRenglones(M.altoDato, ALTO.dato, renglonesDe(grupo)) +
     DATOS_DE_UN_RENGLON * M.altoDato

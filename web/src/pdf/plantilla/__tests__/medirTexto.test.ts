@@ -40,7 +40,13 @@ const NOMBRE_LARGO = 'Loma de los Paraísos Norte, ladera del arroyo Itaembé';
 // Biolinum es la que trae kerning («AV», «To») y ligaduras («ffi»).
 test.each([
   ['la fila del listado', FUENTE_PDF.cuerpo, PESO_FUENTE.regular, TAMANO_TEXTO.filaListado, 0],
-  ['la especie de la tarjeta', FUENTE_PDF.cuerpo, PESO_FUENTE.semibold, TAMANO_TEXTO.especie, 0],
+  [
+    'la especie de la tarjeta',
+    FUENTE_PDF.cuerpo,
+    PESO_FUENTE.semibold,
+    TAMANO_TEXTO.especieTarjeta,
+    0,
+  ],
   ['el código', FUENTE_PDF.mono, PESO_FUENTE.regular, TAMANO_TEXTO.datoMono, 0],
   [
     'un rótulo espaciado',

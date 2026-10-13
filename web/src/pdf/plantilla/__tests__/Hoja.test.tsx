@@ -10,8 +10,7 @@ import { ORIENTACION_HOJA, type OrientacionHoja } from '../tokens';
 beforeAll(() => registrarFuentes(FUENTES_NODE));
 
 const ENCABEZADO = encabezadoDePlantacion(
-  { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-  'Bayka',
+  { lugar: 'San Sebastián', periodo: '2025-2026' },
   LOGO_NODE,
 );
 

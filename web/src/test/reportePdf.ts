@@ -21,8 +21,7 @@ import { FUENTES_NODE, LOGO_NODE, PNG_DE_PRUEBA } from './pdfNode';
 export const COLOR_DE = coloresEnOrden('ANC', 'ANCHC');
 
 export const ENCABEZADO = encabezadoDePlantacion(
-  { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26' },
-  'Bayka',
+  { lugar: 'San Sebastián', periodo: '2025-2026' },
   LOGO_NODE,
 );
 

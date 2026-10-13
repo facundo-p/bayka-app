@@ -96,7 +96,7 @@ test('7 tarjetas y 40 filas de un renglón: las hojas que estima el modal, y el 
   expect(paginasDelPdf(pdf)).toBe(hojas);
   expect(textosDelPdf(pdf)).toEqual(
     expect.arrayContaining([
-      'Reporte de árboles · 47 árboles',
+      'Reporte de plantación · 47 árboles',
       'Emitido el 12/10/2026 · Página 4 de 4',
     ]),
   );

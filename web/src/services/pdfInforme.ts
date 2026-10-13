@@ -11,7 +11,7 @@ import { listarPuntosGps } from '../queries/mapaQueries';
 import { ETIQUETA_ESTADO_PLANTACION, type Plantacion } from '../queries/plantationQueries';
 import { leerColoresEspecie } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
-import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
+import { leerOrganizacionDelInforme } from './organizacionInforme';
 
 export type PlantacionDelInforme = Pick<
   Plantacion,
@@ -30,7 +30,7 @@ function leerPuntos(id: string, queryClient: QueryClient, opciones: OpcionesInfo
 
 /** Lo que puede faltar: el informe sale igual, sin esa parte. */
 function leerAccesorios(id: string, queryClient: QueryClient, opciones: OpcionesInforme) {
-  return Promise.all([leerPuntos(id, queryClient, opciones), leerOrganizacionDelEncabezado(id)]);
+  return Promise.all([leerPuntos(id, queryClient, opciones), leerOrganizacionDelInforme(id)]);
 }
 
 /**
@@ -62,7 +62,7 @@ export async function generarPdfInforme(
     opciones,
   );
   return motor.renderizarInforme({
-    ...motor.emisionDePlantacion(plantacion, organizacion),
+    ...motor.emisionDePlantacion(plantacion),
     dashboard: calcularDashboard(fuente),
     puntos,
     plantacion: { ...plantacion, estado: ETIQUETA_ESTADO_PLANTACION[plantacion.estado] },

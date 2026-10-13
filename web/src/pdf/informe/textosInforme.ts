@@ -5,7 +5,7 @@ import { TEXTO_PLANTILLA } from '../plantilla/textos';
 export const TEXTO_INFORME = {
   documento: 'Informe de plantación',
   periodo: 'Período',
-  plantacion: TEXTO_PLANTILLA.plantacion,
+  plantacion: 'Plantación',
   estado: 'Estado:',
   arboles: 'Árboles registrados',
   de: TEXTO_PLANTILLA.de,
