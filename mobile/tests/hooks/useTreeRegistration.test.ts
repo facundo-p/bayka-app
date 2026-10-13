@@ -189,7 +189,7 @@ describe('useTreeRegistration', () => {
       });
 
       expect(result.current.photoCaptureAllTrees).toBe(true);
-      expect(pickPhoto).toHaveBeenCalledWith({ optional: true });
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ optional: true }));
       expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: FOTO }));
     });
 
@@ -305,6 +305,37 @@ describe('useTreeRegistration', () => {
       expect(insertTree).toHaveBeenCalledTimes(1);
     });
 
+    // #912: con el punto en camino, la cámara lo muestra y el botón GPS del árbol nuevo gira.
+    it('punto en camino: lo recibe la cámara y el árbol nuevo queda "capturando" hasta que llega', async () => {
+      watcher = { ...fixEn(-31), timestamp: 0 };
+      let llegaFix: (fix: ReturnType<typeof fixEn> | null) => void = () => {};
+      (getCurrentGpsFix as jest.Mock).mockReturnValueOnce(new Promise((resolve) => { llegaFix = resolve; }));
+      pickPhoto.mockResolvedValue(FOTO);
+      const { result } = renderHook(() => useTreeRegistration(params));
+
+      await act(async () => { await result.current.registerTree('esp-1', 'ANC'); });
+
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ puntoGps: expect.any(Promise) }));
+      expect(result.current.gpsCapturingTreeId).toBe('tree-new');
+
+      await act(async () => {
+        llegaFix(fixEn(-31));
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(result.current.gpsCapturingTreeId).toBeNull();
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('punto resuelto al toque: la cámara no recibe aviso ni el botón gira', async () => {
+      const { result } = renderHook(() => useTreeRegistration(params));
+
+      await act(async () => { await result.current.registerTree('esp-1', 'ANC'); });
+
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ puntoGps: undefined }));
+      expect(result.current.gpsCapturingTreeId).toBeNull();
+    });
+
     it('N/N sin foto (obligatoria): no registra el árbol ni el punto', async () => {
       sacarFotoAlejado(null);
 
@@ -323,7 +354,7 @@ describe('useTreeRegistration', () => {
         await result.current.registerNN();
       });
 
-      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ optional: false }));
       expect(insertTree).toHaveBeenCalledWith({
         grupoId: 'sg-1',
         grupoCodigo: 'L1',

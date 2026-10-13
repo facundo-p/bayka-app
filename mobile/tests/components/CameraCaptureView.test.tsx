@@ -5,6 +5,7 @@ import { Modal, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useCameraPermissions } from 'expo-camera';
 import CameraCaptureView from '../../src/components/CameraCaptureView';
+import { AVISO_PUNTO_GPS } from '../../src/hooks/useAvisoPuntoGps';
 
 jest.mock('expo-camera', () => {
   const { View } = require('react-native');
@@ -97,5 +98,19 @@ describe('CameraCaptureView sin permiso de cámara', () => {
     const { getByText, onCancel } = renderCamara(false);
     fireEvent.press(getByText('Cancelar'));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('con aviso del punto GPS lo muestra (#912)', () => {
+    permiso(true);
+    const { getByText } = render(
+      <CameraCaptureView visible optional avisoGps={{ estado: AVISO_PUNTO_GPS.esperando }} onCapture={jest.fn()} onGallery={jest.fn()} onCancel={jest.fn()} />,
+    );
+    getByText('Tomando punto GPS…');
+  });
+
+  it('sin punto en camino no hay aviso', () => {
+    permiso(true);
+    const { queryByTestId } = renderCamara(true);
+    expect(queryByTestId('aviso-punto-gps')).toBeNull();
   });
 });

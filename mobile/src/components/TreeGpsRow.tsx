@@ -51,11 +51,16 @@ export default function TreeGpsRow({ signal, tree, capturing, disabled, onCaptur
           hitSlop={TREE_GPS_BUTTON_HIT_SLOP}
         >
           <CaptureLead tree={tree} capturing={capturing} />
-          <Text style={styles.buttonText}>{tree.hasPoint ? 'Recapturar' : 'Capturar'}</Text>
+          <Text style={styles.buttonText}>{captureLabel(tree, capturing)}</Text>
         </Pressable>
       )}
     </View>
   );
+}
+
+function captureLabel(tree: TreeGpsPoint, capturing: boolean): string {
+  if (capturing) return 'Capturando';
+  return tree.hasPoint ? 'Recapturar' : 'Capturar';
 }
 
 /** Spinner mientras captura; con punto, su precisión; sin punto, la mira. */

@@ -17,15 +17,32 @@ export interface GpsAlTap {
   tapAtMs: number;
   /** Resuelve el fix (o null); nunca rechaza. */
   fix: Promise<GpsFix | null>;
+  /** false si al toque no había fix reciente y se está esperando al GPS: la UI lo avisa (#912). */
+  resueltoAlTap: boolean;
 }
 
 /** Fija el punto al toque: el fix del watcher si es reciente, si no pide uno fresco en ese instante. Con la medición desactivada no prende el GPS. */
 export function capturarGpsAlTap(getLastFix?: () => GpsFix | null): GpsAlTap {
   const tapAtMs = Date.now();
-  if (!getGpsEnabled()) return { tapAtMs, fix: Promise.resolve(null) };
+  if (!getGpsEnabled()) return { tapAtMs, fix: Promise.resolve(null), resueltoAlTap: true };
   const watcherFix = getLastFix?.() ?? null;
-  const fix = isFixFresh(watcherFix, tapAtMs) ? Promise.resolve(watcherFix) : getCurrentGpsFix();
-  return { tapAtMs, fix };
+  if (isFixFresh(watcherFix, tapAtMs)) return { tapAtMs, fix: Promise.resolve(watcherFix), resueltoAlTap: true };
+  return { tapAtMs, fix: getCurrentGpsFix(), resueltoAlTap: false };
+}
+
+/** El punto que la UI muestra "en camino": solo si no estaba al toque y la posición que viene captura GPS. */
+export function puntoGpsEnCamino(
+  gpsAlTap: GpsAlTap,
+  posicionSiguiente: number,
+  frequency: number,
+): Promise<GpsFix | null> | undefined {
+  if (gpsAlTap.resueltoAlTap || !shouldCaptureGps(posicionSiguiente, frequency)) return undefined;
+  return gpsAlTap.fix;
+}
+
+export interface InsertTreeWithGpsResult extends InsertTreeResult {
+  /** Adjunto del punto en curso (true = escrito); null si la posición no captura GPS. */
+  gpsAdjunto: Promise<boolean> | null;
 }
 
 /** Alta de árbol + captura GPS si corresponde por posición (mismo camino para botonera de especies y N/N); el insert nunca espera al GPS, el punto se adjunta async. */
@@ -33,12 +50,12 @@ export async function insertTreeWithGps(
   params: InsertTreeParams,
   frequency: number,
   gpsAlTap: GpsAlTap,
-): Promise<InsertTreeResult> {
+): Promise<InsertTreeWithGpsResult> {
   const inserted = await insertTree(params);
-  if (shouldCaptureGps(inserted.posicion, frequency)) {
-    void attachGpsCapture(inserted.id, gpsAlTap);
-  }
-  return inserted;
+  const gpsAdjunto = shouldCaptureGps(inserted.posicion, frequency)
+    ? attachGpsCapture(inserted.id, gpsAlTap)
+    : null;
+  return { ...inserted, gpsAdjunto };
 }
 
 /**
