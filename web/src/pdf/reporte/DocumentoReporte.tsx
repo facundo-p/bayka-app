@@ -1,6 +1,6 @@
-import { Document } from '@react-pdf/renderer';
+import { DocumentoPdf } from '../plantilla/DocumentoPdf';
 import { Hoja } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EmisionPdf } from '../plantilla/textos';
+import type { EmisionPdf } from '../plantilla/textos';
 import { ORIENTACION_HOJA } from '../plantilla/tokens';
 import { Escalon, NIVELES_DE_ESCALON } from './Escalon';
 import { documentoDeReporte, type ModeloArbolReporte, type ModeloTarjeta } from './datosReporte';
@@ -22,11 +22,7 @@ export function DocumentoReporte({ encabezado, emitido, reparto }: DocumentoRepo
   const documento = documentoDeReporte(reparto.tarjetas.length + reparto.listado.length);
   const hojas = paginarReporte(reparto);
   return (
-    <Document
-      title={`${documento}${TEXTO_PLANTILLA.separador}${encabezado.titulo}`}
-      creator={TEXTO_PLANTILLA.marca}
-      producer={TEXTO_PLANTILLA.marca}
-    >
+    <DocumentoPdf documento={documento} encabezado={encabezado}>
       {hojas.map((hoja, indice) => (
         <Hoja
           key={indice}
@@ -41,6 +37,6 @@ export function DocumentoReporte({ encabezado, emitido, reparto }: DocumentoRepo
           </Escalon>
         </Hoja>
       ))}
-    </Document>
+    </DocumentoPdf>
   );
 }
