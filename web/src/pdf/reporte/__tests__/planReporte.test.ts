@@ -116,7 +116,7 @@ describe('estimarReporte', () => {
   });
 
   test('7.000 árboles sin foto van al listado en 226 hojas', () => {
-    expect(estimarReporte({ total: 7000, conFoto: 0, modo: MODO_REPORTE.conFotos })).toEqual({
+    expect(estimarReporte({ total: 7000, conFoto: 0, modo: MODO_REPORTE.conFotos })).toMatchObject({
       tarjetas: 0,
       filasListado: 7000,
       hojas: 226,
@@ -124,11 +124,8 @@ describe('estimarReporte', () => {
   });
 
   test('450 con foto: 400 tarjetas en 67 hojas y 50 filas en 2', () => {
-    expect(estimarReporte({ total: 450, conFoto: 450, modo: MODO_REPORTE.conFotos })).toEqual({
-      tarjetas: 400,
-      filasListado: 50,
-      hojas: 69,
-    });
+    const estimado = estimarReporte({ total: 450, conFoto: 450, modo: MODO_REPORTE.conFotos });
+    expect(estimado).toMatchObject({ tarjetas: 400, filasListado: 50, hojas: 69 });
   });
 
   /** `total` árboles, los primeros `conFoto` con foto subida. */
@@ -147,7 +144,10 @@ describe('estimarReporte', () => {
 
   const MODOS = Object.values(MODO_REPORTE) as ModoReporte[];
 
-  const sonIguales = (estimado: EstimacionReporte, plan: EstimacionReporte) =>
+  /** Si es un piso lo dice la variable del texto largo, no el plan. */
+  type Conteos = Omit<EstimacionReporte, 'esPiso'>;
+
+  const sonIguales = (estimado: Conteos, plan: Conteos) =>
     (['tarjetas', 'filasListado', 'hojas'] as const).every(
       (campo) => estimado[campo] === plan[campo],
     );
@@ -190,14 +190,14 @@ describe('estimarReporte', () => {
   ])('con %i árboles y %i con foto da lo mismo que el plan', (total, cantidadConFoto) => {
     const arboles = arbolesDe(total, cantidadConFoto);
     for (const modo of MODOS) {
-      expect(estimarReporte({ total, conFoto: cantidadConFoto, modo })).toEqual(
+      expect(estimarReporte({ total, conFoto: cantidadConFoto, modo })).toMatchObject(
         delPlan(arboles, modo),
       );
     }
   });
 
   test('un conteo con foto mayor que el total se acota al total', () => {
-    expect(estimarReporte({ total: 5, conFoto: 8, modo: MODO_REPORTE.conFotos })).toEqual({
+    expect(estimarReporte({ total: 5, conFoto: 8, modo: MODO_REPORTE.conFotos })).toMatchObject({
       tarjetas: 5,
       filasListado: 0,
       hojas: 1,

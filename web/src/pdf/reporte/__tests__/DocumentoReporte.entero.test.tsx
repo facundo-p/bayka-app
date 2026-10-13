@@ -156,6 +156,7 @@ test('las hojas salen como dice el plan, y el pie cuenta las reales', async () =
   const estimado = estimarReporte({ total: arboles.length, conFoto, modo: MODO_REPORTE.conFotos });
   expect(paginasDelPdf(pdf)).toBe(hojas);
   expect(textosDelPdf(pdf)).toContain(`Emitido el 12/10/2026 · Página ${hojas} de ${hojas}`);
-  // La estimación del modal cuenta todo en un renglón: es un piso.
+  // La estimación del modal cuenta todo en un renglón: es un piso, y lo avisa.
   expect(estimado.hojas).toBeLessThan(hojas);
+  expect(estimado.esPiso).toBe(true);
 });

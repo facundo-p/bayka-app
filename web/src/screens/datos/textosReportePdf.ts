@@ -28,6 +28,8 @@ export const TEXTO_REPORTE_PDF = {
   barraFotos: 'Fotos bajadas',
   armando: 'Armando el PDF…',
   armandoDetalle: 'Puede tardar unos segundos.',
+  /** Detrás de las hojas y del peso cuando la estimación es un piso. */
+  piso: 'o más',
 } as const;
 
 /** «148 árboles en el filtro, 37 con foto.» */
@@ -42,9 +44,14 @@ export function textoTarjetas(tarjetas: number): string {
     : pluralizar(tarjetas, SUSTANTIVO.tarjetaConFoto);
 }
 
-/** «12 hojas · ≈ 2,1 MB». */
-export function textoEstimacion({ hojas }: EstimacionReporte, pesoBytes: number): string {
-  return `${pluralizar(hojas, SUSTANTIVO.hoja)} · ≈ ${formatearPeso(pesoBytes)}`;
+/**
+ * «12 hojas · ≈ 2,1 MB», o «12 hojas o más · 2,1 MB o más» si es un piso: ahí
+ * «≈» prometería un margen que el PDF puede pasar.
+ */
+export function textoEstimacion({ hojas, esPiso }: EstimacionReporte, pesoBytes: number): string {
+  const [cantidad, peso] = [pluralizar(hojas, SUSTANTIVO.hoja), formatearPeso(pesoBytes)];
+  if (!esPiso) return `${cantidad} · ≈ ${peso}`;
+  return `${cantidad} ${TEXTO_REPORTE_PDF.piso} · ${peso} ${TEXTO_REPORTE_PDF.piso}`;
 }
 
 /** null mientras las fotos entren en el tope. */

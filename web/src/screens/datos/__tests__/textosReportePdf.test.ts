@@ -25,10 +25,18 @@ test.each([
   expect(textoTarjetas(tarjetas)).toBe(texto);
 });
 
-test('la estimación junta hojas y peso', () => {
-  const estimacion = { tarjetas: 0, filasListado: 7000, hojas: 226 };
+const ESTIMACION = { tarjetas: 0, filasListado: 7000, hojas: 226 };
+
+test('la estimación exacta junta hojas y peso aproximado', () => {
+  const estimacion = { ...ESTIMACION, esPiso: false };
   expect(textoEstimacion(estimacion, 1_378_000)).toBe('226 hojas · ≈ 1,4 MB');
   expect(textoEstimacion({ ...estimacion, hojas: 1 }, 30_000)).toBe('1 hoja · ≈ 30 KB');
+});
+
+test('la estimación que es un piso dice «o más» en las hojas y en el peso', () => {
+  const estimacion = { ...ESTIMACION, esPiso: true };
+  expect(textoEstimacion(estimacion, 1_378_000)).toBe('226 hojas o más · 1,4 MB o más');
+  expect(textoEstimacion({ ...estimacion, hojas: 1 }, 30_000)).toBe('1 hoja o más · 30 KB o más');
 });
 
 test('el aviso del tope aparece recién al pasarlo y dice cuántas van al listado', () => {
