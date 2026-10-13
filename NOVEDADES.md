@@ -8,8 +8,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
-## En pruebas · próxima versión
-<!-- sincronizado-hasta: 72ae4ca #776 -->
+## En pruebas · actualizado el 13 de octubre de 2026
+<!-- sincronizado-hasta: d9ac102 #898 -->
 
 - **Cada plantación tiene su código.** Al crear o editar una plantación cargás
   un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
@@ -26,21 +26,24 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   código de la plantación (por ejemplo, LP1L23BANC12-SS26-1). En Datos →
   Árboles reemplaza a la columna SubID y titula el detalle del árbol, y podés
   pegarlo entero en la búsqueda global o en el buscador de Árboles para
-  encontrar ese árbol. <!-- #699 #717 -->
+  encontrar ese árbol. <!-- #699 #717 #787 -->
   - En la web de pruebas, abrí una plantación → Datos → Árboles y copiá el ID
     de un árbol.
   - Pegalo en la búsqueda (Ctrl/⌘ K) y después en "Buscar SubID…".
   - Esperá ver: la columna "ID Árbol", el ID como título del detalle, y en las
     dos búsquedas solo ese árbol; un SubID parcial sigue encontrando como
     antes.
-- **Las exportaciones llevan el ID Árbol.** El Excel y el CSV suman el ID Árbol
-  como primera columna, y en el KML cada punto se llama con ese ID, no con el
-  nombre de la especie. <!-- #703 #721 -->
-  - En la web de pruebas, abrí una plantación con los IDs generados →
-    Exportar → "Exportar Excel" y después "Descargar KML".
+- **Las planillas se exportan sin generar IDs.** Ya no hace falta «Generar
+  IDs»: el Excel y el CSV se descargan desde cualquier plantación, activa o
+  finalizada. Su primera columna es el ID Árbol, que reemplaza al ID Global, y
+  el ID Parcial se numera al exportar. En el KML cada punto se llama con el ID
+  Árbol, no con el nombre de la especie. <!-- #703 #721 #856 -->
+  - En la web de pruebas, abrí una plantación activa → Exportar → "Exportar
+    Excel" y después "Descargar KML".
   - Abrí el Excel y cargá el KML en Google Earth.
-  - Esperá ver: la primera columna del Excel es "ID Árbol" y cada punto del
-    mapa se llama con el ID de su árbol.
+  - Esperá ver: ningún botón «Generar IDs»; el Excel arranca con ID Árbol e ID
+    Parcial, sin ID Global, con el ID Parcial de 1 a N sin huecos, y cada
+    punto del mapa se llama con el ID de su árbol.
 - **La búsqueda te lleva directo a la parcela o al grupo.** Elegir una parcela
   o un grupo en la búsqueda global abre su sección con el código ya buscado,
   así ves la fila que elegiste. Parcelas y Grupos suman su propio buscador por
@@ -63,13 +66,6 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     dashboard. En una plantación finalizada «Cambiar» solo lo ve el
     superadmin, y en una archivada no aparece.
 - **Clasificá las especies en árbol o arbusto.** Cada especie tiene tipo, por
-  ahora Flora, y subtipo: Árbol o Arbusto. Las que ya existían quedan como
-  Árbol. El listado de Especies suma la columna Subtipo y un filtro por
-  subtipo. <!-- #775 -->
-  - En la web de pruebas, entrá a Especies y abrí una especie.
-  - Elegí «Arbusto» en Subtipo, guardá y filtrá por «Subtipo: arbusto».
-  - Esperá ver: la especie aparece en el filtro con subtipo Arbusto, las demás
-    siguen en Árbol y una especie nueva arranca en Árbol.
 - **Las especies científicas tienen su propia pestaña.** En Especies, la
   pestaña Científicas reúne cada nombre científico con los nombres comunes que
   agrupa. Ahí se crean, se renombran y se eliminan, la búsqueda (Ctrl/⌘ K) las
@@ -116,14 +112,62 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Pasá el mouse por el lápiz de Editar.
   - Esperá ver: el botón deshabilitado con «Solo el superadmin edita una
     plantación finalizada»; como superadmin, sigue habilitado.
-- **Descargá la foto de un árbol.** El detalle de un árbol suma un botón
-  Descargar debajo de la foto; el archivo lleva la plantación y el SubID en
-  el nombre. <!-- #726 -->
+- **Descargá la foto de un árbol.** El detalle de un árbol suma el botón
+- **Descargá la ficha PDF de un árbol.** El detalle de un árbol suma
+  «Descargar ficha PDF», que arma una hoja con la foto y un minimapa satelital
+  en dos cuadrados grandes, con el árbol resaltado. Junto a la foto van la
+  especie, el ID Árbol, la fecha de registro y el técnico; junto al mapa, la
+  parcela, el grupo, la posición y el GPS. Si el árbol no tiene foto o punto
+  GPS, la ficha lo dice en su lugar. <!-- #778 #835 #856 #868 #886 -->
   - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
-    árbol con foto.
-  - Tocá «Descargar» debajo de la foto.
-  - Esperá ver: se descarga un archivo foto-<lugar>-<período>-<SubID>.jpg con
-    la foto del árbol.
+    árbol con foto y GPS.
+  - Tocá «Descargar ficha PDF», al pie del detalle; repetí con un árbol sin
+    foto.
+  - Esperá ver: un PDF de una hoja con la foto arriba y el minimapa abajo, a
+    la derecha, el árbol marcado con un anillo y los datos a la izquierda; sin
+    foto, un recuadro punteado con «Sin foto» en su lugar.
+- **Reporte PDF de los árboles del filtro.** En Datos → Árboles, «Reporte PDF»
+  arma un PDF apaisado con todos los árboles que deja el filtro, búsqueda
+  incluida, y no solo los de la página. Con fotos, los árboles con foto salen
+  en tarjetas, hasta seis por hoja y 400 en total, y el resto en un listado;
+  sin fotos, todo va al listado. Antes de generar te dice cuántos árboles
+  entran, cuántos tienen foto y cuántas hojas y cuánto peso esperar; mientras
+  genera muestra el avance y lo podés cancelar. Los nombres largos salen
+  enteros, en varios renglones, y el archivo lleva los filtros en el nombre.
+  <!-- #870 #874 #779 #787 #879 #881 #886 #894 -->
+  - En la web de pruebas, abrí una plantación con fotos → Datos → Árboles, sin
+    filtros, y tocá «Reporte PDF».
+  - Elegí «Con fotos» y tocá «Generar PDF». Después filtrá por una parcela y
+    generá otro «Sin fotos».
+  - Esperá ver: el conteo del filtro y la estimación «… hojas o más · ≈ … MB»;
+    el primer PDF con las tarjetas con foto y después el listado del resto, y
+    el segundo solo con el listado de esa parcela y su código en el nombre del
+    archivo.
+- **Informe PDF de la plantación.** En Exportar, «Informe PDF» arma un resumen
+  con los árboles registrados y su distribución por especie, y te deja sumar
+  la meta y el avance, el porcentaje con GPS, el porcentaje con foto y el mapa
+  de puntos por especie, apaisado y con el código de cada parcela. La web
+  recuerda lo que elegiste para la próxima vez.
+  <!-- #780 #784 #837 #869 #886 #890 -->
+  - En la web de pruebas, abrí una plantación con árboles y objetivo de
+    árboles → Exportar → «Informe PDF».
+  - Marcá las cuatro opciones, tocá «Generar informe» y volvé a abrir el
+    modal.
+  - Esperá ver: el PDF con los árboles contra la meta, «Con GPS», «Con foto»,
+    la distribución por especie y el mapa con su leyenda, con los mismos
+    números que el dashboard sin filtro; al reabrir, las cuatro siguen
+    marcadas. En una plantación sin objetivo, «Meta y avance» aparece apagada.
+- **Los mapas de los PDF tienen imagen satelital.** El minimapa de la ficha y
+  el mapa del informe muestran los puntos sobre la imagen satelital, como el
+  mapa de la web, con la atribución de Esri al pie de la hoja. Si la imagen no
+  se puede cargar, el mapa sale liso y el PDF se genera igual.
+  <!-- #781 #785 -->
+  - En la web de pruebas, descargá la ficha PDF de un árbol con GPS.
+  - Repetila con server.arcgisonline.com bloqueado en las herramientas de
+    desarrollo del navegador.
+  - Esperá ver: primero, el minimapa satelital con un «*» debajo y
+    «* Imágenes © Esri, Maxar» al pie de la hoja; con el bloqueo, el mapa
+    liso, sin asterisco ni nota.
 - **La web abre más rápido las plantaciones grandes.** El listado de
   plantaciones, el dashboard y la pestaña Datos ya no descargan todos los
   árboles para contarlos, y el mapa se carga recién cuando hay puntos para
@@ -133,6 +177,108 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: los dos cargan casi enseguida, el mapa muestra los árboles y
     el total del dashboard coincide con la suma de la columna Árboles de las
     parcelas en Datos.
+- **El listado de plantaciones cuenta puntos GPS y fotos.** Las columnas
+  Puntos GPS y Fotos reemplazan a Usuarios y Visible, y dos filtros nuevos
+  muestran qué ve cada técnico: «Visible por» elige un técnico asignado y
+  «Visibles» separa las plantaciones que se ven en la app de las ocultas.
+  <!-- #838 -->
+  - En la web de pruebas, entrá a Plantaciones y tocá «Filtros».
+  - Elegí un técnico en «Visible por» y después «Visibles: sí».
+  - Esperá ver: las columnas Puntos GPS y Fotos después de Árboles, sin
+    Usuarios ni Visible, y solo las plantaciones que ese técnico ve en la app;
+    los puntos GPS y las fotos de cada fila coinciden con los del dashboard de
+    esa plantación.
+- **Filtrá el dashboard por especie y mirá cada árbol del mapa.** Tocar una
+  especie en «Por especie» acota el resumen, el mapa y la tira de parcelas a
+  esa especie, y se combina con la parcela elegida; «Ver todos» suelta los
+  dos. Tocar un punto del mapa muestra el ID del árbol, su especie y su
+  parcela. Bajo «Con GPS» y «Con foto», el resumen suma cuántos puntos y fotos
+  hay, y el mapa deja de repetir la lista de especies. <!-- #842 #841 -->
+  - En la web de pruebas, abrí una plantación con árboles → Dashboard.
+  - Tocá una especie en «Por especie», después una parcela de la tira y
+    después un punto del mapa.
+  - Esperá ver: un chip por filtro en el recuadro azul, con los puntos y las
+    fotos de esa especie en esa parcela; el mapa solo con sus puntos, y el
+    popup con el ID Árbol, la especie y la parcela.
+- **El detalle del árbol, rediseñado.** En Datos → Árboles, el detalle muestra
+  el ID con un botón para copiarlo, la especie con su nombre científico, la
+  parcela, el grupo y la posición, y la foto y el mapa lado a lado. Tocar la
+  foto la abre entera, y las coordenadas se copian o se abren en Google Maps.
+  Una foto que todavía no se sincronizó dice «Foto sin subir» en vez de
+  «Sin foto», y un árbol N/N avisa «Falta identificar la especie» y ofrece
+  «Identificar» a quien puede cambiarla. <!-- #843 -->
+  - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
+    árbol con foto y GPS.
+  - Tocá la foto, cerrala con Escape y tocá «Google Maps».
+  - Esperá ver: en una pantalla de escritorio, todo el detalle sin scrollear;
+    la foto entera al tocarla, el detalle todavía abierto al cerrarla y el
+    punto en Google Maps en otra pestaña.
+- **Los filtros de los listados, detrás de un botón.** En Plantaciones, Datos,
+  Especies y Usuarios, los filtros pasan a un panel que se abre con «Filtros»,
+  y el botón muestra cuántos hay puestos. El buscador y el orden quedan a la
+  vista, y «Limpiar» no los borra. Así la barra entra en un renglón en una
+  notebook. En el teléfono, el buscador de Datos queda fuera de la hoja y los
+  filtros de Árboles se apilan a lo ancho. <!-- #854 #813 -->
+  - En la web de pruebas, entrá a Plantaciones y tocá «Filtros».
+  - Cambiá el Estado, escribí en el buscador y tocá «Limpiar».
+  - Esperá ver: el listado cambia al toque, el botón muestra «1», y «Limpiar»
+    vuelve los filtros al inicio sin borrar la búsqueda ni el orden.
+- **Cada especie tiene su propio color en la plantación.** Dos especies de una
+  misma plantación ya no comparten color, y habilitar o quitar una especie no
+  les cambia el color a las demás. Cada una se ve igual en el dashboard, el
+  mapa, Datos, el KML y los PDF. El catálogo de Especies deja de mostrar un
+  punto de color, que no correspondía a ninguna plantación.
+  <!-- #839 #855 #865 -->
+  - En la web de pruebas, abrí una plantación con varias especies →
+    Dashboard y anotá el color de cada una.
+  - En Configuración → Especies habilitá una especie nueva; volvé al
+    Dashboard y después andá a Datos → Árboles.
+  - Esperá ver: cada especie con un color distinto y el mismo que tenía antes
+    de habilitar la nueva, también en Datos.
+- **En el teléfono, el detalle se abre en una hoja.** En Datos → Árboles,
+  Especies y Usuarios, tocar una fila abre el detalle en una hoja que sube
+  desde abajo, en vez de dejarlo al final de la tabla. Al cerrarla volvés al
+  mismo lugar de la lista, y mientras hay una hoja o la búsqueda abierta, la
+  lista de atrás no se mueve. <!-- #853 #867 -->
+  - En la web de pruebas, desde el teléfono, abrí una plantación → Datos →
+    Árboles, bajá hasta la mitad de la lista y tocá una fila.
+  - Arrastrá sobre la zona oscura y después cerrá la hoja con la X.
+  - Esperá ver: el detalle sube desde abajo sin que tengas que scrollear, la
+    lista no se mueve al arrastrar, y al cerrar seguís en la misma fila.
+- **En el teléfono, el nombre de la plantación se lee entero.** Las pestañas
+  Dashboard, Datos y Configuración bajan a su propio renglón en vez de
+  aplastar el nombre y las etiquetas de estado. <!-- #852 -->
+  - En la web de pruebas, desde el teléfono, abrí una plantación archivada.
+  - Pasá por Dashboard, Datos y Configuración.
+  - Esperá ver: arriba el nombre completo y las dos etiquetas de estado
+    enteras, y abajo las pestañas, sin tapar nada.
+- **Los mapas ya no abren en cuadros grises.** El mapa del dashboard y el del
+  detalle del árbol se acercan solo hasta donde el satélite tiene imagen.
+  <!-- #840 -->
+  - En la web de pruebas, abrí el Dashboard de una plantación con GPS y tocá
+    cada parcela de la tira.
+  - En Datos → Árboles, abrí un árbol con GPS.
+  - Esperá ver: los dos mapas con imagen satelital, sin cuadros grises.
+- **Los textos secundarios se leen mejor.** Los rótulos en mayúsculas, los
+  datos secundarios y los textos de las listas vacías pasan a un gris más
+  oscuro, legible sobre todos los fondos de la web. <!-- #851 -->
+  - En la web de pruebas, entrá a Plantaciones y después a Usuarios.
+  - Abrí el detalle de un árbol sin foto en Datos → Árboles.
+  - Esperá ver: los encabezados de las columnas, «Organización» y «Temporada
+    activa» del menú, los emails y fechas de Usuarios y el ícono de
+    «Sin foto» en el mismo gris oscuro que el resto del texto secundario.
+- **Usá los listados con el teclado.** Las filas de las tablas se alcanzan con
+  Tab y se abren con Enter o Espacio. Al cerrar un detalle, un menú o un
+  diálogo abierto desde un menú, el foco vuelve a donde estabas, y Escape en
+  la búsqueda (Ctrl/⌘ K) cierra solo la búsqueda, no el detalle de al lado.
+  <!-- #866 #873 #867 -->
+  - En la web de pruebas, entrá a Especies, hacé clic en el buscador y apretá
+    Tab hasta llegar a la primera fila.
+  - Apretá Enter y después Escape; en una plantación activa, abrí «⋯ Más
+    acciones» → "Archivar plantación" y tocá Cancelar.
+  - Esperá ver: la fila marcada con un borde azul, el detalle al costado y, al
+    cerrarlo, el borde de vuelta en la misma fila; después de Cancelar, el
+    foco en «⋯».
 - **Todos los datos de la plantación, desde la app.** Al crear o editar una
   plantación cargás lugar, periodo, fecha de inicio, objetivo de árboles,
   descripción, GPS obligatorio y su frecuencia, foto en todos los botones y si
@@ -167,17 +313,25 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: la tarjeta avisa que otra plantación de la organización ya usa
     ese código; al editarla y cambiarle el código, se sube en la próxima
     sincronización.
-- **Si un dato cambió en la app y en la web, elegís cuál queda.** Editar una
-  plantación ya no pisa lo que otro cambió desde la web: lo que no choca se
-  sube, y la pantalla "Resolver cambios" muestra, por cada dato que cambió en
-  los dos lados, tu valor, el de la web con quién y cuándo lo cambió, y el
-  anterior. <!-- #648 -->
-  - En la app Bayka TEST, en modo avión, cambiá el objetivo y la descripción
-    de una plantación; en la web de pruebas cambiá el objetivo de la misma.
-  - Recuperá la señal, sincronizá y tocá "Resolver" en el resumen (o "Cambios
-    por resolver" en la tarjeta); elegí tu valor y guardá la elección.
-  - Esperá ver: la descripción subió sin aviso, y después de elegir y
-    sincronizar la web muestra el objetivo que elegiste.
+- **Si un dato cambió en dos lugares, elegís cuál queda.** Al sincronizar, lo
+  que no choca se sube; si un dato también cambió en la web o en otro celular,
+  queda ese valor hasta que elijas en "Resolver cambios". Vale para los datos
+  de la plantación y del grupo, y para la especie, el punto GPS y la foto de
+  cada árbol, aunque la hayas quitado. Ves los dos valores, con las dos fotos o
+  la distancia entre los dos puntos, y si el tuyo ya no se puede aplicar, por
+  qué. Te avisan el resumen de la sincronización, la tarjeta de la plantación y
+  el grupo, que no termina de sincronizarse hasta que elijas.
+  <!-- #648 #805 #807 #808 #815 -->
+  - En la app Bayka TEST, como administrador y en modo avión, cambiá el
+    objetivo de una plantación y la especie de un árbol ya sincronizado de un
+    grupo que cargaste.
+  - En la web de pruebas, cambiá el objetivo de esa plantación y la especie de
+    ese árbol a otros valores.
+  - Recuperá la señal, sincronizá y tocá «Resolver» en el resumen; elegí los
+    valores del teléfono, tocá «Guardar elección» y volvé a sincronizar.
+  - Esperá ver: el objetivo y una sección del árbol con las dos especies; el
+    grupo con el aviso de cambios por resolver hasta que guardás, y la web con
+    tu objetivo y tu especie.
 - **Configurá las especies de una plantación sin señal.** Los cambios se
   guardan en el celular y suben al sincronizar, sin pisar lo que se cambió
   desde la web en otras especies. Si quitaste una especie que ya tenía árboles
@@ -238,11 +392,22 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: antes de sincronizar se edita; después ya no abre la edición y
     la web la muestra con el nombre corregido. Un administrador sigue editando
     y borrando como antes.
+- **Un administrador corrige la foto y el GPS en cualquier grupo.** En un grupo
+  que cargó otra persona, un administrador o superadmin cambia o quita la foto
+  y recaptura el punto GPS desde el detalle del árbol o el visor. Eliminar
+  árboles, cambiar la especie y renombrar, eliminar o reactivar el grupo siguen
+  siendo de quien lo cargó. Un técnico solo cambia sus grupos: ve los N/N de
+  los demás, pero no los resuelve. <!-- #797 -->
+  - En la app Bayka TEST, como administrador, abrí un grupo que haya cargado un
+    técnico y tocá un árbol.
+  - Tocá «Cambiar foto», sacá una foto y sincronizá.
+  - Esperá ver: los botones de foto y de punto GPS, sin «Eliminar árbol» ni
+    «Cambiar especie», y la foto nueva en la web de pruebas.
 - **Cambiá la especie de un árbol desde la app.** En el detalle de un árbol de
   un grupo que cargaste, «Cambiar especie» abre un buscador por nombre común o
   científico. En un grupo finalizado te ofrece reabrirlo y cambiar en un solo
-  paso. Si la especie también se cambió desde la web, al sincronizar queda la
-  de la web y la app te avisa. <!-- #731 -->
+  paso. Si también la cambiaron desde la web, al sincronizar elegís cuál
+  queda. <!-- #731 #807 #808 -->
   - En la app Bayka TEST, abrí un grupo activo que hayas cargado → «Ver todos
     los árboles» → tocá un árbol.
   - Tocá «Cambiar especie», elegí otra y sincronizá.
@@ -258,14 +423,19 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: el ID del árbol termina en el código de la plantación, y antes
     de guardar el código nuevo aparece "Cambian los IDs de los árboles" con la
     cantidad; si cancelás, no se guarda.
-- **Las exportaciones de la app llevan el ID Árbol.** El CSV y el Excel suman el
-  ID Árbol como primera columna, y en el KML cada punto se llama con ese ID; el
-  SubID pasa a la descripción. <!-- #703 #721 -->
+- **La app exporta sin esperar los IDs.** Una plantación finalizada ofrece
+  siempre CSV, Excel y KML, sin el aviso «Los IDs se generan desde la web de
+  gestión». El CSV y el Excel llevan el ID Árbol como primera columna, en vez
+  del ID Global, y el ID Parcial numerado igual que en la web; en el KML cada
+  punto se llama con el ID Árbol y el SubID pasa a la descripción.
+  <!-- #703 #721 #856 -->
   - En la app Bayka TEST, como administrador, tocá el engranaje de una
-    plantación finalizada con los IDs generados.
-  - Exportá el Excel y el KML.
-  - Esperá ver: la primera columna del Excel es "ID Árbol" y en Google Earth
-    cada punto se llama con el ID de su árbol.
+    plantación finalizada y exportá el CSV y el KML.
+  - Exportá el CSV de la misma plantación, ya sincronizada, desde la web de
+    pruebas.
+  - Esperá ver: CSV, Excel y KML disponibles sin aviso de IDs; los dos CSV con
+    las mismas columnas ID Árbol e ID Parcial, fila por fila, y en Google
+    Earth cada punto con el ID de su árbol.
 - **La cámara se abre directo.** Ya no aparece el menú «Agregar foto»: tocar
   N/N, una especie con foto, o agregar o reemplazar la foto de un árbol abre la
   cámara, y la galería se elige con el botón «Galería» que está adentro. Si la
@@ -276,6 +446,16 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: la cámara sin menú previo, la foto de la galería pasa por el
     recorte, «Reintentar» vuelve a la cámara, y cerrar con la X o con atrás no
     registra nada.
+- **Las fotos salen cuadradas.** La cámara muestra un marco cuadrado con lo de
+  afuera oscurecido y el recorte arranca en ese mismo cuadrado: lo movés o lo
+  agrandás y sigue cuadrado. Las fotos de la galería pasan por el mismo
+  recorte, en vez del recorte del teléfono. Las fotos que ya estaban no
+  cambian. <!-- #836 -->
+  - En la app Bayka TEST, entrá a un grupo activo y tocá N/N.
+  - Sacá la foto, arrastrá una esquina del recorte y guardá; repetí eligiendo
+    una foto con «Galería».
+  - Esperá ver: el cuadrado en la cámara, un recorte que sigue cuadrado y no
+    se sale de la foto, y la foto cuadrada en el detalle del árbol.
 - **Fotografiá el árbol seleccionado sin salir de la botonera.** Un botón de
   cámara junto al engranaje le saca la foto al árbol elegido en la tira. Si ya
   tiene foto, primero te avisa que la vas a reemplazar. <!-- #773 -->
@@ -284,16 +464,21 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Tocá el botón de cámara y sacá la foto; después tocalo de nuevo.
   - Esperá ver: la foto queda en el árbol que elegiste y no en el último, y la
     segunda vez aparece el aviso «Reemplazar la foto» antes de la cámara.
-- **Quitar o reemplazar una foto te pide confirmación.** Antes de borrar o
-  pisar la foto de un árbol, la app avisa que no se puede deshacer y si el
-  cambio llega a Bayka y a los demás celulares. Desde el detalle del árbol,
-  «Ver actual» te muestra la foto antes de decidir. <!-- #723 #729 #771 -->
+- **Quitar o reemplazar una foto te avisa qué pasa.** Antes de quitar una foto
+  ya sincronizada, la app avisa que se quita para todos los que ven ese árbol;
+  antes de reemplazarla, si la nueva la reemplaza para todos al sincronizar o,
+  si la actual todavía no se subió, que no se puede deshacer. Desde el detalle
+  del árbol, «Ver actual» te muestra la foto antes de decidir. Quitar una foto
+  que todavía no sincronizaste no pregunta y vuelve a la anterior; antes
+  borraba también la que ya estaba en Bayka. <!-- #723 #729 #771 #821 -->
   - En la app Bayka TEST, abrí el listado de un grupo y entrá al detalle de un
-    árbol con foto.
-  - Tocá «Cambiar foto» → «Ver actual»; cerrá la foto y tocá «Quitar».
+    árbol con foto ya sincronizada.
+  - Tocá «Cambiar foto» → «Ver actual», reemplazala desde la foto ampliada y,
+    de vuelta en el detalle, tocá «Quitar»; después tocá «Quitar» otra vez.
   - Esperá ver: el aviso «Reemplazar la foto» con Cancelar, Ver actual y
-    Reemplazar; desde la foto ampliada, «Reemplazar» abre la cámara sin volver
-    a preguntar; «Quitar» pide confirmación y Cancelar deja la foto.
+    Reemplazar; desde la foto ampliada, la cámara sin volver a preguntar; el
+    primer «Quitar» vuelve a la foto anterior sin preguntar y el segundo pide
+    «Quitar la foto del árbol», y Cancelar la deja.
 - **Guardá o compartí la foto de un árbol.** El visor de fotos suma dos
   botones arriba a la derecha: Guardar deja una copia en el álbum «Bayka» de
   la galería y Compartir la manda por la app que elijas. Si la foto está solo
@@ -384,13 +569,22 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Mirá los bordes de arriba y de abajo.
   - Esperá ver: la X debajo de la barra de estado y los botones de abajo por
     encima de la barra de gestos.
-- **Sin permiso de edición, el visor de fotos no ofrece cambiarla.** En un
-  grupo de otro técnico o de una plantación finalizada o archivada, la foto se
-  ve sin Reemplazar ni Eliminar foto. <!-- #769 -->
-  - En la app Bayka TEST, abrí un grupo de otro técnico.
+- **Sin permiso de edición, el visor de fotos no ofrece cambiarla.** Un técnico
+  en un grupo de otro, o cualquiera en una plantación finalizada o archivada,
+  ve la foto sin Reemplazar ni Eliminar foto. <!-- #769 #797 -->
+  - En la app Bayka TEST, como técnico, abrí un grupo de otro técnico.
   - Tocá el ícono de foto de un árbol.
   - Esperá ver: la foto, con Guardar y Compartir arriba, y sin Reemplazar ni
     Eliminar foto abajo.
+- **Los cambios de foto y GPS de otro celular llegan al tuyo.** Si alguien
+  reemplaza la foto de un árbol o recaptura su punto GPS en otro celular, al
+  sincronizar el tuyo toma la foto y el punto nuevos; antes podía seguir
+  mostrando los anteriores. <!-- #807 -->
+  - En la app Bayka TEST, en dos celulares, sincronizá la misma plantación.
+  - En uno, reemplazá la foto de un árbol y recapturá su punto GPS;
+    sincronizá.
+  - Sincronizá el otro y abrí el detalle de ese árbol.
+  - Esperá ver: la foto y el punto nuevos en los dos celulares.
 - **En un celular compartido, cada uno trabaja con su cuenta.** Si entrás sin
   conexión en un celular donde antes entró otra persona, lo que cargás queda a
   tu nombre y ves tu propio perfil. Al volver la señal, la app te pide iniciar
