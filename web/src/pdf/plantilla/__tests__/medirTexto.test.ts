@@ -2,7 +2,7 @@
 import { FUENTES_NODE } from '../../../test/pdfNode';
 import { anchoDelRenglon, renglonesDeTextkit } from '../../../test/textkit';
 import type { FuenteLeida } from '../fuenteLeida';
-import { FUENTE_RESPALDO, leerFuente, medidorRegistrado, registrarFuentes } from '../fuentes';
+import { leerConRespaldo, leerFuente, medidorRegistrado, registrarFuentes } from '../fuentes';
 import { medidorDeFuente } from '../medirTexto';
 import { FUENTE_PDF, MEDIDA_REPORTE, PESO_FUENTE, TAMANO_TEXTO } from '../tokens';
 
@@ -67,8 +67,8 @@ test.each([
   ['semibold, que cae en Helvetica Bold', PESO_FUENTE.semibold],
 ])('con un carácter que Poppins no tiene, mide igual que textkit (%s)', async (_, peso) => {
   const letra = { fontFamily: FUENTE_PDF.cuerpo, fontWeight: peso, fontSize: TAMANO_TEXTO.dato };
-  const fuente = await leerFuente(letra);
-  const respaldo = [await leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO })];
+  const [fuente, helvetica] = await leerConRespaldo(letra);
+  const respaldo = [helvetica];
   const medir = await medidorRegistrado(letra);
   const estilo = { tamano: letra.fontSize };
   for (const texto of ['Šumava žlutý', 'ƒ Ñandutí', 'Yvyrapytã Ĩ', 'Š', '12 Šž', 'ŠAV To']) {

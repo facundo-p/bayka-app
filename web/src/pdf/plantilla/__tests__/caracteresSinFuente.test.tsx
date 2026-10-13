@@ -57,7 +57,9 @@ const COLOR_DE = coloresEnOrden('YER');
 const FOTO = { estado: ESTADO_FOTO.lista, src: PNG_DE_PRUEBA } as const;
 const MAPA = { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false } as const;
 
-beforeEach(() => vi.mocked(dibujarMapaInforme).mockResolvedValue({ mapa: MAPA }));
+beforeEach(() => {
+  vi.mocked(dibujarMapaInforme).mockResolvedValue({ mapa: MAPA });
+});
 
 const ARBOL = arbolParaFicha({
   especie: {

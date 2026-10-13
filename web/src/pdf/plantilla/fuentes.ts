@@ -110,7 +110,7 @@ export async function leerFuente({
 export const FUENTE_RESPALDO = 'Helvetica';
 
 /** Las fuentes que prueba textkit para una letra: la registrada y la de respaldo, del mismo peso y estilo. */
-const leerConRespaldo = (letra: LetraDeFuente) =>
+export const leerConRespaldo = (letra: LetraDeFuente) =>
   Promise.all([leerFuente(letra), leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO })]);
 
 /**
