@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import * as motor from '../../pdf/ficha/motorFichas';
+import * as motor from '../../pdf/ficha/motorFicha';
 import { ESTADO_MAPA, type MapaPdf } from '../../pdf/mapa/estadoMapa';
 import { leerArbolParaFicha, leerNombreOrganizacion } from '../../queries/fichasQueries';
 import { listarEspeciesDePlantacion } from '../../queries/especieQueries';
@@ -8,7 +8,7 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { arbolParaFicha, especieDePlantacion, plantacion } from '../../test/fabricas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { descargarBlob } from '../descargas';
-import { ERROR_FICHA_SIN_ARBOL, descargarFichaPdf, nombreArchivoFicha } from '../pdfFichas';
+import { ERROR_FICHA_SIN_ARBOL, descargarFichaPdf, nombreArchivoFicha } from '../pdfFicha';
 
 vi.mock('../../queries/fichasQueries', () => ({
   leerArbolParaFicha: vi.fn(),
@@ -20,12 +20,12 @@ vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
 }));
-vi.mock('../../pdf/ficha/motorFichas', () => ({
-  cargarFotos: vi.fn(),
+vi.mock('../../pdf/ficha/motorFicha', () => ({
+  cargarFoto: vi.fn(),
   minimapaDeArbol: vi.fn(),
   datosFicha: vi.fn(),
   emisionDePlantacion: vi.fn(),
-  renderizarFichas: vi.fn(),
+  renderizarFicha: vi.fn(),
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
@@ -63,10 +63,10 @@ beforeEach(() => {
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue(PUNTOS);
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC, TIM]);
-  vi.mocked(motor.cargarFotos).mockResolvedValue([{ estado: 'sin-foto' }]);
+  vi.mocked(motor.cargarFoto).mockResolvedValue({ estado: 'sin-foto' });
   vi.mocked(motor.minimapaDeArbol).mockResolvedValue(MAPA);
   vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
-  vi.mocked(motor.renderizarFichas).mockResolvedValue(BLOB);
+  vi.mocked(motor.renderizarFicha).mockResolvedValue(BLOB);
 });
 
 test('nombre de archivo de la ficha', () => {
@@ -79,7 +79,7 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
   await descargarFichaPdf('t1', contexto());
 
   expect(leerArbolParaFicha).toHaveBeenCalledWith(PLANTACION.id, 't1');
-  expect(motor.cargarFotos).toHaveBeenCalledWith([null]);
+  expect(motor.cargarFoto).toHaveBeenCalledWith(null);
   expect(motor.datosFicha).toHaveBeenCalledWith(ARBOL, {
     tecnico: 'Lucía Ferreyra',
     foto: { estado: 'sin-foto' },
@@ -87,18 +87,18 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
     colorDe: expect.any(Function),
   });
   expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
-  expect(motor.renderizarFichas).toHaveBeenCalledWith(expect.objectContaining(EMISION));
+  expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining(EMISION));
   expect(descargarBlob).toHaveBeenCalledWith(
     BLOB,
     'ficha-san-sebastian-2025-2026-lp12l10anc23.pdf',
   );
 });
 
-test('el documento recibe una sola ficha, la del árbol', async () => {
+test('el documento recibe la ficha del árbol', async () => {
   const ficha = { sentinela: 'ficha-t1' } as unknown as ReturnType<typeof motor.datosFicha>;
   vi.mocked(motor.datosFicha).mockReturnValue(ficha);
   await descargarFichaPdf('t1', contexto());
-  expect(motor.renderizarFichas).toHaveBeenCalledWith(expect.objectContaining({ fichas: [ficha] }));
+  expect(motor.renderizarFicha).toHaveBeenCalledWith(expect.objectContaining({ ficha }));
 });
 
 test('los puntos del mapa salen de la caché del dashboard', async () => {

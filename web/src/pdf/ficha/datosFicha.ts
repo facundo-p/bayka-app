@@ -2,14 +2,12 @@
  * Fila de la query → modelo de la ficha, con todo ya formateado: el componente
  * solo pinta. Puro y testeable sin react-pdf.
  */
-import { pluralizar, SIN_DATO } from '../../lib/formato';
-import { SUSTANTIVO } from '../../lib/sustantivos';
+import { SIN_DATO } from '../../lib/formato';
 import type { ArbolParaFicha } from '../../queries/fichasQueries';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
 import { datosArbol, especieArbol, type EspecieArbol, type ModeloArbol } from '../arbol/datosArbol';
 import type { FotoPdf } from '../estadoFoto';
 import { MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
-import { TEXTO_FICHA } from './textosFicha';
 
 /** La ficha suma a lo del árbol la especie completa, el técnico, la foto y el minimapa. */
 export type ModeloFicha = ModeloArbol & {
@@ -37,10 +35,4 @@ export function datosFicha(arbol: ArbolParaFicha, contexto: ContextoFicha): Mode
     foto: contexto.foto,
     mapa: arbol.gps ? contexto.mapa : MAPA_SIN_GPS,
   };
-}
-
-/** Nombre del documento en el pie: «Ficha de árbol» o «Fichas de árboles · 12 árboles». */
-export function documentoDeFichas(cantidad: number): string {
-  if (cantidad === 1) return TEXTO_FICHA.documentoUno;
-  return `${TEXTO_FICHA.documentoVarias}${TEXTO_FICHA.separador}${pluralizar(cantidad, SUSTANTIVO.arbol)}`;
 }

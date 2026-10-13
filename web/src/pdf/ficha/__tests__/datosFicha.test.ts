@@ -1,7 +1,7 @@
 import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
-import { datosFicha, documentoDeFichas } from '../datosFicha';
+import { datosFicha } from '../datosFicha';
 
 const FOTO: FotoPdf = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,AAA' };
 const MAPA: MapaPdf = {
@@ -71,9 +71,4 @@ test('sin posición, técnico ni parcela', () => {
   expect(ficha.posicion).toBe('—');
   expect(ficha.tecnico).toBe('—');
   expect(ficha.parcela).toBeNull();
-});
-
-test('el pie nombra el documento según cuántas fichas lleva', () => {
-  expect(documentoDeFichas(1)).toBe('Ficha de árbol');
-  expect(documentoDeFichas(12)).toBe('Fichas de árboles · 12 árboles');
 });
