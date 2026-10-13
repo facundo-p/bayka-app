@@ -153,7 +153,8 @@ Mostrar a Facu:
 ```bash
 git switch staging && git pull --ff-only origin staging
 # NOVEDADES.md y CHANGELOG.md: reemplazar la sección pendiente entera (o crearla
-# después de la intro), con la misma marca en los dos
+# después de la intro), con la misma marca en los dos y la fecha del título de
+# NOVEDADES al día del commit (contrato, "Sección pendiente")
 # Correr la "Verificación" del contrato: el vitest, no los greps de conversión
 git add NOVEDADES.md CHANGELOG.md
 git commit -m "docs(novedades): sincroniza pendientes hasta #N"
@@ -172,8 +173,8 @@ cuando termina el build de Pages, y el aviso del sidebar se re-enciende solo.
 | Caso | Comportamiento |
 |---|---|
 | PR de release abierto | STOP. `/deploy` "Refrescar" concilia lo nuevo sobre las entradas del release |
-| Sin PRs nuevos | "Al día hasta <marca>", sin commit |
-| Todo lo nuevo es interno | Se actualizan CHANGELOG y la marca; NOVEDADES solo cambia la marca |
+| Sin PRs nuevos | "Al día hasta <marca>", sin commit: la fecha del título no se mueve |
+| Todo lo nuevo es interno | Se actualizan CHANGELOG y la marca; NOVEDADES solo cambia la marca y la fecha |
 | Marcas distintas entre archivos | Modo completo, avisando el desync |
 | Un revert | Afecta a los ítems del PR revertido; casi siempre los borra |
 | PR que toca web y mobile | Un ítem por lo que nota cada usuario; los pasos dicen dónde |
