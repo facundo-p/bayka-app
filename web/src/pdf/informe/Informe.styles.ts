@@ -6,6 +6,7 @@ import {
   MEDIDA_INFORME as M,
   PESO_FUENTE,
   TAMANO_TEXTO,
+  UN_RENGLON,
 } from '../plantilla/tokens';
 
 const rotulo = {
@@ -19,9 +20,6 @@ const numero = { textAlign: 'right' } as const;
 
 const barra = { borderRadius: M.radioBarra, overflow: 'hidden' } as const;
 
-/** Un renglón de alto fijo: lo que no entra termina en «…» en vez de perderse. */
-const recortado = { maxLines: 1, textOverflow: 'ellipsis' } as const;
-
 const titulo = {
   fontFamily: FUENTE_PDF.titulo,
   fontWeight: PESO_FUENTE.bold,
@@ -32,7 +30,7 @@ export const informeStyles = StyleSheet.create({
   titulo: { marginBottom: M.separacionBloques },
   tituloTexto: { ...titulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
-    ...recortado,
+    ...UN_RENGLON,
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
     height: M.altoLineaTitulo,
@@ -106,7 +104,7 @@ export const informeStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.filaInforme,
     color: COLOR_PDF.tinta,
   },
-  recortado: { ...recortado, flexShrink: 1 },
+  recortado: { ...UN_RENGLON, flexShrink: 1 },
   nombreEspecie: { flexDirection: 'row', alignItems: 'center', width: M.anchoNombreEspecie },
   punto: {
     width: M.puntoEspecie,

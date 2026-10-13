@@ -1,4 +1,5 @@
 import { Font } from '@react-pdf/renderer';
+import { medidorDeFuente, type FuenteMedible, type Medidor } from './medirTexto';
 import { ESTILO_FUENTE, FUENTE_PDF, PESO_FUENTE } from './tokens';
 import {
   dibujableEnTodas,
@@ -97,6 +98,26 @@ export async function leerFuente({
   const fuente = Font.getFont({ fontFamily, fontWeight, fontStyle });
   await fuente.load();
   return fuente.data!;
+}
+
+/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
+export const comoMedible = (fuente: Awaited<ReturnType<typeof leerFuente>>) =>
+  fuente as unknown as FuenteMedible;
+
+/** La que react-pdf suma al final de toda familia, para lo que la del estilo no tiene. */
+export const FUENTE_RESPALDO = 'Helvetica';
+
+/**
+ * Mide con una fuente registrada y, lo que no tiene, con la de respaldo, del
+ * mismo peso y estilo. Va adentro del turno de `renderizarEnSerie`: el
+ * documento que se arma a continuación reusa las fuentes ya leídas.
+ */
+export async function medidorRegistrado(letra: LetraDeRenglon): Promise<Medidor> {
+  const [fuente, respaldo] = await Promise.all([
+    leerFuente(letra),
+    leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO }),
+  ]);
+  return medidorDeFuente(comoMedible(fuente), { tamano: letra.fontSize }, comoMedible(respaldo));
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();

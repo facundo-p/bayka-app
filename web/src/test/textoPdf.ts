@@ -56,15 +56,36 @@ function decodificar(hex: string, mapa: Map<number, string>): string | null {
   return texto;
 }
 
-/** Cada renglón dibujado, en todas las fuentes que lo pueden leer completo. */
-export function textosDelPdf(pdf: Buffer): string[] {
+/** El contenido de cada `[...] TJ`: tramos de glifos en hex, cada uno con su ajuste de avance. */
+function renglonesDe(streams: string[]): string[] {
+  return streams.flatMap((s) => [...s.matchAll(/\[([^\]]*)\]\s*TJ/g)].map(([, arr]) => arr));
+}
+
+/** Los renglones que pasan `incluir`, leídos con cada fuente que los lee completos. */
+function leerRenglones(pdf: Buffer, incluir: (renglon: string) => boolean): string[] {
   const streams = streamsDescomprimidos(pdf);
   const mapas = streams.filter((s) => s.includes('begincmap')).map(mapaDeCmap);
-  const renglones = streams.flatMap((s) =>
-    [...s.matchAll(/\[([^\]]*)\]\s*TJ/g)].map(([, arr]) => arr),
-  );
-  return renglones.flatMap((renglon) => {
-    const hex = [...renglon.matchAll(/<(\w+)>/g)].map(([, h]) => h).join('');
-    return mapas.map((mapa) => decodificar(hex, mapa)).filter((texto) => texto !== null);
-  });
+  return renglonesDe(streams)
+    .filter(incluir)
+    .flatMap((renglon) => {
+      const hex = [...renglon.matchAll(/<(\w+)>/g)].map(([, h]) => h).join('');
+      return mapas.map((mapa) => decodificar(hex, mapa)).filter((texto) => texto !== null);
+    });
+}
+
+/** Cada renglón dibujado, en todas las fuentes que lo pueden leer completo. */
+export function textosDelPdf(pdf: Buffer): string[] {
+  return leerRenglones(pdf, () => true);
+}
+
+/** Un glifo que no avanza su ancho natural parte el TJ y deja un ajuste distinto de 0. */
+const conAvanceCambiado = (renglon: string) =>
+  [...renglon.matchAll(/>\s*(-?[\d.]+)/g)].some(([, ajuste]) => Number(ajuste) !== 0);
+
+/**
+ * Los renglones con algún glifo corrido de su avance natural, por poco que sea:
+ * los que textkit justificó, y también los rótulos con letterSpacing.
+ */
+export function textosConGlifosCorridos(pdf: Buffer): string[] {
+  return leerRenglones(pdf, conAvanceCambiado);
 }

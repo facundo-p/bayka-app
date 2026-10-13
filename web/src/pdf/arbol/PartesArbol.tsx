@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { SIN_DATO } from '../../lib/formato';
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
+import { Renglones, Texto, type TextoPdf } from '../plantilla/Renglones';
 import type { GpsArbol, ModeloArbol, RotuloEspecie } from './datosArbol';
 import { partesArbolStyles as propios } from './PartesArbol.styles';
 import { TEXTO_ARBOL } from './textosArbol';
@@ -17,33 +18,51 @@ const TEXTO_FOTO_FALTANTE = {
 } as const;
 
 type RenglonEspecieProps = {
-  especie: RotuloEspecie;
+  especie: Omit<RotuloEspecie, 'titulo'> & { titulo: TextoPdf };
   styles: Estilos<'filaEspecie' | 'punto' | 'nombreEspecie'>;
 };
 
 /** El punto de color y el rótulo; N/N va en ámbar. */
 export function RenglonEspecie({ especie, styles }: RenglonEspecieProps) {
+  const estilo = [styles.nombreEspecie, especie.sinIdentificar ? propios.sinIdentificar : {}];
   return (
     <View style={styles.filaEspecie}>
       {/* El color sale del dato, no del tema. */}
       <View style={[styles.punto, { backgroundColor: especie.color }]} />
-      <Text style={[styles.nombreEspecie, especie.sinIdentificar ? propios.sinIdentificar : {}]}>
-        {especie.titulo}
-      </Text>
+      <Texto texto={especie.titulo} style={estilo} />
     </View>
   );
 }
 
-type ConCodigoProps = { entidad: CodigoNombre | null; styles: Estilos<'codigo'> };
+type ConCodigoProps = CodigoNombre & { styles: Estilos<'codigo'> };
 
-/** Va dentro de un `Text`: el código en mono y el nombre a continuación. */
-export function ConCodigo({ entidad, styles }: ConCodigoProps) {
-  if (!entidad) return SIN_DATO;
+/** Va dentro de un `Text`: el código en mono y el nombre, o su primer renglón, a continuación. */
+function ConCodigo({ codigo, nombre, styles }: ConCodigoProps) {
   return (
     <>
-      <Text style={styles.codigo}>{entidad.codigo}</Text> {entidad.nombre}
+      <Text style={styles.codigo}>{codigo}</Text>
+      {TEXTO_ARBOL.separadorCodigo}
+      {nombre}
     </>
   );
+}
+
+/** Una parcela o un grupo, con el nombre entero o ya partido en renglones. */
+type ConNombre = Omit<CodigoNombre, 'nombre'> & { nombre: TextoPdf };
+
+type NombreConCodigoProps = {
+  entidad: ConNombre | null;
+  style: Styles[string];
+  styles: Estilos<'codigo'>;
+};
+
+/** En su caja, el código en mono y el nombre; partido, el código va en el primer renglón. */
+export function NombreConCodigo({ entidad, style, styles }: NombreConCodigoProps) {
+  if (!entidad) return <Text style={style}>{SIN_DATO}</Text>;
+  const { codigo, nombre } = entidad;
+  const conCodigo = (texto: string) => <ConCodigo codigo={codigo} nombre={texto} styles={styles} />;
+  if (typeof nombre === 'string') return <Text style={style}>{conCodigo(nombre)}</Text>;
+  return <Renglones renglones={nombre} style={style} primero={conCodigo} />;
 }
 
 type GpsProps = { gps: GpsArbol | null; styles: Estilos<'mono'>; sinPunto?: ReactNode };
@@ -61,32 +80,49 @@ export function Gps({ gps, styles, sinPunto = SIN_DATO }: GpsProps) {
 
 type EstilosDato = Estilos<'dato' | 'rotulo' | 'valor'>;
 
-type DatoProps = { rotulo: string; styles: EstilosDato; children: ReactNode };
+type RotuladoProps = { rotulo: string; styles: EstilosDato; children: ReactNode };
 
-export function Dato({ rotulo, styles, children }: DatoProps) {
+/** El rótulo y, al lado, el valor ya armado. */
+function Rotulado({ rotulo, styles, children }: RotuladoProps) {
   return (
     <View style={styles.dato}>
       <Text style={styles.rotulo}>{rotulo}</Text>
-      <Text style={styles.valor}>{children}</Text>
+      {children}
     </View>
   );
 }
 
+export function Dato({ rotulo, styles, children }: RotuladoProps) {
+  return (
+    <Rotulado rotulo={rotulo} styles={styles}>
+      <Text style={styles.valor}>{children}</Text>
+    </Rotulado>
+  );
+}
+
+type EstilosUbicacion = EstilosDato & Estilos<'codigo'>;
+
+type DatoConCodigoProps = { rotulo: string; entidad: ConNombre | null; styles: EstilosUbicacion };
+
+function DatoConCodigo({ rotulo, entidad, styles }: DatoConCodigoProps) {
+  return (
+    <Rotulado rotulo={rotulo} styles={styles}>
+      <NombreConCodigo entidad={entidad} style={styles.valor} styles={styles} />
+    </Rotulado>
+  );
+}
+
 type DatosDeUbicacionProps = {
-  modelo: Pick<ModeloArbol, 'parcela' | 'grupo' | 'posicion'>;
-  styles: EstilosDato & Estilos<'codigo'>;
+  modelo: Pick<ModeloArbol, 'posicion'> & { parcela: ConNombre | null; grupo: ConNombre };
+  styles: EstilosUbicacion;
 };
 
 /** Parcela, grupo y posición, en ese orden. */
 export function DatosDeUbicacion({ modelo, styles }: DatosDeUbicacionProps) {
   return (
     <>
-      <Dato rotulo={TEXTO_ARBOL.parcela} styles={styles}>
-        <ConCodigo entidad={modelo.parcela} styles={styles} />
-      </Dato>
-      <Dato rotulo={TEXTO_ARBOL.grupo} styles={styles}>
-        <ConCodigo entidad={modelo.grupo} styles={styles} />
-      </Dato>
+      <DatoConCodigo rotulo={TEXTO_ARBOL.parcela} entidad={modelo.parcela} styles={styles} />
+      <DatoConCodigo rotulo={TEXTO_ARBOL.grupo} entidad={modelo.grupo} styles={styles} />
       <Dato rotulo={TEXTO_ARBOL.posicion} styles={styles}>
         {modelo.posicion}
       </Dato>

@@ -1,6 +1,7 @@
 /*
  * Peso aproximado del PDF del reporte, con los mismos conteos que la estimación
- * de hojas: el modal lo muestra antes de leer los árboles.
+ * de hojas: el modal lo muestra antes de leer los árboles. Con el texto entero,
+ * como las hojas, es un piso.
  */
 import { BYTES } from '../../lib/formato';
 import type { EstimacionReporte } from './planReporte';

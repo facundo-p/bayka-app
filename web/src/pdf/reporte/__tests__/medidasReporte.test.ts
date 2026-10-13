@@ -1,6 +1,9 @@
-// La paginación del reporte es fija: si una medida se pasa, el contenido se
-// encima o desaparece sin que cambie la cantidad de hojas. Estas cuentas lo atajan.
+// El plan pagina con estas medidas: si una se pasa, el contenido se encima o
+// desaparece sin que cambie la cantidad de hojas. Estas cuentas, con todo en un
+// renglón, lo atajan.
 import {
+  ANCHO_DATOS_TARJETA,
+  anchoDeColumna,
   CAJA_TARJETA,
   CUERPO_REPORTE,
   LADO_FOTO_TARJETA,
@@ -54,17 +57,10 @@ const ID_LARGO = 'LPN123L23BANCHC1234-SS2026B';
 
 const anchoMono = (texto: string, tamano: number) => texto.length * AVANCE_MONO * tamano;
 
-// Las columnas reparten a peso lo que dejan los rellenos de las celdas.
 test('un ID de 27 caracteres entra entero en su columna del listado', () => {
-  const pesos = Object.values(M.pesoColumna);
-  const libre = CUERPO_REPORTE.ancho - 2 * M.rellenoCelda * pesos.length;
-  const pesoTotal = pesos.reduce((suma, peso) => suma + peso, 0);
-  const ancho = (libre * M.pesoColumna.idArbol) / pesoTotal;
-  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.filaListado)).toBeLessThan(ancho);
+  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.filaListado)).toBeLessThan(anchoDeColumna('idArbol'));
 });
 
 test('y en la tarjeta, al lado de la foto', () => {
-  const marco = 2 * (M.rellenoTarjeta + M.borde);
-  const ancho = CAJA_TARJETA.ancho - marco - LADO_FOTO_TARJETA - M.aireFoto;
-  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.idTarjeta)).toBeLessThan(ancho);
+  expect(anchoMono(ID_LARGO, TAMANO_TEXTO.idTarjeta)).toBeLessThan(ANCHO_DATOS_TARJETA);
 });
