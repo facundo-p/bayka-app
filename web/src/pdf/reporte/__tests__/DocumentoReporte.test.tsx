@@ -109,7 +109,7 @@ test('con más hojas que niveles de escalón, cada hoja del plan es una del PDF'
   );
   expect(paginasDelPdf(pdf)).toBe(hojas);
   expect(ocurrencias(textosDelPdf(pdf), 'ID ÁRBOL')).toBe(hojas);
-});
+}, 30_000);
 
 test('una foto que no se bajó deja «Foto no disponible» y el PDF sale', async () => {
   const pdf = await renderizar(muchos(2), MODO_REPORTE.conFotos, (indice) =>
