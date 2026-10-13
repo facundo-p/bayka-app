@@ -3,14 +3,8 @@
  * (#876). Cada renglón va en su propio `Text`: textkit no lo vuelve a partir ni
  * lo justifica, así que ningún renglón sale con los espacios apretados.
  */
-import {
-  conMemoria,
-  entraEn,
-  grafemas,
-  mayorQueEntra,
-  saleEntero,
-  type Medidor,
-} from './medirTexto';
+import { conMemoria } from './memoria';
+import { entraEn, grafemas, mayorQueEntra, saleEntero, type Medidor } from './medirTexto';
 
 /** Un texto ya partido, un renglón por elemento. */
 export type TextoEnRenglones = readonly string[];

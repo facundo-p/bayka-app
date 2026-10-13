@@ -12,9 +12,10 @@ import layoutEngine, {
   textDecoration,
   wordHyphenation,
   type AttributedString,
+  type Font,
 } from '@react-pdf/textkit';
+import type { FuenteLeida } from '../pdf/plantilla/fuenteLeida';
 import type { EstiloMedido } from '../pdf/plantilla/medirTexto';
-import type { leerFuente } from '../pdf/plantilla/fuentes';
 
 const motorTextkit = layoutEngine({
   bidi,
@@ -28,25 +29,24 @@ const motorTextkit = layoutEngine({
 
 const OPCIONES_LAYOUT = { shrinkWhitespaceFactor: { before: -0.5, after: -0.5 } };
 
-type Fuente = Awaited<ReturnType<typeof leerFuente>>;
-
 type Caja = {
   ancho: number;
   /** Como las celdas del reporte con el texto cortado: un renglón y «…». */
   unRenglon?: boolean;
   /** Las que siguen a la del estilo, como la Helvetica que react-pdf suma al final. */
-  respaldo?: Fuente[];
+  respaldo?: FuenteLeida[];
 };
 
 /** Los renglones que arma textkit con `texto` en una caja de `ancho` pt. */
 export function renglonesDeTextkit(
   texto: string,
-  fuente: Fuente,
+  fuente: FuenteLeida,
   estilo: EstiloMedido,
   { ancho, unRenglon = false, respaldo = [] }: Caja,
 ): AttributedString[] {
   const attributes = {
-    font: [fuente, ...respaldo],
+    // Las que leyó react-pdf: las mismas que recibe textkit en el render.
+    font: [fuente, ...respaldo] as unknown as Font[],
     fontSize: estilo.tamano,
     characterSpacing: estilo.espaciado,
   };

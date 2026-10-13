@@ -1,11 +1,11 @@
 import { Font } from '@react-pdf/renderer';
-import { medidorDeFuente, type FuenteMedible, type Medidor } from './medirTexto';
+import type { FuenteLeida } from './fuenteLeida';
+import { medidorDeFuente, type Medidor } from './medirTexto';
 import { ESTILO_FUENTE, FUENTE_PDF, PESO_FUENTE } from './tokens';
 import {
   dibujableEnTodas,
   saneadorDeTexto,
   sanearTextos,
-  type FuenteConGlifos,
   type PilaDeFuentes,
 } from './sanearTextos';
 
@@ -89,35 +89,38 @@ export type LetraDeRenglon = {
   fontSize: number;
 };
 
-/** Una fuente registrada, ya leída. */
+/** La letra de un archivo de fuente: la de un renglón, sin el tamaño. */
+type LetraDeFuente = Omit<LetraDeRenglon, 'fontSize'>;
+
+/**
+ * Una fuente registrada, ya leída. El tipo de @react-pdf/font pierde el de
+ * fontkit, que no viene instalado: es la misma fuente.
+ */
 export async function leerFuente({
   fontFamily,
   fontWeight,
   fontStyle,
-}: Omit<LetraDeRenglon, 'fontSize'>) {
+}: LetraDeFuente): Promise<FuenteLeida> {
   const fuente = Font.getFont({ fontFamily, fontWeight, fontStyle });
   await fuente.load();
-  return fuente.data!;
+  return fuente.data as unknown as FuenteLeida;
 }
 
-/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
-export const comoMedible = (fuente: Awaited<ReturnType<typeof leerFuente>>) =>
-  fuente as unknown as FuenteMedible;
-
-/** La que react-pdf suma al final de toda familia, para lo que la del estilo no tiene. */
+/** La que @react-pdf/layout suma al final de toda pila, para lo que la del estilo no tiene. */
 export const FUENTE_RESPALDO = 'Helvetica';
 
+/** Las fuentes que prueba textkit para una letra: la registrada y la de respaldo, del mismo peso y estilo. */
+const leerConRespaldo = (letra: LetraDeFuente) =>
+  Promise.all([leerFuente(letra), leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO })]);
+
 /**
- * Mide con una fuente registrada y, lo que no tiene, con la de respaldo, del
- * mismo peso y estilo. Va adentro del turno de `renderizarEnSerie`: el
- * documento que se arma a continuación reusa las fuentes ya leídas.
+ * Mide con una fuente registrada y, lo que no tiene, con la de respaldo. Va
+ * adentro del turno de `renderizarEnSerie`: el documento que se arma a
+ * continuación reusa las fuentes ya leídas.
  */
 export async function medidorRegistrado(letra: LetraDeRenglon): Promise<Medidor> {
-  const [fuente, respaldo] = await Promise.all([
-    leerFuente(letra),
-    leerFuente({ ...letra, fontFamily: FUENTE_RESPALDO }),
-  ]);
-  return medidorDeFuente(comoMedible(fuente), { tamano: letra.fontSize }, comoMedible(respaldo));
+  const [fuente, respaldo] = await leerConRespaldo(letra);
+  return medidorDeFuente(fuente, { tamano: letra.fontSize }, respaldo);
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();
@@ -135,27 +138,16 @@ export function renderizarEnSerie<T>(
   return turno;
 }
 
-/** La que @react-pdf/layout agrega al final de toda pila de fuentes. */
-const RESPALDO_TEXTKIT = 'Helvetica';
-
-/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
-const leerConGlifos = async (letra: Omit<LetraDeRenglon, 'fontSize'>) =>
-  (await leerFuente(letra)) as unknown as FuenteConGlifos;
-
-/** Para cada variante registrada, las fuentes que prueba textkit: ella y su Helvetica. */
+/** Para cada variante registrada, las fuentes que prueba textkit. */
 function pilasDeTextkit(): Promise<PilaDeFuentes[]> {
   return Promise.all(
-    VARIANTES.map((variante) => {
-      const letra = {
+    VARIANTES.map((variante) =>
+      leerConRespaldo({
         fontFamily: variante.familia,
         fontWeight: variante.peso,
         fontStyle: estiloDe(variante),
-      };
-      return Promise.all([
-        leerConGlifos(letra),
-        leerConGlifos({ ...letra, fontFamily: RESPALDO_TEXTKIT }),
-      ]);
-    }),
+      }),
+    ),
   );
 }
 

@@ -3,11 +3,11 @@ import {
   saneadorDeTexto,
   sanearTextos,
   type Dibujable,
-  type FuenteConGlifos,
+  type PilaDeFuentes,
 } from '../sanearTextos';
 
 /** Una fuente que tiene solo estos caracteres. */
-const fuenteCon = (caracteres: string): FuenteConGlifos => {
+const fuenteCon = (caracteres: string): PilaDeFuentes[number] => {
   const codigos = new Set(Array.from(caracteres, (caracter) => caracter.codePointAt(0)));
   return { hasGlyphForCodePoint: (codigo) => codigos.has(codigo) };
 };

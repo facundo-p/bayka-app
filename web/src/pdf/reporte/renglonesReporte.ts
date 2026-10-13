@@ -8,8 +8,9 @@
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import type { RotuloEspecie } from '../arbol/datosArbol';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
-import { conMemoria, type Medidor } from '../plantilla/medirTexto';
+import type { Medidor } from '../plantilla/medirTexto';
 import { leerMedidores, type MedidoresDe } from '../plantilla/medidores';
+import { conMemoria } from '../plantilla/memoria';
 import type { Partidor, TextoEnRenglones } from '../plantilla/partirTexto';
 import { renglonador } from '../plantilla/renglonador';
 import { ANCHO_TEXTO_REPORTE, LETRA_REPORTE } from '../plantilla/tokens';
