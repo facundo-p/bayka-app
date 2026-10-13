@@ -63,9 +63,8 @@ test('con el texto entero, cada uno se parte a su ancho y junto rearma el origin
     for (const renglon of renglones) expect(medir(renglon)).toBeLessThan(ancho);
   });
   // La línea, el nombre de la primera especie y su código.
-  expect(partidos[0].length).toBeGreaterThan(1);
-  expect(partidos[1].length).toBeGreaterThan(1);
-  expect(partidos.at(-2)!.length).toBeGreaterThan(1);
+  const primerCodigo = 1 + LARGO.especies.filas.length;
+  for (const indice of [0, 1, primerCodigo]) expect(partidos[indice].length).toBeGreaterThan(1);
 });
 
 test('con el texto cortado, cada uno va en un renglón con «…», a su ancho', () => {

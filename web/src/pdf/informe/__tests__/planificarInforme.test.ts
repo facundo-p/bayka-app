@@ -101,7 +101,7 @@ describe('con textos en más de un renglón', () => {
   });
 
   // 7,5 pt de letra con interlineado de 1,25.
-  test('un código en 2 renglones sube su fila de la leyenda, y dos en la misma fila también', () => {
+  test('un código en 2 renglones sube su fila de la leyenda, esté donde esté, y dos en la misma también', () => {
     const conCodigos = (partidos: number[]) => {
       const leyenda = base.mapa.leyenda.map((item, indice) =>
         partidos.includes(indice) ? { ...item, texto: renglones(2) } : item,
@@ -110,6 +110,7 @@ describe('con textos en más de un renglón', () => {
     };
     const umbral = libreMinimoAlPie(base);
     expect(libreMinimoAlPie(conCodigos([0])) - umbral).toBeCloseTo(9.375);
+    expect(libreMinimoAlPie(conCodigos([3])) - umbral).toBeCloseTo(9.375);
     expect(libreMinimoAlPie(conCodigos([0, 3])) - umbral).toBeCloseTo(9.375);
   });
 });

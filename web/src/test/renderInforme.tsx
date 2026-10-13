@@ -19,12 +19,16 @@ import {
   type InformeEnRenglones,
   type MedidoresInforme,
 } from '../pdf/informe/renglonesInforme';
+import { TEXTO_INFORME } from '../pdf/informe/textosInforme';
 import { ESTADO_MAPA } from '../pdf/mapa/estadoMapa';
 import { renderizarEnSerie } from '../pdf/plantilla/fuentes';
 import { Hoja } from '../pdf/plantilla/Hoja';
 import { encabezadoDePlantacion } from '../pdf/plantilla/textos';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from './pdfNode';
 import { textosDelPdf } from './textoPdf';
+
+/** La fecha de emisión de todos los informes de prueba. */
+const EMITIDO = '06/10/2026';
 
 export type VarianteInforme = {
   conSatelite?: boolean;
@@ -53,9 +57,7 @@ export async function armarInforme(entrada: EntradaInforme, variante: VarianteIn
     const modelo = informeEnRenglones(datos, medidores);
     const mapa = mapaDe(modelo, variante);
     armado = { modelo, plan: mapa?.plan ?? null };
-    return renderToBuffer(
-      <DocumentoInforme {...{ encabezado, emitido: '06/10/2026', modelo, mapa }} />,
-    );
+    return renderToBuffer(<DocumentoInforme {...{ encabezado, emitido: EMITIDO, modelo, mapa }} />);
   });
   return { pdf, textos: textosDelPdf(pdf), ...armado! };
 }
@@ -80,7 +82,7 @@ export async function hojasQueOcupa(cuerpo: ReactNode) {
   const pdf = await renderizarEnSerie(FUENTES_NODE, () =>
     renderToBuffer(
       <Document>
-        <Hoja encabezado={encabezado} documento="Informe" emitido="06/10/2026">
+        <Hoja encabezado={encabezado} documento={TEXTO_INFORME.documento} emitido={EMITIDO}>
           {cuerpo}
         </Hoja>
       </Document>,
