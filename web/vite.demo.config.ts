@@ -13,12 +13,14 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { definirConstantesBuild } from './constantesBuild';
+import { pluginClaveImagenPdf } from './pluginClaveImagenPdf';
 import { pluginReact } from './pluginReact';
 
 const clienteFalso = fileURLToPath(new URL('./src/demo/supabase.ts', import.meta.url));
 
 export default defineConfig({
-  plugins: [pluginReact()],
+  plugins: [pluginReact(), pluginClaveImagenPdf()],
+  worker: { plugins: () => [pluginClaveImagenPdf()] },
   define: definirConstantesBuild(process.env.DEMO_BANNER !== '0'),
   // Los imports son relativos ('../lib/supabase', '../../lib/supabase'): el
   // alias se aplica sobre el especificador crudo, así que va por regex.

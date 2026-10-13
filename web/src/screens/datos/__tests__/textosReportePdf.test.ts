@@ -27,7 +27,7 @@ test.each([
 
 test('la estimación junta hojas y peso', () => {
   const estimacion = { tarjetas: 0, filasListado: 7000, hojas: 226 };
-  expect(textoEstimacion(estimacion, 3_405_000)).toBe('226 hojas · ≈ 3,4 MB');
+  expect(textoEstimacion(estimacion, 1_378_000)).toBe('226 hojas · ≈ 1,4 MB');
   expect(textoEstimacion({ ...estimacion, hojas: 1 }, 30_000)).toBe('1 hoja · ≈ 30 KB');
 });
 
