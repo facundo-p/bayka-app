@@ -1,5 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer';
-import { COLOR_PDF, FUENTE_PDF, MEDIDA_HOJA, PESO_FUENTE, TAMANO_TEXTO } from './tokens';
+import { letraDeTitulo } from './comunes.styles';
+import { COLOR_PDF, FUENTE_PDF, MEDIDA_HOJA, TAMANO_TEXTO } from './tokens';
 
 const { margenSuperior, margenInferior, margenLateral } = MEDIDA_HOJA;
 
@@ -32,13 +33,7 @@ export const hojaStyles = StyleSheet.create({
   },
   logo: { height: MEDIDA_HOJA.altoLogo },
   plantacion: { alignItems: 'flex-end', maxWidth: '70%' },
-  titulo: {
-    fontFamily: FUENTE_PDF.titulo,
-    fontWeight: PESO_FUENTE.bold,
-    fontSize: TAMANO_TEXTO.encabezado,
-    color: COLOR_PDF.navy,
-    lineHeight: 1.2,
-  },
+  titulo: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.encabezado, lineHeight: 1.2 },
   detalle: { fontSize: TAMANO_TEXTO.pieMarca, color: COLOR_PDF.apagado },
   pie: {
     position: 'absolute',
@@ -54,10 +49,5 @@ export const hojaStyles = StyleSheet.create({
     color: COLOR_PDF.tenue,
   },
   notaAlPie: { alignSelf: 'center', fontSize: TAMANO_TEXTO.notaAlPie },
-  pieMarca: {
-    fontFamily: FUENTE_PDF.titulo,
-    fontWeight: PESO_FUENTE.bold,
-    fontSize: TAMANO_TEXTO.pieMarca,
-    color: COLOR_PDF.navy,
-  },
+  pieMarca: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.pieMarca },
 });

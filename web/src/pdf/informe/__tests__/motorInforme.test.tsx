@@ -10,6 +10,7 @@ import { dibujarMapaInforme } from '../mapaInforme';
 import { renderizarInforme } from '../motorInforme';
 import { planificarInforme } from '../planificarInforme';
 
+vi.mock('../../plantilla/textoLargo', () => ({ CORTAR_TEXTO_LARGO: false }));
 vi.mock('../../plantilla/recursosNavegador', async () => {
   const recursos = await import('../../../test/pdfNode');
   return {
@@ -76,4 +77,21 @@ test('sin el mapa elegido no planifica ni dibuja, y el informe sale sin ese bloq
   const textos = await textosDe(blob);
   expect(textos).toContain('CON GPS');
   expect(textos).not.toContain('Puntos GPS por especie');
+});
+
+// Si el motor midiera sin las fuentes leídas, los textos irían en un renglón y el plan no los contaría.
+test('parte los textos largos con las fuentes leídas, y planifica con esos renglones', async () => {
+  const blob = await renderizarInforme({
+    ...entradaInforme({ parcelas: 4, especies: 3, largos: true, codigosLargos: true }),
+    ...EMISION,
+  });
+  const [modelo] = vi.mocked(planificarInforme).mock.calls[0];
+  const [primera] = modelo.especies.filas;
+  const [codigo] = modelo.mapa.leyenda;
+  for (const partido of [modelo.linea, primera.titulo, codigo.texto]) {
+    expect(partido.length).toBeGreaterThan(1);
+  }
+  const textos = await textosDe(blob);
+  expect(textos).toEqual(expect.arrayContaining([...modelo.linea, ...primera.titulo]));
+  expect(textos.some((texto) => texto.endsWith('…'))).toBe(false);
 });

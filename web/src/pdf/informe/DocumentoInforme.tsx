@@ -4,35 +4,41 @@ import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
 import { DocumentoPdf } from '../plantilla/DocumentoPdf';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
 import type { EmisionPdf } from '../plantilla/textos';
+import { Renglones } from '../plantilla/Renglones';
 import { CAJA_MAPA_INFORME } from '../plantilla/tokens';
-import type { ItemLeyenda, MapaDelInforme, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
 import type { MapaInformePdf } from './mapaInforme';
 import { esMapaEnHojaCompleta, type PlanInforme } from './planificarInforme';
+import type {
+  InformeEnRenglones,
+  ItemLeyendaEnRenglones,
+  MapaEnRenglones,
+} from './renglonesInforme';
 import { BloqueEspecies, EncabezadoBloque, FilaIndicadores, Titulo } from './SeccionesInforme';
 import { TEXTO_INFORME } from './textosInforme';
 
 /** El mapa elegido: lo que lo acompaña, dónde va y su imagen. */
 export type MapaDelDocumento = {
-  contenido: MapaDelInforme;
+  contenido: MapaEnRenglones;
   plan: PlanInforme;
   /** null si no hay puntos que dibujar. */
   imagen: MapaInformePdf | null;
 };
 
 export type DocumentoInformeProps = EmisionPdf & {
-  modelo: ModeloInforme;
+  modelo: InformeEnRenglones;
   /** null si no se eligió el mapa. */
   mapa: MapaDelDocumento | null;
 };
 
-function Leyenda({ items }: { items: readonly ItemLeyenda[] }) {
+/** Cada fila de la leyenda mide lo que su código más partido. */
+export function Leyenda({ items }: { items: readonly ItemLeyendaEnRenglones[] }) {
   return (
     <View style={styles.leyenda}>
-      {items.map((item) => (
-        <View key={item.texto} style={styles.itemLeyenda}>
-          <View style={[styles.punto, { backgroundColor: item.color }]} />
-          <Text>{item.texto}</Text>
+      {items.map((item, indice) => (
+        <View key={indice} style={styles.itemLeyenda}>
+          <View style={[styles.puntoLeyenda, { backgroundColor: item.color }]} />
+          <Renglones renglones={item.texto} style={styles.codigoLeyenda} />
         </View>
       ))}
     </View>
@@ -52,7 +58,7 @@ function ImagenMapa({ mapa }: { mapa: MapaListo }) {
   );
 }
 
-type MapaProps = { contenido: MapaDelInforme; mapa: MapaListo };
+type MapaProps = { contenido: MapaEnRenglones; mapa: MapaListo };
 
 /** Hoja propia al final: título y nota arriba, como un capítulo aparte. */
 function MapaEnHojaCompleta({ contenido, mapa }: MapaProps) {

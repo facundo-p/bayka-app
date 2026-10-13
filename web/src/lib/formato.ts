@@ -6,6 +6,16 @@ export const SIN_DATO = '—';
 /** Decimales de lat/lng en el detalle del árbol y en su ficha PDF (~10 cm). */
 export const DECIMALES_GPS = 6;
 
+/** «-27.360120, -55.897440». */
+export function formatearCoordenadas(lat: number, lng: number, decimales = DECIMALES_GPS): string {
+  return `${lat.toFixed(decimales)}, ${lng.toFixed(decimales)}`;
+}
+
+/** «± 4 m»: la precisión del punto GPS, al metro. */
+export function formatearPrecision(metros: number): string {
+  return `± ${Math.round(metros)} m`;
+}
+
 /** Separador de «código · nombre» y de las partes de un rótulo. */
 export const SEPARADOR_PUNTO = ' · ';
 

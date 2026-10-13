@@ -2,8 +2,10 @@ import {
   acotarPorcentaje,
   concordar,
   etiquetaCodigoNombre,
+  formatearCoordenadas,
   formatearEntero,
   formatearPeso,
+  formatearPrecision,
   pluralizar,
   porcentaje,
   porcentajeDeObjetivo,
@@ -24,6 +26,16 @@ test.each([
   [1260, '1.260 árboles'],
 ])('pluralizar %i: "%s"', (cantidad, texto) => {
   expect(pluralizar(cantidad, ARBOL)).toBe(texto);
+});
+
+test('las coordenadas van con seis decimales, o con los que se pidan', () => {
+  expect(formatearCoordenadas(-27.3601234, -55.8974411)).toBe('-27.360123, -55.897441');
+  expect(formatearCoordenadas(-27.36, -55.89, 5)).toBe('-27.36000, -55.89000');
+});
+
+test('la precisión del GPS va redondeada al metro', () => {
+  expect(formatearPrecision(4.4)).toBe('± 4 m');
+  expect(formatearPrecision(12.5)).toBe('± 13 m');
 });
 
 test('etiquetaCodigoNombre separa código y nombre con raya', () => {

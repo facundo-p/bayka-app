@@ -1,24 +1,21 @@
 import { Text, View } from '@react-pdf/renderer';
 import { PORCENTAJE_COMPLETO } from '../../lib/formato';
+import type { TextoEnRenglones } from '../plantilla/partirTexto';
+import { Renglones } from '../plantilla/Renglones';
 import { MEDIDA_INFORME } from '../plantilla/tokens';
-import type {
-  FilaEspecie,
-  Indicador as DatosIndicador,
-  IndicadorArboles,
-  Indicadores,
-  ModeloInforme,
-} from './datosInforme';
+import type { Indicador as DatosIndicador, IndicadorArboles, Indicadores } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
+import type { FilaEspecieEnRenglones, InformeEnRenglones } from './renglonesInforme';
 import { TEXTO_INFORME } from './textosInforme';
 
 /** Ancho del relleno de una barra, de una fracción de 0 a 1. */
 const anchoRelleno = (fraccion: number) => `${fraccion * PORCENTAJE_COMPLETO}%`;
 
-export function Titulo({ linea }: { linea: string }) {
+export function Titulo({ linea }: { linea: TextoEnRenglones }) {
   return (
     <View style={styles.titulo} wrap={false}>
       <Text style={styles.tituloTexto}>{TEXTO_INFORME.documento}</Text>
-      <Text style={styles.linea}>{linea}</Text>
+      <Renglones renglones={linea} style={styles.linea} />
     </View>
   );
 }
@@ -72,12 +69,13 @@ export function EncabezadoBloque({ children }: { children: string }) {
   );
 }
 
-function RenglonEspecie({ fila }: { fila: FilaEspecie }) {
+/** Mide lo que su nombre: el punto, la barra y los números van en el primer renglón. */
+function RenglonEspecie({ fila }: { fila: FilaEspecieEnRenglones }) {
   return (
     <View style={styles.filaEspecie} wrap={false}>
       <View style={styles.nombreEspecie}>
-        <View style={[styles.punto, { backgroundColor: fila.color }]} />
-        <Text style={styles.recortado}>{fila.titulo}</Text>
+        <View style={[styles.puntoFila, { backgroundColor: fila.color }]} />
+        <Renglones renglones={fila.titulo} style={styles.tituloEspecie} />
       </View>
       <View style={styles.barraEspecie}>
         <View
@@ -93,7 +91,7 @@ function RenglonEspecie({ fila }: { fila: FilaEspecie }) {
   );
 }
 
-export function BloqueEspecies({ especies }: { especies: ModeloInforme['especies'] }) {
+export function BloqueEspecies({ especies }: { especies: InformeEnRenglones['especies'] }) {
   return (
     <View>
       <EncabezadoBloque>{especies.titulo}</EncabezadoBloque>

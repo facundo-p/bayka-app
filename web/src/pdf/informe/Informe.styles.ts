@@ -1,40 +1,40 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import {
+  letraDeTitulo,
+  marcoDeMapa,
+  puntoDeEspecie,
+  rotuloEnMayusculas,
+} from '../plantilla/comunes.styles';
+import {
+  aireCentrado,
+  ALTO_RENGLON_INFORME as ALTO,
   COLOR_PDF,
   FUENTE_PDF,
-  MEDIDA_FICHA,
+  LETRA_INFORME,
   MEDIDA_INFORME as M,
   PESO_FUENTE,
   TAMANO_TEXTO,
-  UN_RENGLON,
 } from '../plantilla/tokens';
-
-const rotulo = {
-  fontSize: TAMANO_TEXTO.rotuloIndicador,
-  color: COLOR_PDF.apagado,
-  textTransform: 'uppercase',
-  letterSpacing: MEDIDA_FICHA.espaciadoMayusculas,
-} as const;
 
 const numero = { textAlign: 'right' } as const;
 
 const barra = { borderRadius: M.radioBarra, overflow: 'hidden' } as const;
 
-const titulo = {
-  fontFamily: FUENTE_PDF.titulo,
-  fontWeight: PESO_FUENTE.bold,
-  color: COLOR_PDF.navy,
-} as const;
+/*
+ * Los textos que se parten van arriba, con el aire que los dejaba centrados en
+ * su renglón: con uno solo quedan donde estaban, y con más crecen hacia abajo.
+ * El punto y lo demás de la fila se centran en el primero.
+ */
+const aireFila = aireCentrado(M.altoFilaEspecie, ALTO.fila);
 
 export const informeStyles = StyleSheet.create({
   titulo: { marginBottom: M.separacionBloques },
-  tituloTexto: { ...titulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
+  tituloTexto: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
-    ...UN_RENGLON,
+    ...LETRA_INFORME.linea,
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
-    height: M.altoLineaTitulo,
-    fontSize: TAMANO_TEXTO.lineaInforme,
+    paddingBottom: M.altoLineaTitulo - ALTO.linea,
     color: COLOR_PDF.apagado,
   },
 
@@ -49,14 +49,14 @@ export const informeStyles = StyleSheet.create({
     marginLeft: M.separacionIndicadores,
     paddingVertical: M.rellenoIndicador.vertical,
     paddingHorizontal: M.rellenoIndicador.horizontal,
-    borderWidth: MEDIDA_FICHA.borde,
+    borderWidth: M.borde,
     borderColor: COLOR_PDF.linea,
     borderRadius: M.radio,
   },
   indicadorPrincipal: { flexGrow: M.pesoIndicadorPrincipal, marginLeft: 0 },
-  rotulo,
+  rotulo: rotuloEnMayusculas(TAMANO_TEXTO.rotuloIndicador),
   valorIndicador: {
-    ...titulo,
+    ...letraDeTitulo,
     fontSize: TAMANO_TEXTO.indicador,
     marginTop: M.aireIndicador,
   },
@@ -80,12 +80,12 @@ export const informeStyles = StyleSheet.create({
   rellenoAvance: { height: '100%', backgroundColor: COLOR_PDF.oliva },
 
   encabezadoBloque: {
-    ...titulo,
+    ...letraDeTitulo,
     fontSize: TAMANO_TEXTO.bloque,
     height: M.altoEncabezadoBloque + M.aireEncabezadoBloque,
     paddingBottom: M.aireEncabezadoBloque,
     marginBottom: M.separacionEncabezadoBloque,
-    borderBottomWidth: MEDIDA_FICHA.borde,
+    borderBottomWidth: M.borde,
     borderBottomColor: COLOR_PDF.linea,
   },
   mensaje: {
@@ -96,37 +96,43 @@ export const informeStyles = StyleSheet.create({
   },
 
   filaEspecie: {
+    ...LETRA_INFORME.fila,
     lineHeight: M.interlineado,
     flexDirection: 'row',
-    alignItems: 'center',
-    height: M.altoFilaEspecie,
+    alignItems: 'flex-start',
+    minHeight: M.altoFilaEspecie,
     marginBottom: M.separacionFilaEspecie,
-    fontSize: TAMANO_TEXTO.filaInforme,
     color: COLOR_PDF.tinta,
   },
-  recortado: { ...UN_RENGLON, flexShrink: 1 },
-  nombreEspecie: { flexDirection: 'row', alignItems: 'center', width: M.anchoNombreEspecie },
-  punto: {
-    width: M.puntoEspecie,
-    height: M.puntoEspecie,
-    borderRadius: M.puntoEspecie / 2,
-    marginRight: MEDIDA_FICHA.aireTrasPunto,
+  nombreEspecie: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: M.anchoNombreEspecie,
+    paddingVertical: aireFila,
   },
+  tituloEspecie: { flexShrink: 1 },
+  puntoFila: puntoDeEspecie(M.punto, ALTO.fila),
   barraEspecie: {
     ...barra,
     flexGrow: 1,
     height: M.altoBarraEspecie,
+    marginTop: aireCentrado(M.altoFilaEspecie, M.altoBarraEspecie),
     marginHorizontal: M.separacionColumnas,
     backgroundColor: COLOR_PDF.papelHundido,
   },
   rellenoBarra: { height: '100%' },
-  cantidad: { ...numero, width: M.anchoCantidad },
-  porcentajeEspecie: { ...numero, width: M.anchoPorcentaje, color: COLOR_PDF.apagado },
+  cantidad: { ...numero, marginTop: aireFila, width: M.anchoCantidad },
+  porcentajeEspecie: {
+    ...numero,
+    marginTop: aireFila,
+    width: M.anchoPorcentaje,
+    color: COLOR_PDF.apagado,
+  },
 
   // Margen arriba del mapa y no relleno al pie de las especies: un relleno que no
   // entra en la hoja la parte y manda solo ese hueco a una hoja en blanco.
   bloqueMapa: { marginTop: M.separacionBloques },
-  tituloMapa: { ...titulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
+  tituloMapa: { ...letraDeTitulo, fontSize: TAMANO_TEXTO.tituloSeccion, height: M.altoTituloMapa },
   notaTitulo: {
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
@@ -136,20 +142,9 @@ export const informeStyles = StyleSheet.create({
     color: COLOR_PDF.apagado,
   },
   mapa: { alignSelf: 'center' },
-  imagenMapa: {
-    width: '100%',
-    height: '100%',
-    borderRadius: MEDIDA_FICHA.radioRecuadro,
-    borderWidth: MEDIDA_FICHA.bordeFino,
-    borderColor: COLOR_PDF.linea,
-  },
-  // En el aire entre la imagen y la leyenda: no suma alto.
-  llamada: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    lineHeight: MEDIDA_FICHA.interlineadoLlamada,
-  },
+  imagenMapa: { ...marcoDeMapa, width: '100%', height: '100%' },
+  // En el aire entre la imagen y la leyenda.
+  llamada: { top: '100%' },
   leyenda: {
     marginTop: M.aireMapa,
     flexDirection: 'row',
@@ -157,14 +152,17 @@ export const informeStyles = StyleSheet.create({
     columnGap: M.separacionLeyenda,
   },
   itemLeyenda: {
+    ...LETRA_INFORME.leyenda,
     lineHeight: M.interlineado,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: M.anchoItemLeyenda,
-    height: M.altoRenglonLeyenda,
-    fontSize: TAMANO_TEXTO.leyenda,
+    minHeight: M.altoRenglonLeyenda,
+    paddingVertical: aireCentrado(M.altoRenglonLeyenda, ALTO.leyenda),
     color: COLOR_PDF.tinta,
   },
+  puntoLeyenda: puntoDeEspecie(M.punto, ALTO.leyenda),
+  codigoLeyenda: { flexShrink: 1 },
   notaMapa: {
     lineHeight: M.interlineado,
     marginTop: M.aireMapa,

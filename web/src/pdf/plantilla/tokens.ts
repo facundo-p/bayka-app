@@ -151,18 +151,27 @@ export const MEDIDA_HOJA = {
   airePie: 6,
 } as const;
 
-/** Medidas de la ficha en pt: un árbol por hoja A4. */
-export const MEDIDA_FICHA = {
-  // Las de este primer grupo también las usa el informe.
-  radioRecuadro: 3,
+/** Medidas en pt que comparten los PDF: cada documento las suma a las suyas. */
+export const MEDIDA_PDF = {
   borde: 0.75,
   bordeFino: 0.5,
-  aireTrasPunto: 5,
+  /** Radio de los recuadros de foto y de mapa. */
+  radioRecuadro: 3,
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   /** Interlineado justo: la llamada bajo el mapa satelital no suma alto. */
   interlineadoLlamada: 1,
+} as const;
 
+/** El punto de color de la especie y el aire que lo separa del nombre. */
+export type MedidaPunto = { diametro: number; aire: number };
+
+/** Lo que ocupa el punto, con su aire, a lo ancho de un renglón. */
+const anchoDePunto = ({ diametro, aire }: MedidaPunto) => diametro + aire;
+
+/** Medidas de la ficha en pt: un árbol por hoja A4. */
+export const MEDIDA_FICHA = {
+  ...MEDIDA_PDF,
   /**
    * Foto arriba y minimapa abajo, cuadrados, a la derecha; los datos a la
    * izquierda. Columna, hueco e imagen llenan el ancho del cuerpo.
@@ -171,8 +180,7 @@ export const MEDIDA_FICHA = {
   anchoTexto: 215,
   huecoColumnas: 20,
   huecoImagenes: 16,
-  punto: 11,
-  aireTrasPuntoEspecie: 8,
+  punto: { diametro: 11, aire: 8 },
   aireBajoTitulo: 2,
   separacionBloques: 22,
   rellenoDato: 8,
@@ -218,14 +226,17 @@ export function cuerpoDeHoja(orientacion: OrientacionHoja): Medidas {
 export const CUERPO_HOJA = cuerpoDeHoja(ORIENTACION_HOJA.vertical);
 
 /**
- * Medidas del informe en pt. Los renglones tienen alto fijo: con eso
- * `planificarInforme` sabe cuánto ocupa cada bloque sin renderizar.
+ * Medidas del informe en pt. Los altos de la línea, de las filas de especie y
+ * de la leyenda son los de un renglón: un texto partido en más suma el alto de
+ * cada renglón de más. Con eso `planificarInforme` sabe cuánto ocupa cada
+ * bloque sin renderizar.
  */
 export const MEDIDA_INFORME = {
+  ...MEDIDA_PDF,
   separacionBloques: 14,
   /**
-   * Interlineado de los renglones de alto fijo: el de Poppins por defecto no
-   * entra, y react-pdf no dibuja una línea que no entra en su caja.
+   * Interlineado de los renglones: el de Poppins por defecto no entra en los
+   * bloques de alto fijo, y react-pdf no dibuja una línea que no entra en su caja.
    */
   interlineado: 1.25,
   altoTitulo: 26,
@@ -245,7 +256,7 @@ export const MEDIDA_INFORME = {
   aireEncabezadoBloque: 3,
   separacionEncabezadoBloque: 6,
   altoFilaEspecie: 11,
-  puntoEspecie: 7,
+  punto: { diametro: 7, aire: 5 },
   separacionFilaEspecie: 3,
   anchoNombreEspecie: 140,
   anchoCantidad: 46,
@@ -278,12 +289,50 @@ export const CAJA_MAPA_INFORME = {
     (CUERPO_HOJA.ancho * MEDIDA_INFORME.proporcionMapa.alto) / MEDIDA_INFORME.proporcionMapa.ancho,
 } as const;
 
+const ANCHO_PUNTO_INFORME = anchoDePunto(MEDIDA_INFORME.punto);
+
+/** Ancho en pt de los renglones del informe que se parten o se cortan antes del render (#883). */
+export const ANCHO_TEXTO_INFORME = {
+  linea: CUERPO_HOJA.ancho,
+  especie: MEDIDA_INFORME.anchoNombreEspecie - ANCHO_PUNTO_INFORME,
+  leyenda: MEDIDA_INFORME.anchoItemLeyenda - ANCHO_PUNTO_INFORME,
+} as const;
+
+/** La letra de los textos del informe que se parten o se cortan antes del render (#883). */
+export const LETRA_INFORME = {
+  linea: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.lineaInforme,
+  },
+  fila: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaInforme,
+  },
+  leyenda: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.leyenda,
+  },
+} as const;
+
+const altoEnInforme = (tamano: number) => tamano * MEDIDA_INFORME.interlineado;
+
+/** Alto en pt de un renglón de cada letra del informe que se parte. */
+export const ALTO_RENGLON_INFORME = {
+  linea: altoEnInforme(LETRA_INFORME.linea.fontSize),
+  fila: altoEnInforme(LETRA_INFORME.fila.fontSize),
+  leyenda: altoEnInforme(LETRA_INFORME.leyenda.fontSize),
+} as const;
+
 /**
  * Medidas del reporte de árboles en pt, en hoja horizontal. Los altos son los
  * de un renglón: un texto partido en más suma el alto de cada renglón de más, y
  * la hoja se llena por alto acumulado.
  */
 export const MEDIDA_REPORTE = {
+  ...MEDIDA_PDF,
   columnasTarjetas: 2,
   filasTarjetas: 3,
   /** Entre tarjetas, a lo ancho y a lo alto. */
@@ -291,10 +340,7 @@ export const MEDIDA_REPORTE = {
   /** Colchón contra los redondeos del layout: sin él, la última fila podría saltar de hoja. */
   holgura: 2,
   rellenoTarjeta: 8,
-  borde: 0.75,
-  bordeFino: 0.5,
   radio: 6,
-  radioFoto: 3,
   aireFoto: 12,
   /** Interlineado de los renglones: con el de Poppins por defecto no se dibujan. */
   interlineado: 1.25,
@@ -305,9 +351,7 @@ export const MEDIDA_REPORTE = {
   anchoEtiqueta: 62,
   /** Baja el rótulo, más chico que el valor, a la línea del valor. */
   aireSobreEtiqueta: 2,
-  punto: 7,
-  aireTrasPunto: 4,
-  espaciadoMayusculas: 0.4,
+  punto: { diametro: 7, aire: 4 },
   altoEncabezadoListado: 18,
   altoFilaListado: 14,
   rellenoCelda: 4,
@@ -356,8 +400,7 @@ export const ANCHO_DATOS_TARJETA =
   LADO_FOTO_TARJETA -
   MEDIDA_REPORTE.aireFoto;
 
-/** El punto de color de la especie, con su aire. */
-const ANCHO_PUNTO = MEDIDA_REPORTE.punto + MEDIDA_REPORTE.aireTrasPunto;
+const ANCHO_PUNTO = anchoDePunto(MEDIDA_REPORTE.punto);
 
 const ANCHO_VALOR_TARJETA = ANCHO_DATOS_TARJETA - MEDIDA_REPORTE.anchoEtiqueta;
 
@@ -390,3 +433,14 @@ export const ALTO_RENGLON_REPORTE = {
   dato: altoDeRenglon(LETRA_REPORTE.dato.fontSize),
   etiqueta: altoDeRenglon(TAMANO_TEXTO.etiqueta),
 } as const;
+
+/**
+ * Lo que queda arriba de un renglón centrado en `alto`. Los bloques van
+ * arriba, con este aire: un texto de un renglón queda donde quedaba centrado,
+ * y uno de más crece hacia abajo.
+ */
+export const aireCentrado = (alto: number, altoRenglon: number) => (alto - altoRenglon) / 2;
+
+/** El alto de una caja con un renglón, más el de cada renglón de más. */
+export const altoConRenglones = (altoDeUno: number, altoRenglon: number, renglones: number) =>
+  altoDeUno + (renglones - 1) * altoRenglon;

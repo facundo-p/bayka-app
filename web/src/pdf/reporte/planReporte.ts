@@ -7,6 +7,7 @@
 import { tieneFotoSubida } from '../../lib/fotoSubida';
 import { CORTAR_TEXTO_LARGO } from '../plantilla/textoLargo';
 import { CAJA_TARJETA, CUERPO_REPORTE, MEDIDA_REPORTE as M } from '../plantilla/tokens';
+import { enTramos } from '../plantilla/tramos';
 
 export const MODO_REPORTE = {
   /** Los árboles con foto van como tarjeta, hasta el tope. */
@@ -59,15 +60,6 @@ export function esHojaDeTarjetas<Tarjeta, Fila>(
   hoja: HojaReporte<Tarjeta, Fila>,
 ): hoja is Extract<HojaReporte<Tarjeta, Fila>, { tipo: typeof TIPO_HOJA_REPORTE.tarjetas }> {
   return hoja.tipo === TIPO_HOJA_REPORTE.tarjetas;
-}
-
-/** De a `porTramo` seguidos; el último puede quedar más corto. */
-export function enTramos<T>(items: readonly T[], porTramo: number): T[][] {
-  const tramos: T[][] = [];
-  for (let inicio = 0; inicio < items.length; inicio += porTramo) {
-    tramos.push(items.slice(inicio, inicio + porTramo));
-  }
-  return tramos;
 }
 
 /** Alto en pt de cada tarjeta y de cada fila del listado. */
