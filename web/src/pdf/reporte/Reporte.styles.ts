@@ -37,7 +37,34 @@ const celda = { ...renglon, flexBasis: 0, paddingHorizontal: M.rellenoCelda } as
 
 const columna = (peso: number) => ({ ...celda, flexGrow: peso });
 
-const mono = { fontFamily: FUENTE_PDF.mono, fontSize: TAMANO_TEXTO.datoMono } as const;
+/**
+ * La letra de los renglones que se cortan antes del render (#876): la usan
+ * estos estilos y la medición, así no se desfasan.
+ */
+export const LETRA_REPORTE = {
+  fila: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaListado,
+  },
+  dato: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.dato,
+  },
+  especieTarjeta: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.semibold,
+    fontSize: TAMANO_TEXTO.especie,
+  },
+  codigo: {
+    fontFamily: FUENTE_PDF.mono,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.datoMono,
+  },
+} as const;
+
+const mono = LETRA_REPORTE.codigo;
 
 /** Lo que la tarjeta y la fila del listado pintan igual. */
 const deArbol = {
@@ -89,9 +116,8 @@ export const tarjetaStyles = StyleSheet.create({
   nombreEspecie: {
     ...renglon,
     ...interlineado,
+    ...LETRA_REPORTE.especieTarjeta,
     flex: 1,
-    fontWeight: PESO_FUENTE.semibold,
-    fontSize: TAMANO_TEXTO.especie,
     color: COLOR_PDF.tinta,
   },
   dato: { flexDirection: 'row', alignItems: 'center', height: M.altoDato },
@@ -99,8 +125,8 @@ export const tarjetaStyles = StyleSheet.create({
   valor: {
     ...renglon,
     ...interlineado,
+    ...LETRA_REPORTE.dato,
     flex: 1,
-    fontSize: TAMANO_TEXTO.dato,
     color: COLOR_PDF.tinta,
   },
 });
@@ -117,10 +143,10 @@ export const listadoStyles = StyleSheet.create({
   },
   fila: {
     ...interlineado,
+    ...LETRA_REPORTE.fila,
     flexDirection: 'row',
     alignItems: 'center',
     height: M.altoFilaListado,
-    fontSize: TAMANO_TEXTO.filaListado,
     color: COLOR_PDF.tinta,
     borderBottomWidth: M.bordeFino,
     borderBottomColor: COLOR_PDF.linea,

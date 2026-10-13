@@ -11,4 +11,6 @@ export const TEXTO_ARBOL = {
   fotoNoDisponible: 'Foto no disponible',
   precision: '±',
   metros: 'm',
+  /** Entre el código y el nombre de una parcela o un grupo. */
+  separadorCodigo: ' ',
 } as const;

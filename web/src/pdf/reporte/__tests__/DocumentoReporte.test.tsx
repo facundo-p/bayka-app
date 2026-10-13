@@ -4,7 +4,7 @@ import { Document, renderToBuffer } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from '../../../test/pdfNode';
-import { textosDelPdf } from '../../../test/textoPdf';
+import { textosDelPdf, textosJustificados } from '../../../test/textoPdf';
 import type { ArbolParaFicha } from '../../../queries/fichasQueries';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { registrarFuentes } from '../../plantilla/fuentes';
@@ -12,7 +12,6 @@ import { Hoja } from '../../plantilla/Hoja';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { MEDIDA_REPORTE, ORIENTACION_HOJA } from '../../plantilla/tokens';
 import { datosArbolReporte, datosTarjeta } from '../datosReporte';
-import { DocumentoReporte } from '../DocumentoReporte';
 import { NIVELES_DE_ESCALON } from '../Escalon';
 import { Listado } from '../Listado';
 import {
@@ -23,6 +22,7 @@ import {
   TARJETAS_POR_HOJA,
   type ModoReporte,
 } from '../planReporte';
+import { renderizarDocumento } from '../renderReporte';
 import { GrillaTarjetas } from '../Tarjeta';
 
 const COLOR_DE = coloresEnOrden('ANC');
@@ -55,6 +55,22 @@ const PEOR_CASO = arbolParaFicha({
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 12.5 },
 });
 
+// Nombres de 60 caracteres, cada uno desde otra palabra: alguno cae donde
+// textkit apretaba los espacios hasta pegar las palabras (#876).
+const FRASE = 'Loma de los Paraísos Norte, ladera del arroyo Itaembé y el bañado grande del sector';
+const PALABRAS = FRASE.split(' ');
+const DE_60 = PALABRAS.map((_, desde) => PALABRAS.slice(desde).join(' ').slice(0, 60))
+  .filter((nombre) => nombre.length === 60)
+  .map((nombre, indice) =>
+    arbolParaFicha({
+      ...PEOR_CASO,
+      id: `s${indice}`,
+      especie: { ...PEOR_CASO.especie!, nombre },
+      parcela: { ...PEOR_CASO.parcela!, nombre },
+      grupo: { ...PEOR_CASO.grupo, nombre },
+    }),
+  );
+
 const SIN_NADA = arbolParaFicha({ especie: null, parcela: null, posicion: null, gps: null });
 
 beforeAll(() => registrarFuentes(FUENTES_NODE));
@@ -62,8 +78,8 @@ beforeAll(() => registrarFuentes(FUENTES_NODE));
 const muchos = (cantidad: number, arbol = PEOR_CASO) =>
   Array.from({ length: cantidad }, (_, indice) => ({ ...arbol, id: `t${indice}` }));
 
-/** El documento con fotos ya bajadas; `fotoDe` decide cuál falla. */
-function renderizar(
+/** El documento con fotos ya bajadas, como lo arma el worker; `fotoDe` decide cuál falla. */
+async function renderizar(
   arboles: readonly ArbolParaFicha[],
   modo: ModoReporte = MODO_REPORTE.conFotos,
   fotoDe: (indice: number) => FotoPdf = () => LISTA,
@@ -73,9 +89,9 @@ function renderizar(
     tarjetas: tarjetas.map((arbol, indice) => datosTarjeta(arbol, fotoDe(indice), COLOR_DE)),
     listado: listado.map((arbol) => datosArbolReporte(arbol, COLOR_DE)),
   };
-  return renderToBuffer(
-    <DocumentoReporte encabezado={ENCABEZADO} emitido="12/10/2026" reparto={reparto} />,
-  );
+  const documento = { encabezado: ENCABEZADO, emitido: '12/10/2026', reparto };
+  const blob = await renderizarDocumento({ documento, fuentes: FUENTES_NODE });
+  return Buffer.from(await blob.arrayBuffer());
 }
 
 const ocurrencias = (textos: string[], buscado: string) =>
@@ -136,12 +152,27 @@ test('en la tarjeta del peor caso se ven todos los datos y lo largo termina en �
       '1234',
       '14/09/2026',
       '-27.360123, -55.897441',
-      'Loma de los Paraísos Norte,…',
+      'Loma de los Paraísos Norte, lad…',
     ]),
   );
   const especie = textos.find((texto) => texto.startsWith('ANCHC · Anchico'));
   expect(especie).toMatch(/…$/);
 });
+
+test.each([
+  { donde: 'las tarjetas', modo: MODO_REPORTE.conFotos },
+  { donde: 'el listado', modo: MODO_REPORTE.sinFotos },
+])(
+  'en $donde, los nombres de 60 caracteres terminan en «…» sin apretar los espacios',
+  async ({ modo }) => {
+    const pdf = await renderizar(DE_60, modo);
+    const cortados = textosDelPdf(pdf).filter((texto) => texto.endsWith('…'));
+    // Especie, parcela y grupo de cada árbol.
+    expect(cortados).toHaveLength(3 * DE_60.length);
+    expect(cortados.filter((texto) => texto.startsWith('ANCHC · '))).toHaveLength(DE_60.length);
+    expect(textosJustificados(pdf).filter((texto) => texto.endsWith('…'))).toEqual([]);
+  },
+);
 
 test('las tarjetas van primero y el listado después, cada uno en el orden del filtro', async () => {
   const arbol = (idArbol: string, fotoUrl: string | null) =>

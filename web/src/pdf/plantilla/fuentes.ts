@@ -1,4 +1,5 @@
 import { Font } from '@react-pdf/renderer';
+import { medidorDeFuente, type FuenteMedible, type Medidor } from './cortarTexto';
 import { ESTILO_FUENTE, FUENTE_PDF, PESO_FUENTE } from './tokens';
 
 /** Cada archivo de fuente que usa el PDF. react-pdf lee OTF, TTF y WOFF, no WOFF2. */
@@ -65,6 +66,26 @@ export function registrarFuentes(archivos: ArchivosFuentes): void {
   // Sin guiones automáticos: cortarían IDs y nombres propios.
   Font.registerHyphenationCallback((palabra) => [palabra]);
   registradas = true;
+}
+
+/** La letra de un renglón, con los nombres de sus propiedades de estilo. */
+export type LetraDeRenglon = {
+  fontFamily: string;
+  fontWeight: number;
+  fontSize: number;
+  letterSpacing?: number;
+};
+
+/**
+ * Mide con una fuente registrada. Va adentro del turno de `renderizarEnSerie`:
+ * el documento que se arma a continuación reusa la fuente ya leída.
+ */
+export async function medidorRegistrado(letra: LetraDeRenglon): Promise<Medidor> {
+  const fuente = Font.getFont({ fontFamily: letra.fontFamily, fontWeight: letra.fontWeight });
+  await fuente.load();
+  // El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado.
+  const medible = fuente.data as unknown as FuenteMedible;
+  return medidorDeFuente(medible, { tamano: letra.fontSize, espaciado: letra.letterSpacing });
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();

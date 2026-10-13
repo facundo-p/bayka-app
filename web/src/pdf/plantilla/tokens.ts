@@ -300,3 +300,40 @@ export const CAJA_TARJETA = {
 /** La foto es cuadrada y ocupa todo el alto de la tarjeta, adentro del relleno y del borde. */
 export const LADO_FOTO_TARJETA =
   CAJA_TARJETA.alto - 2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde);
+
+/** Lo que deja una columna del listado: los rellenos de las celdas salen antes de repartir a peso. */
+function anchoDeColumna(peso: number): number {
+  const { pesoColumna, rellenoCelda } = MEDIDA_REPORTE;
+  const pesos = Object.values(pesoColumna);
+  const libre = CUERPO_REPORTE.ancho - 2 * rellenoCelda * pesos.length;
+  return (libre * peso) / pesos.reduce((suma, otro) => suma + otro, 0);
+}
+
+/** Lo que queda al lado de la foto, adentro del relleno y del borde de la tarjeta. */
+const ANCHO_DATOS_TARJETA =
+  CAJA_TARJETA.ancho -
+  2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde) -
+  LADO_FOTO_TARJETA -
+  MEDIDA_REPORTE.aireFoto;
+
+/** El punto de color de la especie, con su aire. */
+const ANCHO_PUNTO = MEDIDA_REPORTE.punto + MEDIDA_REPORTE.aireTrasPunto;
+
+const ANCHO_VALOR_TARJETA = ANCHO_DATOS_TARJETA - MEDIDA_REPORTE.anchoEtiqueta;
+
+/**
+ * Ancho en pt de los renglones del reporte que se cortan con «…» antes del
+ * render (#876). Parcela y grupo incluyen el código.
+ */
+export const ANCHO_TEXTO_REPORTE = {
+  listado: {
+    especie: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.especie) - ANCHO_PUNTO,
+    parcela: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.parcela),
+    grupo: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.grupo),
+  },
+  tarjeta: {
+    especie: ANCHO_DATOS_TARJETA - ANCHO_PUNTO,
+    parcela: ANCHO_VALOR_TARJETA,
+    grupo: ANCHO_VALOR_TARJETA,
+  },
+} as const;

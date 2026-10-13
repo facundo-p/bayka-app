@@ -41,7 +41,9 @@ export function ConCodigo({ entidad, styles }: ConCodigoProps) {
   if (!entidad) return SIN_DATO;
   return (
     <>
-      <Text style={styles.codigo}>{entidad.codigo}</Text> {entidad.nombre}
+      <Text style={styles.codigo}>{entidad.codigo}</Text>
+      {TEXTO_ARBOL.separadorCodigo}
+      {entidad.nombre}
     </>
   );
 }
