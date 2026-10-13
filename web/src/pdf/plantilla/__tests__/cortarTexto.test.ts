@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { Font } from '@react-pdf/renderer';
 // react-pdf no expone el ancho que calcula textkit: se arma el renglón con su
 // motor y las opciones de @react-pdf/layout.
 import layoutEngine, {
@@ -23,7 +22,7 @@ import {
   type FuenteMedible,
   type Medidor,
 } from '../cortarTexto';
-import { registrarFuentes } from '../fuentes';
+import { comoMedible, leerFuente, registrarFuentes } from '../fuentes';
 import { FUENTE_PDF, MEDIDA_REPORTE, PESO_FUENTE, TAMANO_TEXTO } from '../tokens';
 
 /** Un pt por unidad UTF-16: el «…» mide 1 y un emoji, 2. */
@@ -46,16 +45,16 @@ test('sin el espacio de antes del «…»', () => {
   expect(cortarTexto('Loma de los', porUnidad, 6)).toBe('Loma…');
 });
 
-test('un texto vacío sale vacío', () => {
-  expect(cortarTexto('', porUnidad, 10)).toBe('');
+test.each([10, 0])('un texto vacío sale vacío, con ancho %s', (ancho) => {
+  expect(cortarTexto('', porUnidad, ancho)).toBe('');
 });
 
 test('si solo entra el «…», sale el «…»', () => {
   expect(cortarTexto('Loma', porUnidad, 1.5)).toBe('…');
 });
 
-test.each([0, -3])('con ancho %s no entra nada, ni el «…»', (ancho) => {
-  expect(cortarTexto('Loma', porUnidad, ancho)).toBe('');
+test.each([0, -3])('con ancho %s no entra ni el «…», y queda el «…»: el corte se nota', (ancho) => {
+  expect(cortarTexto('Loma', porUnidad, ancho)).toBe('…');
 });
 
 test.each([
@@ -64,6 +63,16 @@ test.each([
   ['una letra de su tilde combinada', 'Pai\u0301s', 4.5, 'Pa…'],
 ])('no separa %s', (_, texto, ancho, esperado) => {
   expect(cortarTexto(texto, porUnidad, ancho)).toBe(esperado);
+});
+
+test('sin Intl.Segmenter corta por punto de código: no parte un emoji, pero sí una tilde combinada', () => {
+  vi.stubGlobal('Intl', { Segmenter: undefined });
+  try {
+    expect(cortarTexto('ab😀cd', porUnidad, 4.5)).toBe('ab…');
+    expect(cortarTexto('Pai\u0301s', porUnidad, 4.5)).toBe('Pai…');
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
 
 /** La «m» mide 3 y la «i», medio: anchos que no crecen parejo con la cantidad de letras. */
@@ -80,7 +89,7 @@ function cortePorFuerzaBruta(texto: string, medir: Medidor, ancho: number): stri
     const corte = `${texto.slice(0, cantidad).trimEnd()}…`;
     if (medir(corte) < ancho) return corte;
   }
-  return '';
+  return '…';
 }
 
 test('con anchos desparejos, da el corte más largo que entra', () => {
@@ -135,16 +144,7 @@ const OPCIONES_LAYOUT = { shrinkWhitespaceFactor: { before: -0.5, after: -0.5 } 
 /** Sin caja que lo corte. */
 const ANCHO_LIBRE = 10_000;
 
-async function fuenteReal(fontFamily: string, fontWeight: number) {
-  const fuente = Font.getFont({ fontFamily, fontWeight });
-  await fuente.load();
-  return fuente.data!;
-}
-
-type Fuente = Awaited<ReturnType<typeof fuenteReal>>;
-
-/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
-const medible = (fuente: Fuente) => fuente as unknown as FuenteMedible;
+type Fuente = Awaited<ReturnType<typeof leerFuente>>;
 
 /** El renglón que arma textkit con `maxLines: 1` y «…», como las celdas del reporte. */
 function renglonDeTextkit(texto: string, fuente: Fuente, estilo: EstiloMedido, ancho: number) {
@@ -185,19 +185,22 @@ test.each([
   ],
   ['un título con kerning', FUENTE_PDF.titulo, PESO_FUENTE.regular, TAMANO_TEXTO.encabezado, 0],
 ])('mide %s igual que textkit', async (_, familia, peso, tamano, espaciado) => {
-  const fuente = await fuenteReal(familia, peso);
+  const fuente = await leerFuente({ fontFamily: familia, fontWeight: peso });
   const estilo = { tamano, espaciado };
   for (const texto of [NOMBRE_LARGO, 'AVATAR Tolva · ffi', '—AVAV', '(Lote A)', 'LPN123', '…']) {
     const textkit = anchoDelRenglon(renglonDeTextkit(texto, fuente, estilo, ANCHO_LIBRE));
-    expect(medidorDeFuente(medible(fuente), estilo)(texto)).toBeCloseTo(textkit, 6);
+    expect(medidorDeFuente(comoMedible(fuente), estilo)(texto)).toBeCloseTo(textkit, 6);
   }
 });
 
 // Si el corte se pasara, textkit lo volvería a cortar o le achicaría los espacios.
 test.each([60, 90, 116, 167])('cortado a %s pt, textkit lo deja como está', async (ancho) => {
-  const fuente = await fuenteReal(FUENTE_PDF.cuerpo, PESO_FUENTE.regular);
+  const fuente = await leerFuente({
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+  });
   const estilo = { tamano: TAMANO_TEXTO.filaListado };
-  const medir = medidorDeFuente(medible(fuente), estilo);
+  const medir = medidorDeFuente(comoMedible(fuente), estilo);
   for (const texto of [NOMBRE_LARGO, NOMBRE_DE_60]) {
     const corte = cortarTexto(texto, medir, ancho);
     const renglon = renglonDeTextkit(corte, fuente, estilo, ancho);

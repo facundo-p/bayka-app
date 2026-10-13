@@ -4,7 +4,7 @@ import { TEXTO_ARBOL } from '../../arbol/textosArbol';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import type { Medidor } from '../../plantilla/cortarTexto';
 import { ANCHO_TEXTO_REPORTE } from '../../plantilla/tokens';
-import { cortarReparto, type MedidasReporte } from '../cortesReporte';
+import { cortarReparto, type MedidoresReporte } from '../cortesReporte';
 import { datosArbolReporte, datosTarjeta, type ModeloArbolReporte } from '../datosReporte';
 
 // Cada letra mide distinto: un renglón medido con la de otro no da el corte justo.
@@ -13,7 +13,7 @@ const porCaracter =
   (texto) =>
     [...texto].length * puntos;
 
-const MEDIDAS: MedidasReporte = {
+const MEDIDORES: MedidoresReporte = {
   fila: porCaracter(4),
   dato: porCaracter(3),
   especieTarjeta: porCaracter(5),
@@ -73,27 +73,27 @@ function esNombreJusto(
   ancho: number,
 ) {
   expect(cortado.codigo).toBe(original.codigo);
-  const libre = ancho - MEDIDAS.codigo(cortado.codigo) - medir(TEXTO_ARBOL.separadorCodigo);
+  const libre = ancho - MEDIDORES.codigo(cortado.codigo) - medir(TEXTO_ARBOL.separadorCodigo);
   esCorteJusto(cortado.nombre, original.nombre, medir, libre);
 }
 
 test('lo que entra no cambia: el reparto sale igual', () => {
   const reparto = repartoDe(CORTO, { ...CORTO, parcela: null });
-  expect(cortarReparto(reparto, MEDIDAS)).toEqual(reparto);
+  expect(cortarReparto(reparto, MEDIDORES)).toEqual(reparto);
 });
 
 const RENGLONES = [
   {
     bloque: 'tarjetas',
     anchos: ANCHO_TEXTO_REPORTE.tarjeta,
-    nombre: MEDIDAS.dato,
-    especie: MEDIDAS.especieTarjeta,
+    nombre: MEDIDORES.dato,
+    especie: MEDIDORES.especieTarjeta,
   },
   {
     bloque: 'listado',
     anchos: ANCHO_TEXTO_REPORTE.listado,
-    nombre: MEDIDAS.fila,
-    especie: MEDIDAS.fila,
+    nombre: MEDIDORES.fila,
+    especie: MEDIDORES.fila,
   },
 ] as const;
 
@@ -101,7 +101,7 @@ test.each(RENGLONES)(
   'en $bloque, especie, parcela y grupo se cortan con «…» justo al ancho de su renglón',
   ({ bloque, anchos, nombre, especie }) => {
     const original = repartoDe(LARGO)[bloque][0];
-    const [cortado] = cortarReparto(repartoDe(LARGO), MEDIDAS)[bloque];
+    const [cortado] = cortarReparto(repartoDe(LARGO), MEDIDORES)[bloque];
     esCorteJusto(cortado.especie.titulo, original.especie.titulo, especie, anchos.especie);
     esNombreJusto(cortado.parcela!, original.parcela!, nombre, anchos.parcela);
     esNombreJusto(cortado.grupo, original.grupo, nombre, anchos.grupo);
@@ -117,7 +117,19 @@ const salvoLoCortado = (modelo: ModeloArbolReporte) => ({
 
 test('sin parcela sigue sin parcela, y la foto y los demás datos no cambian', () => {
   const original = repartoDe({ ...LARGO, parcela: null });
-  const { tarjetas, listado } = cortarReparto(original, MEDIDAS);
+  const { tarjetas, listado } = cortarReparto(original, MEDIDORES);
   expect(tarjetas).toEqual(original.tarjetas.map(salvoLoCortado));
   expect(listado).toEqual(original.listado.map(salvoLoCortado));
+});
+
+test('si el código no deja lugar, del nombre queda el «…»', () => {
+  // Más ancho que el renglón de la tarjeta, el más ancho de los dos.
+  const caracteres = Math.ceil(ANCHO_TEXTO_REPORTE.tarjeta.parcela / MEDIDORES.codigo('X'));
+  const codigo = 'X'.repeat(caracteres);
+  const { tarjetas, listado } = cortarReparto(
+    repartoDe({ ...LARGO, parcela: { codigo, nombre: 'Norte' } }),
+    MEDIDORES,
+  );
+  const sinLugar = { codigo, nombre: '…' };
+  expect([tarjetas[0].parcela, listado[0].parcela]).toEqual([sinLugar, sinLugar]);
 });

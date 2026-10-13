@@ -4,7 +4,7 @@
  */
 import { pdf } from '@react-pdf/renderer';
 import { renderizarEnSerie, type ArchivosFuentes } from '../plantilla/fuentes';
-import { cortarReparto, leerMedidasReporte } from './cortesReporte';
+import { cortarReparto, leerMedidoresReporte } from './cortesReporte';
 import { DocumentoReporte, type DocumentoReporteProps } from './DocumentoReporte';
 
 export type PedidoRender = { documento: DocumentoReporteProps; fuentes: ArchivosFuentes };
@@ -13,7 +13,7 @@ export type RespuestaRender = { blob: Blob } | { error: string };
 
 export function renderizarDocumento({ documento, fuentes }: PedidoRender): Promise<Blob> {
   return renderizarEnSerie(fuentes, async () => {
-    const reparto = cortarReparto(documento.reparto, await leerMedidasReporte());
+    const reparto = cortarReparto(documento.reparto, await leerMedidoresReporte());
     return pdf(<DocumentoReporte {...documento} reparto={reparto} />).toBlob();
   });
 }

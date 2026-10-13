@@ -8,10 +8,10 @@
 const ELIPSIS = '…';
 
 /**
- * textkit suma los anchos en otro orden: un texto que llega justo al borde
- * puede no entrarle por redondeo, y lo parte en cualquier lado.
+ * El ancho de la caja sale de yoga en float32, y textkit suma los avances en
+ * otro orden: un texto que llega casi al borde puede no entrarle, y lo parte.
  */
-const HOLGURA_REDONDEO = 1e-6;
+const HOLGURA_REDONDEO = 1e-3;
 
 /**
  * Signos, cifras y espacios antes de la primera letra: textkit los arma en un
@@ -39,6 +39,10 @@ export type EstiloMedido = {
  * Mide un renglón entero como textkit: el avance de cada glifo, con el kerning
  * y las ligaduras de fontkit, escalado al tamaño. textkit suma el espaciado
  * también tras el último glifo.
+ *
+ * Un carácter que la fuente no tiene (Š, ž, ƒ en Poppins) textkit lo dibuja
+ * con Helvetica, y acá se mide con el glifo vacío: el corte puede errar y lo
+ * vuelve a cortar textkit, como antes de #876.
  */
 export function medidorDeFuente(
   fuente: FuenteMedible,
@@ -55,10 +59,15 @@ export function medidorDeFuente(
   };
 }
 
-const segmentador = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+let segmentador: Intl.Segmenter | undefined;
 
-/** Por grafema: un corte no separa un emoji de su par sustituto ni una letra de su tilde. */
+/**
+ * Por grafema: un corte no separa un emoji de su par sustituto ni una letra de
+ * su tilde. Sin `Intl.Segmenter`, por punto de código.
+ */
 function grafemas(texto: string): string[] {
+  if (typeof Intl.Segmenter !== 'function') return Array.from(texto);
+  segmentador ??= new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   return Array.from(segmentador.segment(texto), ({ segment }) => segment);
 }
 
@@ -74,17 +83,26 @@ function mayorQueEntra(maximo: number, entra: (n: number) => boolean): number {
   return entraHasta;
 }
 
+const entraEn = (medida: number, ancho: number) => medida <= ancho - HOLGURA_REDONDEO;
+
+/** Lo vacío y lo que entra no se cortan. */
+const saleEntero = (texto: string, medir: Medidor, ancho: number) =>
+  !texto || entraEn(medir(texto), ancho);
+
 /**
- * El texto entero si entra en `ancho` pt; si no, el corte más largo que entra
- * con «…», sin el espacio de antes. Si ni el «…» solo entra, vacío.
+ * El corte más largo que entra en `ancho` pt con «…», sin el espacio de antes.
+ * Si ni el «…» solo entra, queda el «…»: lo cortado siempre se nota.
  */
-export function cortarTexto(texto: string, medir: Medidor, ancho: number): string {
-  const entra = (candidato: string) => medir(candidato) <= ancho - HOLGURA_REDONDEO;
-  if (entra(texto)) return texto;
+function cortarLoQueNoEntra(texto: string, medir: Medidor, ancho: number): string {
   const partes = grafemas(texto);
   const corte = (cantidad: number) => `${partes.slice(0, cantidad).join('').trimEnd()}${ELIPSIS}`;
-  const cantidad = mayorQueEntra(partes.length - 1, (n) => entra(corte(n)));
-  return cantidad < 0 ? '' : corte(cantidad);
+  const cantidad = mayorQueEntra(partes.length - 1, (n) => entraEn(medir(corte(n)), ancho));
+  return cantidad < 0 ? ELIPSIS : corte(cantidad);
+}
+
+/** El texto entero si entra en `ancho` pt; si no, cortado con «…». */
+export function cortarTexto(texto: string, medir: Medidor, ancho: number): string {
+  return saleEntero(texto, medir, ancho) ? texto : cortarLoQueNoEntra(texto, medir, ancho);
 }
 
 /**
@@ -106,17 +124,17 @@ export function conMemoria<T>(calcular: (texto: string) => T): (texto: string) =
 export type Cortador = (texto: string, ancho: number) => string;
 
 /**
- * `cortarTexto` con memoria: cada medida y cada corte, una sola vez por ancho.
- * Recuerda un juego de cortes por ancho distinto: los anchos salen de las cajas
- * del documento, que son pocas.
+ * `cortarTexto` con memoria: la medida de cada texto entero, y el corte de cada
+ * texto en cada ancho. Los anchos son pocos: uno por caja y por largo de código.
  */
 export function cortadorConMemoria(medir: Medidor): Cortador {
-  const medirUnaVez = conMemoria(medir);
+  const medirEntero = conMemoria(medir);
   const porAncho = new Map<number, (texto: string) => string>();
   return (texto, ancho) => {
+    if (saleEntero(texto, medirEntero, ancho)) return texto;
     let cortar = porAncho.get(ancho);
     if (!cortar) {
-      cortar = conMemoria((sinCortar) => cortarTexto(sinCortar, medirUnaVez, ancho));
+      cortar = conMemoria((largo) => cortarLoQueNoEntra(largo, medir, ancho));
       porAncho.set(ancho, cortar);
     }
     return cortar(texto);

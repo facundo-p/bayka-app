@@ -5,6 +5,7 @@ import {
   COLOR_PDF,
   FUENTE_PDF,
   LADO_FOTO_TARJETA,
+  LETRA_REPORTE,
   MEDIDA_REPORTE as M,
   PESO_FUENTE,
   TAMANO_TEXTO,
@@ -36,33 +37,6 @@ const recuadroFoto = {
 const celda = { ...renglon, flexBasis: 0, paddingHorizontal: M.rellenoCelda } as const;
 
 const columna = (peso: number) => ({ ...celda, flexGrow: peso });
-
-/**
- * La letra de los renglones que se cortan antes del render (#876): la usan
- * estos estilos y la medición, así no se desfasan.
- */
-export const LETRA_REPORTE = {
-  fila: {
-    fontFamily: FUENTE_PDF.cuerpo,
-    fontWeight: PESO_FUENTE.regular,
-    fontSize: TAMANO_TEXTO.filaListado,
-  },
-  dato: {
-    fontFamily: FUENTE_PDF.cuerpo,
-    fontWeight: PESO_FUENTE.regular,
-    fontSize: TAMANO_TEXTO.dato,
-  },
-  especieTarjeta: {
-    fontFamily: FUENTE_PDF.cuerpo,
-    fontWeight: PESO_FUENTE.semibold,
-    fontSize: TAMANO_TEXTO.especie,
-  },
-  codigo: {
-    fontFamily: FUENTE_PDF.mono,
-    fontWeight: PESO_FUENTE.regular,
-    fontSize: TAMANO_TEXTO.datoMono,
-  },
-} as const;
 
 const mono = LETRA_REPORTE.codigo;
 

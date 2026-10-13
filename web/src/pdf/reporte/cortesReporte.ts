@@ -1,7 +1,8 @@
 /*
  * Especie, parcela y grupo cortados al ancho de su renglón antes del render
  * (#876): si los corta textkit, achica los espacios hasta pegar las palabras.
- * Corre en el worker, con las fuentes ya registradas.
+ * Corre en el worker, con las fuentes ya registradas. Corta por carácter, como
+ * el `text-overflow` de CSS.
  */
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import { TEXTO_ARBOL } from '../arbol/textosArbol';
@@ -12,38 +13,41 @@ import {
   type Medidor,
 } from '../plantilla/cortarTexto';
 import { medidorRegistrado } from '../plantilla/fuentes';
-import { ANCHO_TEXTO_REPORTE } from '../plantilla/tokens';
+import { ANCHO_TEXTO_REPORTE, LETRA_REPORTE } from '../plantilla/tokens';
 import type { ModeloArbolReporte, ModeloTarjeta } from './datosReporte';
 import type { Reparto } from './planReporte';
-import { LETRA_REPORTE } from './Reporte.styles';
 
 type Letra = keyof typeof LETRA_REPORTE;
 
 /** Un medidor por cada letra de renglón que se corta. */
-export type MedidasReporte = Record<Letra, Medidor>;
+export type MedidoresReporte = Record<Letra, Medidor>;
 
-export async function leerMedidasReporte(): Promise<MedidasReporte> {
+export async function leerMedidoresReporte(): Promise<MedidoresReporte> {
   const letras = Object.keys(LETRA_REPORTE) as Letra[];
   const medidores = await Promise.all(
     letras.map((letra) => medidorRegistrado(LETRA_REPORTE[letra])),
   );
   return Object.fromEntries(
     letras.map((letra, indice) => [letra, medidores[indice]]),
-  ) as MedidasReporte;
+  ) as MedidoresReporte;
 }
 
 /** Cómo se corta el nombre de un renglón, detrás de su código en mono. */
-type Renglon = { cortar: Cortador; medirCodigo: Medidor; anchoSeparador: number };
+type RenglonConCodigo = { cortar: Cortador; medirCodigo: Medidor; anchoSeparador: number };
 
-type AnchosArbol = Record<'especie' | 'parcela' | 'grupo', number>;
+type AnchosArbol = Record<keyof typeof ANCHO_TEXTO_REPORTE.tarjeta, number>;
 
-function renglon(medir: Medidor, medirCodigo: Medidor): Renglon {
+function renglonConCodigo(medir: Medidor, medirCodigo: Medidor): RenglonConCodigo {
   const anchoSeparador = medir(TEXTO_ARBOL.separadorCodigo);
   return { cortar: cortadorConMemoria(medir), medirCodigo, anchoSeparador };
 }
 
 /** El nombre se corta en lo que dejan el código y el separador. */
-function conCodigoAlAncho(entidad: CodigoNombre, ancho: number, renglon: Renglon): CodigoNombre {
+function conCodigoAlAncho(
+  entidad: CodigoNombre,
+  ancho: number,
+  renglon: RenglonConCodigo,
+): CodigoNombre {
   const libre = ancho - renglon.medirCodigo(entidad.codigo) - renglon.anchoSeparador;
   return { ...entidad, nombre: renglon.cortar(entidad.nombre, libre) };
 }
@@ -51,7 +55,7 @@ function conCodigoAlAncho(entidad: CodigoNombre, ancho: number, renglon: Renglon
 function cortarArbol<T extends ModeloArbolReporte>(
   arbol: T,
   anchos: AnchosArbol,
-  renglon: Renglon,
+  renglon: RenglonConCodigo,
   cortarEspecie: Cortador,
 ): T {
   const { especie, parcela, grupo } = arbol;
@@ -66,12 +70,12 @@ function cortarArbol<T extends ModeloArbolReporte>(
 /** El reparto con lo que no entra ya cortado con «…»; lo demás, igual. */
 export function cortarReparto(
   { tarjetas, listado }: Reparto<ModeloTarjeta, ModeloArbolReporte>,
-  medidas: MedidasReporte,
+  medidores: MedidoresReporte,
 ): Reparto<ModeloTarjeta, ModeloArbolReporte> {
-  const medirCodigo = conMemoria(medidas.codigo);
-  const enFila = renglon(medidas.fila, medirCodigo);
-  const enDato = renglon(medidas.dato, medirCodigo);
-  const especieTarjeta = cortadorConMemoria(medidas.especieTarjeta);
+  const medirCodigo = conMemoria(medidores.codigo);
+  const enFila = renglonConCodigo(medidores.fila, medirCodigo);
+  const enDato = renglonConCodigo(medidores.dato, medirCodigo);
+  const especieTarjeta = cortadorConMemoria(medidores.especieTarjeta);
   const { tarjeta: anchosTarjeta, listado: anchosFila } = ANCHO_TEXTO_REPORTE;
   return {
     tarjetas: tarjetas.map((tarjeta) =>

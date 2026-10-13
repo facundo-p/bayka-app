@@ -83,6 +83,33 @@ export const TAMANO_TEXTO = {
   notaAlPie: 4.5,
 } as const;
 
+/**
+ * La letra de los renglones del reporte que se cortan antes del render (#876):
+ * la usan sus estilos y la medición, así no se desfasan.
+ */
+export const LETRA_REPORTE = {
+  fila: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaListado,
+  },
+  dato: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.dato,
+  },
+  especieTarjeta: {
+    fontFamily: FUENTE_PDF.cuerpo,
+    fontWeight: PESO_FUENTE.semibold,
+    fontSize: TAMANO_TEXTO.especie,
+  },
+  codigo: {
+    fontFamily: FUENTE_PDF.mono,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.datoMono,
+  },
+} as const;
+
 /** Cómo se gira la hoja: los valores son los de `orientation` de react-pdf. */
 export const ORIENTACION_HOJA = {
   vertical: 'portrait',
@@ -302,15 +329,15 @@ export const LADO_FOTO_TARJETA =
   CAJA_TARJETA.alto - 2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde);
 
 /** Lo que deja una columna del listado: los rellenos de las celdas salen antes de repartir a peso. */
-function anchoDeColumna(peso: number): number {
+export function anchoDeColumna(columna: keyof typeof MEDIDA_REPORTE.pesoColumna): number {
   const { pesoColumna, rellenoCelda } = MEDIDA_REPORTE;
   const pesos = Object.values(pesoColumna);
   const libre = CUERPO_REPORTE.ancho - 2 * rellenoCelda * pesos.length;
-  return (libre * peso) / pesos.reduce((suma, otro) => suma + otro, 0);
+  return (libre * pesoColumna[columna]) / pesos.reduce((suma, peso) => suma + peso, 0);
 }
 
 /** Lo que queda al lado de la foto, adentro del relleno y del borde de la tarjeta. */
-const ANCHO_DATOS_TARJETA =
+export const ANCHO_DATOS_TARJETA =
   CAJA_TARJETA.ancho -
   2 * (MEDIDA_REPORTE.rellenoTarjeta + MEDIDA_REPORTE.borde) -
   LADO_FOTO_TARJETA -
@@ -327,9 +354,9 @@ const ANCHO_VALOR_TARJETA = ANCHO_DATOS_TARJETA - MEDIDA_REPORTE.anchoEtiqueta;
  */
 export const ANCHO_TEXTO_REPORTE = {
   listado: {
-    especie: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.especie) - ANCHO_PUNTO,
-    parcela: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.parcela),
-    grupo: anchoDeColumna(MEDIDA_REPORTE.pesoColumna.grupo),
+    especie: anchoDeColumna('especie') - ANCHO_PUNTO,
+    parcela: anchoDeColumna('parcela'),
+    grupo: anchoDeColumna('grupo'),
   },
   tarjeta: {
     especie: ANCHO_DATOS_TARJETA - ANCHO_PUNTO,

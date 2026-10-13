@@ -72,20 +72,31 @@ export function registrarFuentes(archivos: ArchivosFuentes): void {
 export type LetraDeRenglon = {
   fontFamily: string;
   fontWeight: number;
+  fontStyle?: (typeof ESTILO_FUENTE)[keyof typeof ESTILO_FUENTE];
   fontSize: number;
-  letterSpacing?: number;
 };
+
+/** Una fuente registrada, ya leída. */
+export async function leerFuente({
+  fontFamily,
+  fontWeight,
+  fontStyle,
+}: Omit<LetraDeRenglon, 'fontSize'>) {
+  const fuente = Font.getFont({ fontFamily, fontWeight, fontStyle });
+  await fuente.load();
+  return fuente.data!;
+}
+
+/** El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado: es la misma fuente. */
+export const comoMedible = (fuente: Awaited<ReturnType<typeof leerFuente>>) =>
+  fuente as unknown as FuenteMedible;
 
 /**
  * Mide con una fuente registrada. Va adentro del turno de `renderizarEnSerie`:
  * el documento que se arma a continuación reusa la fuente ya leída.
  */
 export async function medidorRegistrado(letra: LetraDeRenglon): Promise<Medidor> {
-  const fuente = Font.getFont({ fontFamily: letra.fontFamily, fontWeight: letra.fontWeight });
-  await fuente.load();
-  // El tipo de @react-pdf/font pierde el de fontkit, que no viene instalado.
-  const medible = fuente.data as unknown as FuenteMedible;
-  return medidorDeFuente(medible, { tamano: letra.fontSize, espaciado: letra.letterSpacing });
+  return medidorDeFuente(comoMedible(await leerFuente(letra)), { tamano: letra.fontSize });
 }
 
 let enCurso: Promise<unknown> = Promise.resolve();
