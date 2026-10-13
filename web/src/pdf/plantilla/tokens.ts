@@ -57,6 +57,9 @@ export const PESO_FUENTE = {
 
 export const ESTILO_FUENTE = { normal: 'normal', italica: 'italic' } as const;
 
+/** Un texto que no pasa de un renglón: lo que no entra termina en «…». */
+export const UN_RENGLON = { maxLines: 1, textOverflow: 'ellipsis' } as const;
+
 /** Tamaños de letra en pt. */
 export const TAMANO_TEXTO = {
   pie: 7,
@@ -84,8 +87,8 @@ export const TAMANO_TEXTO = {
 } as const;
 
 /**
- * La letra de los renglones del reporte que se cortan antes del render (#876):
- * la usan sus estilos y la medición, así no se desfasan.
+ * La letra de los textos del reporte que se parten o se cortan antes del
+ * render (#876): la usan sus estilos y la medición, así no se desfasan.
  */
 export const LETRA_REPORTE = {
   fila: {
@@ -107,6 +110,16 @@ export const LETRA_REPORTE = {
     fontFamily: FUENTE_PDF.mono,
     fontWeight: PESO_FUENTE.regular,
     fontSize: TAMANO_TEXTO.datoMono,
+  },
+  idFila: {
+    fontFamily: FUENTE_PDF.mono,
+    fontWeight: PESO_FUENTE.regular,
+    fontSize: TAMANO_TEXTO.filaListado,
+  },
+  idTarjeta: {
+    fontFamily: FUENTE_PDF.mono,
+    fontWeight: PESO_FUENTE.medio,
+    fontSize: TAMANO_TEXTO.idTarjeta,
   },
 } as const;
 
@@ -266,9 +279,9 @@ export const CAJA_MAPA_INFORME = {
 } as const;
 
 /**
- * Medidas del reporte de árboles en pt, en hoja horizontal. Todo renglón tiene
- * alto fijo y una sola línea: así cada hoja lleva una cantidad fija de tarjetas
- * o de filas, y la estimación previa coincide con el PDF.
+ * Medidas del reporte de árboles en pt, en hoja horizontal. Los altos son los
+ * de un renglón: un texto partido en más suma el alto de cada renglón de más, y
+ * la hoja se llena por alto acumulado.
  */
 export const MEDIDA_REPORTE = {
   columnasTarjetas: 2,
@@ -283,7 +296,7 @@ export const MEDIDA_REPORTE = {
   radio: 6,
   radioFoto: 3,
   aireFoto: 12,
-  /** Interlineado de los renglones de alto fijo: con el de Poppins por defecto no se dibujan. */
+  /** Interlineado de los renglones: con el de Poppins por defecto no se dibujan. */
   interlineado: 1.25,
   altoIdArbol: 16,
   altoEspecie: 13,
@@ -349,18 +362,31 @@ const ANCHO_PUNTO = MEDIDA_REPORTE.punto + MEDIDA_REPORTE.aireTrasPunto;
 const ANCHO_VALOR_TARJETA = ANCHO_DATOS_TARJETA - MEDIDA_REPORTE.anchoEtiqueta;
 
 /**
- * Ancho en pt de los renglones del reporte que se cortan con «…» antes del
- * render (#876). Parcela y grupo incluyen el código.
+ * Ancho en pt de los renglones del reporte que se parten o se cortan antes del
+ * render (#876). En parcela y grupo, el primero lleva también el código.
  */
 export const ANCHO_TEXTO_REPORTE = {
   listado: {
+    idArbol: anchoDeColumna('idArbol'),
     especie: anchoDeColumna('especie') - ANCHO_PUNTO,
     parcela: anchoDeColumna('parcela'),
     grupo: anchoDeColumna('grupo'),
   },
   tarjeta: {
+    idArbol: ANCHO_DATOS_TARJETA,
     especie: ANCHO_DATOS_TARJETA - ANCHO_PUNTO,
     parcela: ANCHO_VALOR_TARJETA,
     grupo: ANCHO_VALOR_TARJETA,
   },
+} as const;
+
+const altoDeRenglon = (tamano: number) => tamano * MEDIDA_REPORTE.interlineado;
+
+/** Alto en pt de un renglón de cada letra del reporte: lo que suma cada renglón de más. */
+export const ALTO_RENGLON_REPORTE = {
+  fila: altoDeRenglon(LETRA_REPORTE.fila.fontSize),
+  idTarjeta: altoDeRenglon(LETRA_REPORTE.idTarjeta.fontSize),
+  especieTarjeta: altoDeRenglon(LETRA_REPORTE.especieTarjeta.fontSize),
+  dato: altoDeRenglon(LETRA_REPORTE.dato.fontSize),
+  etiqueta: altoDeRenglon(TAMANO_TEXTO.etiqueta),
 } as const;
