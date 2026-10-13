@@ -87,7 +87,7 @@ Release notes comerciales para usuarios y clientes: solo lo que el usuario nota
 Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
 
 ```markdown
-## En pruebas · próxima versión
+## En pruebas · actualizado el 13 de octubre de 2026
 <!-- sincronizado-hasta: 5930146 #374 -->
 
 - **Titular corto.** Qué puede hacer o qué mejora ve el usuario. <!-- #344 #350 -->
@@ -129,6 +129,10 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
   sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
   y además la sección nunca llega a main.
+- **Fecha** en el título de NOVEDADES: el día del commit de `/novedades` que
+  movió la marca, con el formato de las entradas publicadas. Es lo que dice en
+  la web de pruebas cuándo se actualizó el listado (#897). CHANGELOG no la
+  lleva.
 - Redacción: la de las entradas publicadas de arriba, en cada archivo; las apps
   o categorías vacías se omiten.
 - Si nada de lo pendiente es visible, NOVEDADES lleva un único bullet, sin traza
