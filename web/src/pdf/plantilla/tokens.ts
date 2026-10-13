@@ -229,8 +229,6 @@ export const MEDIDA_INFORME = {
   margenMapa: 24,
   /** Radio de los puntos del mapa: sigue a la separación entre vecinos, dentro de estos topes. */
   radioPuntoMapa: { minimo: 1.1, maximo: 4 },
-  /** Fracción de la distancia al vecino más cercano: deja aire entre dos puntos vecinos. */
-  factorRadioPunto: 0.35,
 } as const;
 
 /** El mapa del informe: al ancho del cuerpo y con proporción fija; los puntos se encuadran adentro. */

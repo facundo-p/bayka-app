@@ -20,7 +20,10 @@ export type EncabezadoPdf = {
   detalle: string;
 };
 
-type PlantacionDelEncabezado = { lugar: string; periodo: string; codigo: string };
+/** Lo que cada hoja repite: el encabezado y la fecha de emisión, ya formateada, del pie. */
+export type EmisionPdf = { encabezado: EncabezadoPdf; emitido: string };
+
+export type PlantacionDelEncabezado = { lugar: string; periodo: string; codigo: string };
 
 /** Sin organización legible, el detalle lleva solo el código. */
 export function encabezadoDePlantacion(

@@ -1,8 +1,8 @@
 /* Textos del botón y del modal del reporte PDF de árboles (#849): puros, para testearlos sin render. */
 import { formatearEntero, formatearPeso, pluralizar, PORCENTAJE_COMPLETO } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
+import { TEXTO_ARBOL } from '../../pdf/arbol/textosArbol';
 import { TOPE_TARJETAS, type EstimacionReporte } from '../../pdf/reporte/planReporte';
-import { TEXTO_REPORTE } from '../../pdf/reporte/textosReporte';
 import type { ConteoDelFiltro } from '../../queries/dataExplorerQueries';
 import { ETAPA_REPORTE, type ProgresoReporte } from '../../services/pdfReporte';
 
@@ -86,6 +86,6 @@ export function textoFotosFallidas(fallidas: number): string {
   const verbo = fallidas === 1 ? 'no se pudo bajar y salió' : 'no se pudieron bajar y salieron';
   return (
     `El reporte se descargó, pero ${pluralizar(fallidas, SUSTANTIVO.foto)} ${verbo} ` +
-    `como «${TEXTO_REPORTE.fotoNoDisponible}».`
+    `como «${TEXTO_ARBOL.fotoNoDisponible}».`
   );
 }

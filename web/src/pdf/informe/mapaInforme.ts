@@ -5,7 +5,7 @@ import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '..
 import { planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
 import type { Pixel } from '../mapa/proyeccion';
 import { TOPE_TILES } from '../mapa/tiles';
-import { medianaAlVecino } from '../mapa/vecinos';
+import { radioSegunVecinos } from '../mapa/vecinos';
 import { CAJA_MAPA_INFORME, MEDIDA_INFORME } from '../plantilla/tokens';
 
 type Acumulado = { lat: number; lng: number; cantidad: number };
@@ -28,15 +28,9 @@ export function etiquetasDeParcelas(
   });
 }
 
-/**
- * Pocos puntos en un mapa grande se pierden con el radio de miles, y muchos
- * juntos se pisan: el radio sigue a la separación entre vecinos, en pt.
- */
+/** Radio de los puntos del mapa del informe, en pt. */
 export function radioDePuntos(pixeles: readonly Pixel[]): number {
-  const { minimo, maximo } = MEDIDA_INFORME.radioPuntoMapa;
-  const separacion = medianaAlVecino(pixeles);
-  if (separacion === null) return maximo;
-  return Math.min(maximo, Math.max(minimo, MEDIDA_INFORME.factorRadioPunto * separacion));
+  return radioSegunVecinos(pixeles, MEDIDA_INFORME.radioPuntoMapa);
 }
 
 export type MapaInformePdf = { mapa: MapaPdf };

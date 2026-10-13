@@ -102,6 +102,7 @@ test('con los casos borde, cada ficha va en su hoja', async () => {
       'Sin foto',
       'Foto no disponible',
       'Sin punto GPS',
+      'Sin punto',
       'Mapa no disponible',
       'N/N · Sin identificar',
     ]),

@@ -1,4 +1,5 @@
 import { StyleSheet } from '@react-pdf/renderer';
+import { recuadroVacio } from '../arbol/PartesArbol.styles';
 import {
   COLOR_PDF,
   ESTILO_FUENTE,
@@ -47,7 +48,6 @@ export const fichaStyles = StyleSheet.create({
     lineHeight: INTERLINEADO.titulo,
     color: COLOR_PDF.tinta,
   },
-  sinIdentificar: { color: COLOR_PDF.ambarTexto },
   cientifico: {
     marginTop: M.aireBajoTitulo,
     fontStyle: ESTILO_FUENTE.italica,
@@ -66,15 +66,7 @@ export const fichaStyles = StyleSheet.create({
   },
   foto: imagen,
   mapa: { ...imagen, borderWidth: M.bordeFino, borderColor: COLOR_PDF.linea },
-  vacio: {
-    ...imagen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: M.borde,
-    borderStyle: 'dashed',
-    borderColor: COLOR_PDF.linea,
-    backgroundColor: COLOR_PDF.papelHundido,
-  },
+  vacio: { ...imagen, ...recuadroVacio, borderWidth: M.borde },
   textoVacio: { marginTop: M.aireIcono, fontSize: letra.vacio, color: COLOR_PDF.tenue },
   // Debajo del mapa, en el aire hasta el pie: no suma alto.
   llamada: {
@@ -97,6 +89,5 @@ export const fichaStyles = StyleSheet.create({
   },
   codigo: { ...mono, color: COLOR_PDF.navy },
   mono,
-  apagado: { color: COLOR_PDF.apagado },
   tenue: { color: COLOR_PDF.tenue },
 });

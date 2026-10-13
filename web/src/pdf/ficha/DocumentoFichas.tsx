@@ -1,16 +1,12 @@
-import { Document } from '@react-pdf/renderer';
 import { NOTA_SATELITE } from '../mapa/LlamadaSatelite';
 import { esMapaSatelital } from '../mapa/estadoMapa';
+import { DocumentoPdf } from '../plantilla/DocumentoPdf';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import type { EmisionPdf } from '../plantilla/textos';
 import { documentoDeFichas, type ModeloFicha } from './datosFicha';
 import { Ficha } from './Ficha';
 
-export type DocumentoFichasProps = {
-  encabezado: EncabezadoPdf;
-  emitido: string;
-  fichas: readonly ModeloFicha[];
-};
+export type DocumentoFichasProps = EmisionPdf & { fichas: readonly ModeloFicha[] };
 
 const NOTA_DE_SATELITE: NotaAlPie = { texto: NOTA_SATELITE, enHoja: () => true };
 
@@ -23,11 +19,7 @@ function notaDeSatelite(ficha: ModeloFicha): NotaAlPie | undefined {
 export function DocumentoFichas({ encabezado, emitido, fichas }: DocumentoFichasProps) {
   const documento = documentoDeFichas(fichas.length);
   return (
-    <Document
-      title={`${documento}${TEXTO_PLANTILLA.separador}${encabezado.titulo}`}
-      creator={TEXTO_PLANTILLA.marca}
-      producer={TEXTO_PLANTILLA.marca}
-    >
+    <DocumentoPdf documento={documento} encabezado={encabezado}>
       {fichas.map((ficha, indice) => (
         <Hoja
           key={`${indice}-${ficha.idArbol}`}
@@ -39,6 +31,6 @@ export function DocumentoFichas({ encabezado, emitido, fichas }: DocumentoFichas
           <Ficha ficha={ficha} />
         </Hoja>
       ))}
-    </Document>
+    </DocumentoPdf>
   );
 }
