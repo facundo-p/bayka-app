@@ -64,8 +64,9 @@ test('control: sin el corte, textkit aprieta esos nombres y la red lo ve', async
 test('7 tarjetas y 40 filas del peor caso: las hojas que estima el modal', async () => {
   const arboles = [...muchos(7), ...muchos(40, { ...PEOR_CASO, fotoUrl: null })];
   const pdf = await renderizar(arboles);
-  const { hojas } = estimarReporte({ total: 47, conFoto: 7, modo: MODO_REPORTE.conFotos });
+  const { hojas, esPiso } = estimarReporte({ total: 47, conFoto: 7, modo: MODO_REPORTE.conFotos });
   expect(paginasDelPdf(pdf)).toBe(hojas);
+  expect(esPiso).toBe(false);
   expect(textosDelPdf(pdf)).toContain('Emitido el 12/10/2026 · Página 4 de 4');
 });
 
