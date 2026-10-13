@@ -1,6 +1,7 @@
 // @vitest-environment node
+import { Font } from '@react-pdf/renderer';
 import { FUENTES_NODE } from '../../../test/pdfNode';
-import { renderizarEnSerie } from '../fuentes';
+import { registrarFuentes, renderizarEnSerie } from '../fuentes';
 
 test('los documentos se renderizan de a uno, en el orden pedido', async () => {
   const orden: string[] = [];
@@ -20,4 +21,10 @@ test('un documento que falla no traba los siguientes', async () => {
   const siguiente = renderizarEnSerie(FUENTES_NODE, () => Promise.resolve('ok'));
   await expect(fallido).rejects.toThrow('falló');
   await expect(siguiente).resolves.toBe('ok');
+});
+
+test('Helvetica, el respaldo de textkit, sigue leída después de descartar las fuentes', () => {
+  registrarFuentes(FUENTES_NODE);
+  registrarFuentes(FUENTES_NODE);
+  expect(Font.getFont({ fontFamily: 'Helvetica', fontWeight: 700 }).data).not.toBeNull();
 });

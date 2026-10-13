@@ -32,11 +32,14 @@ let registradas = false;
 
 /**
  * fontkit guarda sin su carácter los glifos que un PDF usó como parte de otro
- * («.» en «·», «a» en «á»): el PDF siguiente los perdería.
+ * («.» en «·», «a» en «á»): el PDF siguiente los perdería. Solo las nuestras:
+ * Helvetica, el respaldo de textkit, se lee una vez al cargar react-pdf y nadie
+ * la relee; sin ella, un carácter que no tiene la fuente tira el PDF (#882).
  */
 function descartarFuentesLeidas(): void {
-  for (const familia of Object.values(Font.getRegisteredFonts())) {
-    for (const fuente of familia.sources) {
+  const fuentesRegistradas = Font.getRegisteredFonts();
+  for (const familia of FAMILIAS) {
+    for (const fuente of fuentesRegistradas[familia].sources) {
       fuente.data = null;
       fuente.loadResultPromise = null;
     }
