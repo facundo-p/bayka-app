@@ -4,14 +4,15 @@ import { Document, renderToBuffer } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import { arbolParaFicha, coloresEnOrden } from '../../../test/fabricas';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from '../../../test/pdfNode';
-import { textosDelPdf, textosJustificados } from '../../../test/textoPdf';
+import { textosConGlifosCorridos, textosDelPdf } from '../../../test/textoPdf';
 import type { ArbolParaFicha } from '../../../queries/fichasQueries';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
-import { registrarFuentes } from '../../plantilla/fuentes';
+import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { Hoja } from '../../plantilla/Hoja';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { MEDIDA_REPORTE, ORIENTACION_HOJA } from '../../plantilla/tokens';
 import { datosArbolReporte, datosTarjeta } from '../datosReporte';
+import { DocumentoReporte } from '../DocumentoReporte';
 import { NIVELES_DE_ESCALON } from '../Escalon';
 import { Listado } from '../Listado';
 import {
@@ -159,6 +160,10 @@ test('en la tarjeta del peor caso se ven todos los datos y lo largo termina en �
   expect(especie).toMatch(/…$/);
 });
 
+/** Los renglones cortados con algún glifo corrido: los que textkit apretó. */
+const cortadosApretados = (pdf: Buffer) =>
+  textosConGlifosCorridos(pdf).filter((texto) => texto.endsWith('…'));
+
 test.each([
   { donde: 'las tarjetas', modo: MODO_REPORTE.conFotos },
   { donde: 'el listado', modo: MODO_REPORTE.sinFotos },
@@ -170,9 +175,23 @@ test.each([
     // Especie, parcela y grupo de cada árbol.
     expect(cortados).toHaveLength(3 * DE_60.length);
     expect(cortados.filter((texto) => texto.startsWith('ANCHC · '))).toHaveLength(DE_60.length);
-    expect(textosJustificados(pdf).filter((texto) => texto.endsWith('…'))).toEqual([]);
+    expect(cortadosApretados(pdf)).toEqual([]);
   },
 );
+
+// Si react-pdf cambiara cómo anota los avances, la red de arriba no vería nada.
+test('control: sin el corte, textkit aprieta esos nombres y la red lo ve', async () => {
+  const reparto = {
+    tarjetas: DE_60.map((arbol) => datosTarjeta(arbol, LISTA, COLOR_DE)),
+    listado: DE_60.map((arbol) => datosArbolReporte(arbol, COLOR_DE)),
+  };
+  const pdf = await renderizarEnSerie(FUENTES_NODE, () =>
+    renderToBuffer(
+      <DocumentoReporte encabezado={ENCABEZADO} emitido="12/10/2026" reparto={reparto} />,
+    ),
+  );
+  expect(cortadosApretados(pdf)).not.toEqual([]);
+});
 
 test('las tarjetas van primero y el listado después, cada uno en el orden del filtro', async () => {
   const arbol = (idArbol: string, fotoUrl: string | null) =>

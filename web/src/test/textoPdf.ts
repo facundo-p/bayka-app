@@ -78,14 +78,14 @@ export function textosDelPdf(pdf: Buffer): string[] {
   return leerRenglones(pdf, () => true);
 }
 
-/** Un glifo con el avance cambiado parte el TJ y deja un ajuste distinto de 0. */
+/** Un glifo que no avanza su ancho natural parte el TJ y deja un ajuste distinto de 0. */
 const conAvanceCambiado = (renglon: string) =>
   [...renglon.matchAll(/>\s*(-?[\d.]+)/g)].some(([, ajuste]) => Number(ajuste) !== 0);
 
 /**
- * Los renglones con glifos corridos: los que textkit justificó porque no
- * entraban en su caja, y también los de letterSpacing o kerning.
+ * Los renglones con algún glifo corrido de su avance natural, por poco que sea:
+ * los que textkit justificó, y también los rótulos con letterSpacing.
  */
-export function textosJustificados(pdf: Buffer): string[] {
+export function textosConGlifosCorridos(pdf: Buffer): string[] {
   return leerRenglones(pdf, conAvanceCambiado);
 }
