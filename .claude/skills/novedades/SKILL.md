@@ -153,8 +153,8 @@ Mostrar a Facu:
 ```bash
 git switch staging && git pull --ff-only origin staging
 # NOVEDADES.md y CHANGELOG.md: reemplazar la sección pendiente entera (o crearla
-# después de la intro), con la misma marca en los dos y la fecha de hoy en el
-# título de NOVEDADES: "## En pruebas · actualizado el <D de mes de AAAA>"
+# después de la intro), con la misma marca en los dos y la fecha del título de
+# NOVEDADES al día del commit (contrato, "Sección pendiente")
 # Correr la "Verificación" del contrato: el vitest, no los greps de conversión
 git add NOVEDADES.md CHANGELOG.md
 git commit -m "docs(novedades): sincroniza pendientes hasta #N"

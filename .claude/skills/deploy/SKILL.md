@@ -129,10 +129,14 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
   sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
   y además la sección nunca llega a main.
-- **Fecha** en el título de NOVEDADES: el día del commit de `/novedades` que
-  movió la marca, con el formato de las entradas publicadas. Es lo que dice en
-  la web de pruebas cuándo se actualizó el listado (#897). CHANGELOG no la
-  lleva.
+- **Fecha** en el título de NOVEDADES: el día, en Argentina, del último commit
+  de `/novedades`; todo commit la actualiza. Con ella la web de pruebas muestra
+  cuándo se actualizó el listado (#897). Va con el formato de las entradas
+  publicadas, aunque nadie la parsea, y CHANGELOG no la lleva:
+
+  ```bash
+  LC_ALL=es_ES.UTF-8 TZ=America/Argentina/Buenos_Aires date '+%-d de %B de %Y'
+  ```
 - Redacción: la de las entradas publicadas de arriba, en cada archivo; las apps
   o categorías vacías se omiten.
 - Si nada de lo pendiente es visible, NOVEDADES lleva un único bullet, sin traza
@@ -146,8 +150,8 @@ pendiente y el próximo `/novedades` arranca de cero desde `origin/main`:
 - `CHANGELOG.md`: `## Sin publicar` → `## <YYYY-MM-DD> · web X.Y.Z · mobile A.B.C`;
   `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
   Se borran la marca y las apps sin cambios.
-- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`. Se
-  borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan tal
+- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`, con
+  la fecha del release. Se borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan tal
   cual** (#580, #582): en la web de pruebas siguen siendo el "Cómo probarlo" de
   cada versión y en producción no se muestran. No se resumen, no se reescriben
   ni se les quita la mención al entorno. El bullet de "nada visible" pasa al
