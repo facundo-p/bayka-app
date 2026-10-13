@@ -3,7 +3,12 @@
  * ya formateado: los componentes solo pintan. Puro y testeable sin react-pdf.
  */
 import { formatearFechaCorta } from '../../lib/fechas';
-import { DECIMALES_GPS, etiquetaEspecie, SIN_DATO } from '../../lib/formato';
+import {
+  etiquetaEspecie,
+  formatearCoordenadas,
+  formatearPrecision,
+  SIN_DATO,
+} from '../../lib/formato';
 import { ETIQUETA_SUBTIPO_ESPECIE, ETIQUETA_TIPO_ESPECIE } from '../../lib/tiposEspecie';
 import type {
   ArbolParaFicha,
@@ -14,7 +19,6 @@ import type {
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import type { ColorEspecie } from '../../theme/coloresEspecie';
 import { TEXTO_PLANTILLA } from '../plantilla/textos';
-import { TEXTO_ARBOL } from './textosArbol';
 
 export type EspecieArbol = {
   color: string;
@@ -66,10 +70,9 @@ export function especieArbol(especie: EspecieDeFicha | null, colorDe: ColorEspec
 /** «-27.360120, -55.897440» y «± 4 m». */
 export function gpsArbol(gps: GpsDeFicha | null): GpsArbol | null {
   if (!gps) return null;
-  const { precision: signo, metros } = TEXTO_ARBOL;
   return {
-    coordenadas: `${gps.lat.toFixed(DECIMALES_GPS)}, ${gps.lng.toFixed(DECIMALES_GPS)}`,
-    precision: gps.precision == null ? null : `${signo} ${Math.round(gps.precision)} ${metros}`,
+    coordenadas: formatearCoordenadas(gps.lat, gps.lng),
+    precision: gps.precision == null ? null : formatearPrecision(gps.precision),
   };
 }
 

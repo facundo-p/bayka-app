@@ -1,4 +1,4 @@
-import { DECIMALES_GPS } from '../../lib/formato';
+import { formatearCoordenadas, formatearPrecision } from '../../lib/formato';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 
 export { etiquetaEspecie, nombreTecnicoDe, SIN_DATO } from '../../lib/formato';
@@ -21,13 +21,13 @@ export function codigoParcelaDe(arbol: ArbolDetalle, codigos: Map<string, string
 }
 
 /** «-27.360120, -55.897440»; por defecto con los mismos decimales que la ficha PDF. */
-export function textoCoordenadas(arbol: ArbolConGps, decimales: number = DECIMALES_GPS): string {
-  return `${arbol.latitude.toFixed(decimales)}, ${arbol.longitude.toFixed(decimales)}`;
+export function textoCoordenadas(arbol: ArbolConGps, decimales?: number): string {
+  return formatearCoordenadas(arbol.latitude, arbol.longitude, decimales);
 }
 
 /** «± 4 m»; null si el celular no informó la precisión. */
 export function textoPrecisionGps(arbol: ArbolConGps): string | null {
-  return arbol.gpsAccuracy == null ? null : `± ${Math.round(arbol.gpsAccuracy)} m`;
+  return arbol.gpsAccuracy == null ? null : formatearPrecision(arbol.gpsAccuracy);
 }
 
 const URL_BUSQUEDA_GOOGLE_MAPS = 'https://www.google.com/maps/search/?api=1&query=';

@@ -1,5 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
+import { marcoDeMapa, puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
 import {
   COLOR_PDF,
   ESTILO_FUENTE,
@@ -19,13 +20,6 @@ const imagen = {
   overflow: 'hidden',
 } as const;
 
-const rotulo = {
-  fontSize: letra.rotulo,
-  color: COLOR_PDF.apagado,
-  textTransform: 'uppercase',
-  letterSpacing: M.espaciadoMayusculas,
-} as const;
-
 const mono = { fontFamily: FUENTE_PDF.mono, fontSize: letra.datoMono } as const;
 
 export const fichaStyles = StyleSheet.create({
@@ -33,14 +27,7 @@ export const fichaStyles = StyleSheet.create({
   filaFoto: { marginBottom: M.huecoImagenes },
   texto: { width: M.anchoTexto, marginRight: M.huecoColumnas },
   filaEspecie: { flexDirection: 'row', alignItems: 'flex-start' },
-  punto: {
-    width: M.punto,
-    height: M.punto,
-    borderRadius: M.punto / 2,
-    // Centrado en el primer renglón: si el nombre se parte, el punto no baja.
-    marginTop: (letra.especie * INTERLINEADO.titulo - M.punto) / 2,
-    marginRight: M.aireTrasPuntoEspecie,
-  },
+  punto: puntoDeEspecie(M.punto, letra.especie * INTERLINEADO.titulo),
   nombreEspecie: {
     flex: 1,
     fontWeight: PESO_FUENTE.semibold,
@@ -54,9 +41,9 @@ export const fichaStyles = StyleSheet.create({
     fontSize: letra.cientifico,
     color: COLOR_PDF.cuerpo,
   },
-  clasificacion: { ...rotulo, marginTop: M.aireBajoTitulo, fontSize: letra.clasificacion },
+  clasificacion: { ...rotuloEnMayusculas(letra.clasificacion), marginTop: M.aireBajoTitulo },
   id: { marginTop: M.separacionBloques },
-  rotulo,
+  rotulo: rotuloEnMayusculas(letra.rotulo),
   idArbol: {
     marginTop: M.aireRotulo,
     fontFamily: FUENTE_PDF.mono,
@@ -65,16 +52,11 @@ export const fichaStyles = StyleSheet.create({
     color: COLOR_PDF.navy,
   },
   foto: imagen,
-  mapa: { ...imagen, borderWidth: M.bordeFino, borderColor: COLOR_PDF.linea },
-  vacio: { ...imagen, ...recuadroVacio, borderWidth: M.borde },
+  mapa: { ...imagen, ...marcoDeMapa },
+  vacio: { ...imagen, ...recuadroVacio },
   textoVacio: { marginTop: M.aireIcono, fontSize: letra.vacio, color: COLOR_PDF.tenue },
-  // Debajo del mapa, en el aire hasta el pie: no suma alto.
-  llamada: {
-    position: 'absolute',
-    top: M.ladoImagen,
-    right: 0,
-    lineHeight: M.interlineadoLlamada,
-  },
+  // Debajo del mapa, en el aire hasta el pie.
+  llamada: { top: M.ladoImagen },
   registro: { marginTop: M.separacionBloques },
   dato: {
     paddingVertical: M.rellenoDato,
