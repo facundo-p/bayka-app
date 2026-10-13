@@ -14,7 +14,7 @@ export function contexto2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D 
 
 /**
  * Exporta y libera: el navegador retiene la memoria del canvas hasta que lo
- * achica, y con N fichas se acumulan N mapas y N fotos.
+ * achica, y un reporte acumula una foto por tarjeta.
  */
 export function exportarYLiberar(
   canvas: HTMLCanvasElement,

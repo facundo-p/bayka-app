@@ -6,7 +6,7 @@
 
 import { normalizarTexto } from '../lib/normalizarTexto';
 
-/** Extensión de los PDF que arma la web (fichas, informe). */
+/** Extensión de los PDF que arma la web (ficha, informe, reporte). */
 export const EXTENSION_PDF = 'pdf';
 
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */

@@ -170,7 +170,7 @@ export function arbolDetalle(overrides: Partial<ArbolDetalle> = {}): ArbolDetall
   };
 }
 
-/** Árbol de las fichas PDF sin especie, GPS ni foto. */
+/** Árbol de la ficha y del reporte PDF sin especie, GPS ni foto. */
 export function arbolParaFicha(overrides: Partial<ArbolParaFicha> = {}): ArbolParaFicha {
   return {
     id: IDS_FABRICA.arbol,
