@@ -1,6 +1,10 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
-import { puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
+import {
+  interlineadoDeRenglon,
+  puntoDeEspecie,
+  rotuloEnMayusculas,
+} from '../plantilla/comunes.styles';
 import {
   aireCentrado,
   ALTO_RENGLON_REPORTE as ALTO,
@@ -19,13 +23,10 @@ import {
  */
 const renglon = UN_RENGLON;
 
-/**
- * Va junto al `fontSize`: react-pdf multiplica el interlineado por el tamaño del
- * mismo estilo, y sin él usa 18 pt y el renglón no entra en su caja.
- */
-const interlineado = { lineHeight: M.interlineado } as const;
-
-const mayusculas = { ...interlineado, ...rotuloEnMayusculas(TAMANO_TEXTO.etiqueta) } as const;
+const mayusculas = {
+  ...interlineadoDeRenglon,
+  ...rotuloEnMayusculas(TAMANO_TEXTO.etiqueta),
+} as const;
 
 const recuadroFoto = {
   width: LADO_FOTO_TARJETA,
@@ -63,7 +64,7 @@ export const tarjetaStyles = StyleSheet.create({
   textoVacio: { fontSize: TAMANO_TEXTO.secundario, color: COLOR_PDF.tenue },
   datos: { flex: 1, marginLeft: M.aireFoto },
   idArbol: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.idTarjeta,
     paddingBottom: M.altoIdArbol - ALTO.idTarjeta,
     color: COLOR_PDF.navy,
@@ -79,7 +80,7 @@ export const tarjetaStyles = StyleSheet.create({
   },
   punto: puntoDeEspecie(M.punto, ALTO.especieTarjeta),
   nombreEspecie: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.especieTarjeta,
     flex: 1,
     color: COLOR_PDF.tinta,
@@ -99,7 +100,7 @@ export const tarjetaStyles = StyleSheet.create({
   },
   valor: {
     ...renglon,
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.dato,
     flex: 1,
     color: COLOR_PDF.tinta,
@@ -117,7 +118,7 @@ export const listadoStyles = StyleSheet.create({
     borderBottomColor: COLOR_PDF.oliva,
   },
   fila: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.fila,
     flexDirection: 'row',
     alignItems: 'flex-start',

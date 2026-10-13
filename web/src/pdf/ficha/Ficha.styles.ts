@@ -2,6 +2,7 @@ import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
 import { marcoDeMapa, puntoDeEspecie, rotuloEnMayusculas } from '../plantilla/comunes.styles';
 import {
+  altoDeRenglon,
   COLOR_PDF,
   ESTILO_FUENTE,
   FUENTE_PDF,
@@ -11,6 +12,7 @@ import {
 
 const { letra } = M;
 
+/** Valores de diseño de la ficha, una por hoja: ningún reparto de hojas los usa. */
 const INTERLINEADO = { titulo: 1.25, id: 1.2, dato: 1.35 } as const;
 
 const imagen = {
@@ -27,7 +29,7 @@ export const fichaStyles = StyleSheet.create({
   filaFoto: { marginBottom: M.huecoImagenes },
   texto: { width: M.anchoTexto, marginRight: M.huecoColumnas },
   filaEspecie: { flexDirection: 'row', alignItems: 'flex-start' },
-  punto: puntoDeEspecie(M.punto, letra.especie * INTERLINEADO.titulo),
+  punto: puntoDeEspecie(M.punto, altoDeRenglon(letra.especie, INTERLINEADO.titulo)),
   nombreEspecie: {
     flex: 1,
     fontWeight: PESO_FUENTE.semibold,
