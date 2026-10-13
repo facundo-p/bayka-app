@@ -196,6 +196,30 @@ describe('useTreeRegistration', () => {
       expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: null }));
     });
 
+    it('un segundo toque con la cámara abierta se ignora y registra un solo árbol', async () => {
+      mockLiveQueries({ captureConfig: CONFIG_FOTO });
+      // Como PhotoCropProvider: un pedido nuevo resuelve null el anterior.
+      let sacarFoto: (uri: string | null) => void = () => {};
+      pickPhoto.mockImplementation(() => new Promise((resolve) => {
+        sacarFoto(null);
+        sacarFoto = resolve;
+      }));
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        const toques = [
+          result.current.registerTree('esp-1', 'ANC'),
+          result.current.registerTree('esp-1', 'ANC'),
+        ];
+        sacarFoto(FOTO);
+        await Promise.all(toques);
+      });
+
+      expect(pickPhoto).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: FOTO }));
+    });
+
     it('en solo lectura no abre el selector aunque el flag esté prendido', async () => {
       mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada' }, captureConfig: CONFIG_FOTO });
       (canEdit as jest.Mock).mockReturnValue(false);
