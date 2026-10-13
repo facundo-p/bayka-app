@@ -4,6 +4,9 @@
  * `Buffer`, esa llamada lanza, react-pdf se traga el error y embebe el logo del
  * encabezado de nuevo en cada hoja. No se define un `Buffer` global porque
  * storage-js de Supabase, al verlo, lo usaría para codificar en base64.
+ *
+ * Se borra cuando react-pdf proteja ese `Buffer.isBuffer`: el test del plugin
+ * lo avisa.
  */
 import type { Plugin } from 'vite';
 
@@ -12,9 +15,14 @@ const LLAMADA_PROTEGIDA = `(typeof Buffer !== 'undefined' && ${LLAMADA})`;
 
 /** En dev, react-pdf llega pre-empaquetado en `.vite/deps/@react-pdf_renderer.js`. */
 const MODULO_REACT_PDF = 'react-pdf';
+/** En el build, el módulo que tiene que traer la llamada. */
+const MODULO_LAYOUT = /@react-pdf[\\/]layout[\\/]/;
+const ERROR_SIN_LLAMADA =
+  'react-pdf cambió fetchImage: revisá el parche de la clave de imagen (#875).';
 
 /** El código con la llamada protegida, o null si no la tiene. */
 export function protegerClaveDeImagen(codigo: string): string | null {
+  if (codigo.includes(LLAMADA_PROTEGIDA)) return codigo;
   return codigo.includes(LLAMADA) ? codigo.replaceAll(LLAMADA, LLAMADA_PROTEGIDA) : null;
 }
 
@@ -24,6 +32,8 @@ export const pluginClaveImagenPdf = (): Plugin => ({
   transform(codigo, id) {
     if (!id.includes(MODULO_REACT_PDF)) return null;
     const protegido = protegerClaveDeImagen(codigo);
+    // Sin la llamada, el parche dejaría de aplicarse sin que nadie lo note.
+    if (protegido === null && MODULO_LAYOUT.test(id)) this.error(ERROR_SIN_LLAMADA);
     // El reemplazo no cambia de renglón: el sourcemap anterior sigue sirviendo.
     return protegido && { code: protegido, map: null };
   },

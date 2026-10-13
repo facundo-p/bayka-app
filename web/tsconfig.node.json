@@ -17,6 +17,7 @@
     "vite.demo.config.ts",
     "constantesBuild.ts",
     "pluginReact.ts",
-    "pluginClaveImagenPdf.ts"
+    "pluginClaveImagenPdf.ts",
+    "pluginClaveImagenPdf.test.ts"
   ]
 }

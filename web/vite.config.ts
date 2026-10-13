@@ -47,6 +47,8 @@ export default defineConfig({
     // lógica pura que comparte con mobile.
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
+      // Los de la config de Vite, junto a sus archivos.
+      '*.test.ts',
       '../supabase/functions/**/*.test.ts',
       '../scripts/**/*.test.ts',
       '../shared/**/*.test.ts',
