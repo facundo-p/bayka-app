@@ -1,6 +1,6 @@
 import { Document } from '@react-pdf/renderer';
 import { Hoja } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import { TEXTO_PLANTILLA, type EmisionPdf } from '../plantilla/textos';
 import { ORIENTACION_HOJA } from '../plantilla/tokens';
 import { Escalon, NIVELES_DE_ESCALON } from './Escalon';
 import { documentoDeReporte, type ModeloArbolReporte, type ModeloTarjeta } from './datosReporte';
@@ -8,9 +8,7 @@ import { Listado } from './Listado';
 import { esHojaDeTarjetas, paginarReporte, type HojaReporte, type Reparto } from './planReporte';
 import { GrillaTarjetas } from './Tarjeta';
 
-export type DocumentoReporteProps = {
-  encabezado: EncabezadoPdf;
-  emitido: string;
+export type DocumentoReporteProps = EmisionPdf & {
   reparto: Reparto<ModeloTarjeta, ModeloArbolReporte>;
 };
 

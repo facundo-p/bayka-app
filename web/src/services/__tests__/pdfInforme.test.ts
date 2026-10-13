@@ -22,7 +22,10 @@ vi.mock('../descargas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../descargas')>()),
   descargarBlob: vi.fn(),
 }));
-vi.mock('../../pdf/informe/motorInforme', () => ({ renderizarInforme: vi.fn() }));
+vi.mock('../../pdf/informe/motorInforme', () => ({
+  emisionDePlantacion: vi.fn(),
+  renderizarInforme: vi.fn(),
+}));
 
 const PLANTACION = plantacion({
   lugar: 'San Sebastián',
@@ -32,6 +35,10 @@ const PLANTACION = plantacion({
   objetivoArboles: 8000,
 });
 const BLOB = new Blob(['%PDF']);
+const EMISION = {
+  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+  emitido: '12/10/2026',
+};
 
 const conteo = (parcelaId: string, cantidad: number) => ({
   parcelaId,
@@ -59,6 +66,7 @@ beforeEach(() => {
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue([]);
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([especieEnLugar('LAP', 2)]);
+  vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
   vi.mocked(motor.renderizarInforme).mockResolvedValue(BLOB);
 });
 
@@ -78,6 +86,8 @@ test('cubre la plantación entera, con la etiqueta del estado, y se descarga', a
   expect(pedido.plantacion).toMatchObject({ lugar: 'San Sebastián', estado: 'Activa' });
   expect(pedido.objetivo).toBe(8000);
   expect(pedido.organizacion).toBe('Bayka');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(pedido).toMatchObject(EMISION);
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'informe-san-sebastian-2025-2026.pdf');
 });
 
@@ -110,6 +120,7 @@ test('sin organización ni puntos legibles, el informe sale igual', async () => 
   await descargarInformePdf(PLANTACION, new QueryClient(), CON_MAPA);
   const pedido = vi.mocked(motor.renderizarInforme).mock.calls[0][0];
   expect(pedido.organizacion).toBeNull();
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, null);
   expect(pedido.puntos).toBeNull();
   expect(descargarBlob).toHaveBeenCalled();
 });

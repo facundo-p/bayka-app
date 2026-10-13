@@ -4,19 +4,15 @@
  * `import()`.
  */
 import type { QueryClient } from '@tanstack/react-query';
-import { formatearFechaCorta } from '../lib/fechas';
 import { nombreTecnicoDe } from '../lib/formato';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
-import {
-  leerArbolParaFicha,
-  leerNombreOrganizacion,
-  type ArbolParaFicha,
-} from '../queries/fichasQueries';
+import { leerArbolParaFicha, type ArbolParaFicha } from '../queries/fichasQueries';
 import { listarPuntosGps, type PuntoGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { ColorEspecie } from '../theme/coloresEspecie';
 import { coloresDeHabilitadas, leerEspeciesHabilitadas } from './coloresDePlantacion';
 import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
+import { leerOrganizacionDelEncabezado } from './encabezadoPdf';
 
 export type ContextoFichasPdf = {
   plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
@@ -47,12 +43,11 @@ function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<Pun
     .catch(() => []);
 }
 
-/** Sin organización legible, el encabezado lleva solo el código de la plantación. */
 function leerInsumos(arbolId: string, contexto: ContextoFichasPdf) {
   const { id } = contexto.plantacion;
   return Promise.all([
     leerArbolParaFicha(id, arbolId),
-    leerNombreOrganizacion(id).catch(() => null),
+    leerOrganizacionDelEncabezado(id),
     leerPuntos(contexto),
     leerEspeciesHabilitadas(contexto.queryClient, id),
     import('../pdf/ficha/motorFichas'),
@@ -87,10 +82,8 @@ async function generarPdfFicha(arbolId: string, contexto: ContextoFichasPdf) {
   const colorDe = coloresDeHabilitadas(especies);
   const nombres = contexto.nombresUsuario;
   const ficha = await prepararFicha(motor, arbol, { puntos, colorDe, nombres });
-  const logo = motor.logoNavegador();
-  const encabezado = motor.encabezadoDePlantacion(contexto.plantacion, organizacion, logo);
-  const emitido = formatearFechaCorta(new Date().toISOString());
-  return { blob: await motor.renderizarFichas({ encabezado, emitido, fichas: [ficha] }), arbol };
+  const emision = motor.emisionDePlantacion(contexto.plantacion, organizacion);
+  return { blob: await motor.renderizarFichas({ ...emision, fichas: [ficha] }), arbol };
 }
 
 /** `ficha-<lugar>-<periodo>-<subid>.pdf`. */

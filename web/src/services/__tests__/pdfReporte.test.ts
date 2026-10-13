@@ -30,14 +30,14 @@ vi.mock('../../pdf/reporte/motorReporte', () => ({
   cargarFotos: vi.fn(),
   datosTarjeta: vi.fn(),
   datosArbolReporte: vi.fn(),
-  encabezadoDePlantacion: vi.fn(),
-  logoNavegador: vi.fn(),
+  emisionDePlantacion: vi.fn(),
   renderizarReporte: vi.fn(),
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
 const BLOB = new Blob(['%PDF']);
 const ENCABEZADO = { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' };
+const EMISION = { encabezado: ENCABEZADO, emitido: '12/10/2026' };
 const FOTO_LISTA = { estado: 'lista', src: 'data:image/jpeg;base64,F' } as const;
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
 
@@ -65,8 +65,7 @@ beforeEach(() => {
   vi.mocked(motor.datosArbolReporte).mockImplementation(
     (arbol) => ({ idArbol: arbol.id }) as unknown as ModeloArbolReporte,
   );
-  vi.mocked(motor.encabezadoDePlantacion).mockReturnValue(ENCABEZADO);
-  vi.mocked(motor.logoNavegador).mockReturnValue('/logo.png');
+  vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
   vi.mocked(motor.renderizarReporte).mockResolvedValue(BLOB);
 });
 
@@ -127,10 +126,11 @@ test('avisa el progreso de la bajada de fotos y después el armado del PDF', asy
 
 test('el encabezado lleva la plantación y su organización; sin organización legible sale igual', async () => {
   await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka', '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(vi.mocked(motor.renderizarReporte).mock.lastCall![0]).toMatchObject(EMISION);
   vi.mocked(leerNombreOrganizacion).mockRejectedValue(new Error('rls'));
   await generarPdfReporte({ arboles: [sinFoto(1)], modo: MODO_REPORTE.conFotos }, contexto());
-  expect(motor.encabezadoDePlantacion).toHaveBeenLastCalledWith(PLANTACION, null, '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenLastCalledWith(PLANTACION, null);
 });
 
 test('los colores de especie son los de la plantación', async () => {

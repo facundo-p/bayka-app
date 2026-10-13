@@ -24,8 +24,7 @@ vi.mock('../../pdf/ficha/motorFichas', () => ({
   cargarFotos: vi.fn(),
   minimapaDeArbol: vi.fn(),
   datosFicha: vi.fn(),
-  encabezadoDePlantacion: vi.fn(),
-  logoNavegador: vi.fn(),
+  emisionDePlantacion: vi.fn(),
   renderizarFichas: vi.fn(),
 }));
 
@@ -38,6 +37,10 @@ const MAPA: MapaPdf = {
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
+const EMISION = {
+  encabezado: { logo: '/logo.png', titulo: 'San Sebastián · 2025-2026', detalle: 'SS26' },
+  emitido: '12/10/2026',
+};
 const ANC = especieDePlantacion({ id: 's1', codigo: 'ANC', nombre: 'Anchico', lugarColor: 1 });
 const TIM = especieDePlantacion({ id: 's2', codigo: 'TIM', nombre: 'Timbó', lugarColor: 0 });
 
@@ -62,7 +65,7 @@ beforeEach(() => {
   vi.mocked(listarEspeciesDePlantacion).mockResolvedValue([ANC, TIM]);
   vi.mocked(motor.cargarFotos).mockResolvedValue([{ estado: 'sin-foto' }]);
   vi.mocked(motor.minimapaDeArbol).mockResolvedValue(MAPA);
-  vi.mocked(motor.logoNavegador).mockReturnValue('/logo.png');
+  vi.mocked(motor.emisionDePlantacion).mockReturnValue(EMISION);
   vi.mocked(motor.renderizarFichas).mockResolvedValue(BLOB);
 });
 
@@ -83,7 +86,8 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
     mapa: MAPA,
     colorDe: expect.any(Function),
   });
-  expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka', '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka');
+  expect(motor.renderizarFichas).toHaveBeenCalledWith(expect.objectContaining(EMISION));
   expect(descargarBlob).toHaveBeenCalledWith(
     BLOB,
     'ficha-san-sebastian-2025-2026-lp12l10anc23.pdf',
@@ -109,7 +113,7 @@ test('sin organización ni puntos legibles, la ficha sale igual', async () => {
   vi.mocked(listarPuntosGps).mockRejectedValue(new Error('red'));
   await descargarFichaPdf('t1', contexto());
   expect(motor.minimapaDeArbol).toHaveBeenCalledWith(ARBOL, [], expect.any(Function));
-  expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, null, '/logo.png');
+  expect(motor.emisionDePlantacion).toHaveBeenCalledWith(PLANTACION, null);
   expect(descargarBlob).toHaveBeenCalled();
 });
 

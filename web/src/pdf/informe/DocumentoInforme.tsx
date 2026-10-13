@@ -2,7 +2,7 @@ import { Document, Image, Text, View } from '@react-pdf/renderer';
 import { LlamadaSatelite, NOTA_SATELITE } from '../mapa/LlamadaSatelite';
 import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import { TEXTO_PLANTILLA, type EmisionPdf } from '../plantilla/textos';
 import { CAJA_MAPA_INFORME } from '../plantilla/tokens';
 import type { ItemLeyenda, MapaDelInforme, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
@@ -19,9 +19,7 @@ export type MapaDelDocumento = {
   imagen: MapaInformePdf | null;
 };
 
-export type DocumentoInformeProps = {
-  encabezado: EncabezadoPdf;
-  emitido: string;
+export type DocumentoInformeProps = EmisionPdf & {
   modelo: ModeloInforme;
   /** null si no se eligió el mapa. */
   mapa: MapaDelDocumento | null;

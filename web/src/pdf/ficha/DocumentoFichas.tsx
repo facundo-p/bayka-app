@@ -2,15 +2,11 @@ import { Document } from '@react-pdf/renderer';
 import { NOTA_SATELITE } from '../mapa/LlamadaSatelite';
 import { esMapaSatelital } from '../mapa/estadoMapa';
 import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
-import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
+import { TEXTO_PLANTILLA, type EmisionPdf } from '../plantilla/textos';
 import { documentoDeFichas, type ModeloFicha } from './datosFicha';
 import { Ficha } from './Ficha';
 
-export type DocumentoFichasProps = {
-  encabezado: EncabezadoPdf;
-  emitido: string;
-  fichas: readonly ModeloFicha[];
-};
+export type DocumentoFichasProps = EmisionPdf & { fichas: readonly ModeloFicha[] };
 
 const NOTA_DE_SATELITE: NotaAlPie = { texto: NOTA_SATELITE, enHoja: () => true };
 
