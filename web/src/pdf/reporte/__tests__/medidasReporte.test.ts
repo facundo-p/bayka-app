@@ -2,6 +2,7 @@
 // desaparece sin que cambie la cantidad de hojas. Estas cuentas, con todo en un
 // renglón, lo atajan.
 import {
+  altoDeRenglon,
   ANCHO_DATOS_TARJETA,
   anchoDeColumna,
   CAJA_TARJETA,
@@ -46,7 +47,7 @@ test.each([
   ['fila del listado', TAMANO_TEXTO.filaListado, M.altoFilaListado],
   ['encabezado del listado', TAMANO_TEXTO.etiqueta, M.altoEncabezadoListado],
 ])('el renglón de %s entra en su alto', (_, tamano, alto) => {
-  expect(tamano * M.interlineado).toBeLessThanOrEqual(alto);
+  expect(altoDeRenglon(tamano)).toBeLessThanOrEqual(alto);
 });
 
 /** IBM Plex Mono: todos sus glifos avanzan 600/1000 de em. */

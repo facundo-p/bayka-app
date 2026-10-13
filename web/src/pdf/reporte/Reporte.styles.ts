@@ -1,6 +1,11 @@
 import { StyleSheet } from '@react-pdf/renderer';
 import { recuadroVacio } from '../arbol/PartesArbol.styles';
 import {
+  interlineadoDeRenglon,
+  puntoDeEspecie,
+  rotuloEnMayusculas,
+} from '../plantilla/comunes.styles';
+import {
   aireCentrado,
   ALTO_RENGLON_REPORTE as ALTO,
   CAJA_TARJETA,
@@ -18,24 +23,15 @@ import {
  */
 const renglon = UN_RENGLON;
 
-/**
- * Va junto al `fontSize`: react-pdf multiplica el interlineado por el tamaño del
- * mismo estilo, y sin él usa 18 pt y el renglón no entra en su caja.
- */
-const interlineado = { lineHeight: M.interlineado } as const;
-
 const mayusculas = {
-  ...interlineado,
-  fontSize: TAMANO_TEXTO.etiqueta,
-  color: COLOR_PDF.apagado,
-  textTransform: 'uppercase',
-  letterSpacing: M.espaciadoMayusculas,
+  ...interlineadoDeRenglon,
+  ...rotuloEnMayusculas(TAMANO_TEXTO.etiqueta),
 } as const;
 
 const recuadroFoto = {
   width: LADO_FOTO_TARJETA,
   height: LADO_FOTO_TARJETA,
-  borderRadius: M.radioFoto,
+  borderRadius: M.radioRecuadro,
 } as const;
 
 const celda = { ...renglon, flexBasis: 0, paddingHorizontal: M.rellenoCelda } as const;
@@ -43,15 +39,6 @@ const celda = { ...renglon, flexBasis: 0, paddingHorizontal: M.rellenoCelda } as
 const columna = (peso: number) => ({ ...celda, flexGrow: peso });
 
 const mono = LETRA_REPORTE.codigo;
-
-/** El punto de color, centrado en el primer renglón del nombre: si el nombre se parte, no baja. */
-const punto = (altoRenglon: number) => ({
-  width: M.punto,
-  height: M.punto,
-  borderRadius: M.punto / 2,
-  marginRight: M.aireTrasPunto,
-  marginTop: aireCentrado(altoRenglon, M.punto),
-});
 
 /** Lo que la tarjeta y la fila del listado pintan igual. */
 const deArbol = { codigo: { ...mono, color: COLOR_PDF.navy }, mono } as const;
@@ -73,11 +60,11 @@ export const tarjetaStyles = StyleSheet.create({
     borderRadius: M.radio,
   },
   foto: { ...recuadroFoto, objectFit: 'cover' },
-  vacio: { ...recuadroFoto, ...recuadroVacio, borderWidth: M.borde },
+  vacio: { ...recuadroFoto, ...recuadroVacio },
   textoVacio: { fontSize: TAMANO_TEXTO.secundario, color: COLOR_PDF.tenue },
   datos: { flex: 1, marginLeft: M.aireFoto },
   idArbol: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.idTarjeta,
     paddingBottom: M.altoIdArbol - ALTO.idTarjeta,
     color: COLOR_PDF.navy,
@@ -91,9 +78,9 @@ export const tarjetaStyles = StyleSheet.create({
     borderBottomWidth: M.borde,
     borderBottomColor: COLOR_PDF.linea,
   },
-  punto: punto(ALTO.especieTarjeta),
+  punto: puntoDeEspecie(M.punto, ALTO.especieTarjeta),
   nombreEspecie: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.especieTarjeta,
     flex: 1,
     color: COLOR_PDF.tinta,
@@ -113,7 +100,7 @@ export const tarjetaStyles = StyleSheet.create({
   },
   valor: {
     ...renglon,
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.dato,
     flex: 1,
     color: COLOR_PDF.tinta,
@@ -131,7 +118,7 @@ export const listadoStyles = StyleSheet.create({
     borderBottomColor: COLOR_PDF.oliva,
   },
   fila: {
-    ...interlineado,
+    ...interlineadoDeRenglon,
     ...LETRA_REPORTE.fila,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -148,7 +135,7 @@ export const listadoStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  punto: punto(ALTO.fila),
+  punto: puntoDeEspecie(M.punto, ALTO.fila),
   nombreEspecie: { flex: 1 },
   centrado: { textAlign: 'center' },
 });

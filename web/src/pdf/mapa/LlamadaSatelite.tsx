@@ -7,7 +7,7 @@ const LLAMADA = '*';
 /** La atribución que piden los términos de Esri, como nota al pie de la hoja del mapa. */
 export const NOTA_SATELITE = `${LLAMADA} ${CAPA_SATELITE.atribucion}`;
 
-/** Debajo de cada mapa con satélite: remite a la nota al pie. */
+/** Debajo de cada mapa con satélite: remite a la nota al pie. `style` fija el `top`, bajo la imagen. */
 export function LlamadaSatelite({ style }: { style: Styles[string] }) {
   return <Text style={[styles.llamada, style]}>{LLAMADA}</Text>;
 }

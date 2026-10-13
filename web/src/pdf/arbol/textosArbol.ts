@@ -9,8 +9,6 @@ export const TEXTO_ARBOL = {
   gps: 'GPS',
   sinFoto: 'Sin foto',
   fotoNoDisponible: 'Foto no disponible',
-  precision: '±',
-  metros: 'm',
   /** Entre el código y el nombre de una parcela o un grupo. */
   separadorCodigo: ' ',
 } as const;
