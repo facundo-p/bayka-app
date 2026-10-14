@@ -159,11 +159,19 @@ la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada, y
 `limpiarFotosQuitadas` la dispara todos los días
 `.github/workflows/supabase-limpiar-fotos.yml`, con los secrets
 `SUPABASE_SERVICE_ROLE_KEY_STAGING` y `SUPABASE_SERVICE_ROLE_KEY_PROD`. Tienen
-que ser la key `service_role` (JWT legacy) del proyecto: la función la compara
-con la `SUPABASE_SERVICE_ROLE_KEY` que inyecta la plataforma. Sin el secret, el
-job avisa y no hace nada.
+que ser la key `service_role` (JWT legacy) del proyecto. El gateway verifica la
+firma (`verify_jwt = true`, fijado en `supabase/config.toml`) y la función exige
+`role: service_role` en el payload (`esJwtDeServiceRole`). Comparar el token
+contra la `SUPABASE_SERVICE_ROLE_KEY` inyectada no coincide en estos proyectos
+(#924). Sin el secret, el job avisa y no hace nada.
 
-Si el proyecto rota la key legacy o migra a las API keys nuevas (`sb_secret_…`),
-hay que re-sincronizar los dos secrets de GitHub y verificar qué inyecta la
-plataforma en `SUPABASE_SERVICE_ROLE_KEY`: si no coincide con el secret, el cron
-recibe 403.
+Cargar un secret sin copiarlo a mano:
+
+```bash
+npx --yes supabase@2.116.0 projects api-keys --project-ref <ref> -o json \
+  | jq -r '.[] | select(.name == "service_role") | .api_key' | tr -d '\n' \
+  | gh secret set SUPABASE_SERVICE_ROLE_KEY_<STAGING|PROD> -R facundo-p/bayka-app
+```
+
+Si el proyecto rota la key legacy, hay que volver a cargar los dos secrets. Una
+`sb_secret_…` no sirve: no es un JWT y la función la rechaza.
