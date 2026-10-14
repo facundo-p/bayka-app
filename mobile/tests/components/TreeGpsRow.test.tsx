@@ -64,9 +64,11 @@ describe('TreeGpsRow', () => {
     expect(queryByText('Sin punto GPS')).toBeNull();
   });
 
-  it('capturando: spinner en lugar de la precisión', () => {
-    const { getByTestId, queryByTestId } = renderRow({ capturing: true, disabled: true });
+  it('capturando: spinner en lugar de la precisión y dice "Capturando" (#912)', () => {
+    const { getByTestId, getByText, queryByTestId, queryByText } = renderRow({ capturing: true, disabled: true });
     getByTestId('capture-gps-spinner');
+    getByText('Capturando');
+    expect(queryByText('Recapturar')).toBeNull();
     expect(queryByTestId('tree-gps-accuracy')).toBeNull();
   });
 

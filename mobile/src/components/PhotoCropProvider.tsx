@@ -7,7 +7,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import CameraCaptureView from './CameraCaptureView';
 import PhotoCropModal from './PhotoCropModal';
 import { launchGalleryRaw, type RawPhoto } from '../services/PhotoService';
-import type { PickPhoto } from '../services/photo/photoCaptureRules';
+import type { PickPhoto, PickPhotoOptions } from '../services/photo/photoCaptureRules';
+import { useAvisoPuntoGps } from '../hooks/useAvisoPuntoGps';
 
 /** gallery: la cámara ya se cerró y el picker del sistema está abierto. */
 const PHOTO_FLOW_STAGE = {
@@ -58,22 +59,22 @@ function useGalleryStage(flow: Flow | null, setFlow: SetFlow) {
 
 function usePickPhoto(setFlow: SetFlow) {
   // Fuera de flow: mantiene el texto mientras el Modal de la cámara se anima al cerrarse.
-  const [optional, setOptional] = useState(false);
+  const [options, setOptions] = useState<PickPhotoOptions>({});
   // Un pedido nuevo (p. ej. doble toque) resuelve null el anterior en vez de dejarlo colgado.
   const pickPhoto = useCallback<PickPhoto>((options) => new Promise((resolve) => {
-    setOptional(options?.optional ?? false);
+    setOptions(options ?? {});
     setFlow((previo) => {
       previo?.resolve(null);
       return { stage: PHOTO_FLOW_STAGE.camera, resolve };
     });
   }), [setFlow]);
   const value = useMemo(() => ({ pickPhoto }), [pickPhoto]);
-  return { value, optional };
+  return { value, optional: options.optional ?? false, puntoGps: options.puntoGps };
 }
 
 function usePhotoFlow() {
   const [flow, setFlow] = useState<Flow | null>(null);
-  const { value, optional } = usePickPhoto(setFlow);
+  const { value, optional, puntoGps } = usePickPhoto(setFlow);
   useGalleryStage(flow, setFlow);
 
   function finish(result: string | null) {
@@ -88,11 +89,12 @@ function usePhotoFlow() {
     setFlow((f) => (isStage(f, PHOTO_FLOW_STAGE.crop) ? { stage: PHOTO_FLOW_STAGE.camera, resolve: f.resolve } : f));
   }
 
-  return { flow, value, optional, finish, fromCamera, retry };
+  return { flow, value, optional, puntoGps, finish, fromCamera, retry };
 }
 
 export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
-  const { flow, value, optional, finish, fromCamera, retry } = usePhotoFlow();
+  const { flow, value, optional, puntoGps, finish, fromCamera, retry } = usePhotoFlow();
+  const avisoGps = useAvisoPuntoGps(puntoGps);
   const cropFlow = isStage(flow, PHOTO_FLOW_STAGE.crop) ? flow : null;
   return (
     <PhotoCropContext.Provider value={value}>
@@ -100,6 +102,7 @@ export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
       <CameraCaptureView
         visible={isStage(flow, PHOTO_FLOW_STAGE.camera)}
         optional={optional}
+        avisoGps={avisoGps}
         onCapture={(raw) => fromCamera((f) => ({ stage: PHOTO_FLOW_STAGE.crop, raw, resolve: f.resolve }))}
         onGallery={() => fromCamera((f) => ({ stage: PHOTO_FLOW_STAGE.gallery, resolve: f.resolve }))}
         onCancel={() => finish(null)}

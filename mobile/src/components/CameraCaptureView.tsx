@@ -15,6 +15,8 @@ import { colors, spacing } from '../theme';
 import { CAMERA_PREVIEW, cameraFrame, clamp, type Size } from '../utils/cropGeometry';
 import type { RawPhoto } from '../services/PhotoService';
 import CropMask from './CropMask';
+import AvisoPuntoGps from './AvisoPuntoGps';
+import type { AvisoPuntoGps as Aviso } from '../hooks/useAvisoPuntoGps';
 import { cameraCaptureStyles as styles, CAMERA_ICON_SIZE } from './CameraCaptureView.styles';
 
 /** Sensibilidad del pinch → cuánto suma al zoom (0..1) por cada unidad de escala. */
@@ -24,6 +26,8 @@ interface Props {
   visible: boolean;
   /** La foto es opcional: cancelar dice «Sin foto» (el registro sigue sin foto). */
   optional: boolean;
+  /** Avance del punto GPS del toque (#912); null = sin aviso. */
+  avisoGps?: Aviso | null;
   onCapture: (raw: RawPhoto) => void;
   onGallery: () => void;
   onCancel: () => void;
@@ -177,7 +181,7 @@ function useCameraPermissionOnOpen(visible: boolean) {
   return { permission, requestPermission };
 }
 
-export default function CameraCaptureView({ visible, optional, onCapture, onGallery, onCancel }: Props) {
+export default function CameraCaptureView({ visible, optional, avisoGps = null, onCapture, onGallery, onCancel }: Props) {
   const { permission, requestPermission } = useCameraPermissionOnOpen(visible);
   const { zoom, pinchGesture } = usePinchZoom(visible);
   const { cameraRef, capturing, takePicture } = useTakePicture(onCapture);
@@ -204,6 +208,7 @@ export default function CameraCaptureView({ visible, optional, onCapture, onGall
             </CameraView>
           </GestureDetector>
         )}
+        <AvisoPuntoGps aviso={avisoGps} />
       </GestureHandlerRootView>
     </Modal>
   );

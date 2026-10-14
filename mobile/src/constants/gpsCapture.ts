@@ -25,3 +25,6 @@ export const GPS_SIGNAL_UI_REFRESH_MS = 1_000;
 /** Config del watcher: mantiene el GPS caliente para el semáforo (la precisión al tap la resuelve `getCurrentGpsFix`). Frecuencia 0 inundaba el bridge y causaba el crash de inicio (#115); 1s alcanza. */
 export const GPS_WATCHER_TIME_INTERVAL_MS = 1_000;
 export const GPS_WATCHER_DISTANCE_INTERVAL_METERS = 0;
+
+/** Cuánto (ms) queda en la cámara el aviso de punto GPS resuelto antes de irse (#912). */
+export const GPS_AVISO_RESUELTO_MS = 2_000;
