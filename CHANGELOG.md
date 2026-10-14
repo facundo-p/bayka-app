@@ -10,7 +10,7 @@ contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 ## Sin publicar
-<!-- sincronizado-hasta: 5bf05c1 #909 -->
+<!-- sincronizado-hasta: 10207f2 #913 -->
 
 ### Web
 
@@ -89,6 +89,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - `runtimeVersion` con `policy: 'fingerprint'` y `fingerprint.config.js` (fuera `extra` y los scripts): un OTA con un módulo nativo nuevo ya no llega a un APK que no lo tiene; los APK instalados no reciben OTAs nuevos hasta instalar uno compilado con fingerprint (#698)
 - Grupo ajeno: `getTreeEditGating` da foto y GPS al creador y a admin/superadmin (`puedeEditarArbolesDelGrupo`, rol por `esRutaAdmin`); borrar árboles, cambiar especie y `getGroupGating` siguen siendo del creador. `updatePhoto`, `removePhoto`, `addPhotoToTree`, `captureTreeGps` y `updateTreePhoto` (`edicionDeArboles.ts`) chequean el permiso; `getSyncableGroups` y `getTreesWithPendingPhotos` filtran por quién sube (`subidorActual`) y el punto naranja y los contadores usan el mismo filtro (`useQuienSube`); un técnico resuelve en modo plantación solo los N/N de sus grupos (#797)
 - Con «Foto en todos los botones» la foto de las especies es opcional: `PHOTO_CAPTURE_REQUIRED_DEFAULT` y `contracts/photo-defaults.json` pasan a `false` (N/N sigue obligatoria), y `useTreeRegistration` ignora un segundo toque con la cámara abierta (#909)
+- El punto GPS se fija al toque, antes de la cámara: `capturarGpsAlTap` usa el fix del watcher si es reciente o pide uno en el instante, `insertTreeWithGps`/`attachGpsCapture` lo reciben, `gpsCapturedAt` es la hora del toque y con foto obligatoria sin foto se descarta. Si el punto no estaba al toque, `AvisoPuntoGps` lo muestra en la cámara («Tomando punto GPS…» → «Punto GPS tomado · ± N m» o «Sin punto GPS», por `GPS_AVISO_RESUELTO_MS`) y el botón de `TreeGpsRow` gira con «Capturando», también en la re-captura manual (#911, #913)
 - Fotos cuadradas de 1200×1200 (`PHOTO_SIDE`): `CameraCaptureView` muestra el preview entero en 4:3 con el marco cuadrado de `CropMask`, compartido con el recorte; `PhotoCropModal` y `cropGeometry` mantienen el 1:1 al mover y redimensionar sin salirse de la imagen; `cropResizeAndSave` recorta y redimensiona a 1200 por lado; `launchGalleryRaw` sin `allowsEditing`, así la galería entra al mismo recorte. Se van `isFullCrop` y el fallback a foto entera: un recorte fallido avisa y deja el recorte abierto, y una foto de galería sin tamaño vuelve a la cámara. `FotoDeConflicto` pasa a 120×120; las fotos existentes no se reprocesan (#836)
 
 #### Corregido

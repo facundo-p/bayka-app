@@ -9,7 +9,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · actualizado el 13 de octubre de 2026
-<!-- sincronizado-hasta: 5bf05c1 #909 -->
+<!-- sincronizado-hasta: 10207f2 #913 -->
 
 - **Cada plantación tiene su código.** Al crear o editar una plantación cargás
   un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
@@ -477,6 +477,18 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - En la cámara tocá «Sin foto»; después tocá N/N y «Cancelar».
   - Esperá ver: la especie registra un árbol sin foto, y N/N no registra
     nada.
+- **El punto GPS se toma al tocar el botón.** Con la captura GPS activa, el
+  punto del árbol queda donde estabas al tocar la especie o N/N, no donde
+  sacás la foto: podés alejarte para fotografiarlo con perspectiva. Si al
+  tocar el GPS todavía no tenía el punto, la cámara muestra «Tomando punto
+  GPS…» hasta que llega, y el botón de GPS del árbol dice «Capturando»
+  mientras tanto. <!-- #911 #913 -->
+  - En la app Bayka TEST, en una plantación con GPS en todos los árboles y
+    «Foto en todos los botones», tocá una especie parado junto al árbol.
+  - Alejate unos metros, sacá la foto y abrí ese árbol en la web de pruebas.
+  - Esperá ver: el punto donde tocaste el botón; con poca señal (GPS recién
+    prendido), el aviso en la cámara y «Capturando» en el botón de GPS hasta
+    que llega el punto.
 - **Las fotos salen cuadradas.** La cámara muestra un marco cuadrado con lo de
   afuera oscurecido y el recorte arranca en ese mismo cuadrado: lo movés o lo
   agrandás y sigue cuadrado. Las fotos de la galería pasan por el mismo
