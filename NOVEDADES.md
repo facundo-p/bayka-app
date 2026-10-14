@@ -11,6 +11,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 ## En pruebas · actualizado el 13 de octubre de 2026
 <!-- sincronizado-hasta: 10207f2 #913 -->
 
+### Web
+
 - **Cada plantación tiene su código.** Al crear o editar una plantación cargás
   un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
   formar el ID de sus árboles. Se ve en el listado y en el detalle, junto al
@@ -302,6 +304,9 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: la fila marcada con un borde azul, el detalle al costado y, al
     cerrarlo, el borde de vuelta en la misma fila; después de Cancelar, el
     foco en «⋯».
+
+### App
+
 - **Todos los datos de la plantación, desde la app.** Al crear o editar una
   plantación cargás lugar, periodo, fecha de inicio, objetivo de árboles,
   descripción, GPS obligatorio y su frecuencia, foto en todos los botones y si
@@ -665,6 +670,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 
 ## Web 1.4.0 · Mobile 1.3.0 · 24 de septiembre de 2026
 
+### Web
+
 - **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
   trabajo sin subir en algún celular, un superadmin puede volver a activarla
   desde «⋯ Más acciones»: la app acepta registros de nuevo y lo pendiente se
@@ -684,6 +691,9 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     aplicá.
   - Esperá ver: al recargar quedan exactamente las especies que elegiste, en el
     mismo orden en que las viste en pantalla.
+
+### App
+
 - **Asignar técnicos sin señal te avisa en vez de quedarse cargando.** En la
   app, la pantalla de asignar técnicos ya no se queda en "Cargando técnicos…"
   para siempre cuando no hay conexión.
@@ -711,6 +721,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     web, y otro celular lo ve igual después de sincronizar.
 
 ## Web 1.3.0 · Mobile 1.2.0 · 19 de septiembre de 2026
+
+### Web
 
 - **Archivá plantaciones sin borrarlas.** Desde «⋯ Más acciones» podés archivar
   una plantación: desaparece de los listados, de la búsqueda y de la temporada
@@ -783,6 +795,9 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     hacia los costados y después abrí una plantación → Configuración.
   - Esperá ver: el degradado del lado donde quedan columnas escondidas, que
     desaparece al llegar al final, y el texto de ayuda de cada sección entero.
+
+### App
+
 - **Plantación archivada en la app.** Si un administrador archiva una
   plantación, en la app queda en solo lectura con la franja "Plantación
   archivada" y no se ofrece para descargar. Lo que tengas sin subir sigue
@@ -867,6 +882,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: "Contraseña" con eñe y "¿Estás seguro?" con "Sí, eliminar".
 
 ## Web 1.2.0 · Mobile 1.1.0 · 16 de septiembre de 2026
+
+### Web
 
 - **Pedí foto en todos los botones de una plantación.** Desde Configuración
   podés hacer que los técnicos saquen foto al registrar cualquier especie, no
@@ -1001,6 +1018,9 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     y volvé a Usuarios sin recargar.
   - Esperá ver: la columna Plantaciones ya suma una. Para dejarlo como
     estaba, quitalo con la ✕ de su fila en Configuración.
+
+### App
+
 - **Foto en cada especie, si la plantación lo pide.** Con "Foto en todos los
   botones" activado, tocar cualquier especie abre el selector de foto antes de
   registrar el árbol, igual que N/N; si cancelás, el árbol no se registra.
@@ -1092,6 +1112,8 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   sigue en el teléfono y que le pidas a un administrador que la reabra.
 
 ## Web 1.1.0 · 21 de agosto de 2026
+
+### Web
 
 - **Mostrá u ocultá tu contraseña.** El inicio de sesión y los formularios de
   contraseña ahora tienen un botón con forma de ojo para ver lo que estás

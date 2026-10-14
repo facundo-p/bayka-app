@@ -90,7 +90,10 @@ lote de PRs de la misma área por agente. Cada uno devuelve por PR:
   sin efecto visible son `interno`. Lo que solo se ve con el entorno de pruebas
   (el banner, la etiqueta de build) es `solo-entorno-pruebas` → solo CHANGELOG.
   DB/RLS/seguridad → `### Otros`, y a NOVEDADES solo si el usuario nota el efecto.
-- **Qué nota el usuario**, en una o dos frases.
+- **Qué nota el usuario**, en una o dos frases, y **dónde**: web, app o las
+  dos. Eso decide la sección de NOVEDADES (`### Web` / `### App`, #918), no
+  los paths: un PR de `shared/` o de DB va donde se ve. Si se nota en las dos,
+  el ítem se escribe dos veces, una por sección, con los pasos de cada entorno.
 - **Evidencia** en `origin/staging`: `archivo:línea` de la ruta, el componente o
   el texto de UI que lo demuestra.
 - **Pasos**: dónde → qué hacer → "Esperá ver: …".
@@ -113,7 +116,8 @@ git diff origin/main origin/staging -- <archivos de la traza + los del PR nuevo>
 más la lectura del código actual. Resultado: se mantiene, se reescribe
 (traza += #N), se parte en dos, o **se borra** (el diff neto ya no muestra un
 cambio visible respecto de prod). Un PR visible que no afecta a nada es un
-ítem nuevo.
+ítem nuevo. Un ítem duplicado en Web y App se re-deriva en sus dos copias: si
+el cambio deja de verse en una plataforma, esa copia se borra.
 
 Reglas de fondo:
 

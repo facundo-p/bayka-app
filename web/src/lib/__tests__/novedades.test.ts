@@ -3,15 +3,19 @@ import { entradasVisibles, firmaNovedades } from '../novedades';
 
 const EN_PRUEBAS: EntradaNovedades = {
   titulo: 'En pruebas · próxima versión',
-  items: [],
+  general: [],
+  web: [],
+  app: [],
   sincronizadoHasta: '5930146 #374',
 };
 const PUBLICADA: EntradaNovedades = {
   titulo: 'Web 1.1.0 · 21 de agosto de 2026',
-  items: [
+  general: [{ detalle: 'Mejoras internas.' }],
+  web: [
     { titular: 'Con pasos.', detalle: 'Publicado.', pasos: ['Abrí la web.', 'Esperá ver: algo.'] },
     { detalle: 'Sin pasos.' },
   ],
+  app: [{ titular: 'En la app.', detalle: 'Con pasos.', pasos: ['Abrí Bayka TEST.'] }],
 };
 
 test('en staging se ven todas las entradas con sus pasos, la sección en pruebas incluida', () => {
@@ -23,12 +27,14 @@ test('en producción la sección en pruebas no se muestra aunque exista', () => 
 });
 
 // Los pasos quedan en el archivo para todas las versiones, pero son para quien prueba staging (#582).
-test('en producción las entradas publicadas se ven sin pasos', () => {
+test('en producción las entradas publicadas se ven sin pasos, en todas las plataformas', () => {
   const [publicada] = entradasVisibles([EN_PRUEBAS, PUBLICADA], false);
 
   expect(publicada).toEqual({
     titulo: PUBLICADA.titulo,
-    items: [{ titular: 'Con pasos.', detalle: 'Publicado.' }, { detalle: 'Sin pasos.' }],
+    general: [{ detalle: 'Mejoras internas.' }],
+    web: [{ titular: 'Con pasos.', detalle: 'Publicado.' }, { detalle: 'Sin pasos.' }],
+    app: [{ titular: 'En la app.', detalle: 'Con pasos.' }],
   });
 });
 
@@ -41,6 +47,6 @@ test('sin sección en pruebas la firma es solo la versión', () => {
 });
 
 test('una sección en pruebas sin marca no cambia la firma', () => {
-  const sinMarca = { titulo: EN_PRUEBAS.titulo, items: [] };
+  const sinMarca = { ...EN_PRUEBAS, sincronizadoHasta: undefined };
   expect(firmaNovedades('v1.1.0', [sinMarca, PUBLICADA])).toBe('v1.1.0');
 });

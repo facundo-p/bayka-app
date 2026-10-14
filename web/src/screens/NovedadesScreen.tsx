@@ -4,6 +4,8 @@ import { VERSION_APP } from '../lib/entorno';
 import { ENTRADAS } from '../lib/novedades';
 import {
   esEntradaEnPruebas,
+  PLATAFORMA,
+  PLATAFORMAS,
   type EntradaNovedades,
   type ItemNovedad,
 } from '../lib/parsearNovedades';
@@ -37,6 +39,42 @@ function ListaItems({ items }: { items: ItemNovedad[] }) {
   );
 }
 
+function ColumnaPlataforma({ rotulo, items }: { rotulo: string; items: ItemNovedad[] }) {
+  return (
+    <div className={styles.columna}>
+      <h3 className={styles.plataforma}>
+        {rotulo}{' '}
+        <span className={styles.cantidad} aria-hidden="true">
+          {items.length}
+        </span>
+      </h3>
+      <ListaItems items={items} />
+    </div>
+  );
+}
+
+/** Lo de toda la versión a lo ancho; debajo, una columna por plataforma con ítems (#918). */
+function ItemsDeEntrada({ entrada }: { entrada: EntradaNovedades }) {
+  const conItems = PLATAFORMAS.filter((plataforma) => entrada[plataforma].length > 0);
+  const columnas = conItems.length > 1 ? styles.columnas : styles.columnaUnica;
+  return (
+    <>
+      {entrada.general.length > 0 && <ListaItems items={entrada.general} />}
+      {conItems.length > 0 && (
+        <div className={columnas}>
+          {conItems.map((plataforma) => (
+            <ColumnaPlataforma
+              key={plataforma}
+              rotulo={PLATAFORMA[plataforma]}
+              items={entrada[plataforma]}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** Lo que ya está en staging y todavía no pasó a producción. */
 function CardEnPruebas({ entrada }: { entrada: EntradaNovedades }) {
   return (
@@ -49,7 +87,7 @@ function CardEnPruebas({ entrada }: { entrada: EntradaNovedades }) {
         Esto ya se puede usar acá y va a llegar a producción cuando se apruebe. Si algo no se
         comporta como dice, avisanos antes del pase.
       </p>
-      <ListaItems items={entrada.items} />
+      <ItemsDeEntrada entrada={entrada} />
     </Card>
   );
 }
@@ -58,7 +96,7 @@ function EntradaVista({ entrada }: { entrada: EntradaNovedades }) {
   if (esEntradaEnPruebas(entrada)) return <CardEnPruebas entrada={entrada} />;
   return (
     <Card title={entrada.titulo}>
-      <ListaItems items={entrada.items} />
+      <ItemsDeEntrada entrada={entrada} />
     </Card>
   );
 }
