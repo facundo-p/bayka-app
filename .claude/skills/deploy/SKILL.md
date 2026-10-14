@@ -256,6 +256,10 @@ git log --merges --first-parent --pretty='%h %s' $RANGE
 git log --no-merges --pretty='%h|%s' $RANGE -- web/ shared/
 git log --no-merges --pretty='%h|%s' $RANGE -- mobile/ shared/
 git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile' ':(exclude)shared'
+# Edge functions que cambian, separadas por espacio, para el <functions> del
+# checklist post-merge (solo carpetas; _shared no se deploya):
+git diff --name-only $RANGE -- supabase/functions \
+  | awk -F/ 'NF > 3 && $3 !~ /^_/ { print $3 }' | sort -u | tr '\n' ' '
 # Breaking changes declarados en el body:
 git log --no-merges --pretty='%h %s%n%b--END--' $RANGE | grep -B3 'BREAKING CHANGE' || true
 ```
@@ -370,6 +374,20 @@ Facu):
       npx --yes supabase@2.116.0 migration list --db-url "$PROD"
       npx --yes supabase@2.116.0 db push --dry-run --db-url "$PROD"
       ```
+- [ ] Si el release cambia `supabase/functions/**`: deployar a prod las
+      functions cambiadas apenas termina el push. Ningún workflow las deploya, y
+      una function vieja contra el schema nuevo falla (o al revés, si va antes
+      del push). `<functions>` es la lista del paso 1. Desde la raíz del
+      checkout principal, con main actualizado (deploya el código de esa
+      carpeta):
+
+      ```sh
+      npx --yes supabase@2.116.0 functions deploy <functions> \
+        --project-ref mgtaeogxzuavxrfhrefi --use-api
+      npx --yes supabase@2.116.0 functions list --project-ref mgtaeogxzuavxrfhrefi
+      ```
+
+      En el `list`, cada una con `updated_at` de recién y `version` +1.
 - [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
       → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
 - [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
