@@ -2,7 +2,7 @@
  * Integration tests: captura GPS al registrar árboles (issue #97).
  * updateTreeGps re-marca pendingSync del grupo aunque ya esté sincronizado,
  * porque el fix GPS puede resolver después de un push, y es no-op sobre un
- * árbol deshecho. attachGpsCapture usa el fix del watcher si está fresco o
+ * árbol deshecho. capturarGpsAlTap usa el fix del watcher si está fresco o
  * pide uno nuevo si no. insertTreeWithGps captura según la frecuencia
  * configurada por posición.
  */
@@ -43,6 +43,7 @@ jest.mock('../../src/utils/gpsLogger', () => ({
 import { updateTreeGps } from '../../src/repositories/TreeRepository';
 import {
   attachGpsCapture,
+  capturarGpsAlTap,
   insertTreeWithGps,
 } from '../../src/services/gps/gpsCaptureService';
 
@@ -158,7 +159,7 @@ describe('attachGpsCapture', () => {
     await seedTree('tree-1', 1);
     const tapAtMs = Date.now();
 
-    await attachGpsCapture('tree-1', watcherFix(0, tapAtMs), tapAtMs);
+    await attachGpsCapture('tree-1', capturarGpsAlTap(() => watcherFix(0, tapAtMs)));
 
     expect(mockGetCurrentGpsFix).not.toHaveBeenCalled();
     const [tree] = await mockTestDb.select().from(trees).where(eq(trees.id, 'tree-1'));
@@ -177,7 +178,7 @@ describe('attachGpsCapture', () => {
       timestamp: tapAtMs + 500,
     });
 
-    await attachGpsCapture('tree-1', watcherFix(GPS_FIX_MAX_AGE_MS + 1000, tapAtMs), tapAtMs);
+    await attachGpsCapture('tree-1', capturarGpsAlTap(() => watcherFix(GPS_FIX_MAX_AGE_MS + 1000, tapAtMs)));
 
     expect(mockGetCurrentGpsFix).toHaveBeenCalledTimes(1);
     const [tree] = await mockTestDb.select().from(trees).where(eq(trees.id, 'tree-1'));
@@ -190,7 +191,7 @@ describe('attachGpsCapture', () => {
     await seedTree('tree-1', 1);
     mockGetCurrentGpsFix.mockResolvedValue(null);
 
-    await expect(attachGpsCapture('tree-1', null, Date.now())).resolves.toBe(false);
+    await expect(attachGpsCapture('tree-1', capturarGpsAlTap())).resolves.toBe(false);
 
     const [tree] = await mockTestDb.select().from(trees).where(eq(trees.id, 'tree-1'));
     expect(tree.latitude).toBeNull();
@@ -203,7 +204,7 @@ describe('insertTreeWithGps (regla por posición, N=10)', () => {
     return insertTreeWithGps(
       { grupoId: GROUP_ID, grupoCodigo: 'L1', especieId: null, especieCodigo: 'NN', userId: 'user-tecnico-1' },
       10,
-      () => tapFix,
+      capturarGpsAlTap(() => tapFix),
     );
   }
 

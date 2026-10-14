@@ -11,7 +11,16 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
   updateTreePhoto: jest.fn(),
   quitarFotoDelArbol: jest.fn(),
   deleteTreeAndRecalculate: jest.fn(),
+  updateTreeGps: jest.fn(),
   RESULTADO_DE_QUITAR_FOTO: jest.requireActual('../../src/repositories/TreeRepository').RESULTADO_DE_QUITAR_FOTO,
+}));
+
+jest.mock('../../src/services/settings/gpsEnabledStore', () => ({
+  getGpsEnabled: () => true,
+}));
+
+jest.mock('../../src/services/gps/locationClient', () => ({
+  getCurrentGpsFix: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('../../src/repositories/GroupRepository', () => ({
@@ -38,10 +47,11 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getGroupById: jest.fn(),
 }));
 
-const { insertTree, deleteLastTree, updateTreePhoto, quitarFotoDelArbol } = require('../../src/repositories/TreeRepository');
+const { insertTree, deleteLastTree, updateTreePhoto, quitarFotoDelArbol, updateTreeGps } = require('../../src/repositories/TreeRepository');
 const { finalizeGroup, canEdit } = require('../../src/repositories/GroupRepository');
 const { useLiveData } = require('../../src/database/liveQuery');
 const { useTrees } = require('../../src/hooks/useTrees');
+const { getCurrentGpsFix } = require('../../src/services/gps/locationClient');
 
 import { renderHook, act } from '@testing-library/react-native';
 import { useTreeRegistration } from '../../src/hooks/useTreeRegistration';
@@ -231,6 +241,77 @@ describe('useTreeRegistration', () => {
 
       expect(pickPhoto).not.toHaveBeenCalled();
       expect(insertTree).not.toHaveBeenCalled();
+    });
+  });
+
+  // #910: el punto se fija al tocar el botón; alejarse a sacar la foto no lo mueve.
+  describe('punto GPS al toque', () => {
+    const CONFIG_GPS_Y_FOTO = { gpsFrequency: 1, gpsRequired: true, photoAllTrees: true };
+    const fixEn = (latitude: number) => ({ latitude, longitude: -60, accuracy: 2, timestamp: Date.now() });
+    let watcher = fixEn(-31);
+    const params = { ...DEFAULT_PARAMS, getLastGpsFix: () => watcher };
+
+    /** La foto se saca después de alejarse: el watcher ya marca otro lugar. */
+    function sacarFotoAlejado(resultado: string | null) {
+      pickPhoto.mockImplementation(async () => {
+        watcher = fixEn(-40);
+        return resultado;
+      });
+    }
+
+    beforeEach(() => {
+      watcher = fixEn(-31);
+      mockLiveQueries({ captureConfig: CONFIG_GPS_Y_FOTO });
+    });
+
+    async function registrar(fn: (r: ReturnType<typeof useTreeRegistration>) => Promise<void>) {
+      const { result } = renderHook(() => useTreeRegistration(params));
+      await act(async () => {
+        await fn(result.current);
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    }
+
+    it('con foto: el árbol queda con el punto del toque, no el de la foto', async () => {
+      sacarFotoAlejado(FOTO);
+
+      await registrar((r) => r.registerTree('esp-1', 'ANC'));
+
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: FOTO }));
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('"Sin foto" (opcional): registra el árbol con el punto del toque', async () => {
+      sacarFotoAlejado(null);
+
+      await registrar((r) => r.registerTree('esp-1', 'ANC'));
+
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: null }));
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('un segundo toque con la cámara abierta no pide GPS', async () => {
+      watcher = { ...fixEn(-31), timestamp: 0 };
+      let sacarFoto: (uri: string | null) => void = () => {};
+      pickPhoto.mockImplementation(() => new Promise((resolve) => { sacarFoto = resolve; }));
+
+      await registrar(async (r) => {
+        const toques = [r.registerTree('esp-1', 'ANC'), r.registerTree('esp-1', 'ANC')];
+        sacarFoto(FOTO);
+        await Promise.all(toques);
+      });
+
+      expect(getCurrentGpsFix).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledTimes(1);
+    });
+
+    it('N/N sin foto (obligatoria): no registra el árbol ni el punto', async () => {
+      sacarFotoAlejado(null);
+
+      await registrar((r) => r.registerNN());
+
+      expect(insertTree).not.toHaveBeenCalled();
+      expect(updateTreeGps).not.toHaveBeenCalled();
     });
   });
 
