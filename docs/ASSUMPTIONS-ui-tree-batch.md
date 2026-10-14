@@ -52,7 +52,7 @@ coherente con la arquitectura existente y se lista acá.
    Se expone `plantacionEstado` desde `useTreeRegistration` (antes sólo interno).
 4. **Nombre científico**: se agrega `nombreCientifico` al detalle vía una query
    nueva `getTreeDetail(treeId)` (join `species`), sin tocar `getTreesForGroup`.
-5. **Captura de foto y GPS**: se reutilizan `usePhotoCapture`,
+5. **Captura de foto y GPS**: se reutilizan `pickPhoto` (`usePhotoCaptureFlow`),
    `updateTreePhoto`, `updateTreeGps`/`recaptureTreeGps` y el watcher GPS de la
    pantalla. La captura GPS usa el último fix del watcher (mismo criterio que el
    alta de árbol); si no hay señal, se avisa sin crash.

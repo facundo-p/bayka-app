@@ -22,9 +22,10 @@ exports[`buildKml snapshot de la estructura completa 1`] = `
       <Folder>
         <name>Línea 1</name>
         <Placemark>
-          <name>PL1EUC1</name>
+          <name>PL1EUC1-SS26-1</name>
           <styleUrl>#especie-eucalipto</styleUrl>
-          <description>Especie: Eucalipto
+          <description>SubID: PL1EUC1
+Especie: Eucalipto
 Grupo: Línea 1
 Parcela: Lote A
 Posición: 1
@@ -33,9 +34,10 @@ Capturado: 2026-06-10T12:00:00</description>
           <Point><coordinates>-60.7,-31.5</coordinates></Point>
         </Placemark>
         <Placemark>
-          <name>PL1NN2</name>
+          <name>PL1NN2-SS26-1</name>
           <styleUrl>#especie-n-n</styleUrl>
-          <description>Especie: N/N
+          <description>SubID: PL1NN2
+Especie: N/N
 Grupo: Línea 1
 Parcela: Lote A
 Posición: 2
@@ -47,9 +49,10 @@ Capturado: 2026-06-10T12:00:00</description>
       <Folder>
         <name>Línea 2</name>
         <Placemark>
-          <name>PL2EUC1</name>
+          <name>PL2EUC1-SS26-1</name>
           <styleUrl>#especie-eucalipto</styleUrl>
-          <description>Especie: Eucalipto
+          <description>SubID: PL2EUC1
+Especie: Eucalipto
 Grupo: Línea 2
 Parcela: Lote A
 Posición: 1

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as busquedaArbol from '../../queries/busquedaArbol';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { useInvalidarConListado } from '../useInvalidarConListado';
 
@@ -31,4 +32,13 @@ test('sin clave invalida solo el listado', async () => {
 
   expect(invalidateQueries).toHaveBeenCalledTimes(1);
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+});
+
+test('reinicia la caché de códigos de plantación', async () => {
+  const reiniciar = vi.spyOn(busquedaArbol, 'reiniciarCacheCodigosPlantacion');
+  const { invalidar } = renderConEspia();
+
+  await invalidar();
+
+  expect(reiniciar).toHaveBeenCalledTimes(1);
 });

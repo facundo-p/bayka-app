@@ -2,9 +2,10 @@ import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export const readOnlyTreeViewStyles = StyleSheet.create({
-  reactivateBar: {
+  toolbar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
-    backgroundColor: colors.plantationBg, alignItems: 'flex-start',
+    backgroundColor: colors.plantationBg,
   },
   reactivateButton: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface,

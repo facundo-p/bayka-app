@@ -10,11 +10,18 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
+/** Etiqueta visible de cada estado: el badge y el informe PDF. */
+export const ETIQUETA_ESTADO_PLANTACION: Record<EstadoPlantacion, string> = {
+  [ESTADO_PLANTACION.activa]: 'Activa',
+  [ESTADO_PLANTACION.finalizada]: 'Finalizada',
+};
+
 /** Campos opcionales: de las migraciones 023 (GPS), 024, 035 (foto) y 038 (archivada), que pueden no estar aplicadas. */
-type FilaPlantacion = {
+export type FilaPlantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  codigo: string;
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app?: boolean | null;
@@ -31,6 +38,8 @@ export type Plantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  /** Único por organización; va en el ID de cada árbol (#559). */
+  codigo: string;
   estado: EstadoPlantacion;
   visibleInApp: boolean;
   gpsCaptureFrequency: number;
@@ -48,7 +57,11 @@ export type Plantacion = {
 export type PlantacionConStats = Plantacion & {
   arboles: number;
   parcelas: number;
-  usuarios: number;
+  puntosGps: number;
+  /** Solo las subidas: una foto local todavía no está en el bucket. */
+  fotos: number;
+  /** Ids de los técnicos asignados; los admins ven todas y no figuran. */
+  tecnicos: string[];
 };
 
 /** Campos del formulario de edición: null si la 024 no está aplicada. */
@@ -60,15 +73,23 @@ function camposFormulario(fila: FilaPlantacion) {
   };
 }
 
-/** Fila del RPC stats_plantaciones (migración 027). */
+/** Fila del RPC stats_plantaciones (migración 078). */
 type FilaStats = {
   plantation_id: string;
   arboles: number;
   parcelas: number;
-  usuarios: number;
+  puntos_gps: number;
+  fotos: number;
+  tecnicos: string[];
 };
 
-const SIN_STATS = { arboles: 0, parcelas: 0, usuarios: 0 };
+const SIN_STATS: Omit<FilaStats, 'plantation_id'> = {
+  arboles: 0,
+  parcelas: 0,
+  puntos_gps: 0,
+  fotos: 0,
+  tecnicos: [],
+};
 
 /** Una sola query agregada: counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
 async function statsPorPlantacion(): Promise<Map<string, FilaStats>> {
@@ -83,6 +104,7 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     id: fila.id,
     lugar: fila.lugar,
     periodo: fila.periodo,
+    codigo: fila.codigo,
     estado: fila.estado,
     visibleInApp: fila.visible_in_app ?? true,
     gpsCaptureFrequency: fila.gps_capture_frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT,
@@ -98,14 +120,19 @@ export function esArchivada(plantacion: Pick<Plantacion, 'archivadaEn'>): boolea
   return plantacion.archivadaEn !== null;
 }
 
+/** El código cambia el ID de los árboles: la base solo lo deja cambiar con la plantación activa y sin archivar. */
+export function codigoEsEditable(plantacion: Pick<Plantacion, 'estado' | 'archivadaEn'>): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.activa && !esArchivada(plantacion);
+}
+
 /** Lo que muestran las vistas globales: sin las archivadas. */
 export function sinArchivadas<T extends Pick<Plantacion, 'archivadaEn'>>(plantaciones: T[]): T[] {
   return plantaciones.filter((plantacion) => !esArchivada(plantacion));
 }
 
 function conStats(fila: FilaPlantacion, stats: Map<string, FilaStats>): PlantacionConStats {
-  const { arboles, parcelas, usuarios } = stats.get(fila.id) ?? SIN_STATS;
-  return { ...mapearPlantacion(fila), arboles, parcelas, usuarios };
+  const { arboles, parcelas, puntos_gps, fotos, tecnicos } = stats.get(fila.id) ?? SIN_STATS;
+  return { ...mapearPlantacion(fila), arboles, parcelas, puntosGps: puntos_gps, fotos, tecnicos };
 }
 
 /** Lista plantaciones ordenadas por lugar con sus contadores (2 requests). Incluye las

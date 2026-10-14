@@ -3,6 +3,10 @@ import { colors, fontSize, spacing, fonts } from '../theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+/** ✕ del visor: tamaño del ícono y ancho de su área táctil (ícono + padding a cada lado). */
+export const TAMANO_ICONO_CERRAR = 28;
+export const ANCHO_CERRAR = TAMANO_ICONO_CERRAR + spacing.md * 2;
+
 export const photoViewerStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -12,7 +16,6 @@ export const photoViewerStyles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
     right: spacing.xxl,
     zIndex: 10,
     padding: spacing.md,
@@ -20,6 +23,9 @@ export const photoViewerStyles = StyleSheet.create({
   image: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.8,
+  },
+  fotoRemota: {
+    width: SCREEN_WIDTH - spacing['4xl'] * 2,
   },
   actions: {
     position: 'absolute',
@@ -29,7 +35,6 @@ export const photoViewerStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.xxl,
-    paddingBottom: spacing['6xl'],
     paddingTop: spacing.xl,
   },
   actionBtn: {

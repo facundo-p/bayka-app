@@ -1,6 +1,7 @@
 /**
  * TreeDetailModal — detalle/edición de un árbol del listado de un grupo.
- * Foto y punto GPS se editan según el gating de `canEdit`/`canDelete`.
+ * Foto y punto GPS se editan según el gating de `canEdit`/`canDelete`; la especie,
+ * según `cambioDeEspecie` (#679).
  */
 import { useState } from 'react';
 import { Modal, View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
@@ -8,18 +9,39 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
-import { getSpeciesName } from '../utils/speciesHelpers';
 import PhotoViewer from './PhotoViewer';
+import ConfirmModal from './ConfirmModal';
+import { useConfirm } from '../hooks/useConfirm';
+import { showInfoDialog } from '../utils/alertHelpers';
+import type { ErrorSink } from '../hooks/useTreeRegistration';
+import type { ResultadoDeQuitarFoto } from '../repositories/TreeRepository';
+import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
+import { confirmarReemplazarFoto } from '../utils/avisoReemplazarFoto';
+import FotoRemota from './FotoRemota';
+import { isRemoteUri } from '../utils/photoUri';
+import type { CambioDeEspecie } from '../utils/permisosDeEdicion';
+import SeccionEspecie from './SeccionEspecie';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
+
+const MENSAJE_GPS_ERROR = 'No se pudo capturar el punto GPS.';
+
+type AccionDeFoto = (treeId: string, onError: ErrorSink) => Promise<void>;
+
+type QuitarFotoDelArbol = (treeId: string, confirmado: boolean, onError: ErrorSink) => Promise<ResultadoDeQuitarFoto>;
 
 interface Props {
   visible: boolean;
   treeId: string | null;
+  plantacionId: string;
   canEdit: boolean;
   canDelete: boolean;
+  cambioDeEspecie: CambioDeEspecie;
   onClose: () => void;
-  onCapturePhoto: (treeId: string) => Promise<void>;
-  onRemovePhoto: (treeId: string) => Promise<void>;
+  /** Reabre el grupo finalizado para poder cambiar la especie; true si quedó activo. */
+  onReabrirGrupo: () => Promise<boolean>;
+  /** Los errores se reportan por `onError`: el diálogo de la pantalla queda detrás de este Modal. */
+  onCapturePhoto: AccionDeFoto;
+  onRemovePhoto: QuitarFotoDelArbol;
   onCaptureGps: (treeId: string) => Promise<boolean>;
   onDelete: (treeId: string, posicion: number) => void;
 }
@@ -27,9 +49,12 @@ interface Props {
 export default function TreeDetailModal({
   visible,
   treeId,
+  plantacionId,
   canEdit,
   canDelete,
+  cambioDeEspecie,
   onClose,
+  onReabrirGrupo,
   onCapturePhoto,
   onRemovePhoto,
   onCaptureGps,
@@ -40,18 +65,41 @@ export default function TreeDetailModal({
   const [busyPhoto, setBusyPhoto] = useState(false);
   const [busyGps, setBusyGps] = useState(false);
   const [gpsFailed, setGpsFailed] = useState(false);
-  const [zoomUri, setZoomUri] = useState<string | null>(null);
+  const confirm = useConfirm();
+  // Ampliar la foto es solo lectura; abierto desde «Ver actual» del aviso, ofrece Reemplazar.
+  const [visor, setVisor] = useState<{ uri: string; reemplazable: boolean } | null>(null);
 
-  async function handleCapturePhoto() {
-    if (!tree) return;
+  const showError: ErrorSink = (mensaje) =>
+    showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
+
+  async function accionDeFoto(accion: AccionDeFoto, id: string) {
     setBusyPhoto(true);
-    try { await onCapturePhoto(tree.id); } finally { setBusyPhoto(false); }
+    try { await accion(id, showError); } finally { setBusyPhoto(false); }
   }
 
-  async function handleRemovePhoto() {
+  function handleCapturePhoto() {
     if (!tree) return;
+    const fotoActual = tree.fotoUrl;
+    if (!fotoActual) { void accionDeFoto(onCapturePhoto, tree.id); return; }
+    confirmarReemplazarFoto(confirm.show, { subId: tree.subId, fotoSynced: tree.fotoSynced ?? true }, {
+      onVerActual: () => setVisor({ uri: fotoActual, reemplazable: true }),
+      onConfirm: () => { void accionDeFoto(onCapturePhoto, tree.id); },
+    });
+  }
+
+  function reemplazarDesdeVisor() {
+    setVisor(null);
+    if (tree) void accionDeFoto(onCapturePhoto, tree.id);
+  }
+
+  async function quitarFoto(id: string, confirmado: boolean) {
     setBusyPhoto(true);
-    try { await onRemovePhoto(tree.id); } finally { setBusyPhoto(false); }
+    try { return await onRemovePhoto(id, confirmado, showError); } finally { setBusyPhoto(false); }
+  }
+
+  function handleRemovePhoto() {
+    if (!tree) return;
+    confirmarQuitarFoto(confirm.show, tree, (confirmado) => quitarFoto(tree.id, confirmado));
   }
 
   async function handleCaptureGps() {
@@ -61,6 +109,8 @@ export default function TreeDetailModal({
     try {
       const ok = await onCaptureGps(tree.id);
       if (!ok) setGpsFailed(true);
+    } catch (e) {
+      showError(e instanceof Error && e.message ? e.message : MENSAJE_GPS_ERROR);
     } finally {
       setBusyGps(false);
     }
@@ -84,22 +134,21 @@ export default function TreeDetailModal({
             <ActivityIndicator size="large" color={colors.plantation} />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.body}>
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Especie</Text>
-              <Text style={[styles.speciesName, tree.especieId === null && styles.speciesNN]}>
-                {getSpeciesName(tree)}
-              </Text>
-              {tree.especieNombreCientifico ? (
-                <Text style={styles.scientific}>{tree.especieNombreCientifico}</Text>
-              ) : null}
-              <Text style={styles.subId}>{tree.subId}</Text>
-            </View>
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            <SeccionEspecie
+              tree={tree}
+              plantacionId={plantacionId}
+              cambio={cambioDeEspecie}
+              onReabrirGrupo={onReabrirGrupo}
+              confirmar={confirm.show}
+            />
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Foto</Text>
-              {hasPhoto ? (
-                <Pressable onPress={() => setZoomUri(tree.fotoUrl!)} accessibilityLabel="Ampliar foto">
+              {isRemoteUri(tree.fotoUrl) ? (
+                <FotoRemota treeId={tree.id} storagePath={tree.fotoUrl} style={styles.photo} />
+              ) : hasPhoto ? (
+                <Pressable onPress={() => setVisor({ uri: tree.fotoUrl!, reemplazable: false })} accessibilityLabel="Ampliar foto">
                   <Image source={{ uri: tree.fotoUrl! }} style={styles.photo} resizeMode="cover" />
                 </Pressable>
               ) : (
@@ -179,7 +228,13 @@ export default function TreeDetailModal({
             )}
           </ScrollView>
         )}
-        <PhotoViewer uri={zoomUri} onClose={() => setZoomUri(null)} />
+        <PhotoViewer
+          uri={visor?.uri ?? null}
+          treeId={treeId ?? undefined}
+          onClose={() => setVisor(null)}
+          onReplace={visor?.reemplazable ? reemplazarDesdeVisor : undefined}
+        />
+        <ConfirmModal {...confirm.confirmProps} />
       </View>
     </Modal>
   );

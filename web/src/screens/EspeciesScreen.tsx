@@ -7,6 +7,7 @@ import { listarCatalogoConUso } from '../queries/especieQueries';
 import { EspeciesToolbar } from './especies/EspeciesToolbar';
 import { filtrarEspecies, FILTROS_INICIALES_ESPECIES, metaCatalogo } from './especies/filtros';
 import { ListadoEspecies, type Seleccion } from './especies/ListadoEspecies';
+import { PestanasEspecies } from './especies/PestanasEspecies';
 
 const TEXTOS: TextosConsulta = {
   error: 'No se pudieron cargar las especies.',
@@ -29,6 +30,7 @@ export function EspeciesScreen() {
       titulo="Especies"
       meta={consulta.data && metaCatalogo(consulta.data)}
       accion={{ etiqueta: 'Nueva especie', alActivar: () => setSeleccion({ especie: null }) }}
+      pestanas={<PestanasEspecies />}
       barra={<EspeciesToolbar controles={controles} visibles={visibles} />}
       consulta={consulta}
       textos={TEXTOS}

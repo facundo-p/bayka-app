@@ -1,11 +1,13 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
+import { filaPlantacion } from '../../test/fabricas';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import {
   esArchivada,
   listarPlantaciones,
   obtenerTemporadaActivaId,
   sinArchivadas,
+  type FilaPlantacion,
 } from '../plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -15,18 +17,19 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-const FILA_MENDOZA = {
+const FILA_MENDOZA = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
+  codigo: 'MD26',
   estado: 'activa',
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: false,
-};
+});
 
 test('mapea la fila a camelCase y agrega los counts', async () => {
   configurarPlantacionesMock([FILA_MENDOZA], {
-    'plant-1': { arboles: 120, parcelas: 3, usuarios: 2 },
+    'plant-1': { arboles: 120, parcelas: 3, puntos_gps: 40, fotos: 25, tecnicos: ['u-1'] },
   });
   const resultado = await listarPlantaciones();
   expect(resultado).toEqual([
@@ -34,6 +37,7 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       id: 'plant-1',
       lugar: 'Mendoza',
       periodo: '2025-2026',
+      codigo: 'MD26',
       estado: 'activa',
       visibleInApp: false,
       gpsCaptureFrequency: 10,
@@ -43,7 +47,9 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       createdAt: '2026-06-12T12:00:00Z',
       arboles: 120,
       parcelas: 3,
-      usuarios: 2,
+      puntosGps: 40,
+      fotos: 25,
+      tecnicos: ['u-1'],
       descripcion: null,
       fechaInicio: null,
       objetivoArboles: null,
@@ -82,7 +88,7 @@ test('mapea photo_capture_all_trees cuando la 035 está aplicada (sin columna as
 });
 
 test('sin visible_in_app (migración 024 no aplicada) asume visible', async () => {
-  const filaSinColumna: Record<string, unknown> = { ...FILA_MENDOZA };
+  const filaSinColumna: FilaPlantacion = { ...FILA_MENDOZA };
   delete filaSinColumna.visible_in_app;
   configurarPlantacionesMock([filaSinColumna]);
   const [plantacion] = await listarPlantaciones();
@@ -96,11 +102,23 @@ test('los contadores salen del RPC agregado, en una sola llamada', async () => {
     consultas.push(consulta);
     return consulta.tabla === 'plantations'
       ? { data: [FILA_MENDOZA], error: null }
-      : { data: [{ plantation_id: 'plant-1', arboles: 7, parcelas: 2, usuarios: 1 }], error: null };
+      : {
+          data: [
+            {
+              plantation_id: 'plant-1',
+              arboles: 7,
+              parcelas: 2,
+              puntos_gps: 3,
+              fotos: 1,
+              tecnicos: [],
+            },
+          ],
+          error: null,
+        };
   };
   const [plantacion] = await listarPlantaciones();
 
-  expect(plantacion).toMatchObject({ arboles: 7, parcelas: 2, usuarios: 1 });
+  expect(plantacion).toMatchObject({ arboles: 7, parcelas: 2, puntosGps: 3, fotos: 1 });
   const rpcs = consultas.filter((consulta) => consulta.operacion === 'rpc');
   expect(rpcs.map((consulta) => consulta.tabla)).toEqual(['stats_plantaciones']);
 });
@@ -108,7 +126,13 @@ test('los contadores salen del RPC agregado, en una sola llamada', async () => {
 test('plantación sin fila en el RPC (recién creada) muestra contadores en cero', async () => {
   configurarPlantacionesMock([FILA_MENDOZA], {});
   const [plantacion] = await listarPlantaciones();
-  expect(plantacion).toMatchObject({ arboles: 0, parcelas: 0, usuarios: 0 });
+  expect(plantacion).toMatchObject({
+    arboles: 0,
+    parcelas: 0,
+    puntosGps: 0,
+    fotos: 0,
+    tecnicos: [],
+  });
 });
 
 test('propaga el error de Supabase', async () => {

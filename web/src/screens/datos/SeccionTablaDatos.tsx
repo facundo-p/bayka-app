@@ -15,29 +15,46 @@ export interface TextosSeccion {
   /** Qué hace clickear una fila. */
   pie: string;
   vacio: string;
+  /** Tabla vacía por los filtros, ej. "Ningún grupo coincide con los filtros". */
+  vacioConFiltros: string;
+}
+
+/** Lo que acota la sección, con cuánto hay puesto y cómo limpiarlo. */
+export interface FiltrosSeccion {
+  activos: number;
+  onLimpiar: () => void;
 }
 
 interface TablaSeccionProps<T> {
   textos: TextosSeccion;
   columnas: Array<TableColumn<T>>;
   onRowClick: (fila: T) => void;
-  /** Solo con filtros activos: la tabla vacía ofrece limpiarlos. */
-  vacioConFiltros?: { mensaje: string; onLimpiar: () => void };
+  /**
+   * Lo que explica una tabla vacía y ofrece limpiar: la búsqueda, que en Grupos
+   * se limpia sin soltar la parcela en scope.
+   */
+  filtrosVacio: FiltrosSeccion;
 }
 
 interface SeccionTablaDatosProps<T> extends TablaSeccionProps<T> {
   segmento: SegmentoDatos;
+  /** Los filtros del panel, que cuenta y limpia la toolbar. */
+  filtros?: FiltrosSeccion;
   /** Todas las queries de la sección: si una falla, falla la sección. */
   consultas: EstadoConsulta[];
   filas: T[] | undefined;
-  /** Filtros de la sección, en línea dentro de la toolbar. */
+  /** Buscador de la sección, a la vista en la toolbar. */
+  busqueda?: ReactNode;
+  /** Filtros de la sección, en el panel de filtros de la toolbar. */
   children?: ReactNode;
 }
 
 function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { filas: T[] }) {
-  const { filas, textos, columnas, onRowClick, vacioConFiltros } = props;
+  const { filas, textos, columnas, onRowClick, filtrosVacio } = props;
   const visibles = useColumnasVisibles(columnas);
-  if (filas.length === 0 && vacioConFiltros) return <VacioConFiltros {...vacioConFiltros} />;
+  if (filas.length === 0 && filtrosVacio.activos > 0) {
+    return <VacioConFiltros mensaje={textos.vacioConFiltros} onLimpiar={filtrosVacio.onLimpiar} />;
+  }
   return (
     <CardTabla pie={textos.pie}>
       <Table
@@ -53,7 +70,7 @@ function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { 
 
 /** Toolbar + tabla de una sección de Datos, con sus estados de carga, error y vacío. */
 export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaDatosProps<T>) {
-  const { segmento, consultas, filas, children, ...tabla } = props;
+  const { segmento, consultas, filas, busqueda, children, filtros, ...tabla } = props;
   if (algunaConError(consultas)) {
     return (
       <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />
@@ -63,7 +80,13 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
   const cuerpo = filas ? <TablaSeccion filas={filas} {...tabla} /> : null;
   return (
     <>
-      <DatosToolbar segmento={segmento} recuento={recuento}>
+      <DatosToolbar
+        segmento={segmento}
+        busqueda={busqueda}
+        recuento={recuento}
+        filtrosActivos={filtros?.activos}
+        onLimpiar={filtros?.onLimpiar}
+      >
         {children}
       </DatosToolbar>
       {cuerpo ?? <Cargando label={tabla.textos.cargando} />}

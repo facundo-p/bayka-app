@@ -7,9 +7,22 @@ import { fetchAllRows } from './paginate';
 import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
+import { reapuntarCambiosDeEspecie } from '../../repositories/CambiosDeEspeciesRepository';
+import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../../shared/tiposEspecie';
 
-/** Fila de especie del server, normalizada a los nombres del schema local. */
-type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cientifico?: string | null; created_at: string };
+/**
+ * Fila de especie del server, normalizada a los nombres del schema local. Tipo y subtipo faltan
+ * en un server anterior a #752: la especie toma la clasificación por defecto.
+ */
+type ServerSpecies = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  nombre_cientifico?: string | null;
+  tipo?: TipoEspecie;
+  subtipo?: SubtipoEspecie;
+  created_at: string;
+};
 
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'update' | 'delete' | 'select'>;
@@ -18,7 +31,7 @@ const GUARDADO = { upserted: 'upserted', reconciled: 'reconciled', skipped: 'ski
 type Guardado = typeof GUARDADO[keyof typeof GUARDADO];
 type ConteoDeGuardado = Record<Guardado, number>;
 
-/** Upsert de especies del server por `id` (clave estable entre devices) en un statement; actualiza codigo/nombre/cientifico en conflicto. */
+/** Upsert de especies del server por `id` (clave estable entre devices) en un statement; en conflicto actualiza todo salvo `created_at`. */
 async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Promise<void> {
   if (filas.length === 0) return;
   await exec.insert(species).values(filas.map((s) => ({
@@ -26,6 +39,8 @@ async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Prom
     codigo: s.codigo,
     nombre: s.nombre,
     nombreCientifico: s.nombre_cientifico ?? null,
+    tipo: s.tipo ?? TIPOS_ESPECIE.porDefecto.tipo,
+    subtipo: s.subtipo ?? TIPOS_ESPECIE.porDefecto.subtipo,
     createdAt: s.created_at,
   }))).onConflictDoUpdate({
     target: species.id,
@@ -33,6 +48,8 @@ async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Prom
       codigo: sql`excluded.codigo`,
       nombre: sql`excluded.nombre`,
       nombreCientifico: sql`excluded.nombre_cientifico`,
+      tipo: sql`excluded.tipo`,
+      subtipo: sql`excluded.subtipo`,
     },
   });
 }
@@ -59,8 +76,9 @@ async function reapuntarEspeciesDePlantacion(tx: DbExecutor, desde: string, haci
 /** Pasa las referencias de una especie a otra que ya existe en `species`. */
 async function reapuntarReferencias(tx: DbExecutor, desde: string, hacia: string): Promise<void> {
   await tx.update(trees).set({ especieId: hacia }).where(eq(trees.especieId, desde));
-  await tx.update(trees).set({ conflictEspecieId: hacia }).where(eq(trees.conflictEspecieId, desde));
+  await tx.update(trees).set({ especieBaseId: hacia }).where(eq(trees.especieBaseId, desde));
   await reapuntarEspeciesDePlantacion(tx, desde, hacia);
+  await reapuntarCambiosDeEspecie(tx, desde, hacia);
   // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
   // solo orden visual, se borra la referencia vieja.
   await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, desde));

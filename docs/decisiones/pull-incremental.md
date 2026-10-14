@@ -108,12 +108,13 @@ proyecto son `trg_add_admin_memberships`, `trg_protect_profile_fields`,
 **Un watermark sobre `created_at` sería incorrecto**, no solo incompleto: hay tres
 caminos que mutan árboles existentes sin tocar ninguna columna de tiempo.
 
-1. `sync_subgroup` actualiza `species_id`, `sub_id`, `foto_url`, `global_id` y los
-   cuatro campos de GPS (`supabase/baseline_schema.sql:318-327`).
+1. `sync_subgroup` actualiza `species_id`, `sub_id`, `foto_url` y los cuatro
+   campos de GPS (`supabase/baseline_schema.sql:318-327`; hasta #822, también
+   `global_id`).
 2. La subida de foto hace `UPDATE trees SET foto_url`
    (`mobile/src/services/sync/photoService.ts:30-33`).
-3. `generate_tree_ids` actualiza `global_id`/`plantacion_id`
-   (`supabase/migrations/032_ids_helpers.sql:78`).
+3. `generate_tree_ids` actualizaba `global_id`/`plantacion_id`
+   (`supabase/migrations/032_ids_helpers.sql:78`); dropeado en #859.
 
 Un device filtrando por `created_at` no vería ninguna de las tres. La resolución
 de especie de otro técnico, por ejemplo, no llegaría nunca.
@@ -133,7 +134,7 @@ sigue full y no hay nada que arreglar.
 | `groups` | **incremental** | Segunda en peso, mismo cambio |
 | `parcelas` | full | Pocas filas; su `updated_at` es del reloj del device |
 | `plantation_users` | full — **no se puede** | El replace destructivo detecta revocados por diferencia de conjuntos (`pullService.ts:293-320`): necesita la lista completa |
-| `plantation_species` | full — **no se puede** | Cero columnas de tiempo, y `saveSpeciesConfig` es delete-all + re-insert |
+| `plantation_species` | full — **no se puede** | Cero columnas de tiempo, y el pull quita las especies ausentes por diferencia de conjuntos (#632): necesita la lista completa |
 | `species` | full | Catálogo global chico |
 
 Las dos que no se pueden son justamente las chicas. No se pierde nada.
@@ -159,12 +160,11 @@ Pull full **a pedido** (un botón "resincronizar todo" que pone los watermarks e
 "divergencia silenciosa": cualquier desfasaje que se cuele tiene fecha de
 vencimiento en vez de ser permanente.
 
-### El chequeo de conflicto de especie ya es compatible
+### La especie de los árboles ya es compatible
 
 El issue lo marcaba como riesgo: `checkTreeConflict` asumía ver todas las filas.
-Después de #449 no: lee los árboles **locales** de esos grupos de una vez y cruza
-contra las filas remotas recibidas. Un árbol remoto que no llega simplemente no se
-evalúa — que es lo correcto, porque no cambió. No hay nada que adaptar.
+Desde #679 el pull no chequea conflictos de especie: adopta la del server en los
+grupos sin cambios locales. Un árbol remoto que no llega no cambió.
 
 ### Un device que estuvo meses sin sincronizar
 

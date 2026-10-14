@@ -1,27 +1,21 @@
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, fonts } from '../theme';
+import { colors, fontSize, spacing, fonts, letterSpacing } from '../theme';
 
 export const plantationFormModalStyles = StyleSheet.create({
-  switchRow: {
+  fila: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.md,
-    marginTop: spacing.sm,
   },
-  switchLabels: {
+  columna: {
     flex: 1,
   },
-  switchLabel: {
-    fontSize: fontSize.md,
-    fontFamily: fonts.semiBold,
-    color: colors.textPrimary,
-  },
-  switchHelper: {
+  grupoTitulo: {
     fontSize: fontSize.sm,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    marginTop: 2,
+    fontFamily: fonts.semiBold,
+    color: colors.textSectionTitle,
+    textTransform: 'uppercase',
+    letterSpacing: letterSpacing.wide,
+    marginBottom: spacing.md,
   },
   errorText: {
     fontSize: fontSize.sm,

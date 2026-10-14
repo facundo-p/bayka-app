@@ -57,13 +57,14 @@ describe('Formularios de creación usan el template compartido', () => {
   });
 });
 
-describe('GrupoForm comparte estado vía useGrupoForm', () => {
-  const src = readSrc('components/GrupoForm.tsx');
+describe('EditarGrupoModal usa el template de formularios', () => {
+  const src = readSrc('components/EditarGrupoModal.tsx');
 
-  it('usa useGrupoForm + GrupoFields + FormActions (sin StyleSheet inline)', () => {
+  it('compone EntityFormModal + useGrupoForm + GrupoFields + FormActions', () => {
+    expect(src).toContain('EntityFormModal');
     expect(src).toContain('useGrupoForm');
     expect(src).toContain('GrupoFields');
-    expect(src).toContain('FormActions');
-    expect(src).not.toContain('StyleSheet.create');
+    expect(src).toMatch(/footer=\{\s*<FormActions/);
+    expect(src).not.toContain('KeyboardAvoidingView');
   });
 });

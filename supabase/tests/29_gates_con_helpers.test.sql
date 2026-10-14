@@ -1,7 +1,6 @@
--- Los dos gates que 051 pasó a helpers y el DELETE que sacó (#314).
--- El gate de `generate_tree_ids` ya lo cubre el test 04 entero (técnico, otra
--- organización, admin inactivo, inexistente, archivada); acá va lo que no
--- tenía ninguna red: el cambio de rol del trigger y el borrado de parcelas.
+-- Lo que 051 pasó a helpers o sacó (#314): el gate del cambio de rol en el
+-- trigger y el borrado de parcelas. El otro gate, el de `generate_tree_ids`, se
+-- dropeó en 081.
 begin;
 select plan(9);
 
@@ -24,9 +23,8 @@ update profiles set rol = 'superadmin', activo = false,
 update profiles set organizacion_id = 'b2900000-0000-0000-0000-000000000001'
   where id = 'b2900000-0000-0000-0000-0000000000a4';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
-  ('b2900000-0000-0000-0000-000000000002', 'b2900000-0000-0000-0000-000000000001',
-   'Plantación 29', '2026', 'b2900000-0000-0000-0000-0000000000a1');
+select tests.crear_plantacion('b2900000-0000-0000-0000-000000000002', 'b2900000-0000-0000-0000-000000000001',
+  'b2900000-0000-0000-0000-0000000000a1', 'Plantación 29');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2900000-0000-0000-0000-000000000002', 'b2900000-0000-0000-0000-0000000000a4', 'tecnico');
@@ -102,6 +100,8 @@ select is(
   'un miembro ya no puede borrar físicamente una parcela'
 );
 
+-- El tombstone es de admin desde 056 (#640).
+select set_config('request.jwt.claim.sub', 'b2900000-0000-0000-0000-0000000000a1', true);
 select lives_ok(
   $$ update parcelas set deleted_at = now()
      where id = 'b2900000-0000-0000-0000-000000000003' $$,

@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BuscadorEspecies, MaestroEspecies, SpeciesChecklist } from '../../components';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
+import { porNombre } from '../../lib/ordenEspecies';
 import { listarEspeciesConUso } from '../../queries/especieQueries';
 import { CabeceraConfig } from './CabeceraConfig';
 import { CardConfig } from './CardConfig';
@@ -14,7 +16,7 @@ import styles from './SeccionesConfig.module.css';
 const TITULO = 'Especies habilitadas';
 const SUBTITULO = 'Definen la botonera de registro en la app';
 const PIE =
-  'Las especies con árboles registrados no se pueden desmarcar. El orden en la app es el orden de alta.';
+  'Las especies con árboles registrados no se pueden desmarcar. En la app se ordenan por nombre.';
 
 type Checklist = ReturnType<typeof useChecklistEspecies>;
 
@@ -54,13 +56,15 @@ function AvisosEspecies({ checklist }: { checklist: Checklist }) {
 
 function ContenidoEspecies(datos: DatosChecklist) {
   const checklist = useChecklistEspecies(datos);
+  // Mismo orden que la botonera de la app (#635).
+  const catalogo = useMemo(() => porNombre(datos.catalogo), [datos.catalogo]);
   const chip = chipEspecies(datos.especies.length, datos.catalogo.length);
   return (
     <>
       <CabeceraEspecies checklist={checklist} chip={chip} />
       <div className={styles.cuerpoEspecies}>
         <SpeciesChecklist
-          catalogo={datos.catalogo}
+          catalogo={catalogo}
           habilitadas={checklist.contexto.habilitadas}
           bloqueadas={checklist.contexto.bloqueadas}
           onToggle={checklist.alternar}

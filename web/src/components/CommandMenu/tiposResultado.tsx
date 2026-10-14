@@ -1,4 +1,13 @@
-import { Box, Leaf, MapPin, Sprout, TreePine, User, type LucideIcon } from 'lucide-react';
+import {
+  Box,
+  Leaf,
+  MapPin,
+  Microscope,
+  Sprout,
+  TreePine,
+  User,
+  type LucideIcon,
+} from 'lucide-react';
 import type { TipoResultado } from '../../queries/buscarQueries';
 
 /** Etiqueta del encabezado del grupo y su ícono por tipo de entidad. */
@@ -10,6 +19,7 @@ const META_POR_TIPO: Record<TipoResultado, MetaTipo> = {
   grupo: { etiqueta: 'Grupos', Icono: Box },
   arbol: { etiqueta: 'Árboles', Icono: TreePine },
   especie: { etiqueta: 'Especies', Icono: Leaf },
+  especieCientifica: { etiqueta: 'Especies científicas', Icono: Microscope },
   usuario: { etiqueta: 'Usuarios', Icono: User },
 };
 
@@ -20,6 +30,7 @@ export const ORDEN_TIPOS: TipoResultado[] = [
   'grupo',
   'arbol',
   'especie',
+  'especieCientifica',
   'usuario',
 ];
 

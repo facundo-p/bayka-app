@@ -106,8 +106,8 @@ nueva la agrega acá.
 - **A21 — Creación de plantaciones** con paridad mobile: estado inicial
   `activa`, organización tomada del perfil del creador, y parcela default
   `P1 / Parcela 1` (mismo comportamiento que el flag AUTO_PARCELA de mobile).
-- **A22 — La web no permite finalizar plantaciones ni generar IDs** en v1: ese
-  flujo (gate de finalización + seed de global_id) ya existe en mobile y
+- **A22 — La web no permite finalizar plantaciones** en v1: ese
+  flujo (gate de finalización) ya existe en mobile y
   duplicarlo sin los checks locales sería riesgoso. Editar `estado` queda fuera
   del formulario web.
 - **A23 — Explorador de datos read-only.** Parcelas/grupos/árboles se visualizan

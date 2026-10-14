@@ -4,6 +4,7 @@ import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -12,12 +13,23 @@ vi.mock('../../lib/supabase', async () => {
 
 // Leaflet usa APIs de layout que jsdom no implementa: se reemplaza el mapa por
 // un contenedor tonto que expone lo que recibe, para poder afirmar sobre el filtro.
+interface MapaFalsoProps {
+  puntos: unknown[];
+  parcelaFiltro?: string;
+  especieFiltro?: string;
+  leyenda: { codigo: string; color: string }[];
+}
+
 vi.mock('../../components/PlantationMap', () => ({
-  PlantationMap: ({ puntos, parcelaFiltro }: { puntos: unknown[]; parcelaFiltro?: string }) => (
+  PlantationMap: ({ puntos, parcelaFiltro, especieFiltro, leyenda }: MapaFalsoProps) => (
     <div>
       Mapa de la plantación
       <span data-testid="puntos-en-mapa">{puntos.length}</span>
       <span data-testid="parcela-filtro">{parcelaFiltro ?? '-'}</span>
+      <span data-testid="especie-filtro">{especieFiltro ?? '-'}</span>
+      <span data-testid="colores-mapa">
+        {leyenda.map(({ codigo, color }) => `${codigo}:${color}`).join(' ')}
+      </span>
     </div>
   ),
 }));
@@ -28,7 +40,7 @@ vi.mock('../../components/PlantationMap', () => ({
  *  tiempo. Es un timeout por espera, no el global de vitest. */
 const ESPERA_RUTA_MS = 5000;
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
@@ -36,28 +48,25 @@ const FILA_PLANTACION = {
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: true,
   objetivo_arboles: 10,
-};
+});
 
-const ARBOL_BASE = {
+const CONTEO_BASE = {
+  parcela_id: 'parc-1',
   species_id: 'sp-1',
-  foto_url: 'plantations/p1/trees/t1.jpg',
-  created_at: '2026-06-03T12:00:00Z',
-  latitude: -27.1,
-  longitude: -55.2,
-  group_id: 'gr-1',
-  groups: { plantation_id: 'plant-1', parcela_id: 'parc-1' },
+  mes: '2026-06',
+  con_gps: true,
+  con_foto: true,
+  cantidad: 1,
 };
 
-/** 5 árboles: 3 con GPS (60%), 2 con foto subida (40%), 1 N/N, 2 especies.
- *  Repartidos 3 en parc-1 (67% GPS, 67% foto, el N/N) y 2 en parc-2 (50% GPS,
- *  0% foto), para que filtrar mueva los números. */
-const EN_PARC_2 = { groups: { plantation_id: 'plant-1', parcela_id: 'parc-2' } };
-const FILAS_ARBOLES = [
-  ARBOL_BASE,
-  ARBOL_BASE,
-  { ...ARBOL_BASE, ...EN_PARC_2, species_id: 'sp-2', foto_url: 'file:///data/foto.jpg' },
-  { ...ARBOL_BASE, ...EN_PARC_2, latitude: null, longitude: null, foto_url: null },
-  { ...ARBOL_BASE, species_id: null, latitude: null, longitude: null, foto_url: null },
+/** Conteos de `dashboard_arboles` para 5 árboles: 3 con GPS (60%), 2 con foto
+ *  subida (40%), 1 N/N, 2 especies. Repartidos 3 en parc-1 (67% GPS, 67% foto,
+ *  el N/N) y 2 en parc-2 (50% GPS, 0% foto), para que filtrar mueva los números. */
+const CONTEOS_ARBOLES = [
+  { ...CONTEO_BASE, cantidad: 2 },
+  { ...CONTEO_BASE, species_id: null, con_gps: false, con_foto: false },
+  { ...CONTEO_BASE, parcela_id: 'parc-2', species_id: 'sp-2', con_foto: false },
+  { ...CONTEO_BASE, parcela_id: 'parc-2', con_gps: false, con_foto: false },
 ];
 
 const CATALOGO = [
@@ -102,6 +111,10 @@ function totalResumen(): HTMLElement {
   return within(resumen()).getByText(/Meta/).parentElement as HTMLElement;
 }
 
+function filaEspecie(nombre: string): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(nombre) });
+}
+
 /** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
 const FILAS_PUNTOS = [
   {
@@ -131,22 +144,27 @@ function esConteo(consulta: ConsultaCapturada): boolean {
   return consulta.opciones?.head === true;
 }
 
-/** Distingue la lectura de puntos del mapa (trae longitude) de la del dashboard. */
-function esLecturaPuntos(consulta: ConsultaCapturada): boolean {
-  return (consulta.columnas ?? '').includes('longitude');
-}
+/** AA está habilitada sin árboles y ocupa el lugar 0: AL y QB pintan los suyos (#845). */
+const HABILITADAS = [
+  {
+    species_id: 'sp-0',
+    lugar_color: 0,
+    species: { id: 'sp-0', codigo: 'AA', nombre: 'Aaa', nombre_cientifico: null },
+  },
+  { species_id: 'sp-1', lugar_color: 2, species: { ...CATALOGO[0] } },
+  { species_id: 'sp-2', lugar_color: 1, species: { ...CATALOGO[1] } },
+];
 
-function crearResolver(arboles: RespuestaMock['data']) {
+function crearResolver(conteos: RespuestaMock['data'], habilitadas: RespuestaMock['data'] = []) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
     if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
+    if (consulta.tabla === 'plantation_species') return { data: habilitadas };
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'parcelas') return { data: FILAS_PARCELAS };
     if (consulta.tabla === 'groups') return esConteo(consulta) ? { count: 2 } : { count: 3 };
-    if (consulta.tabla === 'trees') {
-      if (esConteo(consulta)) return { count: 4 };
-      if (esLecturaPuntos(consulta)) return { data: FILAS_PUNTOS };
-      return { data: arboles };
-    }
+    if (consulta.tabla === 'dashboard_arboles') return { data: conteos };
+    if (consulta.tabla === 'trees')
+      return esConteo(consulta) ? { count: 4 } : { data: FILAS_PUNTOS };
     return { data: [], count: 0 };
   };
 }
@@ -155,7 +173,7 @@ beforeEach(prepararSesionAdmin);
 
 describe('DashboardTab', () => {
   test('muestra el hero, los KPIs y los paneles de especies y parcelas', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     renderRutasEn('/plantaciones/plant-1');
 
     // Número grande (total de árboles) y overline.
@@ -172,6 +190,8 @@ describe('DashboardTab', () => {
     expect(within(card).getByText('60%')).toBeInTheDocument();
     expect(within(card).getByText('Con foto')).toBeInTheDocument();
     expect(within(card).getByText('40%')).toBeInTheDocument();
+    expect(within(card).getByText('3 puntos')).toBeInTheDocument();
+    expect(within(card).getByText('2 fotos')).toBeInTheDocument();
     expect(within(card).getByText('N/N')).toBeInTheDocument();
     expect(within(card).getByText('requiere atención')).toBeInTheDocument();
     // Paneles nuevos.
@@ -185,8 +205,20 @@ describe('DashboardTab', () => {
     expect(within(algarrobo).getByText('20%')).toBeInTheDocument();
   });
 
+  test('«Por especie» y el mapa usan los colores de la plantación (#777, #845)', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES, HABILITADAS));
+    renderRutasEn('/plantaciones/plant-1');
+
+    const colores = await screen.findByTestId('colores-mapa', {}, { timeout: ESPERA_RUTA_MS });
+    expect(colores).toHaveTextContent('QB:#3b7db5');
+    expect(colores).toHaveTextContent('AL:#99b95b');
+    const quebracho = screen.getByText('Quebracho').closest('li') as HTMLElement;
+    const barra = quebracho.querySelector('[style*="--color"]') as HTMLElement;
+    expect(barra.style.getPropertyValue('--color')).toBe('#3b7db5');
+  });
+
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -208,7 +240,7 @@ describe('DashboardTab', () => {
   });
 
   test('clickear otra parcela cambia el filtro directo, sin pasar por "todos"', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -221,7 +253,7 @@ describe('DashboardTab', () => {
   });
 
   test('seleccionar una parcela recalcula el hero, los KPIs y las especies', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -241,12 +273,14 @@ describe('DashboardTab', () => {
     expect(within(resumen()).getByText('Norte')).toBeInTheDocument();
     // GPS y foto quedan los dos en 67% con los 3 árboles de la parcela.
     expect(within(resumen()).getAllByText('67%')).toHaveLength(2);
+    expect(within(resumen()).getByText('2 puntos')).toBeInTheDocument();
+    expect(within(resumen()).getByText('2 fotos')).toBeInTheDocument();
     expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
     expect(screen.getByText('Composición de la parcela P1')).toBeInTheDocument();
   });
 
   test('"Ver todos" vuelve a la plantación entera y suelta la parcela', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -260,7 +294,7 @@ describe('DashboardTab', () => {
   });
 
   test('una parcela sin árboles muestra ceros, no el estado vacío', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -285,5 +319,61 @@ describe('DashboardTab', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Por especie')).not.toBeInTheDocument();
     expect(screen.queryByText('Con GPS')).not.toBeInTheDocument();
+  });
+
+  test('elegir una especie filtra resumen, mapa y tira; re-click la suelta', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /Algarrobo/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'true');
+    expect(within(totalResumen()).getByText('1')).toBeInTheDocument();
+    expect(within(resumen()).getByText('AL')).toBeInTheDocument();
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('1');
+    expect(screen.getByTestId('especie-filtro')).toHaveTextContent('Algarrobo');
+    // «Por especie» es el selector: sigue mostrando todas las especies.
+    expect(filaEspecie('Quebracho')).toBeInTheDocument();
+    // La tira cuenta solo algarrobos: ninguno en Norte.
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveTextContent(/^P1.*0Norte$/);
+
+    await usuario.click(filaEspecie('Algarrobo'));
+
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('3');
+    expect(within(totalResumen()).getByText('5')).toBeInTheDocument();
+  });
+
+  test('parcela y especie se cruzan; la especie ausente queda en 0 y "Ver todos" suelta las dos', async () => {
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /Norte/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+    await usuario.click(filaEspecie('Quebracho'));
+
+    expect(within(totalResumen()).getByText('2')).toBeInTheDocument();
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('2');
+
+    // Algarrobo no está en Norte: su fila vuelve en 0 para poder soltarla.
+    await usuario.click(filaEspecie('Quebracho'));
+    expect(screen.queryByRole('button', { name: /Algarrobo/ })).not.toBeInTheDocument();
+    await usuario.click(screen.getByRole('button', { name: /Sur/ }));
+    await usuario.click(filaEspecie('Algarrobo'));
+    await usuario.click(screen.getByRole('button', { name: /Norte/ }));
+
+    expect(filaEspecie('Algarrobo')).toHaveTextContent(/0%0$/);
+    expect(within(totalResumen()).getByText('0')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver todos' }));
+
+    expect(within(totalResumen()).getByText('5')).toBeInTheDocument();
+    expect(filaEspecie('Algarrobo')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
   });
 });

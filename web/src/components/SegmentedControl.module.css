@@ -35,8 +35,13 @@
   padding: var(--space-sm) var(--space-xl);
 }
 
-.option:hover:not(.active) {
+.option:hover:not(.active, :disabled) {
   background-color: var(--color-surface-sunken);
+}
+
+.option:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
 }
 
 .active {
@@ -52,8 +57,8 @@
   white-space: nowrap;
 }
 
+/* Sin opacidad: atenuado sobre el riel no llegaba a AA (#824). */
 .sublabel {
   font-size: var(--text-xs);
   font-weight: var(--font-weight-regular);
-  opacity: 0.85;
 }

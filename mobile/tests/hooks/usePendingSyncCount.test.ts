@@ -12,8 +12,8 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useCurrentUserId', () => ({
-  useCurrentUserId: () => 'user-1',
+jest.mock('../../src/hooks/useQuienSube', () => ({
+  useQuienSube: () => ({ userId: 'user-1', esAdmin: false }),
 }));
 
 const mockCountPendingGroups = jest.fn();
@@ -80,7 +80,7 @@ describe('usePendingSyncCount', () => {
     expect(result.syncableCount).toBe(0);
   });
 
-  test('los fetchers invocan las queries con plantacionId y userId', async () => {
+  test('los fetchers invocan las queries con plantacionId y quién sube', async () => {
     mockUseLiveData.mockReturnValue({ data: undefined });
 
     usePendingSyncCount('plant-1');
@@ -88,9 +88,10 @@ describe('usePendingSyncCount', () => {
     const fetchers = mockUseLiveData.mock.calls.map((c) => c[0]);
     await Promise.all(fetchers.map((f) => f()));
 
-    expect(mockCountPendingGroups).toHaveBeenCalledWith({ plantacionId: 'plant-1', userId: 'user-1' });
-    expect(mockCountNNBlockedGroups).toHaveBeenCalledWith({ plantacionId: 'plant-1', userId: 'user-1' });
-    expect(mockCountPendingTreePhotos).toHaveBeenCalledWith({ plantacionId: 'plant-1' });
+    const quien = { plantacionId: 'plant-1', userId: 'user-1', esAdmin: false };
+    expect(mockCountPendingGroups).toHaveBeenCalledWith(quien);
+    expect(mockCountNNBlockedGroups).toHaveBeenCalledWith(quien);
+    expect(mockCountPendingTreePhotos).toHaveBeenCalledWith(quien);
     expect(mockCountPendingParcelas).toHaveBeenCalledWith({ plantacionId: 'plant-1' });
   });
 });

@@ -1,17 +1,11 @@
 import { Badge } from './Badge';
-import type { EstadoPlantacion } from '../queries/plantationQueries';
-
-/* Etiquetas en español de los estados de plantación. */
-const ETIQUETA_ESTADO: Record<EstadoPlantacion, string> = {
-  activa: 'Activa',
-  finalizada: 'Finalizada',
-};
+import { ETIQUETA_ESTADO_PLANTACION, type EstadoPlantacion } from '../queries/plantationQueries';
 
 /** Badge del estado de una plantación (un solo lugar para etiqueta y color). */
 export function EstadoPlantacionBadge({ estado }: { estado: EstadoPlantacion }) {
   return (
     <Badge variant={estado} dot>
-      {ETIQUETA_ESTADO[estado]}
+      {ETIQUETA_ESTADO_PLANTACION[estado]}
     </Badge>
   );
 }

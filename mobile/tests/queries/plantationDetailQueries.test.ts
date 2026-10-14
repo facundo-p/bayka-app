@@ -118,6 +118,7 @@ describe('plantationDetailQueries', () => {
       const { db } = require('../../src/database/client');
       const result = await getTodayTreesForUser('p-1', null);
       expect(result).toBe(0);
+      expect(db.select).not.toHaveBeenCalled();
     });
 
     it('returns today tree count for valid user', async () => {

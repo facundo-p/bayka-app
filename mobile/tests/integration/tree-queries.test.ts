@@ -26,7 +26,7 @@ beforeAll(async () => {
   sqlite = r.sqlite;
 
   await mockTestDb.insert(plantations).values({
-    id: 'plant-1', organizacionId: 'org-1', lugar: 'Campo', periodo: '2026',
+    id: 'plant-1', organizacionId: 'org-1', lugar: 'Campo', periodo: '2026', codigo: 'CA26',
     estado: 'activa', creadoPor: 'u-1', createdAt: NOW,
   });
   await mockTestDb.insert(parcelas).values({
@@ -87,6 +87,11 @@ test('getTreeDetail incluye nombre científico y punto GPS completo (#155)', asy
   expect(row.latitude).toBeCloseTo(-32.1);
   expect(row.longitude).toBeCloseTo(-61.2);
   expect(row.gpsAccuracy).toBeCloseTo(4);
+});
+
+test('getTreeDetail trae el código de la plantación para el ID del árbol (#559)', async () => {
+  const [row] = await getTreeDetail('t-3');
+  expect(row.plantacionCodigo).toBe('CA26');
 });
 
 test('getTreeDetail de un N/N devuelve especie nula (#155)', async () => {

@@ -13,10 +13,13 @@
  */
 import {
   createPlantationWithParcelaLocally,
-  PlantationGpsSettings,
+  type AjustesDePlantacion,
 } from '../repositories/PlantationRepository';
 import { uploadOfflinePlantations } from './sync/preSteps';
 import { uploadSyncableParcelas } from './sync/pushService';
+import { ensureServerSession } from './sync/sessionGuard';
+import { codigoEnUsoEnServidor } from './sync/duplicadasEnServidor';
+import { MENSAJE_CODIGO_PLANTACION } from '../../../shared/codigoPlantacion';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
 import { syncLog } from '../utils/syncLogger';
 
@@ -29,8 +32,8 @@ export interface CreatePlantationParams {
   creadoPor: string;
   /** 'online': caller ya chequeó NetInfo y pide un push inmediato tras el alta local. */
   mode: CreatePlantationMode;
-  /** Config GPS elegida por el admin en el form (defaults del schema si falta). */
-  gps?: PlantationGpsSettings;
+  /** Lo que el admin eligió en el form además de lugar y periodo (defaults del schema si falta). */
+  ajustes?: Partial<AjustesDePlantacion>;
 }
 
 export interface CreatePlantationResult {
@@ -38,6 +41,8 @@ export interface CreatePlantationResult {
   lugar: string;
   periodo: string;
   estado: string;
+  /** El server ya tenía otra con el mismo lugar y periodo (#655). Solo se calcula en modo 'online'. */
+  duplicada?: boolean;
 }
 
 /**
@@ -45,13 +50,28 @@ export interface CreatePlantationResult {
  * sync existentes: uploadOfflinePlantations (idempotente ante 23505 — la plantación ya existe)
  * y uploadSyncableParcelas (solo las parcelas de esta plantación). Nunca throwea: un fallo de
  * red/servidor deja pendingSync=true, y el próximo sync la reintenta.
+ * Devuelve `duplicada` (#655): el aviso de "mismo lugar y periodo" hoy solo se ve en el resumen
+ * del sync de altas offline; el alta online necesita el mismo dato para mostrarlo en el momento.
  */
-async function tryPushNow(plantationId: string): Promise<void> {
+async function tryPushNow(plantationId: string): Promise<{ duplicada: boolean }> {
   try {
-    await uploadOfflinePlantations();
+    // Sin sesión el insert iría como anon y RLS lo rechazaría como falta de permiso.
+    await ensureServerSession();
+    const resultados = await uploadOfflinePlantations();
     await uploadSyncableParcelas(plantationId);
+    const propia = resultados.find((r) => r.plantacionId === plantationId);
+    return { duplicada: propia?.success === true && propia.duplicada === true };
   } catch (e) {
     syncLog.error(`createPlantationWithDefaultParcela: push inmediato falló para ${plantationId}, queda pendingSync`, e);
+    return { duplicada: false };
+  }
+}
+
+/** Otra plantación de la organización ya usa el código: el formulario lo muestra sin cerrarse. */
+export class CodigoPlantacionRepetidoError extends Error {
+  constructor() {
+    super(MENSAJE_CODIGO_PLANTACION.duplicado);
+    this.name = 'CodigoPlantacionRepetidoError';
   }
 }
 
@@ -59,17 +79,22 @@ async function tryPushNow(plantationId: string): Promise<void> {
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
 ): Promise<CreatePlantationResult> {
+  const codigo = params.ajustes?.codigo;
+  if (params.mode === 'online' && codigo && (await codigoEnUsoEnServidor(params.organizacionId, codigo))) {
+    throw new CodigoPlantacionRepetidoError();
+  }
   const plantation = await createPlantationWithParcelaLocally({
     lugar: params.lugar,
     periodo: params.periodo,
     organizacionId: params.organizacionId,
     creadoPor: params.creadoPor,
-    gps: params.gps,
+    ajustes: params.ajustes,
     parcela: AUTO_PARCELA_DEFAULT ? { nombre: 'Parcela 1', codigo: 'P1' } : null,
   });
 
   if (params.mode === 'online') {
-    await tryPushNow(plantation.id);
+    const { duplicada } = await tryPushNow(plantation.id);
+    return { ...plantation, duplicada };
   }
 
   return plantation;

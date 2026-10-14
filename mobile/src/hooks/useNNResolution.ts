@@ -7,12 +7,13 @@
 import { useState } from 'react';
 import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
-import { resolveNNTree, clearTreeConflict } from '../repositories/TreeRepository';
+import { cambiarEspecie } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
-import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { plantacionEsEditable, puedeEditarArbolesDelGrupo } from '../utils/permisosDeEdicion';
 import { useProfileData } from './useProfileData';
+import { useCurrentUserId } from './useCurrentUserId';
 import { esRolAdmin } from '../types/domain';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
@@ -27,9 +28,9 @@ interface NNTree {
   grupoId: string;
   grupoCodigo?: string;
   grupoNombre?: string;
+  /** Solo en modo plantación: decide si un técnico lo resuelve (#768). */
+  grupoCreador?: string;
   parcelaNombre?: string | null;
-  conflictEspecieId?: string | null;
-  conflictEspecieNombre?: string | null;
 }
 
 export function useNNResolution(params: {
@@ -42,14 +43,14 @@ export function useNNResolution(params: {
   const isPlantationMode = !grupoId;
   const { profile } = useProfileData();
   const isAdmin = esRolAdmin(profile?.rol);
+  const userId = useCurrentUserId();
 
   const singleGroupTrees = useTrees(grupoId ?? '');
 
   const { data: plantationNNTrees } = useLiveData(
     () => {
       if (!isPlantationMode) return Promise.resolve([]);
-      // Cualquier usuario (admin o técnico) resuelve los N/N de TODA la
-      // plantación, incluidos los registrados por otros usuarios.
+      // Se ven los N/N de TODA la plantación; un técnico resuelve solo los de sus grupos.
       return getNNTreesForPlantation(plantacionId ?? '');
     },
     [plantacionId, isPlantationMode]
@@ -73,6 +74,14 @@ export function useNNResolution(params: {
     [plantacionId]
   );
   const plantacionEditable = estadoDeEdicion != null && plantacionEsEditable(estadoDeEdicion);
+
+  // Modo plantación: admin cualquiera, técnico los de sus grupos (#768). Modo
+  // single-group: solo el admin.
+  function puedeResolver(tree: NNTree | undefined): boolean {
+    if (estadoDeEdicion == null) return false;
+    const isCreator = isPlantationMode && tree != null && userId != null && tree.grupoCreador === userId;
+    return puedeEditarArbolesDelGrupo({ plantacion: estadoDeEdicion, isCreator, esAdmin: isAdmin });
+  }
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -98,8 +107,8 @@ export function useNNResolution(params: {
   }
 
   async function handleGuardar(onAllResolved: () => void) {
-    if (!canResolve) return;
-    const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
+    if (!plantacionEditable) return;
+    const toResolve = unresolvedTrees.filter((t) => selections[t.id] && puedeResolver(t));
     if (toResolve.length === 0) {
       showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un árbol N/N.', 'leaf-outline', colors.secondary);
       return;
@@ -108,9 +117,7 @@ export function useNNResolution(params: {
     setSaving(true);
     try {
       for (const tree of toResolve) {
-        const speciesId = selections[tree.id];
-        const codigo = tree.grupoCodigo ?? grupoCodigo ?? '';
-        await resolveNNTree(tree.id, speciesId, codigo);
+        await cambiarEspecie(tree.id, selections[tree.id]);
       }
       const resolved = new Set(toResolve.map((t) => t.id));
       setSelections((prev) => {
@@ -126,36 +133,7 @@ export function useNNResolution(params: {
     }
   }
 
-  // ─── Permission check ─────────────────────────────────────────────────────
-  // En modo plantación cualquier usuario puede resolver N/N (incluidos los de
-  // otros usuarios). En modo single-group, solo el admin (o el dueño del grupo).
-  const canResolve = plantacionEditable && (isAdmin || !grupoId);
-
-  // ─── Conflict helpers ────────────────────────────────────────────────────
-  function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {
-    const tree = unresolvedTrees.find(t => t.id === treeId);
-    if (tree?.conflictEspecieId) {
-      return {
-        serverEspecieId: tree.conflictEspecieId,
-        serverEspecieNombre: tree.conflictEspecieNombre ?? 'Desconocida',
-      };
-    }
-    return null;
-  }
-
-  async function acceptServerResolution(treeId: string) {
-    const conflict = getConflictForTree(treeId);
-    if (!conflict) return;
-    const tree = unresolvedTrees.find(t => t.id === treeId);
-    const codigo = tree?.grupoCodigo ?? grupoCodigo ?? '';
-    await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
-    await clearTreeConflict(treeId);
-  }
-
-  async function keepLocalResolution(treeId: string) {
-    // Solo limpia el marcador: lo local queda, el próximo sync sobreescribe al server
-    await clearTreeConflict(treeId);
-  }
+  const canResolve = puedeResolver(currentTree);
 
   function handleAnterior() {
     if (safeIndex > 0) setCurrentIndex(safeIndex - 1);
@@ -187,8 +165,5 @@ export function useNNResolution(params: {
     handleSiguiente,
     setCurrentIndex,
     setZoomPhotoUri,
-    getConflictForTree,
-    acceptServerResolution,
-    keepLocalResolution,
   };
 }

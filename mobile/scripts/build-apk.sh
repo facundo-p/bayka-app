@@ -102,12 +102,16 @@ else
   echo "       Si es así, este APK no recibiría updates OTA (ver #384)." >&2
 fi
 
+# Runtime de los OTA (#678): solo recibe los publicados con este mismo fingerprint.
+FINGERPRINT="$(unzip -p "$ARTIFACT" assets/fingerprint 2>/dev/null || echo '?')"
+
 echo ""
 echo "APK $VARIANT listo!"
 echo "  APK:     mobile/$ARTIFACT"
 echo "  Package: $PKG"
 echo "  Label:   $LABEL"
 echo "  Canal:   $CANAL"
+echo "  Fingerprint: $FINGERPRINT"
 echo "  Size:    $(du -h "$ARTIFACT" | cut -f1)"
 echo ""
 echo "Instalar en dispositivo conectado:  adb install -r mobile/$ARTIFACT"

@@ -2,19 +2,29 @@
  * Búsqueda global multi-entidad para la paleta de comandos (⌘K): plantaciones/especies/
  * usuarios filtran en cliente (queries cacheables); parcelas/grupos/árboles van server-side
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
- * árboles se buscan por `sub_id`, no por ID global. Sin scope se excluyen las plantaciones
- * archivadas (#477); con scope se busca dentro de esa plantación aunque esté archivada.
+ * árboles se buscan por `sub_id` o por ID Árbol completo (`<SubID>-<código>`). Sin scope se
+ * excluyen las plantaciones archivadas (#477); con scope se busca dentro de esa plantación
+ * aunque esté archivada.
  */
 import { coincideBusqueda } from '../lib/normalizarTexto';
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import { PARAM_URL, RUTA, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
-import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
+import { COLUMNA_CODIGO_PLANTACION, resolverBusquedaArbol } from './busquedaArbol';
+import { condicionIlikeOr } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
+import { listarNombresCientificos } from './especieCientificaQueries';
 import { listarPlantaciones, sinArchivadas } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
 
-export type TipoResultado = 'plantacion' | 'parcela' | 'grupo' | 'arbol' | 'especie' | 'usuario';
+export type TipoResultado =
+  | 'plantacion'
+  | 'parcela'
+  | 'grupo'
+  | 'arbol'
+  | 'especie'
+  | 'especieCientifica'
+  | 'usuario';
 
 export type ResultadoBusqueda = {
   tipo: TipoResultado;
@@ -70,6 +80,19 @@ async function buscarEspecies(texto: string): Promise<ResultadoBusqueda[]> {
     }));
 }
 
+async function buscarEspeciesCientificas(texto: string): Promise<ResultadoBusqueda[]> {
+  const cientificas = await listarNombresCientificos();
+  return cientificas
+    .filter((cientifica) => coincide(texto, cientifica.nombre))
+    .slice(0, TOPE_LISTA)
+    .map((cientifica) => ({
+      tipo: 'especieCientifica',
+      id: cientifica.id,
+      titulo: cientifica.nombre,
+      to: RUTA.especiesCientificas,
+    }));
+}
+
 async function buscarUsuarios(texto: string): Promise<ResultadoBusqueda[]> {
   const usuarios = await listarUsuariosConAsignaciones();
   return usuarios
@@ -83,6 +106,11 @@ async function buscarUsuarios(texto: string): Promise<ResultadoBusqueda[]> {
       meta: etiquetaRol(usuario.rol),
       to: RUTA.usuarios,
     }));
+}
+
+/** Deep-link a la sección con el texto ya cargado en su buscador: se ve la fila elegida. */
+function conBusqueda(texto: string): URLSearchParams {
+  return new URLSearchParams({ [PARAM_URL.busqueda]: texto });
 }
 
 type FilaParcelaBusqueda = {
@@ -109,7 +137,7 @@ async function buscarParcelas(texto: string, scope?: ScopeBusqueda): Promise<Res
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
     meta: fila.plantations?.lugar ?? undefined,
-    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.parcelas),
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.parcelas, conBusqueda(fila.codigo)),
   }));
 }
 
@@ -119,13 +147,23 @@ type FilaGrupoBusqueda = {
   codigo: string;
   plantation_id: string;
   parcelas: { codigo: string } | null;
+  plantations: { lugar: string | null } | null;
 };
+
+/** Subtítulo del grupo: «<lugar> · Parcela <código>»; omite la parte que falte. */
+export function metaGrupo(
+  lugar?: string | null,
+  parcelaCodigo?: string | null,
+): string | undefined {
+  const partes = [lugar, parcelaCodigo ? `Parcela ${parcelaCodigo}` : null].filter(Boolean);
+  return partes.length > 0 ? partes.join(' · ') : undefined;
+}
 
 async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('groups')
     .select(
-      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(${ARCHIVADA_EN})`,
+      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(lugar, ${ARCHIVADA_EN})`,
     )
     .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
@@ -137,8 +175,8 @@ async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<Resul
     tipo: 'grupo',
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
-    meta: fila.parcelas?.codigo ? `Parcela ${fila.parcelas.codigo}` : undefined,
-    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos),
+    meta: metaGrupo(fila.plantations?.lugar, fila.parcelas?.codigo),
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos, conBusqueda(fila.codigo)),
   }));
 }
 
@@ -149,19 +187,16 @@ type FilaArbolBusqueda = {
   groups: { plantation_id: string; codigo: string } | null;
 };
 
-/** Deep-link al listado de Árboles con el SubID ya cargado en su buscador. */
-function busquedaDeSubId(subId: string): URLSearchParams {
-  return new URLSearchParams({ [PARAM_URL.busqueda]: subId });
-}
-
 async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
+  const { patronSubId, codigo } = await resolverBusquedaArbol(texto);
   let consulta = supabase
     .from('trees')
     .select(
-      `id, sub_id, species(nombre), groups!inner(plantation_id, codigo, plantations!inner(${ARCHIVADA_EN}))`,
+      `id, sub_id, species(nombre), groups!inner(plantation_id, codigo, plantations!inner(${ARCHIVADA_EN}, codigo))`,
     )
-    .ilike('sub_id', patronContiene(texto))
+    .ilike('sub_id', patronSubId)
     .limit(TOPE_POR_GRUPO);
+  if (codigo) consulta = consulta.eq(COLUMNA_CODIGO_PLANTACION, codigo);
   if (scope) consulta = consulta.eq('groups.plantation_id', scope.plantationId);
   else consulta = consulta.is(`groups.plantations.${ARCHIVADA_EN}`, null);
   const { data, error } = await consulta;
@@ -173,11 +208,7 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
       id: fila.id,
       titulo: fila.sub_id,
       meta: fila.species?.nombre ?? fila.groups?.codigo,
-      to: rutaDatos(
-        fila.groups!.plantation_id,
-        SEGMENTO_DATOS.arboles,
-        busquedaDeSubId(fila.sub_id),
-      ),
+      to: rutaDatos(fila.groups!.plantation_id, SEGMENTO_DATOS.arboles, conBusqueda(fila.sub_id)),
     }));
 }
 
@@ -200,6 +231,7 @@ export async function buscar(texto: string, scope?: ScopeBusqueda): Promise<Resu
     tolerante(buscarGrupos(normalizado, scope)),
     tolerante(buscarArboles(normalizado, scope)),
     tolerante(buscarEspecies(normalizado)),
+    tolerante(buscarEspeciesCientificas(normalizado)),
     tolerante(buscarUsuarios(normalizado)),
   ]);
   return grupos.flat();

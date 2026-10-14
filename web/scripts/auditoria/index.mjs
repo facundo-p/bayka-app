@@ -61,6 +61,9 @@ async function main() {
 /** Los anchos de una vista: todos, salvo que se acote a los suyos. */
 const anchosDe = (vista) => vista.anchos ?? ANCHOS;
 
+/** Las columnas de la matriz: los anchos de la escala y los que alguna vista suma. */
+const COLUMNAS = [...new Set(VISTAS.flatMap(anchosDe))].sort((a, b) => b - a);
+
 async function medirTodo(navegador) {
   const informe = {};
   for (const vista of VISTAS) {
@@ -94,10 +97,10 @@ async function capturar(pagina, pantalla, ancho) {
 function imprimirMatriz(informe) {
   console.log('');
   imprimirLeyenda();
-  const encabezado = ANCHOS.map((a) => String(a).padStart(ANCHO_COLUMNA_CELDA)).join('');
+  const encabezado = COLUMNAS.map((a) => String(a).padStart(ANCHO_COLUMNA_CELDA)).join('');
   console.log('pantalla'.padEnd(ANCHO_COLUMNA_PANTALLA) + encabezado);
   for (const vista of VISTAS) {
-    const fila = ANCHOS.map((a) => celda(informe[claveCelda(vista.pantalla, a)]));
+    const fila = COLUMNAS.map((a) => celda(informe[claveCelda(vista.pantalla, a)]));
     console.log(
       vista.pantalla.padEnd(ANCHO_COLUMNA_PANTALLA) +
         fila.map((c) => c.padStart(ANCHO_COLUMNA_CELDA)).join(''),

@@ -14,7 +14,7 @@ const EXTENSION_CSV = 'csv';
 const BOM_UTF8 = '\uFEFF';
 
 export const ENCABEZADO_CSV =
-  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
+  'ID Árbol,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
 
 /** RFC 4180: comilla el campo si tiene coma/comilla/salto de línea, duplicando comillas internas; null/undefined → vacío. */
 function campoCsv(valor: string | number | null | undefined): string {
@@ -28,7 +28,7 @@ function campoCsv(valor: string | number | null | undefined): string {
 /** Fila CSV de 9 campos: parcela null → vacía, especie null → "N/N". */
 function filaACsv(fila: FilaExportacion): string {
   return [
-    campoCsv(fila.idGlobal),
+    campoCsv(fila.idArbol),
     campoCsv(fila.idParcial),
     campoCsv(fila.zona),
     campoCsv(fila.plantacion),

@@ -84,18 +84,6 @@ describe('seedSpeciesIfNeeded — especies fuera del catálogo local', () => {
     expect(await existe('sp-server')).toBe(true);
   });
 
-  it('conserva una especie usada solo por conflict_especie_id', async () => {
-    await mockTestDb.insert(species).values(especieFueraDelCatalogo('sp-server', 'SRV'));
-    await mockTestDb.insert(trees).values({
-      ...createTestTree({ id: 't1', groupId: GRUPO_ID, especieId: speciesData[0].id }),
-      conflictEspecieId: 'sp-server',
-    });
-
-    await seedSpeciesIfNeeded();
-
-    expect(await existe('sp-server')).toBe(true);
-  });
-
   it('borra una especie fuera del catálogo que nadie referencia', async () => {
     await mockTestDb.insert(species).values(especieFueraDelCatalogo('sp-vieja', 'OLD'));
 
@@ -103,5 +91,23 @@ describe('seedSpeciesIfNeeded — especies fuera del catálogo local', () => {
 
     expect(await existe('sp-vieja')).toBe(false);
     expect(await mockTestDb.select().from(species)).toHaveLength(speciesData.length);
+  });
+});
+
+describe('seedSpeciesIfNeeded — clasificación de la especie (#752)', () => {
+  it('no pisa el subtipo que bajó del server para una especie del catálogo', async () => {
+    const [primera] = speciesData;
+    await mockTestDb.update(species).set({ subtipo: 'arbusto' }).where(eq(species.id, primera.id));
+
+    await seedSpeciesIfNeeded();
+
+    const [fila] = await mockTestDb.select().from(species).where(eq(species.id, primera.id));
+    expect(fila.subtipo).toBe('arbusto');
+  });
+
+  it('siembra las especies como flora / arbol', async () => {
+    const filas = await mockTestDb.select({ tipo: species.tipo, subtipo: species.subtipo }).from(species);
+    expect(filas.length).toBe(speciesData.length);
+    expect(new Set(filas.map((f) => `${f.tipo}/${f.subtipo}`))).toEqual(new Set(['flora/arbol']));
   });
 });

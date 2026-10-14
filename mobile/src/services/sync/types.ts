@@ -19,10 +19,19 @@ export const SYNC_ERROR = {
   PARCELA_PENDING: 'PARCELA_PENDING',
   /** RLS rechazó la operación (42501). */
   PERMISSION: 'PERMISSION',
+  /** El server no dejó crear una plantación creada offline: el usuario ya no es admin de su organización (#638). */
+  SIN_PERMISO_CREAR: 'SIN_PERMISO_CREAR',
   /** La plantación está finalizada y es inmutable (#469); distinto de PERMISSION, que es no ser miembro. */
   PLANTACION_FINALIZADA: 'PLANTACION_FINALIZADA',
   /** La plantación está archivada (#477); tiene prioridad sobre finalizada en el server. */
   PLANTACION_ARCHIVADA: 'PLANTACION_ARCHIVADA',
+  /**
+   * Otra plantación de la organización ya usa el código (#559). Mismo valor que el rechazo
+   * de `editar_plantacion`, así el alta y la edición anotan el mismo motivo.
+   */
+  CODIGO_PLANTACION_REPETIDO: 'CODIGO_DUPLICADO',
+  /** Alta creada con una versión anterior al código (#559): sin él el server no la acepta. */
+  SIN_CODIGO_PLANTACION: 'SIN_CODIGO_PLANTACION',
   /** Legacy: falla de red sin código de postgres. */
   NETWORK: 'NETWORK',
   /** La request no respondió dentro del timeout (#451). Distinto de NETWORK: hay señal, el que no contesta es el server. */
@@ -63,7 +72,16 @@ export type SyncParcelaResult =
 
 /** Result of pushing an offline-created plantation row to the server. */
 export type SyncPlantationResult =
-  | { success: true; plantacionId: string; nombre: string }
+  /**
+   * `duplicada`: el server ya tenía otra con el mismo lugar y periodo (#633).
+   * `cambiosPorResolver`: campos de la edición que chocaron con la web (#634).
+   * `especiesConArboles`: especies que se quitaron acá y el server re-habilitó porque ya tienen árboles (#635).
+   * `tecnicosNoAsignados`: técnicos asignados acá que el server rechazó: dados de baja o de otra organización (#636).
+   */
+  | {
+      success: true; plantacionId: string; nombre: string;
+      duplicada?: boolean; cambiosPorResolver?: number; especiesConArboles?: string[]; tecnicosNoAsignados?: string[];
+    }
   | { success: false; plantacionId: string; nombre: string; error: SyncErrorCode; detail?: string };
 
 export interface SyncProgress {
@@ -225,9 +243,12 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   [SYNC_ERROR.REFERENCIA_INEXISTENTE]: 'Falta en el servidor un dato del que depende (por ejemplo, su plantación o parcela). Sincronizá de nuevo; si persiste, puede que se haya eliminado: contactá a un administrador.',
   [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aún está pendiente. Resolvé el problema de la parcela primero.',
   [SYNC_ERROR.PERMISSION]: 'El servidor rechazó la operación por permisos. No estás habilitado para sincronizar esta plantación; contactá a un administrador.',
+  [SYNC_ERROR.SIN_PERMISO_CREAR]: 'Tu usuario ya no tiene permiso para crear esta plantación en el servidor. Sigue guardada en el dispositivo: pedile a un administrador que te devuelva el permiso para subirla, o descartala desde su tarjeta.',
   // El dato NO se pierde: queda en el device y se sube si la plantación se reabre o desarchiva.
   [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantación fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
   [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantación fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',
+  [SYNC_ERROR.CODIGO_PLANTACION_REPETIDO]: 'Otra plantación de la organización ya usa este código. Editala y cambiá el código para subirla.',
+  [SYNC_ERROR.SIN_CODIGO_PLANTACION]: 'La plantación no tiene código. Editala y cargale uno para subirla.',
   [SYNC_ERROR.NETWORK]: 'Error de conexión. Verificá tu internet e intentá de nuevo.',
   [SYNC_ERROR.TIMEOUT]: 'El servidor no respondió a tiempo. Puede ser la señal: intentá de nuevo con mejor cobertura.',
   [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intentá de nuevo.',
@@ -235,6 +256,12 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
 
 export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
+}
+
+/** Columnas de la restricción que violó un 23505, leídas de `details` ("Key (a, b)=(…)"). */
+export function columnasDeLaViolacion(details: string | undefined): string[] {
+  const match = details?.match(/Key \(([^)]+)\)=/);
+  return match ? match[1].split(',').map((c) => c.trim().toLowerCase()) : [];
 }
 
 /** Raw "code: message" del error, para mostrar la causa real en errores opacos. */

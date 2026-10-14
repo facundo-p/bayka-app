@@ -1,42 +1,39 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
+import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import {
   ARBOLES_POR_PAGINA,
   ESPECIE_SIN_IDENTIFICAR,
+  contarArbolesDelFiltro,
   listarArboles,
   listarGrupos,
   listarParcelasConStats,
 } from '../dataExplorerQueries';
+import { filaArbol, filaGrupo, filaParcela } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(resetEstadoMock);
+beforeEach(() => {
+  resetEstadoMock();
+  reiniciarCacheCodigosPlantacion();
+});
 
-const FILA_PARCELA = {
+const FILA_PARCELA = filaParcela({
   id: 'parc-1',
   nombre: 'Norte',
   codigo: 'P1',
   descripcion: 'Lindante al arroyo',
   created_at: '2026-06-01T12:00:00Z',
-};
+});
 
-const FILA_GRUPO = {
-  id: 'gr-1',
-  nombre: 'Línea 1',
-  codigo: 'L1',
-  tipo: 'linea',
-  estado: 'activa',
-  parcela_id: 'parc-1',
-  created_at: '2026-06-02T12:00:00Z',
-  parcelas: { codigo: 'P1' },
-};
+const FILA_GRUPO = filaGrupo({ id: 'gr-1', parcelas: { codigo: 'P1' } });
 
 /** Fila de trees con embeds y columnas GPS de la migración 023. */
-const FILA_ARBOL = {
+const FILA_ARBOL = filaArbol({
   id: 'tree-1',
   sub_id: 'A-001',
   posicion: 3,
@@ -49,23 +46,34 @@ const FILA_ARBOL = {
   longitude: -55.654321,
   gps_accuracy: 4.6,
   gps_captured_at: '2026-06-03T12:00:05Z',
-  species: { codigo: 'QB', nombre: 'Quebracho' },
-  groups: { codigo: 'L1', parcela_id: 'parc-1', plantation_id: 'plant-1' },
-};
+  species: { codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
+  groups: {
+    codigo: 'L1',
+    nombre: 'Línea 1',
+    parcela_id: 'parc-1',
+    plantations: { codigo: 'SS26' },
+  },
+});
+
+const ARBOLES_POR_GRUPO = [
+  { group_id: 'gr-1', parcela_id: 'parc-1', arboles: 3 },
+  { group_id: 'gr-2', parcela_id: 'parc-1', arboles: 0 },
+  { group_id: 'gr-9', parcela_id: 'parc-2', arboles: 50 },
+];
 
 describe('listarParcelasConStats', () => {
   function responder(consulta: ConsultaCapturada): RespuestaMock {
     if (consulta.tabla === 'parcelas') return { data: [FILA_PARCELA] };
-    if (consulta.tabla === 'groups') return { count: 4 };
-    return { count: 120 };
+    if (consulta.tabla === 'arboles_por_grupo') return { data: ARBOLES_POR_GRUPO };
+    return { error: { message: `consulta inesperada a ${consulta.tabla}` } };
   }
 
-  test('excluye soft-deleted y cuenta grupos y árboles por parcela', async () => {
+  test('excluye soft-deleted y cuenta grupos y árboles con un solo RPC, sin N+1', async () => {
     const consultas = capturarConsultas(responder);
     const parcelas = await listarParcelasConStats('plant-1');
 
-    expect(consultas[0].tabla).toBe('parcelas');
-    expect(consultas[0].filtros).toEqual([
+    const deParcelas = consultas.find((consulta) => consulta.tabla === 'parcelas');
+    expect(deParcelas?.filtros).toEqual([
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
       { metodo: 'is', columna: 'deleted_at', valor: null },
     ]);
@@ -76,15 +84,16 @@ describe('listarParcelasConStats', () => {
         codigo: 'P1',
         descripcion: 'Lindante al arroyo',
         createdAt: '2026-06-01T12:00:00Z',
-        grupos: 4,
-        arboles: 120,
+        grupos: 2,
+        arboles: 3,
       },
     ]);
-    const countArboles = consultas.find((consulta) => consulta.tabla === 'trees');
-    expect(countArboles?.opciones).toEqual({ count: 'exact', head: true });
-    expect(countArboles?.filtros).toEqual([
-      { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
+    expect(consultas.map((consulta) => consulta.tabla).sort()).toEqual([
+      'arboles_por_grupo',
+      'parcelas',
     ]);
+    const rpc = consultas.find((consulta) => consulta.operacion === 'rpc');
+    expect(rpc?.payload).toEqual({ p_plantation_id: 'plant-1' });
   });
 
   test('propaga el error de Supabase', async () => {
@@ -96,11 +105,11 @@ describe('listarParcelasConStats', () => {
 describe('listarGrupos', () => {
   function responder(consulta: ConsultaCapturada): RespuestaMock {
     if (consulta.tabla === 'groups') return { data: [FILA_GRUPO, { ...FILA_GRUPO, id: 'gr-2' }] };
-    // Lectura única de group_id de todos los árboles (agregado en cliente).
-    return { data: [{ group_id: 'gr-1' }, { group_id: 'gr-1' }, { group_id: 'gr-1' }] };
+    if (consulta.tabla === 'arboles_por_grupo') return { data: ARBOLES_POR_GRUPO };
+    return { error: { message: `consulta inesperada a ${consulta.tabla}` } };
   }
 
-  test('embebe la parcela y agrega el count por grupo en cliente sin N+1', async () => {
+  test('embebe la parcela y toma el conteo por grupo del RPC, sin bajar árboles', async () => {
     const consultas = capturarConsultas(responder);
     const grupos = await listarGrupos('plant-1');
 
@@ -108,38 +117,7 @@ describe('listarGrupos', () => {
       ['gr-1', 'P1', 3],
       ['gr-2', 'P1', 0],
     ]);
-    const lecturas = consultas.filter((consulta) => consulta.tabla === 'trees');
-    expect(lecturas).toHaveLength(1);
-    expect(lecturas[0].columnas).toContain('group_id');
-    // Lectura paginada con `.range()`, no `.limit()`: sin el tope de 1000.
-    expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
-    expect(lecturas[0].limite).toBeUndefined();
-    expect(lecturas[0].filtros).toEqual([
-      { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
-    ]);
-  });
-
-  test('cuenta árboles por grupo sin truncar a 1000 (pagina con range)', async () => {
-    const totalArboles = 1500;
-    const responderPaginado = (consulta: ConsultaCapturada): RespuestaMock => {
-      if (consulta.tabla === 'groups') return { data: [FILA_GRUPO] };
-      // trees: devuelve el slice [desde, hasta] de un dataset de 1500, todos en gr-1.
-      const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalArboles - 1 };
-      const filas = [];
-      for (let indice = desde; indice <= hasta && indice < totalArboles; indice++) {
-        filas.push({ group_id: 'gr-1' });
-      }
-      return { data: filas };
-    };
-    const consultas = capturarConsultas(responderPaginado);
-    const grupos = await listarGrupos('plant-1');
-
-    expect(grupos[0].arboles).toBe(totalArboles);
-    const lecturas = consultas.filter((consulta) => consulta.tabla === 'trees');
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
-    expect(lecturas).toHaveLength(2);
-    expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
-    expect(lecturas[1].rango).toEqual({ desde: 1000, hasta: 1999 });
+    expect(consultas.some((consulta) => consulta.tabla === 'trees')).toBe(false);
   });
 
   test('aplica el filtro por parcela server-side', async () => {
@@ -161,7 +139,11 @@ describe('listarArboles', () => {
     const pagina = await listarArboles('plant-1', {}, 2);
 
     expect(consultas[0].opciones).toEqual({ count: 'exact' });
-    expect(consultas[0].orden).toEqual({ columna: 'created_at', ascending: false });
+    // El id desempata: con un created_at repetido, paginar no repite ni saltea filas.
+    expect(consultas[0].ordenes).toEqual([
+      { columna: 'created_at', ascending: false },
+      { columna: 'id', ascending: false },
+    ]);
     expect(consultas[0].rango).toEqual({ desde: 50, hasta: 99 });
     expect(pagina.total).toBe(120);
     expect(pagina.totalPaginas).toBe(Math.ceil(120 / ARBOLES_POR_PAGINA));
@@ -174,11 +156,15 @@ describe('listarArboles', () => {
     expect(arboles[0]).toEqual({
       id: 'tree-1',
       subId: 'A-001',
+      idArbol: 'A-001-SS26',
       posicion: 3,
+      especieId: 'sp-1',
       especieCodigo: 'QB',
       especieNombre: 'Quebracho',
+      especieNombreCientifico: 'Schinopsis balansae',
       grupoId: 'gr-1',
       grupoCodigo: 'L1',
+      grupoNombre: 'Línea 1',
       parcelaId: 'parc-1',
       fotoUrl: 'plantations/p1/trees/tree-1.jpg',
       usuarioRegistro: 'user-9',
@@ -215,7 +201,8 @@ describe('listarArboles', () => {
       busqueda: 'A-0',
     });
 
-    expect(consultas[0].filtros).toEqual([
+    const arboles = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(arboles?.filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
       { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
       { metodo: 'eq', columna: 'group_id', valor: 'gr-1' },
@@ -223,6 +210,52 @@ describe('listarArboles', () => {
       { metodo: 'not', columna: 'latitude', operador: 'is', valor: null },
       { metodo: 'ilike', columna: 'sub_id', valor: '%A-0%' },
     ]);
+  });
+
+  test('un ID Árbol completo filtra por SubID exacto y código de plantación (#705)', async () => {
+    const consultas = capturarConsultas((consulta) =>
+      consulta.tabla === 'plantations'
+        ? { data: [{ codigo: 'SS26' }, { codigo: 'SS26-1' }] }
+        : { data: [], count: 0 },
+    );
+    await listarArboles('plant-1', { busqueda: 'LP1L23BANC12-ss26-1' });
+
+    const arboles = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(arboles?.filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: 'lp1l23banc12',
+    });
+    expect(arboles?.filtros).toContainEqual({
+      metodo: 'eq',
+      columna: 'groups.plantations.codigo',
+      valor: 'SS26-1',
+    });
+  });
+
+  test('el select de árboles trae el código de la plantación con join interno', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1');
+    expect(consultas[0].columnas).toContain('plantations!inner(codigo)');
+  });
+
+  test('el select trae el científico de la especie y el nombre del grupo (#830)', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1');
+    expect(consultas[0].columnas).toContain('species(codigo, nombre, nombre_cientifico)');
+    expect(consultas[0].columnas).toContain('groups!inner(codigo, nombre, ');
+  });
+
+  test('el SubID parcial no consulta los códigos y busca como siempre', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1', { busqueda: 'LP1L23' });
+
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: '%LP1L23%',
+    });
   });
 
   test('especie N/N filtra species_id null y sin GPS filtra latitude null', async () => {
@@ -240,5 +273,79 @@ describe('listarArboles', () => {
   test('propaga el error de Supabase', async () => {
     capturarConsultas(() => ({ error: { message: 'falló la red' } }));
     await expect(listarArboles('plant-1')).rejects.toThrow('falló la red');
+  });
+});
+
+describe('contarArbolesDelFiltro', () => {
+  /** Con foto = subida al bucket: no nula y sin esquema local. */
+  const esConFoto = (consulta: ConsultaCapturada) =>
+    consulta.filtros.some(({ metodo, columna }) => metodo === 'not' && columna === 'foto_url');
+
+  function responder(total: number, conFoto: number) {
+    return (consulta: ConsultaCapturada): RespuestaMock =>
+      consulta.tabla === 'trees'
+        ? { count: esConFoto(consulta) ? conFoto : total }
+        : { error: { message: `consulta inesperada a ${consulta.tabla}` } };
+  }
+
+  test('cuenta el total y los con foto sin traer filas, con los filtros del listado', async () => {
+    const consultas = capturarConsultas(responder(148, 37));
+    const conteo = await contarArbolesDelFiltro('plant-1', { parcelaId: 'parc-1', conGps: true });
+
+    expect(conteo).toEqual({ total: 148, conFoto: 37 });
+    expect(consultas).toHaveLength(2);
+    for (const consulta of consultas) {
+      expect(consulta.opciones).toEqual({ count: 'exact', head: true });
+      expect(consulta.columnas).toContain('groups!inner(');
+      expect(consulta.columnas).toContain('plantations!inner(codigo)');
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'eq',
+        columna: 'groups.parcela_id',
+        valor: 'parc-1',
+      });
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'not',
+        columna: 'latitude',
+        operador: 'is',
+        valor: null,
+      });
+    }
+    expect(consultas.filter(esConFoto)).toHaveLength(1);
+  });
+
+  test('con el filtro «sin foto», los con foto son 0 sin consultar', async () => {
+    const consultas = capturarConsultas(responder(20, 99));
+    expect(await contarArbolesDelFiltro('plant-1', { conFoto: false })).toEqual({
+      total: 20,
+      conFoto: 0,
+    });
+    expect(consultas).toHaveLength(1);
+  });
+
+  test('con el filtro «con foto», todos tienen foto y alcanza una consulta', async () => {
+    const consultas = capturarConsultas(responder(450, 450));
+    expect(await contarArbolesDelFiltro('plant-1', { conFoto: true })).toEqual({
+      total: 450,
+      conFoto: 450,
+    });
+    expect(consultas).toHaveLength(1);
+  });
+
+  test('la búsqueda por ID entra en los dos conteos', async () => {
+    const consultas = capturarConsultas(responder(3, 1));
+    await contarArbolesDelFiltro('plant-1', { busqueda: 'L23' });
+
+    for (const consulta of consultas) {
+      expect(consulta.filtros).toContainEqual({
+        metodo: 'ilike',
+        columna: 'sub_id',
+        valor: '%L23%',
+      });
+    }
+  });
+
+  test('propaga el error de Supabase', async () => {
+    capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
+    await expect(contarArbolesDelFiltro('plant-1', {})).rejects.toThrow('sin permisos');
   });
 });

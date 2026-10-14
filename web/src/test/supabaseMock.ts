@@ -21,7 +21,13 @@ type OyenteAuth = (evento: string, sesion: SesionMock | null) => void;
 const oyentes = new Set<OyenteAuth>();
 
 /** Llamada a `storage.createSignedUrl` capturada por el mock. */
-export type FirmaCapturada = { bucket: string; path: string; segundos: number };
+export type FirmaCapturada = {
+  bucket: string;
+  path: string;
+  segundos: number;
+  /** Nombre pedido para la descarga, si lo hay. */
+  download?: string;
+};
 
 /** Llamada a `functions.invoke` capturada por el mock. */
 export type InvocacionCapturada = { funcion: string; cuerpo: Record<string, unknown> };
@@ -37,6 +43,8 @@ export const estadoMock: {
   /** Error a devolver al firmar URLs de Storage (null = firma OK). */
   errorFirma: { message: string } | null;
   firmas: FirmaCapturada[];
+  /** Paths que `createSignedUrls` no firma, como cuando la policy niega la lectura. */
+  pathsSinFirma: string[];
   /** Respuesta de functions.invoke (null = { ok: true } sin error). */
   respuestaInvoke: { data: unknown; error: unknown } | null;
   invocaciones: InvocacionCapturada[];
@@ -51,6 +59,7 @@ export const estadoMock: {
   resolverConsulta: null,
   errorFirma: null,
   firmas: [],
+  pathsSinFirma: [],
   respuestaInvoke: null,
   invocaciones: [],
   errorUpdateUser: null,
@@ -65,6 +74,7 @@ export function resetEstadoMock(): void {
   estadoMock.resolverConsulta = null;
   estadoMock.errorFirma = null;
   estadoMock.firmas = [];
+  estadoMock.pathsSinFirma = [];
   estadoMock.respuestaInvoke = null;
   estadoMock.invocaciones = [];
   estadoMock.errorUpdateUser = null;
@@ -159,10 +169,22 @@ export const supabaseMock = {
   }),
   storage: {
     from: vi.fn((bucket: string) => ({
-      createSignedUrl: vi.fn(async (path: string, segundos: number) => {
-        estadoMock.firmas.push({ bucket, path, segundos });
+      createSignedUrl: vi.fn(
+        async (path: string, segundos: number, opciones?: { download?: string }) => {
+          estadoMock.firmas.push({ bucket, path, segundos, ...opciones });
+          if (estadoMock.errorFirma) return { data: null, error: estadoMock.errorFirma };
+          return { data: { signedUrl: `https://firmada.test/${path}` }, error: null };
+        },
+      ),
+      createSignedUrls: vi.fn(async (paths: string[], segundos: number) => {
+        estadoMock.firmas.push(...paths.map((path) => ({ bucket, path, segundos })));
         if (estadoMock.errorFirma) return { data: null, error: estadoMock.errorFirma };
-        return { data: { signedUrl: `https://firmada.test/${path}` }, error: null };
+        const data = paths.map((path) =>
+          estadoMock.pathsSinFirma.includes(path)
+            ? { path, signedUrl: '', error: 'Object not found' }
+            : { path, signedUrl: `https://firmada.test/${path}`, error: null },
+        );
+        return { data, error: null };
       }),
     })),
   },

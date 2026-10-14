@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('offlineAuthCycle', () => {
   describe('credential caching', () => {
     it('cacheCredential stores hashed credential in SecureStore', async () => {
-      await cacheCredential('user@test.com', 'mypassword', 'tecnico');
+      await cacheCredential('user@test.com', 'mypassword', 'tecnico', 'uid:user@test.com');
 
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith('offline_credentials', expect.any(String));
 
@@ -53,8 +53,8 @@ describe('offlineAuthCycle', () => {
     });
 
     it('cacheCredential overwrites existing entry for same email', async () => {
-      await cacheCredential('user@test.com', 'pass1', 'tecnico');
-      await cacheCredential('user@test.com', 'pass2', 'tecnico');
+      await cacheCredential('user@test.com', 'pass1', 'tecnico', 'uid:user@test.com');
+      await cacheCredential('user@test.com', 'pass2', 'tecnico', 'uid:user@test.com');
 
       const storedRaw = store.get('offline_credentials');
       const entries = JSON.parse(storedRaw!);
@@ -65,13 +65,13 @@ describe('offlineAuthCycle', () => {
 
   describe('credential verification', () => {
     it('verifyCredential returns role for correct password', async () => {
-      await cacheCredential('user@test.com', 'correct-pass', 'admin');
+      await cacheCredential('user@test.com', 'correct-pass', 'admin', 'uid:user@test.com');
       const role = await verifyCredential('user@test.com', 'correct-pass');
-      expect(role).toBe('admin');
+      expect(role).toEqual({ role: 'admin', userId: 'uid:user@test.com' });
     });
 
     it('verifyCredential returns null for wrong password', async () => {
-      await cacheCredential('user@test.com', 'correct-pass', 'admin');
+      await cacheCredential('user@test.com', 'correct-pass', 'admin', 'uid:user@test.com');
       const role = await verifyCredential('user@test.com', 'wrong-pass');
       expect(role).toBeNull();
     });
@@ -84,7 +84,7 @@ describe('offlineAuthCycle', () => {
 
   describe('credential clearing', () => {
     it('clearCredential removes entry for email', async () => {
-      await cacheCredential('user@test.com', 'pass', 'tecnico');
+      await cacheCredential('user@test.com', 'pass', 'tecnico', 'uid:user@test.com');
       await clearCredential('user@test.com');
       const role = await verifyCredential('user@test.com', 'pass');
       expect(role).toBeNull();
@@ -93,8 +93,8 @@ describe('offlineAuthCycle', () => {
 
   describe('full cycle', () => {
     it('online login caches -> offline verify succeeds -> clear removes -> verify fails', async () => {
-      await cacheCredential('field@test.com', 'fieldpass', 'tecnico');
-      expect(await verifyCredential('field@test.com', 'fieldpass')).toBe('tecnico');
+      await cacheCredential('field@test.com', 'fieldpass', 'tecnico', 'uid:field@test.com');
+      expect(await verifyCredential('field@test.com', 'fieldpass')).toEqual({ role: 'tecnico', userId: 'uid:field@test.com' });
       await clearCredential('field@test.com');
       expect(await verifyCredential('field@test.com', 'fieldpass')).toBeNull();
     });
@@ -102,16 +102,16 @@ describe('offlineAuthCycle', () => {
 
   describe('multi-user support', () => {
     it('multiple users can have cached credentials independently', async () => {
-      await cacheCredential('user1@test.com', 'pass1', 'admin');
-      await cacheCredential('user2@test.com', 'pass2', 'tecnico');
+      await cacheCredential('user1@test.com', 'pass1', 'admin', 'uid:user1@test.com');
+      await cacheCredential('user2@test.com', 'pass2', 'tecnico', 'uid:user2@test.com');
 
-      expect(await verifyCredential('user1@test.com', 'pass1')).toBe('admin');
-      expect(await verifyCredential('user2@test.com', 'pass2')).toBe('tecnico');
+      expect(await verifyCredential('user1@test.com', 'pass1')).toEqual({ role: 'admin', userId: 'uid:user1@test.com' });
+      expect(await verifyCredential('user2@test.com', 'pass2')).toEqual({ role: 'tecnico', userId: 'uid:user2@test.com' });
 
       await clearCredential('user1@test.com');
 
       expect(await verifyCredential('user1@test.com', 'pass1')).toBeNull();
-      expect(await verifyCredential('user2@test.com', 'pass2')).toBe('tecnico');
+      expect(await verifyCredential('user2@test.com', 'pass2')).toEqual({ role: 'tecnico', userId: 'uid:user2@test.com' });
     });
   });
 
@@ -169,8 +169,8 @@ describe('offlineAuthCycle', () => {
 
   describe('getCachedEmails', () => {
     it('returns list of cached email addresses', async () => {
-      await cacheCredential('a@test.com', 'p1', 'admin');
-      await cacheCredential('b@test.com', 'p2', 'tecnico');
+      await cacheCredential('a@test.com', 'p1', 'admin', 'uid:a@test.com');
+      await cacheCredential('b@test.com', 'p2', 'tecnico', 'uid:b@test.com');
       const emails = await getCachedEmails();
       expect(emails).toEqual(['a@test.com', 'b@test.com']);
     });

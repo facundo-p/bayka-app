@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
@@ -12,8 +14,25 @@ vi.mock('../../lib/supabase', async () => {
 beforeEach(prepararSesionAdmin);
 
 const FILAS_ESPECIES = [
-  { id: 'sp-1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
-  { id: 'sp-2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
+  {
+    id: 'sp-1',
+    codigo: 'ANC',
+    nombre: 'Anchico',
+    nombre_cientifico: 'Parapiptadenia rigida',
+    especie_cientifica_id: 'ec-1',
+  },
+  {
+    id: 'sp-2',
+    codigo: 'IBI',
+    nombre: 'Ibirá Pitá',
+    nombre_cientifico: null,
+    especie_cientifica_id: null,
+  },
+];
+
+const FILAS_CIENTIFICAS = [
+  { id: 'ec-1', nombre: 'Parapiptadenia rigida' },
+  { id: 'ec-2', nombre: 'Prosopis alba' },
 ];
 
 /** Resuelve el catálogo (species), el uso (plantation_species / trees) y deja
@@ -21,6 +40,7 @@ const FILAS_ESPECIES = [
 function configurarEspeciesMock(): void {
   estadoMock.resolverConsulta = (consulta) => {
     if (consulta.tabla === 'species') return { data: FILAS_ESPECIES, error: null };
+    if (consulta.tabla === 'especies_cientificas') return { data: FILAS_CIENTIFICAS, error: null };
     if (consulta.tabla === 'plantation_species') {
       // Anchico habilitado en 1 plantación; Ibirá Pitá en ninguna.
       return { data: [{ species_id: 'sp-1' }], error: null };
@@ -50,6 +70,8 @@ test('renderiza la cabecera con el uso del catálogo y una fila de especie', asy
   const filaAnchico = main.getByText('Anchico').closest('tr');
   if (!filaAnchico) throw new Error('No se encontró la fila de Anchico');
   expect(within(filaAnchico).getByText('1.234')).toBeInTheDocument();
+  // El pie no dice dónde se abre: según el ancho es columna u hoja.
+  expect(main.getByText('2 especies · clic en una fila abre la edición')).toBeInTheDocument();
 });
 
 test('muestra el uso por especie: plantaciones y árboles (0/0 la sin uso)', async () => {
@@ -118,7 +140,42 @@ test('click en una fila abre el panel de edición precargado con esa especie', a
   expect(await screen.findByRole('heading', { name: 'Editar especie' })).toBeInTheDocument();
   expect(screen.getByLabelText('Código *')).toHaveValue('ANC');
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('Anchico');
-  expect(screen.getByLabelText('Nombre científico')).toHaveValue('Parapiptadenia rigida');
+  expect(await screen.findByRole('button', { name: /Especie científica/ })).toHaveTextContent(
+    'Parapiptadenia rigida',
+  );
+});
+
+test('el catálogo no pinta colores: fuera de una plantación la especie no tiene uno (#845)', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await usuario.click(await screen.findByText('Anchico'));
+  await screen.findByRole('heading', { name: 'Editar especie' });
+
+  expect(document.querySelector('[style*="--color"]')).toBeNull();
+});
+
+test('la pestaña Científicas lista cada especie científica con las especies que agrupa (#753)', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+  await screen.findByText('Anchico');
+
+  await usuario.click(screen.getByRole('link', { name: 'Científicas' }));
+
+  const main = enMain();
+  const filaParapiptadenia = (await main.findByText('Parapiptadenia rigida')).closest('tr');
+  if (!filaParapiptadenia) throw new Error('No se encontró la fila de Parapiptadenia rigida');
+  expect(within(filaParapiptadenia).getByText('Anchico')).toBeInTheDocument();
+  expect(within(filaParapiptadenia).getByText('1')).toBeInTheDocument();
+  expect(
+    main.getByText('Catálogo global · 2 especies científicas · 1 con especies'),
+  ).toBeInTheDocument();
+  expect(
+    main.getByText('2 especies científicas · clic en una fila abre la edición'),
+  ).toBeInTheDocument();
+  expect(main.getByRole('button', { name: 'Nueva especie científica' })).toBeInTheDocument();
 });
 
 test('el filtro de uso separa las especies usadas de las que no', async () => {
@@ -128,11 +185,12 @@ test('el filtro de uso separa las especies usadas de las que no', async () => {
   await screen.findByText('Anchico');
 
   // Ibirá Pitá no está en ninguna plantación y no tiene árboles.
-  await usuario.click(enMain().getByRole('radio', { name: 'Sin uso' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Sin uso' }));
   await waitFor(() => expect(enMain().queryByText('Anchico')).not.toBeInTheDocument());
   expect(enMain().getByText('Ibirá Pitá')).toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'En uso' }));
   await waitFor(() => expect(enMain().queryByText('Ibirá Pitá')).not.toBeInTheDocument());
   expect(enMain().getByText('Anchico')).toBeInTheDocument();
 });
@@ -148,6 +206,22 @@ test('el panel se cierra con la X y la fila abierta queda marcada', async () => 
 
   await usuario.click(screen.getByRole('button', { name: 'Cerrar Editar especie' }));
   expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
+});
+
+test('a ≤900 la fila abre el detalle en una hoja y al cerrarla el foco vuelve a la fila', async () => {
+  simularAncho(ANCHO.tablet);
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  const celda = await screen.findByText('Anchico');
+  await usuario.click(celda);
+  expect(screen.getByRole('dialog', { name: 'Editar especie' })).toBeInTheDocument();
+  expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
+
+  await usuario.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog', { name: 'Editar especie' })).not.toBeInTheDocument();
+  expect(celda.closest('tr')).toHaveFocus();
 });
 
 test('con el catálogo vacío muestra el vacío total, no el de la búsqueda', async () => {
@@ -178,6 +252,7 @@ test('el recuento de la barra concuerda en singular', async () => {
   await screen.findByText('Anchico');
 
   expect(enMain().getByText(textoCompleto('2 especies · 1.234 árboles'))).toBeInTheDocument();
-  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  await usuario.click((await abrirFiltros(usuario)).getByRole('radio', { name: 'En uso' }));
+  await usuario.keyboard('{Escape}');
   expect(await enMain().findByText(textoCompleto('1 especie · 1.234 árboles'))).toBeInTheDocument();
 });

@@ -1,13 +1,17 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
+import { enTransaccion } from '../../database/transaccion';
 import { groups, trees } from '../../database/schema';
 import { eq, and, inArray, isNotNull } from 'drizzle-orm';
 import { isRemoteUri, ensureFileUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
-import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/TreeRepository';
+import { getTreesWithPendingPhotos } from '../../repositories/TreeRepository';
+import { confirmarFotoSubida } from '../../repositories/AsentamientoDeSyncRepository';
+import { markGroupPendingSync } from '../../repositories/GroupRepository';
+import { subidorActual } from '../../repositories/subidor';
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
-import { uploadPhotoToStorage } from './storageUpload';
+import { pathDeFotoEnStorage, uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
 import { abortarSiCancelado, esCancelacion, relanzarSiEsCancelacion } from './cancelacion';
 import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
@@ -32,7 +36,7 @@ type ArbolConFotoPendiente = Awaited<ReturnType<typeof getTreesWithPendingPhotos
 /** Sube la foto a Storage y deja `foto_url` apuntando al path relativo. */
 async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transferencia> {
   // Path con parcela: parcela es obligatoria en groups (#90).
-  const storagePath = `plantations/${tree.plantacionId}/parcelas/${tree.parcelaId}/trees/${tree.id}.jpg`;
+  const storagePath = pathDeFotoEnStorage({ treeId: tree.id, plantacionId: tree.plantacionId, parcelaId: tree.parcelaId }, tree.fotoUrl);
 
   const { error, bytes } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
   if (error) {
@@ -40,25 +44,29 @@ async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transfere
     return FALLO;
   }
 
-  if (!(await apuntarFotoUrlEnServer(tree.id, storagePath))) return FALLO;
+  if (!(await apuntarFotoUrlEnServer(tree, storagePath))) return FALLO;
 
-  await markPhotoSynced(tree.id);
+  // Atómico: un corte con la base nueva y la quitada todavía anotada quitaría la foto recién subida.
+  await enTransaccion((tx) => confirmarFotoSubida(tx, tree.id, tree.fotoUrl, storagePath));
   return { ok: true, bytes };
 }
 
-/** `true` solo si el server confirmó el cambio en la fila del árbol. */
-async function apuntarFotoUrlEnServer(treeId: string, storagePath: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('trees')
-    .update({ foto_url: storagePath })
-    .eq('id', treeId)
-    .select('id');
+/**
+ * `true` solo si el server confirmó el cambio en la fila del árbol. Pisa solo la
+ * foto que el teléfono vio (#795): si el server ya tiene otra, el grupo vuelve a
+ * pendiente y su push resuelve el conflicto.
+ */
+async function apuntarFotoUrlEnServer(tree: ArbolConFotoPendiente, storagePath: string): Promise<boolean> {
+  const update = supabase.from('trees').update({ foto_url: storagePath }).eq('id', tree.id);
+  const conBase = tree.fotoBase == null ? update.is('foto_url', null) : update.eq('foto_url', tree.fotoBase);
+  const { data, error } = await conBase.select('id');
   if (error) {
-    syncLog.error(`foto_url update failed for tree ${treeId}:`, error.message);
+    syncLog.error(`foto_url update failed for tree ${tree.id}:`, error.message);
     return false;
   }
   if (sinFilasAfectadas(data)) {
-    syncLog.error(`foto_url update failed for tree ${treeId}:`, DETALLE_SIN_FILAS_AFECTADAS);
+    syncLog.error(`foto_url update failed for tree ${tree.id}:`, DETALLE_SIN_FILAS_AFECTADAS);
+    await markGroupPendingSync(tree.grupoId);
     return false;
   }
   return true;
@@ -74,7 +82,7 @@ async function correrUploadPendingPhotos(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
 ): Promise<{ uploaded: number; failed: number }> {
-  const pending = await getTreesWithPendingPhotos(plantacionId);
+  const pending = await getTreesWithPendingPhotos(plantacionId, await subidorActual());
   // Sin pendientes no se emite nada: un `{ total: 0, completed: 0 }` es truthy y
   // hacía que el modal saltara a "Subiendo fotos... 0 de 0" (#447).
   if (pending.length === 0) return { uploaded: 0, failed: 0 };
@@ -133,7 +141,7 @@ async function getRemoteTreesForPlantation(
 async function downloadSinglePhoto(
   tree: { id: string; fotoUrl: string },
   dir: InstanceType<typeof Directory>
-): Promise<Transferencia> {
+): Promise<Transferencia & { uri?: string }> {
   const { data, error } = await supabase.storage
     .from('tree-photos')
     .createSignedUrl(tree.fotoUrl, 3600);
@@ -149,9 +157,13 @@ async function downloadSinglePhoto(
   syncLog.info(`Download OK for tree ${tree.id}: destUri=${destFile.uri}`);
 
   const localUri = ensureFileUri(destFile.uri);
-  await db.update(trees).set({ fotoUrl: localUri, fotoSynced: true }).where(eq(trees.id, tree.id));
+  // Solo si la fila sigue apuntando a ese path: una foto reemplazada o quitada
+  // mientras bajaba no se pisa.
+  await db.update(trees)
+    .set({ fotoUrl: localUri, fotoSynced: true })
+    .where(and(eq(trees.id, tree.id), eq(trees.fotoUrl, tree.fotoUrl)));
   // `size` ya lo tiene el archivo recién escrito: no es una lectura extra (#450).
-  return { ok: true, bytes: destFile.size ?? 0 };
+  return { ok: true, bytes: destFile.size ?? 0, uri: localUri };
 }
 
 /**
@@ -175,6 +187,26 @@ async function bajarConTimeout(url: string, destino: InstanceType<typeof ExpoFil
   );
 }
 
+function carpetaDeFotosDescargadas(): InstanceType<typeof Directory> {
+  const dir = new Directory(Paths.document, 'photos');
+  if (!dir.exists) dir.create({ intermediates: true });
+  return dir;
+}
+
+/**
+ * Baja una sola foto que está en Storage y no en el celular (#53, #565). Devuelve
+ * el uri local, o null si no se pudo (sin conexión, timeout, sin acceso).
+ */
+export async function descargarFotoRemota(treeId: string, storagePath: string): Promise<string | null> {
+  try {
+    const bajada = await downloadSinglePhoto({ id: treeId, fotoUrl: storagePath }, carpetaDeFotosDescargadas());
+    return bajada.uri ?? null;
+  } catch (e: any) {
+    syncLog.error(`Descarga de la foto del árbol ${treeId} falló: ${e?.message}`);
+    return null;
+  }
+}
+
 /**
  * Downloads remote photos for a plantation to local storage.
  * Runs during pull flow; skips trees with local file:// URIs.
@@ -187,8 +219,7 @@ async function correrDownloadPhotosForPlantation(
   const remoteTrees = await getRemoteTreesForPlantation(plantacionId);
   if (remoteTrees.length === 0) return { downloaded: 0, failed: 0 };
 
-  const dir = new Directory(Paths.document, 'photos');
-  if (!dir.exists) dir.create({ intermediates: true });
+  const dir = carpetaDeFotosDescargadas();
 
   syncLog.info(`Download photos: ${remoteTrees.length} remote trees found`);
 

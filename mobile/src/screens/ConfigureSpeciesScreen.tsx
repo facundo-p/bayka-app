@@ -39,10 +39,9 @@ function Checkbox({ checked, indeterminate, onPress }: { checked: boolean; indet
 type Props = {
   plantacionIdProp?: string;
   onClose?: () => void;
-  pendingSync?: boolean;
 };
 
-export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pendingSync }: Props = {}) {
+export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Props = {}) {
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
@@ -58,7 +57,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
     handleToggle,
     handleSelectAll,
     handleSave,
-  } = useSpeciesConfig(plantacionId, pendingSync);
+  } = useSpeciesConfig(plantacionId);
 
   if (loading) {
     return (

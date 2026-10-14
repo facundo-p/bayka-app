@@ -130,6 +130,31 @@ Para el uso en campo sin conexión, las credenciales se cachean en SecureStore
 expiración opcional. El login ofrece las cuentas guardadas como chips
 ("Acceso rápido").
 
+Cada credencial offline guarda el userId de su cuenta, y el login offline deja
+cacheados el userId y el rol de quien entra. En un celular compartido, si la
+cuenta que entra offline no es la dueña de los tokens cacheados, esos tokens se
+descartan: trabaja con una sesión solo local y el sync le pide login online
+antes de subir nada, así nunca se sube con la identidad de otro (#658). Las
+credenciales guardadas antes de este cambio no tienen userId y no sirven para
+entrar offline hasta el próximo login online.
+
+Toda operación contra el servidor (sync, pull-to-refresh, descarga de
+plantaciones, catálogo, técnicos) pasa antes por `ensureServerSession`: sin una
+sesión del SDK de la cuenta cacheada corta con `SessionExpiredError` antes de
+leer, porque una lectura anónima vuelve vacía por RLS y el pull borraría datos
+locales. Las escrituras que el usuario dispara fuera del sync también pasan por
+el guard: editar la plantación, guardar especies y asignar técnicos quedan
+pendientes para el sync; finalizar, reabrir, quitar técnicos y el
+pull-to-refresh piden iniciar sesión con conexión. Un timeout o una falla de
+red al refrescar la sesión no cuentan como sesión vencida: se reportan como
+problema de conexión. El perfil cacheado (`PerfilCacheadoService`) se guarda
+por cuenta en `user_profile_cache.<userId>` y solo se lee el de la cuenta
+activa: el login online de otra cuenta no lo pisa (#667). La ranura única
+anterior (`user_profile_cache`) se migra al leer o escribir a la clave de su
+dueño y se borra; si no trae userId (anterior a #658), su dueño es la cuenta de
+los tokens cacheados cuando el email coincide con el del último login online.
+Al desactivar una cuenta se borra su perfil cacheado.
+
 ---
 
 # 3. Arquitectura General
@@ -176,7 +201,10 @@ La base local contiene:
 species
 plantations
 plantation_species
+cambios_especies_pendientes
 plantation_users
+altas_de_tecnicos_pendientes
+tecnicos_de_organizacion   (caché para asignar sin conexión)
 parcelas
 groups          (groups.parcela_id → parcelas)
 trees
@@ -281,21 +309,62 @@ Grupo marcado como sincronizado localmente (pendingSync = false)
 **Plantación finalizada o archivada** (#469, #477): el server rechaza el push con
 `PLANTACION_FINALIZADA` o `PLANTACION_ARCHIVADA`. Lo pendiente no se pierde:
 queda en el celular y se sube cuando la plantación vuelve a ser escribible.
-Detalle por paso en `mobile/docs/sync-photo-flow.md`.
+Detalle por paso en `mobile/docs/sync-photo-flow.md`. Si nada lo destraba (finalizada,
+archivada, eliminada o sin permiso), la tarjeta de la plantación avisa cuántos cambios
+no pudieron subir y por qué, y ofrece descartarlos (#638).
 
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
+
+**La especie, el GPS y la foto de cada árbol, y los datos del grupo, viajan con
+su base** (#679, #795). El dispositivo guarda lo último que vio en el server
+(`trees.especie_base_id`, `foto_base`, `*_base` del GPS, `groups.base_del_servidor`)
+y `sync_subgroup` lo recibe como base: si el server ya tiene otro valor (lo cambió
+la web u otro celular), gana el del server y lo devuelve en `conservados`. El
+celular lo adopta y guarda el propio en `conflictos_de_sync` para que el usuario
+elija; mientras no elija, el grupo sigue pendiente. En el resto, lo subido pasa a
+ser la base. Detalle en `mobile/docs/sync-photo-flow.md`.
+El pull adopta la especie del server en los grupos sin cambios locales. La web
+cambia la especie por `cambiar_especie_arbol` (admin u, en una finalizada,
+superadmin), con la misma base.
 
 **Los borrados viajan aparte** (#467). Borrar un árbol o un grupo solo borra en
 SQLite; el pull upsertea todo lo que el server tiene, así que sin propagarlos la
 fila volvía en la misma sincronización. Se anotan en `borrados_pendientes`, el pull
 los excluye y el push los manda por `sincronizar_borrados`, que es un RPC
 `SECURITY DEFINER` porque **no hay policy de DELETE sobre `trees` ni `groups`**: un
-delete desde el cliente sería un no-op silencioso.
+delete desde el cliente sería un no-op silencioso. Lo que el usuario no puede
+escribir (un grupo ajeno, para un técnico) lo saltea en silencio (#796).
 
 El registro es explícito —una fila por id— y no una semántica de reemplazo: el
 device puede tener un set parcial y "borrá todo lo que no te mandé" borraría del
 server datos que nunca vio.
+
+**Las especies de una plantación viajan como altas y bajas** (#635). Configurarlas
+aplica el cambio en SQLite y lo anota en `cambios_especies_pendientes` (una fila
+por especie, el último cambio gana), con o sin señal; con señal sube en el momento.
+El sync sube lo pendiente antes del pull por `aplicar_cambios_especies`, que es
+idempotente, y el pull no borra un alta pendiente ni devuelve una baja pendiente.
+Mandar la lista entera pisaría lo que la web cambió en el medio. Una baja de una
+especie con árboles la rechaza el server sola: el teléfono vuelve a habilitarla y
+el resumen del sync avisa. Si igual llegan árboles de una especie quitada,
+`sync_subgroup` la re-habilita. Una plantación creada offline anota solo las
+bajas: su alta sube todas sus especies como altas, junto con esas bajas. El orden
+de la botonera es alfabético por nombre (el orden personal de cada técnico se
+mantiene).
+
+**Asignar técnicos también viaja como altas** (#636). La pantalla lee los técnicos
+activos de la organización de `tecnicos_de_organizacion`, un caché que refresca el
+sync de un admin (y la pantalla, en segundo plano, si hay señal). Asignar aplica la
+fila en `plantation_users` y la anota en `altas_de_tecnicos_pendientes`, con el nombre
+del técnico para seguir mostrándola si sale del caché; con señal sube en el momento,
+sin que la pantalla espere más de unos segundos. El sync sube lo pendiente después de
+las especies y antes del pull, por `aplicar_cambios_tecnicos` (idempotente); una
+plantación creada offline espera a su alta. Un técnico dado de baja, un usuario que
+no es técnico o uno de otra organización lo rechaza el server solo: se quita del
+teléfono y el resumen del sync avisa. El pull de `plantation_users` no
+borra un alta pendiente. Quitar a un técnico ya asignado en el server requiere
+conexión, y va con las altas pendientes en el mismo RPC.
 
 ---
 
@@ -423,7 +492,7 @@ mobile/
             TreeRepository
 
         queries/                 (lecturas/agregaciones: admin, catalog,
-                                  dashboard, export, parcela, freshness)
+                                  dashboard, export, parcela)
 
         database/
             schema  (Drizzle)
@@ -500,32 +569,34 @@ operación offline
 
 ---
 
-# 10. Generación de IDs
+# 10. Identificadores de árbol
 
-Los IDs finales se generan **desde la web de gestión, server-side** (issue #232),
-no desde la app. El RPC `generate_tree_ids` (mig. 029) corre en una transacción
-Postgres: ordena los árboles de la plantación (por `groups.created_at`,
-`trees.posicion`, `groups.id` como desempate) y asigna el ID parcial (1..N por
-plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
-`MAX(global_id) + 1` o la que indique el admin).
-
-Solo lo corre un admin o superadmin activo de la organización de la plantación
-(mig. 042). Una plantación archivada devuelve `PLANTACION_ARCHIVADA`; una
-finalizada sí genera IDs, porque es el momento normal de hacerlo.
-
-Tipos de ID:
+Ningún ID se genera con una acción aparte:
 
 ```
-ID parcial de plantación  (plantacion_id)
-ID global Bayka           (global_id)
+ID de árbol               <SubID>-<código de plantación>, se arma al registrar
+ID parcial de plantación  1..N por plantación, se calcula al exportar
 ```
 
-**La app los recibe por el pull normal**, no los genera ni los sube: el upsert de
-`trees` adopta `plantacion_id`/`global_id` del server si el valor local está vacío.
-El RPC viejo `update_tree_ids` (mig. 020), que la app usaba para subir IDs
-generados localmente, quedó sin callers y se eliminó en la mig. 030.
+El ID parcial no se guarda. Web y mobile lo calculan con
+`shared/idParcial.ts`: ordenan por `groups.created_at` (como instante, con
+microsegundos), `trees.posicion`, `groups.id` y, por último, el id del árbol.
+Es el orden con el que se numeraba cuando el ID parcial se guardaba.
 
-El gate de export exige que TODOS los árboles tengan ID.
+El ID global numérico se dio de baja en #822, sin reemplazo. La mig. 081 (#859)
+dropeó `trees.global_id`, `trees.plantacion_id`, `generate_tree_ids`,
+`next_global_id_seed` y `plantation_ids_status`; desde la 080, `sync_subgroup`
+ignora los dos IDs si un APK viejo los manda. La app dropeó sus columnas locales
+en la migración SQLite 0035.
+
+El SubID de un árbol (`<parcela><grupo><especie><posición>`) lo arman la app y
+el server. Sus vectores de prueba viven en `contracts/sub-id.json` y los
+recorren pgTAP y mobile; web y mobile recorren los del ID de árbol (#735).
+
+El código de plantación y el ID de árbol (`<SubID>-<código>`) no tienen copias
+por app: los resuelve `shared/codigoPlantacion.ts`, lógica pura que importan web
+y mobile (#713). `contracts/codigo-plantacion.json` lo ata al CHECK de la base.
+Las reglas de `shared/` están en `shared/README.md`.
 
 ---
 
@@ -545,6 +616,12 @@ solo admins crean plantaciones
 solo admins exportan datos
 tecnicos solo registran datos
 ```
+
+Las reglas de permisos que el server aplica y los clientes reflejan (qué botón
+se muestra) se escriben como tabla de casos en `contracts/` y las recorren pgTAP
+y los contract tests de web y mobile: hoy `permisos-edicion.json`, para cambiar
+la especie de un árbol. `editar_plantacion` comparte el gate y lo recorre solo
+pgTAP (#735).
 
 ---
 

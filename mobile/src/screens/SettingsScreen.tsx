@@ -1,4 +1,4 @@
-import { View, Text, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, Switch, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -8,6 +8,11 @@ import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import { useNetStatus } from '../hooks/useNetStatus';
+import { useDescargaDeFotosSetting } from '../hooks/useDescargaDeFotosSetting';
+import { useLiberarEspacio } from '../hooks/useLiberarEspacio';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { rotuloLiberarEspacio, textoSinSubir } from '../utils/avisoLiberarEspacio';
 import { openGpsUnblockDialog } from '../services/gps/locationClient';
 import { gpsLog } from '../utils/gpsLogger';
 import { colors } from '../theme';
@@ -20,7 +25,7 @@ export default function SettingsScreen() {
   return (
     <TexturedBackground>
       <CustomHeader title="Ajustes" />
-      <View style={styles.innerContainer}>
+      <ScrollView contentContainerStyle={styles.innerContainer}>
         <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
           <Text style={styles.grupoTitulo}>Ajustes GPS</Text>
 
@@ -62,7 +67,11 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </Animated.View>
-      </View>
+
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
+          <SeccionFotos />
+        </Animated.View>
+      </ScrollView>
     </TexturedBackground>
   );
 }
@@ -99,5 +108,53 @@ function GpsDiagnostic() {
         </TouchableOpacity>
       )}
     </View>
+  );
+}
+
+/** La preferencia es la misma que el checkbox del modal de sincronización (#565). */
+function SeccionFotos() {
+  const { descargarFotos, setDescargarFotos } = useDescargaDeFotosSetting();
+
+  return (
+    <>
+      <Text style={styles.grupoTitulo}>Fotos</Text>
+      <View style={styles.sectionRow}>
+        <View style={styles.sectionTextWrap}>
+          <Text style={styles.sectionLabel}>Descargar fotos de otros celulares</Text>
+          <Text style={styles.hint}>Las fotos sacadas en este celular se suben igual.</Text>
+        </View>
+        <Switch
+          value={descargarFotos}
+          onValueChange={setDescargarFotos}
+          trackColor={{ true: colors.primary, false: colors.border }}
+          accessibilityLabel="Descargar fotos de otros celulares"
+        />
+      </View>
+      <LiberarEspacio descargarFotos={descargarFotos} />
+    </>
+  );
+}
+
+function LiberarEspacio({ descargarFotos }: { descargarFotos: boolean }) {
+  const confirm = useConfirm();
+  const { resumen, ocupado, iniciar } = useLiberarEspacio(confirm.show, descargarFotos);
+  const sinFotos = !resumen || resumen.fotos === 0;
+  const nota = [sinFotos && 'No hay fotos descargadas para liberar.', textoSinSubir(resumen?.sinSubir ?? 0)];
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[styles.liberarButton, (sinFotos || ocupado) && styles.liberarButtonDisabled]}
+        onPress={iniciar}
+        disabled={sinFotos || ocupado}
+        accessibilityRole="button"
+      >
+        {ocupado
+          ? <ActivityIndicator size="small" color={colors.primary} />
+          : <Text style={styles.liberarButtonText}>{rotuloLiberarEspacio(resumen?.fotos ?? 0, resumen?.bytes ?? 0)}</Text>}
+      </TouchableOpacity>
+      {resumen && <Text style={styles.hint}>{nota.filter(Boolean).join(' ')}</Text>}
+      <ConfirmModal {...confirm.confirmProps} />
+    </>
   );
 }

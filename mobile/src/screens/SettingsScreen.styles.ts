@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
+import { colors, fontSize, borderRadius, spacing, fonts, touchTarget } from '../theme';
 
 export const settingsScreenStyles = StyleSheet.create({
   innerContainer: {
-    flex: 1,
+    flexGrow: 1,
     padding: spacing['4xl'],
+    gap: spacing['4xl'],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -40,6 +41,37 @@ export const settingsScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  /** Rótulo con descripción debajo: se achica para dejarle lugar al switch. */
+  sectionTextWrap: {
+    flex: 1,
+    gap: spacing.xs,
+    paddingRight: spacing.md,
+  },
+  hint: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+  },
+  liberarButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: touchTarget.min,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+  },
+  liberarButtonDisabled: {
+    opacity: 0.5,
+  },
+  liberarButtonText: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+    color: colors.primary,
+    textAlign: 'center',
   },
   sectionLabel: {
     fontSize: fontSize.base,

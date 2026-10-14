@@ -6,10 +6,12 @@ import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esEliminada, esPullSinDatos } from './types';
-import { pullFromServer, webManagedFlags } from './pullService';
+import { pullFromServer } from './pullService';
+import { aSnapshot, desdeFilaRemota } from '../../utils/camposDePlantacion';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { ensureServerSession } from './sessionGuard';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -18,7 +20,7 @@ interface DownloadOptions {
   onPhase?: (p: DownloadPhaseProgress) => void;
 }
 
-/** Fila de plantations tal como llega del server (snake_case); los flags de la web son opcionales, toleran servers sin esas columnas. */
+/** Fila de plantations tal como llega del server (snake_case); las columnas opcionales toleran servers sin ellas. */
 export type ServerPlantationRow = {
   id: string;
   organizacion_id: string;
@@ -29,6 +31,11 @@ export type ServerPlantationRow = {
   created_at: string;
   visible_in_app?: boolean | null;
   photo_capture_all_trees?: boolean | null;
+  gps_capture_frequency?: number | null;
+  gps_capture_required?: boolean | null;
+  descripcion?: string | null;
+  fecha_inicio?: string | null;
+  objetivo_arboles?: number | null;
   archivada_en?: string | null;
 };
 
@@ -46,6 +53,9 @@ export async function downloadPlantation(
     .from(plantations)
     .where(eq(plantations.id, serverPlantation.id));
 
+  const remotos = desdeFilaRemota(serverPlantation);
+  const archivadaEn = serverPlantation.archivada_en ?? null;
+  // Ya local: valores vivos y snapshot los pone el pull, que respeta una edición pendiente.
   await db
     .insert(plantations)
     .values({
@@ -57,18 +67,19 @@ export async function downloadPlantation(
       creadoPor: serverPlantation.creado_por,
       createdAt: serverPlantation.created_at,
       pendingSync: false,
-      lugarServer: serverPlantation.lugar,
-      periodoServer: serverPlantation.periodo,
-      ...webManagedFlags(serverPlantation),
+      ...remotos,
+      ...aSnapshot(remotos),
+      archivadaEn,
     })
     .onConflictDoUpdate({
       target: plantations.id,
+      // pendingSync NO va acá: una re-descarga de una ya local no puede pisar
+      // un alta pendiente de subir (#647). El resto de lo pendiente (pendingEdit,
+      // snapshots *Server, conflictosDeEdicion, motivoVarado, altaEnServidor)
+      // tampoco está en este set, así que ya queda a salvo.
       set: {
         estado: sql`excluded.estado`,
-        pendingSync: false,
-        lugarServer: serverPlantation.lugar,
-        periodoServer: serverPlantation.periodo,
-        ...webManagedFlags(serverPlantation),
+        archivadaEn,
       },
     });
 
@@ -124,6 +135,8 @@ async function correrBatchDownload(
   options: { includePhotos?: boolean } = {},
 ): Promise<DownloadResult[]> {
   const { includePhotos = false } = options;
+  // Antes de escribir nada: sin sesión cada plantación quedaría a medio bajar (#658).
+  await ensureServerSession();
   const results: DownloadResult[] = [];
 
   const emitProgress = (

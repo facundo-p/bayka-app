@@ -44,7 +44,7 @@ const admin = createClient(
 async function buscarPerfil(userId: string): Promise<PerfilDb | null> {
   const { data, error } = await admin
     .from('profiles')
-    .select('id, nombre, rol, activo, email, eliminado_en')
+    .select('id, nombre, rol, activo, email, eliminado_en, organizacion_id')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -93,9 +93,15 @@ const deps: Deps = {
     });
     return conLog('invitar', { error: error?.message ?? null, userId: data?.user?.id ?? null });
   },
-  asignarRol: async (userId, rol) => {
-    const { error } = await admin.from('profiles').update({ rol }).eq('id', userId);
-    return conLog('asignarRol', { error: error?.message ?? null });
+  asignarAlta: async (userId, { rol, organizacionId }) => {
+    const { data, error } = await admin
+      .from('profiles')
+      .update({ rol, organizacion_id: organizacionId })
+      .eq('id', userId)
+      .select('id');
+    // Un UPDATE que no matchea no da error: sin profile, el alta tampoco quedó hecha.
+    const fallo = error?.message ?? (data?.length ? null : 'el profile no existe');
+    return conLog('asignarAlta', { error: fallo });
   },
   enviarRecuperacion: async (email) => {
     const { error } = await admin.auth.resetPasswordForEmail(email, {

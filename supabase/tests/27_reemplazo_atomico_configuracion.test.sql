@@ -25,15 +25,14 @@ update profiles set rol = 'admin'
 update profiles set rol = 'superadmin' where id = 'b2700000-0000-0000-0000-0000000000a2';
 
 -- aa: activa. af: finalizada. ac: archivada. bb: de la organización B.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en) values
-  ('b2700000-0000-0000-0000-0000000000aa', 'b2700000-0000-0000-0000-00000000000a',
-   'Activa 27', '2026', 'b2700000-0000-0000-0000-0000000000a1', 'activa', null),
-  ('b2700000-0000-0000-0000-0000000000af', 'b2700000-0000-0000-0000-00000000000a',
-   'Finalizada 27', '2026', 'b2700000-0000-0000-0000-0000000000a1', 'finalizada', null),
-  ('b2700000-0000-0000-0000-0000000000ac', 'b2700000-0000-0000-0000-00000000000a',
-   'Archivada 27', '2026', 'b2700000-0000-0000-0000-0000000000a1', 'activa', now()),
-  ('b2700000-0000-0000-0000-0000000000bb', 'b2700000-0000-0000-0000-00000000000b',
-   'Plantación B 27', '2026', 'b2700000-0000-0000-0000-0000000000b1', 'activa', null);
+select tests.crear_plantacion('b2700000-0000-0000-0000-0000000000aa', 'b2700000-0000-0000-0000-00000000000a',
+  'b2700000-0000-0000-0000-0000000000a1', 'Activa 27');
+select tests.crear_plantacion('b2700000-0000-0000-0000-0000000000af', 'b2700000-0000-0000-0000-00000000000a',
+  'b2700000-0000-0000-0000-0000000000a1', 'Finalizada 27', p_estado => 'finalizada');
+select tests.crear_plantacion('b2700000-0000-0000-0000-0000000000ac', 'b2700000-0000-0000-0000-00000000000a',
+  'b2700000-0000-0000-0000-0000000000a1', 'Archivada 27', p_archivada_en => now());
+select tests.crear_plantacion('b2700000-0000-0000-0000-0000000000bb', 'b2700000-0000-0000-0000-00000000000b',
+  'b2700000-0000-0000-0000-0000000000b1', 'Plantación B 27');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2700000-0000-0000-0000-0000000000aa', 'b2700000-0000-0000-0000-0000000000a3', 'tecnico'),
@@ -74,11 +73,12 @@ select is((select string_agg(species_id::text || ':' || orden_visual, ',' order 
   'b2700000-0000-0000-0000-000000000052:0,b2700000-0000-0000-0000-000000000053:1',
   'quedan exactamente las especies nuevas, con su orden');
 
+-- Desde 055 el insert es un upsert: la especie repetida da 21000 en vez de 23505.
 select throws_ok(
   $$ select reemplazar_especies_plantacion('b2700000-0000-0000-0000-0000000000aa',
      '[{"species_id": "b2700000-0000-0000-0000-000000000051"},
        {"species_id": "b2700000-0000-0000-0000-000000000051"}]') $$,
-  '23505', null, 'un error al insertar aborta el reemplazo');
+  '21000', null, 'un error al insertar aborta el reemplazo');
 select is((select count(*)::int from especies_27
   where plantation_id = 'b2700000-0000-0000-0000-0000000000aa'), 2,
   'el borrado de ese reemplazo no quedó aplicado');

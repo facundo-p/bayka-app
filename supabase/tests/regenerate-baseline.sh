@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Regenera supabase/baseline_schema.sql a partir de un Postgres local
-# (baseline actual + migraciones pendientes en supabase/migrations/), vía
+# (baseline actual + las migraciones de supabase/migrations/), vía
 # `supabase db dump --schema public` curado. Ver docs/db-baseline.md.
 #
-# Después de correr esto con éxito, las migraciones que acabás de fundir en
-# la baseline se archivan a mano — solo las que ya estén aplicadas en prod
-# (ver docs/db-baseline.md): `git mv supabase/migrations/0*.sql
-# supabase/migrations/archive/` (quedate con migrations/data/ donde está).
+# Ya no es rutina, y las migraciones no se archivan después (#759): `db push`
+# exige que cada versión registrada en la base siga en supabase/migrations/.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

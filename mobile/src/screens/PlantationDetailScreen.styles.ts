@@ -20,8 +20,4 @@ export const plantationDetailScreenStyles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, fontFamily: fonts.semiBold },
   emptySubtext: { fontSize: fontSize.base, color: colors.textMuted, marginTop: spacing.sm, fontFamily: fonts.regular },
-  editModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
-  editModalDismiss: { flex: 1 },
-  editModalContent: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.round, borderTopRightRadius: borderRadius.round, padding: spacing.xxxl, paddingBottom: spacing['6xl'] },
-  editModalTitle: { fontSize: fontSize.title, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xxxl },
 });

@@ -4,7 +4,7 @@
  * local (confirm de sync, bottom sheet admin, expand/edit inline de parcela, modales admin). Sin
  * imports de SQL/db — solo llama a hooks/repositories/services existentes.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useRoutePrefix } from './useRoutePrefix';
 import { usePlantaciones } from './usePlantaciones';
@@ -17,14 +17,21 @@ import type { ExpandedMeta } from './usePlantationAdmin';
 import type { Plantation } from '../types/plantation';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
-import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { tieneCambiosPorResolver } from '../utils/conflictosDeEdicion';
+import { plantacionesConConflictos } from '../utils/conflictosDeSync';
+import { useIrAResolverCambios } from './useIrAResolverCambios';
+import { useConflictosDeSyncPorPlantacion } from './useConflictosDeSyncPorPlantacion';
+import { usePuedeEditarParcela } from './usePuedeEditarParcela';
 
-const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
+const EMPTY_META: ExpandedMeta = { canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
+  const irAResolverCambios = useIrAResolverCambios();
+  const puedeEditarParcela = usePuedeEditarParcela(routePrefix);
 
   const plantaciones = usePlantaciones();
   // Always call the hook (React rules of hooks), even for técnico role.
@@ -33,6 +40,7 @@ export function usePlantacionesScreen() {
   const { signOut } = useAuth();
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const pendingSyncBoolMap = usePendingSyncMap();
+  const conflictosDeSyncMap = useConflictosDeSyncPorPlantacion();
 
   const hasAnyPending = globalPendingCount > 0;
   const isSyncing = sync.state !== 'idle' && sync.state !== 'done';
@@ -56,12 +64,12 @@ export function usePlantacionesScreen() {
 
   const closeSyncConfirm = useCallback(() => setSyncConfirmVisible(false), []);
 
-  const handleSyncConfirm = useCallback((incluirFotos: boolean) => {
+  const handleSyncConfirm = useCallback((descargarFotos: boolean) => {
     setSyncConfirmVisible(false);
     if (syncConfirmMode === 'global') {
-      sync.startGlobalSync(incluirFotos);
+      sync.startGlobalSync(descargarFotos);
     } else if (syncTargetPlantationId) {
-      sync.startPlantationSync(syncTargetPlantationId, incluirFotos);
+      sync.startPlantationSync(syncTargetPlantationId, descargarFotos);
     }
   }, [sync, syncConfirmMode, syncTargetPlantationId]);
 
@@ -83,11 +91,10 @@ export function usePlantacionesScreen() {
     action();
   }, []);
 
-  const onAssignTechFromSheet = useCallback(async (plantacionId: string) => {
+  const onAssignTechFromSheet = useCallback((plantacionId: string) => {
     setBottomSheetVisible(false);
-    const ok = await adminHook.handleAssignTech(plantacionId);
-    if (ok) setAssignTechPlantacionId(plantacionId);
-  }, [adminHook]);
+    setAssignTechPlantacionId(plantacionId);
+  }, []);
 
   const [expandedPlantationId, setExpandedPlantationId] = useState<string | null>(null);
   const [editingParcela, setEditingParcela] = useState<Parcela | null>(null);
@@ -103,9 +110,10 @@ export function usePlantacionesScreen() {
   }, [router, routePrefix]);
 
   const handleParcelaInlineLongPress = useCallback((plantacionId: string, parcela: ParcelaWithStats) => {
+    if (!puedeEditarParcela(parcela)) return;
     setEditingParcelaPlantacionId(plantacionId);
     setEditingParcela(parcela);
-  }, []);
+  }, [puedeEditarParcela]);
 
   const closeEditParcela = useCallback(() => {
     setEditingParcela(null);
@@ -119,12 +127,17 @@ export function usePlantacionesScreen() {
   // Al crear una plantación encadenamos selección de especies (tarea atómica del alta) y navegamos al detalle al cerrar, para crear subgrupos (#63, #15).
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
-  const handleCreatePlantation = useCallback(async (lugar: string, periodo: string, gps: PlantationGpsSettings) => {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
+  const handleCreatePlantation = useCallback(async ({ lugar, periodo, ...ajustes }: CamposDePlantacion) => {
+    const created = await adminHook.handleCreateSubmit(lugar, periodo, ajustes);
     setShowCreateModal(false);
-    if (!id) return;
-    setConfigSpeciesPlantacionId(id);
-    setPlantacionPendienteNav(id);
+    if (!created?.id) return;
+    const { id, duplicada } = created;
+    // Con duplicado, el modal de especies espera a que se cierre el aviso: dos modales
+    // nativos a la vez harían que el aviso no se vea (#656).
+    adminHook.continuarLuegoDeCrear(duplicada, () => {
+      setConfigSpeciesPlantacionId(id);
+      setPlantacionPendienteNav(id);
+    });
   }, [adminHook]);
 
   const handleCloseConfigSpecies = useCallback(() => {
@@ -135,6 +148,17 @@ export function usePlantacionesScreen() {
     router.push(`/${routePrefix}/plantation/${navId}` as any);
   }, [plantacionPendienteNav, router, routePrefix]);
 
+  // Los campos de la edición solo los cambia un admin (#634); los conflictos de sync, cualquiera (#804).
+  const hayCambiosPorResolver = useCallback((p: Plantation) =>
+    (plantaciones.isAdmin && tieneCambiosPorResolver(p)) || (conflictosDeSyncMap.get(p.id) ?? 0) > 0,
+  [plantaciones.isAdmin, conflictosDeSyncMap]);
+
+  // El global no fija plantación: el aviso cubre todas.
+  const conflictosDeSync = useMemo(
+    () => plantacionesConConflictos(conflictosDeSyncMap, plantaciones.plantationList ?? [], syncTargetPlantationId),
+    [conflictosDeSyncMap, plantaciones.plantationList, syncTargetPlantationId],
+  );
+
   // Editar lugar/período/config escribe en `plantations`: bloqueado si está
   // finalizada o archivada (#469, #477). Cubre las dos entradas: long-press de la card y el gear.
   const handleEditPress = useCallback((plantation: Plantation) => {
@@ -142,7 +166,6 @@ export function usePlantacionesScreen() {
     setEditingPlantation(plantation);
   }, []);
 
-  const pendingSyncForSpecies = adminHook.plantationList?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync;
 
   return {
     router,
@@ -176,6 +199,9 @@ export function usePlantacionesScreen() {
     phaseProgress: sync.phaseProgress,
     photoResult: sync.photoResult,
     handleSessionExpiredReauth,
+    irAResolverCambios,
+    hayCambiosPorResolver,
+    conflictosDeSync,
     hasAnyPending,
     isSyncing,
     pendingSyncBoolMap,
@@ -199,6 +225,7 @@ export function usePlantacionesScreen() {
     handleToggleExpand,
     handleParcelaInlinePress,
     handleParcelaInlineLongPress,
+    puedeEditarParcela,
     editingParcela,
     editingParcelaPlantacionId,
     closeEditParcela,
@@ -212,7 +239,6 @@ export function usePlantacionesScreen() {
     configSpeciesPlantacionId,
     setConfigSpeciesPlantacionId,
     handleCloseConfigSpecies,
-    pendingSyncForSpecies,
     assignTechPlantacionId,
     setAssignTechPlantacionId,
   };

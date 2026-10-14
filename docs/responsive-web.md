@@ -24,7 +24,7 @@ La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 |---|---|---|
 | **1400** | notebook | La barra del detalle deja de entrar en un renglón (1366×768 real) |
 | **1200** | compacta | Grillas de 2 columnas → 1; las toolbars empiezan a envolver |
-| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento |
+| **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento; el detalle de los listados sale en una hoja |
 | **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho; la navegación se va al pie y los filtros a una hoja |
 | **(max-height: 760)** | ventana baja | Fallback de alto, no de ancho |
 
@@ -72,6 +72,43 @@ Dos trampas que costaron caro:
   divisor quedaba flotando a media altura. Al tocar algo del sidebar, mirarlo
   también a ≤900.
 
+## El detalle de los listados sale en una hoja
+
+A ≤900 no hay lugar para el panel al costado de la tabla (`LayoutConPanel`).
+Apilado debajo, con 24 árboles arrancaba en y=1490 y el clic en la fila parecía
+no hacer nada (#823). Ahí `PanelLateral` se renderiza en un `Modal
+posicion="hoja"` (`useMediaQuery(BP.tablet)`, el mismo umbral que su `@media`):
+
+- Cierra con Escape, la X o el fondo, y el foco vuelve a la fila. Para eso las
+  filas clickeables son enfocables (`tabIndex={0}`): el clic las enfoca, y con
+  teclado se llega con Tab y se abren con Enter o Espacio (#862).
+- Cruzar el umbral pasa de columna a hoja, o al revés, y remonta todo lo que
+  está adentro de `PanelLateral`. Se conserva lo que vive por encima: la
+  selección y los formularios de Especies, Científicas y Usuarios. Se descarta
+  lo de adentro: en Árboles el cambio de especie en curso, la foto ampliada, una
+  confirmación abierta desde el panel (Eliminar en Científicas) y el scroll del
+  panel.
+- Con la hoja, la tabla no suelta las columnas `fueraConPanel`. Si las soltara,
+  la lista de atrás cambiaría de alto y no se volvería al mismo scroll.
+- Con la hoja abierta el documento no scrollea, y vale para todo `Modal` y para
+  la paleta ⌘K. Arrastrar el fondo o la cabecera de la hoja movía la lista de
+  atrás: de 200 a 540, medido a 390 (#861). Lo resuelve `useBloquearScroll`, que
+  lleva la cuenta de los modales anidados y libera al cerrar el último. Si algo
+  movió la lista igual, la devuelve a donde estaba al abrir, salvo que haya
+  cambiado la URL (un «atrás», un filtro). Solo toca `<html>`, que además
+  pierde el overscroll para que tirar hacia abajo no recargue en Chrome
+  Android. El cuerpo de la hoja sigue scrolleando con su
+  `overscroll-behavior: contain`.
+  Con barra de scroll clásica (Windows), `scrollbar-gutter: stable` le guarda el
+  lugar y el layout no se corre de costado. A cambio, queda una franja del ancho
+  de la barra que el fondo oscuro no cubre, igual que antes no cubría la barra.
+- La hoja va en su propia capa (`--z-detalle`), debajo de `--z-modal`: un
+  diálogo queda siempre adelante, sin depender del orden en el DOM. Vale para
+  los que abre el detalle (foto ampliada, confirmaciones) y para uno de la
+  pantalla que ya estaba abierto al cruzar el umbral (la confirmación de
+  «Desactivar» en Usuarios). En ese caso el foco queda en la hoja hasta que
+  se toca el diálogo. El selector de especie usa `--z-popover`, más arriba.
+
 ## Teléfono: lo que tiene forma propia
 
 Cuatro patrones, todos en el escalón de 600 que ya existía — no hizo falta
@@ -97,18 +134,47 @@ vista y los deja en el árbol de accesibilidad. Con `display: none` el control s
 queda sin nombre accesible — que es lo que lee el lector de pantalla, y por donde
 lo encuentran los tests y la auditoría.
 
-**Los filtros se guardan en una hoja.** `BarraHerramientas` a ≤600 deja el
-buscador y un botón con el contador de filtros puestos; el resto va a un
-`Modal posicion="hoja"`. Se aplican al toque, sin "Aplicar", y el recuento se muda
-al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
+**Los filtros viven detrás de un botón** (#844). `BarraHerramientas` deja a la
+vista el buscador, el orden, el recuento y las acciones (el «Reporte PDF» de
+Árboles); todo lo que filtra va detrás de un botón «Filtros» con la cuenta de los
+puestos.
+En línea, cada filtro nuevo sumaba un renglón a la barra. Arriba de 600 el botón
+abre un popover anclado (`PanelFiltros`), que se abre hacia el lado donde entra
+en la ventana y, si no entra en ninguno, se corre lo justo para dejar el margen:
+el de Usuarios, con dos segmentados, se salía por la izquierda entre 601 y 741.
+A ≤600, un `Modal posicion="hoja"` al que también va el orden. En
+los dos se aplican al toque, sin "Aplicar", y el recuento acompaña a «Limpiar».
+El buscador queda a la vista en todos los anchos y en los cinco listados; en
+teléfono, si la barra abre con otra cosa (el selector de sección de Datos), esa
+va en su propio renglón y el buscador crece en el de abajo. Ni el buscador ni el
+orden son filtros del panel: no suman a la cuenta y «Limpiar» no los toca. La
+regla vive en un solo lugar, `contarFiltrosActivos` y `limpiarFiltros`
+(`lib/filtros.ts`). El vacío de una tabla de Datos sí cuenta la búsqueda: es lo
+que la dejó vacía, y su «Limpiar filtros» la borra. Elegir entre
+popover y hoja es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
 autoriza: el layout sigue yendo en `@media`.
+
+Lo que va en el panel o en la hoja solo está montado con ellos abiertos. Un
+efecto que tiene que correr siempre, como soltar una parcela o un técnico que ya
+no existen, va en la sección o en la barra, no en el filtro.
 
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
 22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
-Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
-crece, no con una base grande que después se achica.
+Para que un control comparta renglón en teléfono, su vecino va con una base chica
+y crece, no con una base grande que después se achica. Chica no quiere decir 0:
+con 0, lo que entra al lado puede dejar al vecino en nada (ver abajo). La base es
+lo mínimo que el vecino necesita para leerse.
+
+La base en 0 tiene su propia trampa: lo que comparte renglón puede exprimir al
+vecino hasta dejarlo en nada. Con `.left` en 0, entre 370 y 550 las tabs del
+detalle de la plantación entraban al lado de la miga y la aplastaban —a 370,
+6px de ancho—, con el título en «San S…» y, a 390, el badge de estado debajo
+de las tabs (#825). En teléfono la base es 192px: el "+" del alta entra al lado
+del título hasta en 320, y lo que no le deja 192px a la miga baja de renglón.
+Va en px y no en rem porque el texto de la app está en px: con una fuente raíz
+de 20px, una base de 12rem crecía sola y el "+" bajaba de renglón a 320.
 
 ## Columnas de tabla en teléfono
 
@@ -158,7 +224,7 @@ que muestrean la escala y marca en cada celda de la matriz:
 | **S** | Scroll horizontal de documento |
 | **O** | Textos cuyas cajas pintadas se pisan |
 | **R** | Texto recortado sin aviso |
-| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea |
+| **X** | Controles inalcanzables: fuera del viewport sin nada que scrollear, o recortados por una card que no scrollea. También un diálogo que se sale de costado: con el padding de por medio, sus controles entran y su borde queda cortado |
 | **VACIA** | La vista no renderizó nada |
 | **D** | Controles de altos distintos en una misma fila |
 | **H** | Cards colapsadas: perdieron la mayor parte del tamaño que tenían en desktop y el contenido ya no entra |
@@ -196,8 +262,18 @@ mide. `/novedades` se mide plegada y además desplegada (`novedades-pasos`),
 porque los pasos de prueba solo se ven así.
 
 Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja de
-filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
-botón que no está. Esas celdas salen `–` en la matriz.
+filtros (`modal-filtros`) solo existe a ≤600, y medirla a 1920 sería esperar diez
+segundos a un botón que no está. Arriba de 600 el mismo botón abre el panel
+anclado, que se mide igual que un modal: es un diálogo, y la `raiz` lo acota.
+Van dos, el de Plantaciones (`panel-filtros`), que tiene más filtros, y el de
+Usuarios (`panel-usuarios`), el más ancho, y los dos suman 601, el primer ancho
+que abre el popover. Esas celdas salen `–` en la matriz.
+
+`dashboard-archivada` mide el detalle de la plantación archivada, solo en
+teléfono. Con estado y «Archivada», su miga es la más ancha del demo: cuando las
+tabs la aplastan, el badge queda debajo de ellas y O lo ve. Con el badge solo de
+`dashboard` la miga se aplastaba igual, pero sin texto encima de otro texto, y la
+fila salía limpia (#825).
 
 ### Baseline
 
@@ -240,8 +316,8 @@ redirige— y sus celdas eran un duplicado exacto de las de `plantaciones`.
 Para no leer de más en un `·`:
 
 - **Solo la carga inicial.** No cubre estados de error ni de vacío, los demás
-  modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
-  acotada no tiene noción de capa flotante. De los `<details>`, solo los de
+  modales, ni popovers salvo el panel de filtros: con uno abierto O da ruido,
+  porque fuera de una `raiz` acotada no tiene noción de capa flotante. De los `<details>`, solo los de
   `/novedades` se miden desplegados.
 - **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
   pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
@@ -254,8 +330,11 @@ Para no leer de más en un `·`:
 - **La ventana mide siempre 900px de alto**: el escalón `max-height: 760` no se
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no
-  se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
-  temporada.
+  se mide, salvo los paneles de filtros a 601, y ahí la barra superior mide más que a 768 porque vuelve la card de
+  temporada. Dentro de la banda de teléfono se mide además 390, el teléfono más
+  común: ahí la auditoría vio las tabs del detalle encima de la miga. A 430 la
+  celda salía limpia con la miga ya aplastada en 66px: limpia quiere decir sin
+  texto encima de otro texto, no sin defecto (#825).
 - **No detecta controles tapados por otra capa.** `elementFromPoint` da falsos
   positivos con `backdrop-filter` y capas sticky, así que se descartó. Por eso el
   lugar que el shell le reserva a la navegación del pie se verifica a mano.

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { listarPlantaciones, type PlantacionConStats } from '../../../queries/plantationQueries';
+import { listarPlantaciones } from '../../../queries/plantationQueries';
+import { plantacionConStats } from '../../../test/fabricas';
 import { buscar, type ResultadoBusqueda } from '../../../queries/buscarQueries';
 import { CommandMenuProvider } from '../../../hooks/useCommandMenu';
 import { esAccion } from '../construirItems';
@@ -34,18 +35,6 @@ const PARCELA_LOMA: ResultadoBusqueda = {
   to: '/plantaciones/p1',
 };
 
-function plantacion(id: string, lugar: string, arboles: number): PlantacionConStats {
-  return {
-    id,
-    lugar,
-    arboles,
-    periodo: '2025-2026',
-    estado: 'activa',
-    createdAt: '2025-03-12T12:00:00Z',
-    archivadaEn: null,
-  } as unknown as PlantacionConStats;
-}
-
 function renderSecciones(busqueda: string, ruta = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -72,8 +61,8 @@ beforeEach(() => {
   window.localStorage.clear();
   listarPlantacionesMock.mockReset();
   listarPlantacionesMock.mockResolvedValue([
-    plantacion('p2', 'La Carolina', 5),
-    plantacion('p1', 'San Sebastián', 50),
+    plantacionConStats({ id: 'p2', lugar: 'La Carolina', arboles: 5 }),
+    plantacionConStats({ id: 'p1', lugar: 'San Sebastián', arboles: 50 }),
   ]);
   buscarMock.mockReset();
   buscarMock.mockResolvedValue([]);

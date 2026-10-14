@@ -2,7 +2,10 @@
  * PhotoViewer — visor full-screen con zoom (pinch/pan/doble-tap), reutilizado
  * donde se visualiza una foto (N/N, detalle de árbol, registro de árboles).
  * `onReplace`/`onRemove` opcionales agregan una barra de edición; si no, es solo lectura.
+ * Con `treeId`, una foto que está solo en la nube se puede descargar desde acá, y el nombre
+ * del archivo al guardar/compartir sale de su plantación.
  */
+import { useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -14,18 +17,28 @@ import {
   Gesture,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors } from '../theme';
-import { photoViewerStyles as styles } from './PhotoViewer.styles';
+import { colors, spacing } from '../theme';
+import { isRemoteUri } from '../utils/photoUri';
+import FotoRemota from './FotoRemota';
+import PhotoViewerAcciones from './PhotoViewerAcciones';
+import { photoViewerStyles as styles, TAMANO_ICONO_CERRAR } from './PhotoViewer.styles';
 
 interface Props {
   uri: string | null;
+  /** Árbol dueño de la foto: sin él, una foto remota no ofrece descargarla. */
+  treeId?: string;
   onClose: () => void;
   onReplace?: () => void;
   onRemove?: () => void;
 }
 
-export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props) {
+export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove }: Props) {
+  // El caller sigue pasando el path remoto después de bajarla: se muestra el archivo local.
+  const [descargada, setDescargada] = useState<{ remota: string; local: string } | null>(null);
+  const insets = useSafeAreaInsets();
+  const visible = uri && descargada?.remota === uri ? descargada.local : uri;
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -100,24 +113,45 @@ export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props
 
   return (
     <Modal
-      visible={!!uri}
+      visible={!!visible}
       animationType="fade"
       transparent
       onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={styles.container}>
-        <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
-          <Ionicons name="close" size={28} color={colors.white} />
+        <Pressable
+          testID="photo-viewer-close"
+          style={[styles.closeButton, { top: insets.top + spacing.md }]}
+          onPress={handleClose}
+          hitSlop={12}
+          accessibilityLabel="Cerrar"
+        >
+          <Ionicons name="close" size={TAMANO_ICONO_CERRAR} color={colors.white} />
         </Pressable>
-        <GestureDetector gesture={composedGesture}>
-          <Animated.Image
-            source={{ uri: uri ?? '' }}
-            style={[styles.image, animatedStyle]}
-            resizeMode="contain"
+        <PhotoViewerAcciones
+          uri={visible}
+          treeId={treeId}
+          onDescargada={(local) => visible && setDescargada({ remota: visible, local })}
+        />
+        {isRemoteUri(visible) && treeId ? (
+          <FotoRemota
+            treeId={treeId}
+            storagePath={visible}
+            oscuro
+            style={styles.fotoRemota}
+            onDescargada={(local) => setDescargada({ remota: visible, local })}
           />
-        </GestureDetector>
+        ) : (
+          <GestureDetector gesture={composedGesture}>
+            <Animated.Image
+              source={{ uri: visible ?? '' }}
+              style={[styles.image, animatedStyle]}
+              resizeMode="contain"
+            />
+          </GestureDetector>
+        )}
         {(onReplace || onRemove) && (
-          <View style={styles.actions}>
+          <View testID="photo-viewer-actions" style={[styles.actions, { paddingBottom: insets.bottom + spacing.xl }]}>
             {onReplace && (
               <Pressable style={styles.actionBtn} onPress={onReplace}>
                 <Ionicons name="camera-outline" size={20} color={colors.white} />

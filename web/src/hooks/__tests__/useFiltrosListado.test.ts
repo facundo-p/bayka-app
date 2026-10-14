@@ -56,3 +56,30 @@ test('la búsqueda filtra recién después de la demora', () => {
   act(() => vi.advanceTimersByTime(DEMORA_BUSQUEDA_MS));
   expect(nombres(result.current.visibles)).toEqual(['Sur']);
 });
+
+describe('con orden entre los filtros', () => {
+  type ConOrden = Filtros & { orden: 'nombre' | 'estado' };
+  const INICIALES: ConOrden = { soloActivas: false, orden: 'nombre' };
+  const conOrden = (filas: Fila[], criterios: ConOrden & { busqueda: string }) =>
+    filtrar(filas, criterios);
+
+  test('el orden no suma a la cuenta de filtros puestos', () => {
+    const { result } = renderHook(() => useFiltrosListado(FILAS, conOrden, INICIALES));
+
+    act(() => result.current.controles.onFiltro('orden', 'estado'));
+    expect(result.current.controles.activos).toBe(0);
+
+    act(() => result.current.controles.onFiltro('soloActivas', true));
+    expect(result.current.controles.activos).toBe(1);
+  });
+
+  test('limpiar suelta los filtros y conserva el orden', () => {
+    const { result } = renderHook(() => useFiltrosListado(FILAS, conOrden, INICIALES));
+    act(() => result.current.controles.onFiltro('orden', 'estado'));
+    act(() => result.current.controles.onFiltro('soloActivas', true));
+
+    act(() => result.current.controles.limpiar());
+
+    expect(result.current.controles.filtros).toEqual({ soloActivas: false, orden: 'estado' });
+  });
+});

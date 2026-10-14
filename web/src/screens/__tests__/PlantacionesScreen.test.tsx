@@ -1,9 +1,11 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
+import { filaPlantacion, perfilResumen } from '../../test/fabricas';
 
 /** Aserciones de contenido de fila acotadas a la tabla: evita chocar con las
  *  <option> del Select de temporada, que repiten esos textos. */
@@ -24,30 +26,41 @@ vi.mock('../../lib/supabase', async () => {
 beforeEach(prepararSesionAdmin);
 
 const FILAS = [
-  {
+  filaPlantacion({
     id: 'plant-1',
     lugar: 'Mendoza',
     periodo: '2025-2026',
     estado: 'activa',
     created_at: '2026-06-12T12:00:00Z',
     visible_in_app: true,
-  },
-  {
+  }),
+  filaPlantacion({
     id: 'plant-2',
     lugar: 'Salta',
     periodo: '2024-2025',
     estado: 'finalizada',
     created_at: '2025-01-15T12:00:00Z',
     visible_in_app: false,
-  },
+  }),
 ];
 
 const STATS = {
-  'plant-1': { arboles: 120, parcelas: 3, usuarios: 2 },
-  'plant-2': { arboles: 80, parcelas: 1, usuarios: 4 },
+  'plant-1': { arboles: 120, parcelas: 3, puntos_gps: 45, fotos: 33, tecnicos: ['u-ana'] },
+  'plant-2': {
+    arboles: 80,
+    parcelas: 1,
+    puntos_gps: 12,
+    fotos: 7,
+    tecnicos: ['u-ana', 'u-beto'],
+  },
 };
 
-test('renderiza las filas con stats, estado, visibilidad y fecha', async () => {
+const PERFILES = [
+  perfilResumen({ id: 'u-ana', nombre: 'Ana Técnica' }),
+  perfilResumen({ id: 'u-beto', nombre: 'Beto Técnico' }),
+];
+
+test('renderiza las filas con stats, estado, puntos GPS, fotos y fecha', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   renderRutasEn('/plantaciones');
 
@@ -58,9 +71,39 @@ test('renderiza las filas con stats, estado, visibilidad y fecha', async () => {
   expect(tabla.getByText('Activa')).toBeInTheDocument();
   expect(tabla.getByText('Finalizada')).toBeInTheDocument();
   expect(tabla.getByText('120')).toBeInTheDocument();
+  expect(tabla.getByText('45')).toBeInTheDocument();
+  expect(tabla.getByText('33')).toBeInTheDocument();
   expect(tabla.getByText('15 ene 2025')).toBeInTheDocument();
-  // "Oculta" aparece una sola vez: solo la plantación con visible_in_app=false.
-  expect(tabla.getAllByText('Oculta')).toHaveLength(1);
+  expect(tabla.getByRole('columnheader', { name: /^Puntos\sGPS$/ })).toBeInTheDocument();
+  expect(tabla.getByRole('columnheader', { name: 'Fotos' })).toBeInTheDocument();
+  expect(tabla.queryByRole('columnheader', { name: 'Usuarios' })).not.toBeInTheDocument();
+  expect(tabla.queryByRole('columnheader', { name: 'Visible' })).not.toBeInTheDocument();
+});
+
+test('«Visible por» acota a las plantaciones del técnico y compone con «Visibles»', async () => {
+  configurarPlantacionesMock(FILAS, STATS, [
+    ...PERFILES,
+    perfilResumen({ id: 'u-sin', nombre: 'Sin Asignaciones' }),
+  ]);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+  const filtros = await abrirFiltros(usuario);
+  const visiblePor = filtros.getByLabelText('Filtrar por técnico asignado');
+  await waitFor(() => expect(within(visiblePor).getAllByRole('option')).toHaveLength(3));
+  expect(within(visiblePor).queryByText('Sin Asignaciones')).not.toBeInTheDocument();
+
+  await usuario.selectOptions(visiblePor, 'Beto Técnico');
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
+  expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
+
+  await usuario.selectOptions(visiblePor, 'Ana Técnica');
+  await usuario.selectOptions(
+    filtros.getByLabelText('Filtrar por visibilidad en la app'),
+    'Visibles: sí',
+  );
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().queryByText('Salta')).not.toBeInTheDocument();
 });
 
 test('la cabecera resume plantaciones, temporadas y árboles del listado', async () => {
@@ -75,21 +118,43 @@ test('la cabecera resume plantaciones, temporadas y árboles del listado', async
   ).toBeInTheDocument();
 });
 
+test('si el técnico elegido sale de las opciones, «Visible por» se suelta', async () => {
+  configurarPlantacionesMock(FILAS, STATS, PERFILES);
+  const usuario = userEvent.setup();
+  const { queryClient } = renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+  const visiblePor = (await abrirFiltros(usuario)).getByLabelText('Filtrar por técnico asignado');
+  await waitFor(() => expect(within(visiblePor).getAllByRole('option')).toHaveLength(3));
+  await usuario.selectOptions(visiblePor, 'Beto Técnico');
+  expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
+
+  configurarPlantacionesMock(FILAS, STATS, [
+    PERFILES[0],
+    perfilResumen({ id: 'u-beto', nombre: 'Beto Técnico', activo: false }),
+  ]);
+  await act(() => queryClient.invalidateQueries());
+
+  await waitFor(() => expect(visiblePor).toHaveValue(''));
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
+});
+
 test('el segmentado de estado filtra las filas de la tabla', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
   await esperarTablaCargada();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Activas' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Activas' }));
   expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
   expect(enTabla().queryByText('Salta')).not.toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Finalizadas' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Finalizadas' }));
   expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
 
-  await usuario.click(enMain().getByRole('radio', { name: 'Todas' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Todas' }));
   expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
 });
@@ -117,7 +182,8 @@ test('el Select de temporada acota a un período', async () => {
   renderRutasEn('/plantaciones');
   await esperarTablaCargada();
 
-  await usuario.selectOptions(enMain().getByLabelText('Filtrar por temporada'), '2024-2025');
+  const filtros = await abrirFiltros(usuario);
+  await usuario.selectOptions(filtros.getByLabelText('Filtrar por temporada'), '2024-2025');
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
   expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
 });
@@ -141,6 +207,26 @@ test('el orden por lugar reordena las filas', async () => {
     .slice(1)
     .map((fila) => within(fila).getByText(/Mendoza|Salta/).textContent);
   expect(porCreada).toEqual(['Mendoza', 'Salta']);
+});
+
+test('el orden queda a la vista y no suma a la cuenta; «Limpiar» lo conserva', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+
+  const orden = enMain().getByLabelText('Ordenar plantaciones');
+  await usuario.selectOptions(orden, 'Orden: lugar A-Z');
+  expect(enMain().getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+
+  const filtros = await abrirFiltros(usuario);
+  expect(filtros.queryByLabelText('Ordenar plantaciones')).not.toBeInTheDocument();
+  await usuario.click(filtros.getByRole('radio', { name: 'Activas' }));
+  expect(enMain().getByRole('button', { name: 'Filtros 1' })).toBeInTheDocument();
+
+  await usuario.click(filtros.getByRole('button', { name: 'Limpiar' }));
+  expect(enMain().getByRole('button', { name: 'Filtros' })).toBeInTheDocument();
+  expect(orden).toHaveValue('lugar');
 });
 
 test('una búsqueda sin coincidencias muestra el vacío del listado', async () => {
@@ -218,4 +304,24 @@ test('en teléfono los filtros viven en una hoja y se aplican al toque', async (
   await usuario.click(within(hoja).getByRole('button', { name: /^Ver / }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(enMain().getByRole('button', { name: 'Filtros 1' })).toBeInTheDocument();
+});
+
+test('en teléfono «Visibles» cuenta como filtro activo y «Limpiar» lo resetea', async () => {
+  simularAncho(ANCHO.movil);
+  configurarPlantacionesMock(FILAS, STATS, PERFILES);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await screen.findByText('Mendoza');
+
+  await usuario.click(enMain().getByRole('button', { name: 'Filtros' }));
+  const hoja = screen.getByRole('dialog', { name: 'Filtros de plantaciones' });
+  await usuario.selectOptions(
+    within(hoja).getByLabelText('Filtrar por visibilidad en la app'),
+    'Visibles: no',
+  );
+  expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
+
+  await usuario.click(within(hoja).getByRole('button', { name: 'Limpiar' }));
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(within(hoja).getByLabelText('Filtrar por visibilidad en la app')).toHaveValue('todas');
 });

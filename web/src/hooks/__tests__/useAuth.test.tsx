@@ -9,6 +9,8 @@ import {
   prepararSesionAdmin,
   resetEstadoMock,
 } from '../../test/supabaseMock';
+import * as busquedaArbol from '../../queries/busquedaArbol';
+import * as profileRepository from '../../repositories/profileRepository';
 import { AuthProvider, useAuth } from '../useAuth';
 
 vi.mock('../../lib/supabase', async () => {
@@ -126,6 +128,18 @@ test('cerrar sesión descarta la cache: el usuario siguiente no ve datos del ant
   expect(queryClient.getQueryData(CLAVE)).toBeUndefined();
 });
 
+test('cerrar sesión reinicia la caché de códigos de plantación', async () => {
+  const reiniciar = vi.spyOn(busquedaArbol, 'reiniciarCacheCodigosPlantacion');
+  const result = await loguearConCache(new QueryClient());
+  reiniciar.mockClear();
+
+  await act(async () => {
+    await result.current.signOut();
+  });
+
+  expect(reiniciar).toHaveBeenCalled();
+});
+
 test('un refresh de token del mismo usuario no descarta la cache', async () => {
   const queryClient = new QueryClient();
   const result = await loguearConCache(queryClient);
@@ -136,4 +150,19 @@ test('un refresh de token del mismo usuario no descarta la cache', async () => {
 
   await waitFor(() => expect(result.current.estado).toBe('autenticado'));
   expect(queryClient.getQueryData(CLAVE)).toEqual([{ id: 'plant-1' }]);
+});
+
+test('al arrancar con sesión carga el perfil una sola vez', async () => {
+  prepararSesionAdmin();
+  const getPerfil = vi.spyOn(profileRepository, 'getPerfil');
+  const { result } = renderAuth();
+  await waitFor(() => expect(result.current.estado).toBe('autenticado'));
+
+  await act(async () => {
+    emitirEventoAuth('INITIAL_SESSION');
+    await new Promise((resolver) => setTimeout(resolver, 0));
+  });
+
+  expect(getPerfil).toHaveBeenCalledTimes(1);
+  getPerfil.mockRestore();
 });

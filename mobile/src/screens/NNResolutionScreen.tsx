@@ -10,15 +10,17 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
+import FotoRemota from '../components/FotoRemota';
+import { isRemoteUri } from '../utils/photoUri';
 import CustomHeader from '../components/CustomHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNNResolution } from '../hooks/useNNResolution';
+import { useEstiloBotonera } from '../hooks/useEstiloBotonera';
 import { nnResolutionScreenStyles as styles } from './NNResolutionScreen.styles';
 
 const SWIPE_THRESHOLD = 40;
@@ -33,6 +35,7 @@ export default function NNResolutionScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
+  const botonera = useEstiloBotonera();
 
   const {
     unresolvedTrees,
@@ -52,9 +55,6 @@ export default function NNResolutionScreen() {
     handleGuardar,
     setCurrentIndex,
     setZoomPhotoUri,
-    getConflictForTree,
-    acceptServerResolution,
-    keepLocalResolution,
   } = useNNResolution({ plantacionId: plantacionId ?? '', grupoId, grupoCodigo });
 
   useEffect(() => {
@@ -129,41 +129,27 @@ export default function NNResolutionScreen() {
       <GestureHandlerRootView>
         <GestureDetector gesture={swipeGesture}>
           <Animated.View style={photoAnimStyle}>
-            <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
-              <Image
-                source={{ uri: currentTree.fotoUrl! }}
+            {isRemoteUri(currentTree.fotoUrl) ? (
+              <FotoRemota
+                treeId={currentTree.id}
+                storagePath={currentTree.fotoUrl}
                 style={[styles.photo, { width: screenWidth }]}
-                resizeMode="cover"
               />
-            </Pressable>
+            ) : (
+              <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
+                <Image
+                  source={{ uri: currentTree.fotoUrl! }}
+                  style={[styles.photo, { width: screenWidth }]}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            )}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
 
       {/* Scrollable species grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {currentTree?.id && (() => {
-          const conflict = getConflictForTree(currentTree.id);
-          return conflict ? (
-            <View style={styles.conflictBanner}>
-              <View style={styles.conflictHeader}>
-                <Ionicons name="warning-outline" size={18} color={colors.danger} />
-                <Text style={styles.conflictTitle}>Conflicto detectado</Text>
-              </View>
-              <Text style={styles.conflictBody}>
-                Otro usuario resolvio este arbol como {conflict.serverEspecieNombre}.
-              </Text>
-              <View style={styles.conflictActions}>
-                <Pressable onPress={() => acceptServerResolution(currentTree.id)}>
-                  <Text style={styles.conflictAcceptText}>Aceptar del servidor</Text>
-                </Pressable>
-                <Pressable onPress={() => keepLocalResolution(currentTree.id)}>
-                  <Text style={styles.conflictKeepText}>Mantener la mía</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null;
-        })()}
         {!canResolve && (
           <Text style={styles.readOnlyLabel}>Resolucion pendiente</Text>
         )}
@@ -173,6 +159,7 @@ export default function NNResolutionScreen() {
           ) : (
             <SpeciesButtonGrid
               species={species}
+              estilo={botonera.estilo}
               onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
               selectedId={currentSelectionId}
             />
@@ -195,7 +182,7 @@ export default function NNResolutionScreen() {
         </Pressable>
       </View>
 
-      <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
+      <PhotoViewer uri={zoomPhotoUri} treeId={currentTree?.id} onClose={() => setZoomPhotoUri(null)} />
       <ConfirmModal {...confirmProps} />
     </ScreenContainer>
   );

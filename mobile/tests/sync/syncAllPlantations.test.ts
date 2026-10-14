@@ -26,9 +26,14 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
   getSyncableGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/subidor', () => ({
+  subidorActual: jest.fn().mockResolvedValue({ userId: 'user-1', esAdmin: false }),
+}));
+
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn().mockResolvedValue([]),
   markPhotoSynced: jest.fn(),
+  confirmarEspeciesSubidas: jest.fn(),
 }));
 
 jest.mock('expo-file-system', () => ({
@@ -45,11 +50,13 @@ jest.mock('expo-file-system', () => ({
 }));
 
 import { syncAllPlantations } from '../../src/services/SyncService';
+import * as photoService from '../../src/services/sync/photoService';
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { getSyncableGroups, markGroupSynced } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -99,7 +106,8 @@ function makeSupabaseChain() {
 }
 
 function setupSupabaseDefaults() {
-  (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: {} }, error: null });
+  (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-1' } } }, error: null });
+  conUsuarioCacheado('user-1');
 
   (mockSupabase.from as jest.Mock).mockImplementation(() => makeSupabaseChain());
 
@@ -113,6 +121,10 @@ function setupSupabaseDefaults() {
     set: jest.fn().mockReturnValue({
       where: jest.fn().mockResolvedValue(undefined),
     }),
+  });
+
+  (mockDb.delete as jest.Mock).mockReturnValue({
+    where: jest.fn().mockResolvedValue(undefined),
   });
 }
 
@@ -158,6 +170,7 @@ describe('syncAllPlantations', () => {
     expect(result[0].results).toEqual([]);
     expect(result[1].plantationId).toBe('p-2');
     expect(result[1].plantationName).toBe('Zona B');
+    expect(mockNotifyDataChanged).toHaveBeenCalled();
   });
 
   it('progress callback receives correct plantation name and index', async () => {
@@ -228,20 +241,33 @@ describe('syncAllPlantations', () => {
     expect(result[0].results[0].success).toBe(true);
   });
 
-  it('runs photo sync when incluirFotos is true', async () => {
+  it('con la descarga de fotos de otros celulares prendida, sube las pendientes', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
 
     await syncAllPlantations(undefined, true);
 
-    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1');
+    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1', { userId: 'user-1', esAdmin: false });
   });
 
-  it('skips photo sync when incluirFotos is false', async () => {
+  it('sin descargar fotos de otros celulares, igual sube las pendientes (#565)', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
+    const descarga = jest.spyOn(photoService, 'downloadPhotosForPlantation');
 
     await syncAllPlantations(undefined, false);
 
-    expect(mockGetTreesWithPendingPhotos).not.toHaveBeenCalled();
+    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1', { userId: 'user-1', esAdmin: false });
+    expect(descarga).not.toHaveBeenCalled();
+    descarga.mockRestore();
+  });
+
+  it('con la descarga prendida, baja las fotos de otros celulares', async () => {
+    (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
+    const descarga = jest.spyOn(photoService, 'downloadPhotosForPlantation');
+
+    await syncAllPlantations(undefined, true);
+
+    expect(descarga).toHaveBeenCalledWith('p-1', expect.any(Function));
+    descarga.mockRestore();
   });
 
   it('per-plantation failure does not abort the batch', async () => {

@@ -1,6 +1,6 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../database/client';
-import { species, trees } from '../database/schema';
+import { groups, plantations, species, trees } from '../database/schema';
 
 /**
  * Árboles de un grupo para la pantalla de registro (más recientes primero),
@@ -32,7 +32,7 @@ export function getTreesForGroup(grupoId: string) {
 
 /**
  * Detalle de un árbol para la pantalla de edición: especie (nombre + nombre
- * científico) y punto GPS completo (lat/lng/precisión/momento de captura).
+ * científico), punto GPS completo y el código de su plantación, que forma el ID.
  */
 export function getTreeDetail(treeId: string) {
   return db
@@ -52,8 +52,31 @@ export function getTreeDetail(treeId: string) {
       especieCodigo: species.codigo,
       especieNombre: species.nombre,
       especieNombreCientifico: species.nombreCientifico,
+      plantacionCodigo: plantations.codigo,
     })
     .from(trees)
     .leftJoin(species, eq(trees.especieId, species.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .where(eq(trees.id, treeId));
+}
+
+/** Datos para nombrar el archivo de la foto de un árbol: lugar y periodo de su plantación + SubID. */
+export async function getDatosNombreDeFoto(treeId: string) {
+  const [fila] = await db
+    .select({ subId: trees.subId, lugar: plantations.lugar, periodo: plantations.periodo })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
+    .where(eq(trees.id, treeId));
+  return fila ?? null;
+}
+
+/** La foto que cada árbol vio en el servidor: la base de una foto quitada (#810). */
+export async function getFotoBaseDeArboles(treeIds: string[]) {
+  if (treeIds.length === 0) return [];
+  return db
+    .select({ id: trees.id, fotoBase: trees.fotoBase })
+    .from(trees)
+    .where(inArray(trees.id, treeIds));
 }

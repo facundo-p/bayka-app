@@ -10,7 +10,8 @@ jest.mock('@react-native-community/netinfo', () => ({
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
-    auth: { getSession: jest.fn() },
+    auth: { getSession: jest.fn(), refreshSession: jest.fn() },
+    rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
 }));
@@ -39,15 +40,24 @@ import {
 } from '../../src/repositories/PlantationRepository';
 import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
+import { conSesionDelServidor } from '../helpers/rolCacheado';
+import { SIN_INTERNET, RED_DESCONOCIDA } from '../helpers/networkHelper';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const GPS = { gpsCaptureFrequency: 5, gpsCaptureRequired: false };
 
 let insertedValues: any;
 let updatedSet: any;
-let supabaseUpdatePayload: any;
+let rpcArgs: any;
 
-function mockDbChains(row: any) {
+/** Fila completa como la devuelve drizzle: la edición online compara contra ella. */
+const FILA_LOCAL = {
+  lugar: 'Viejo', periodo: '2025', descripcion: null, fechaInicio: null, objetivoArboles: null,
+  gpsCaptureFrequency: 10, gpsCaptureRequired: true, photoCaptureAllTrees: false, visibleInApp: true,
+};
+
+function mockDbChains(parcial: any) {
+  const row = parcial && { ...FILA_LOCAL, ...parcial };
   insertedValues = undefined;
   updatedSet = undefined;
   (mockDb.insert as jest.Mock).mockReturnValue({
@@ -73,19 +83,19 @@ function mockDbChains(row: any) {
   });
 }
 
-function mockSupabaseUpdate(error: any = null) {
-  supabaseUpdatePayload = undefined;
-  (supabase.from as jest.Mock).mockReturnValue({
-    update: jest.fn().mockImplementation((payload: any) => {
-      supabaseUpdatePayload = payload;
-      return { eq: jest.fn().mockResolvedValue({ error }) };
-    }),
+/** La edición online va por `editar_plantacion` (#634). */
+function mockRpcEdicion(data: unknown = { success: true }) {
+  rpcArgs = undefined;
+  (supabase.rpc as jest.Mock).mockImplementation(async (_nombre: string, args: any) => {
+    rpcArgs = args;
+    return { data, error: null };
   });
 }
 
 describe('config GPS por plantación', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    conSesionDelServidor(supabase.auth, 'user-1');
   });
 
   it('createPlantationLocally persiste la config GPS elegida', async () => {
@@ -100,16 +110,18 @@ describe('config GPS por plantación', () => {
 
   it('updatePlantation online sube la config al server y la guarda local', async () => {
     mockDbChains({ pendingSync: false, pendingEdit: false });
-    mockSupabaseUpdate();
+    mockRpcEdicion();
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
 
     await updatePlantation('plant-1', 'Campo', '2026', GPS);
 
-    expect(supabaseUpdatePayload).toMatchObject({
+    expect(supabase.rpc).toHaveBeenCalledWith('editar_plantacion', expect.anything());
+    expect(rpcArgs.p_cambios).toMatchObject({
       lugar: 'Campo',
       gps_capture_frequency: 5,
       gps_capture_required: false,
     });
+    expect(rpcArgs.p_base).toMatchObject({ lugar: 'Viejo', gps_capture_frequency: 10, gps_capture_required: true });
     expect(updatedSet).toMatchObject({
       gpsCaptureFrequency: 5,
       gpsCaptureRequired: false,
@@ -123,19 +135,33 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
+      lugar: 'Viejo',
+      periodo: '2025',
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: false });
 
     await updatePlantation('plant-1', 'Campo', '2026', GPS);
 
-    expect(supabase.from).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
     expect(updatedSet).toMatchObject({
       gpsCaptureFrequency: 5,
       gpsCaptureRequired: false,
       pendingEdit: true,
+      baseDeEdicion: expect.objectContaining({ lugar: 'Viejo', gpsCaptureFrequency: 10 }),
     });
+  });
+
+  it.each([
+    ['conectado sin internet', SIN_INTERNET],
+    ['red desconocida', RED_DESCONOCIDA],
+  ])('updatePlantation %s va al camino offline sin intentar subir (#652)', async (_caso, estado) => {
+    mockDbChains({ pendingSync: false, pendingEdit: false, lugarServer: null, periodoServer: null, lugar: 'Viejo', periodo: '2025' });
+    mockNetInfoFetch.mockResolvedValue(estado);
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ pendingEdit: true });
   });
 
   it('updatePlantation offline (primera edición) snapshotea la config GPS de server', async () => {
@@ -144,12 +170,12 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
-      gpsFreqServer: null,
-      gpsReqServer: null,
-      gpsFreqCurrent: 10,
-      gpsReqCurrent: true,
+      lugar: 'Viejo',
+      periodo: '2025',
+      gpsCaptureFrequencyServer: null,
+      gpsCaptureRequiredServer: null,
+      gpsCaptureFrequency: 10,
+      gpsCaptureRequired: true,
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: false });
 
@@ -168,8 +194,8 @@ describe('config GPS por plantación', () => {
     mockDbChains({
       lugarServer: 'Campo Server',
       periodoServer: '2026',
-      gpsFreqServer: 10,
-      gpsReqServer: true,
+      gpsCaptureFrequencyServer: 10,
+      gpsCaptureRequiredServer: true,
     });
 
     await discardPlantationEdit('plant-1');
@@ -185,12 +211,12 @@ describe('config GPS por plantación', () => {
 
   it('updatePlantation sin config GPS no toca esos campos (compat llamadas viejas)', async () => {
     mockDbChains({ pendingSync: false, pendingEdit: false });
-    mockSupabaseUpdate();
+    mockRpcEdicion();
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
 
     await updatePlantation('plant-1', 'Campo', '2026');
 
-    expect(supabaseUpdatePayload).not.toHaveProperty('gps_capture_frequency');
+    expect(rpcArgs.p_cambios).not.toHaveProperty('gps_capture_frequency');
     expect(updatedSet).not.toHaveProperty('gpsCaptureFrequency');
   });
 
@@ -202,7 +228,7 @@ describe('config GPS por plantación', () => {
     await updatePlantation('plant-1', 'Campo', '2026', GPS);
 
     expect(mockNetInfoFetch).not.toHaveBeenCalled();
-    expect(supabase.from).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
     expect(updatedSet).toMatchObject({ lugar: 'Campo', periodo: '2026', gpsCaptureFrequency: 5 });
     expect(updatedSet).not.toHaveProperty('pendingEdit');
   });
@@ -213,19 +239,15 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
-      gpsFreqServer: null,
-      gpsReqServer: null,
-      gpsFreqCurrent: 10,
-      gpsReqCurrent: true,
+      lugar: 'Viejo',
+      periodo: '2025',
+      gpsCaptureFrequencyServer: null,
+      gpsCaptureRequiredServer: null,
+      gpsCaptureFrequency: 10,
+      gpsCaptureRequired: true,
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
-    (supabase.from as jest.Mock).mockReturnValue({
-      update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockRejectedValue(new Error('Network request failed')),
-      }),
-    });
+    (supabase.rpc as jest.Mock).mockRejectedValue(new Error('Network request failed'));
 
     await updatePlantation('plant-1', 'Campo', '2026', GPS);
 
@@ -240,18 +262,100 @@ describe('config GPS por plantación', () => {
     });
   });
 
+  it('updatePlantation online sin sesión del servidor no sube nada y queda pendiente (#658)', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+    conSesionDelServidor(supabase.auth, null);
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ lugar: 'Campo', lugarServer: 'Viejo', pendingEdit: true });
+  });
+
   it('updatePlantation online con error NO relacionado a red se propaga (no cae al camino offline)', async () => {
     mockDbChains({ pendingSync: false, pendingEdit: false });
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
-    (supabase.from as jest.Mock).mockReturnValue({
-      update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockRejectedValue(new Error('permission denied for table plantations')),
-      }),
-    });
+    (supabase.rpc as jest.Mock).mockRejectedValue(new Error('permission denied for table plantations'));
 
     await expect(updatePlantation('plant-1', 'Campo', '2026', GPS)).rejects.toThrow('permission denied');
 
     // No hubo fallback: el único intento de escritura local fue el select previo, no un update.
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('updatePlantation online rechazada por archivada falla con el motivo y no escribe local', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockRpcEdicion({ success: false, error: 'PLANTACION_ARCHIVADA' });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await expect(updatePlantation('plant-1', 'Campo', '2026')).rejects.toThrow('archivada');
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('updatePlantation online sin permiso falla y no escribe local', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockRpcEdicion({ success: false, error: 'NOT_AUTHORIZED' });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await expect(updatePlantation('plant-1', 'Campo', '2026')).rejects.toThrow('permisos');
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('updatePlantation online con conflicto deja el valor de la web y guarda el conflicto', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false, objetivoArboles: 12000 });
+    mockRpcEdicion({
+      success: false,
+      error: 'CONFLICTO_EDICION',
+      aplicados: ['lugar'],
+      conflictos: [{ campo: 'objetivo_arboles', valor_servidor: 12500, editado_por: 'Ana', editado_en: '2026-09-24T13:12:00Z' }],
+    });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    const enConflicto = await updatePlantation('plant-1', 'Campo', '2025', { objetivoArboles: 15000 });
+
+    expect(enConflicto).toBe(1);
+    expect(rpcArgs.p_base).toEqual({ lugar: 'Viejo', objetivo_arboles: 12000 });
+    expect(updatedSet).toMatchObject({
+      lugar: 'Campo', lugarServer: 'Campo', objetivoArboles: 12500, objetivoArbolesServer: 12500, pendingEdit: false,
+      conflictosDeEdicion: [expect.objectContaining({
+        campo: 'objetivoArboles', mio: 15000, web: 12500, anterior: 12000, editadoPor: 'Ana',
+      })],
+    });
+  });
+
+  // ─── datos de #633 ───────────────────────────────────────────────────────────
+
+  const DATOS = {
+    descripcion: 'Ribera', fechaInicio: '2026-04-15', objetivoArboles: 12000,
+    photoCaptureAllTrees: true, visibleInApp: false,
+  };
+
+  it('updatePlantation online sube descripción, fecha, objetivo, foto y visibilidad y deja el snapshot', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockRpcEdicion();
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await updatePlantation('plant-1', 'Campo', '2026', DATOS);
+
+    expect(rpcArgs.p_cambios).toEqual({
+      lugar: 'Campo', periodo: '2026', descripcion: 'Ribera', fecha_inicio: '2026-04-15',
+      objetivo_arboles: 12000, photo_capture_all_trees: true, visible_in_app: false,
+    });
+    expect(updatedSet).toMatchObject({ ...DATOS, objetivoArbolesServer: 12000, visibleInAppServer: false, pendingEdit: false });
+  });
+
+  it('updatePlantation offline (primera edición) snapshotea los datos previos', async () => {
+    mockDbChains({
+      pendingSync: false, pendingEdit: false, lugar: 'Viejo', periodo: '2025',
+      descripcion: null, objetivoArboles: 8000, visibleInApp: true, visibleInAppServer: null,
+    });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: false });
+
+    await updatePlantation('plant-1', 'Campo', '2026', DATOS);
+
+    expect(updatedSet).toMatchObject({
+      ...DATOS, pendingEdit: true, descripcionServer: null, objetivoArbolesServer: 8000, visibleInAppServer: true,
+    });
   });
 });

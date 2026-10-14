@@ -29,7 +29,6 @@ El administrador gestiona las plantaciones y supervisa el trabajo de los tecnico
 - Configurar las especies disponibles por plantacion
 - Asignar tecnicos a plantaciones
 - Finalizar plantaciones (cuando se cumplen las condiciones)
-- Generar IDs secuenciales de arboles (por plantacion y globales)
 - Exportar datos a XLSX
 - Ver el estado de sincronizacion de todos los tecnicos
 - Resolver conflictos de arboles N/N (no identificados) con datos del servidor
@@ -55,9 +54,10 @@ El tecnico realiza el trabajo de registro en terreno:
 | **Plantaciones** | Evento de restauracion (conjunto de parcelas) | lugar, periodo, estado (activa/finalizada), pendingSync |
 | **Parcelas** | Nivel intermedio dentro de una plantacion | nombre, codigo (unico por plantacion) |
 | **Grupos** | Lineas o agrupaciones de arboles dentro de una parcela | nombre, codigo (unico por parcela), tipo (linea/parcela), estado (activa/finalizada/sincronizada) |
-| **Arboles** | Registro individual de arbol | especieId, posicion, subId, fotoUrl, globalId, usuarioRegistro |
-| **EspeciesPlantacion** | Especies habilitadas por plantacion | plantacionId, especieId, ordenVisual |
-| **OrdenEspeciesUsuario** | Preferencia de orden de especies por usuario | userId, plantacionId, especieId, ordenVisual |
+| **Arboles** | Registro individual de arbol | especieId, posicion, subId, fotoUrl, usuarioRegistro |
+| **EspeciesPlantacion** | Especies habilitadas por plantacion; la botonera las ordena por nombre | plantacionId, especieId |
+| **OrdenEspeciesUsuario** | Orden personal de la botonera de cada usuario (sin el, por nombre) | userId, plantacionId, especieId, ordenVisual |
+| **CambiosEspeciesPendientes** | Altas y bajas de especies sin subir (solo local) | plantacionId, especieId, tipo (alta/baja) |
 | **UsuariosPlantacion** | Asignacion de tecnicos | plantationId, userId, rolEnPlantacion |
 
 ### Jerarquia de datos
@@ -86,7 +86,7 @@ Reglas de unicidad:
 ### 2. Sistema de Autenticacion
 
 - **Login online:** Supabase SDK con email/password
-- **Login offline:** Verificacion de hash SHA256 contra credenciales cacheadas
+- **Login offline:** Verificacion de hash SHA256 contra credenciales cacheadas; con otra cuenta que la de los tokens cacheados abre una sesion solo local que exige login online para sincronizar
 - **Expiracion configurable:** TTL para sesiones offline
 - **Persistencia de sesion:** Se restaura desde cache al iniciar la app
 - **Network-aware:** Solo refresca tokens cuando hay conexion
@@ -117,12 +117,12 @@ Los grupos son la unidad de sincronizacion (no arboles individuales):
 - Comparacion de seleccion local vs. servidor en conflictos de sincronizacion
 - Opcion de aceptar la sugerencia del servidor o mantener la seleccion local
 
-### 6. Generacion de IDs (IDGN)
+### 6. Identificadores de Arbol
 
 - **SubID:** Automatico al registrar (codigoParcela + codigoGrupo + codigoEspecie + posicion)
-- **ID Plantacion:** Secuencial dentro de la plantacion (se asigna al finalizar)
-- **ID Global:** Secuencial en toda la organizacion (admin configura la semilla = max + 1)
-- Requiere que todos los N/N esten resueltos antes de finalizar
+- **ID de Arbol:** SubID + codigo de plantacion
+- **ID Parcial:** Numero del arbol en la plantacion; se calcula al exportar, no se guarda (#822)
+- El ID Global se dio de baja (#822)
 
 ### 7. Gate de Finalizacion
 
@@ -208,7 +208,7 @@ App
 - `SpeciesButtonGrid` - Grilla interactiva de botones de especies
 - `PhotoViewer` - Visualizador de fotos con zoom
 - `TreeRowItem` - Fila de arbol en lista con edicion/eliminacion
-- `GrupoForm` - Formulario de creacion/edicion de grupos
+- `EditarGrupoModal` - Edicion de grupos (EntityFormModal + useGrupoForm)
 - `SyncProgressModal` - Progreso de sincronizacion en tiempo real
 - `StatusChip` / `PlantationEstadoChip` - Badges de estado
 - `ScreenContainer` / `ScreenHeader` - Wrappers de layout

@@ -11,6 +11,7 @@ import { colors, iconSizes } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
+import PendientesVaradosAviso from './PendientesVaradosAviso';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
 import { esFinalizada } from '../constants/estados';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -39,6 +40,10 @@ type Props = {
   visibleInApp?: boolean;
   /** Eliminada en el servidor (#478): queda solo para consulta o para eliminar del dispositivo. */
   eliminadaEnServidor?: boolean;
+  /** Con cambios que chocaron con la web (#634): la marca abre "Resolver cambios". */
+  onResolverCambios?: () => void;
+  /** Cambios que no pueden subir, con el motivo y cómo descartarlos (#638). */
+  pendientesVarados?: React.ComponentProps<typeof PendientesVaradosAviso>;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -47,6 +52,8 @@ type Props = {
   parcelas?: ParcelaWithStats[];
   onParcelaPress?: (parcelaId: string) => void;
   onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+  /** Qué parcelas admiten el long-press; sin él, todas. */
+  parcelaEditable?: (parcela: ParcelaWithStats) => boolean;
 };
 
 function ExpandRow({
@@ -81,10 +88,12 @@ function ExpandedSection({
   parcelas,
   onParcelaPress,
   onParcelaLongPress,
+  parcelaEditable = () => true,
 }: {
   parcelas: ParcelaWithStats[];
   onParcelaPress?: (parcelaId: string) => void;
   onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+  parcelaEditable?: (parcela: ParcelaWithStats) => boolean;
 }) {
   if (parcelas.length === 0) {
     return (
@@ -103,7 +112,7 @@ function ExpandedSection({
             parcela={p}
             variant="inline"
             onPress={() => onParcelaPress?.(p.id)}
-            onLongPress={onParcelaLongPress ? () => onParcelaLongPress(p) : undefined}
+            onLongPress={onParcelaLongPress && parcelaEditable(p) ? () => onParcelaLongPress(p) : undefined}
           />
           {idx < parcelas.length - 1 && <View style={styles.expandedDivider} />}
         </View>
@@ -213,6 +222,21 @@ function StatsRow({
   );
 }
 
+function CambiosPorResolverBadge({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      style={styles.conflictoBadge}
+      onPress={(e) => { e?.stopPropagation?.(); onPress(); }}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Resolver cambios"
+    >
+      <Ionicons name="warning-outline" size={iconSizes.badge} color={colors.conflictoText} />
+      <Text style={styles.conflictoBadgeText}>Cambios por resolver</Text>
+    </Pressable>
+  );
+}
+
 export default function PlantationCard({
   lugar,
   periodo,
@@ -231,12 +255,15 @@ export default function PlantationCard({
   onGear,
   visibleInApp = true,
   eliminadaEnServidor = false,
+  onResolverCambios,
+  pendientesVarados,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
   parcelas,
   onParcelaPress,
   onParcelaLongPress,
+  parcelaEditable,
 }: Props) {
   const accentColor =
     esFinalizada({ estado }) ? colors.stateFinalizada : colors.stateActiva;
@@ -264,6 +291,10 @@ export default function PlantationCard({
 
           {eliminadaEnServidor && <EliminadaBadge />}
 
+          {onResolverCambios && <CambiosPorResolverBadge onPress={onResolverCambios} />}
+
+          {pendientesVarados && <PendientesVaradosAviso {...pendientesVarados} />}
+
           {isAdmin && !visibleInApp && (
             <View style={styles.hiddenBadge}>
               <Ionicons name="eye-off-outline" size={iconSizes.badge} color={colors.textMuted} />
@@ -279,7 +310,8 @@ export default function PlantationCard({
             estado={estado}
           />
 
-          {pendingSync > 0 && (
+          {/* Varados no están "listos para sincronizar": el aviso de arriba dice por qué. */}
+          {pendingSync > 0 && !pendientesVarados && (
             <View style={styles.pendingSyncRow}>
               <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
               <Text style={styles.pendingSyncText}>
@@ -309,6 +341,7 @@ export default function PlantationCard({
                 parcelas={parcelas}
                 onParcelaPress={onParcelaPress}
                 onParcelaLongPress={onParcelaLongPress}
+                parcelaEditable={parcelaEditable}
               />
             </Animated.View>
           )}

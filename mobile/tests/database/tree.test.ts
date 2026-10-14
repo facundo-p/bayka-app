@@ -10,6 +10,16 @@ let mockUpdateWhere: jest.Mock;
 // db.select() chain is flexible: any .where() resolves to mockSelectResults,
 // which tests reassign per case.
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/database/client', () => {
   return {
     get db() {
@@ -25,6 +35,11 @@ jest.mock('../../src/database/transaccion', () => ({
     cb(jest.requireMock('../../src/database/client').db)),
 }));
 
+// El permiso sobre el grupo tiene su propio test en TreeRepository.test.ts.
+jest.mock('../../src/repositories/edicionDeArboles', () => ({
+  puedeEditarArbolesDe: jest.fn().mockResolvedValue(true),
+  SIN_PERMISO_SOBRE_ARBOLES: 'sin permiso',
+}));
 
 // mockDb defined after jest.mock (hoisted)
 let mockDb: any;
@@ -89,14 +104,14 @@ import {
   insertTree,
   deleteLastTree,
   reverseTreeOrder,
-  resolveNNTree,
+  cambiarEspecie,
   updateTreePhoto,
 } from '../../src/repositories/TreeRepository';
 import { enTransaccion } from '../../src/database/transaccion';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
-    it('first tree in subgroup gets posicion=1 (TREE-03)', async () => {
+    it('first tree in subgroup gets posicion=1', async () => {
       // MAX(posicion) returns null when no trees exist. La fila también sirve para
       // el lookup de parcela (getGroupParcelaCodigo): parcelaId + codigo 'PC'.
       mockSelectResults = [{ maxPos: null, parcelaId: 'p1', codigo: 'PC' }];
@@ -119,7 +134,7 @@ describe('TreeRepository', () => {
       expect(row.groupId).toBe('sg-1');
     });
 
-    it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
+    it('inserts tree with auto-incremented position', async () => {
       mockSelectResults = [{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -134,7 +149,7 @@ describe('TreeRepository', () => {
       expect(result.subId).toBe('PCL1ANC4');
     });
 
-    it('generates correct subId (TREE-04)', async () => {
+    it('generates correct subId', async () => {
       mockSelectResults = [{ maxPos: 12, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -149,7 +164,7 @@ describe('TreeRepository', () => {
       expect(result.subId).toBe('PCL23BANC13');
     });
 
-    it('stores null especieId for N/N trees (NN-01)', async () => {
+    it('stores null especieId for N/N trees', async () => {
       mockSelectResults = [{ maxPos: 0, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -167,7 +182,7 @@ describe('TreeRepository', () => {
   });
 
   describe('deleteLastTree', () => {
-    it('deletes only the last tree by posicion (TREE-07)', async () => {
+    it('deletes only the last tree by posicion', async () => {
       mockSelectResults = [{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }];
 
       const result = await deleteLastTree('sg-1');
@@ -199,7 +214,7 @@ describe('TreeRepository', () => {
       expect(enTransaccion).toHaveBeenCalledTimes(1);
     });
 
-    it('updates all posicion values using formula total-N+1 (REVR-01, REVR-02)', async () => {
+    it('updates all posicion values using formula total-N+1', async () => {
       mockSelectResults = [
         { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
@@ -213,7 +228,7 @@ describe('TreeRepository', () => {
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
-    it('recalculates subId for each tree after reversal (REVR-02)', async () => {
+    it('recalculates subId for each tree after reversal', async () => {
       // 2 N/N trees — species code stays 'NN'
       mockSelectResults = [
         { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
@@ -238,36 +253,39 @@ describe('TreeRepository', () => {
     });
   });
 
-  describe('resolveNNTree', () => {
-    it('sets especieId and recalculates subId (NN-04)', async () => {
+  describe('cambiarEspecie', () => {
+    it('sets especieId and recalculates subId', async () => {
       // First call returns species row, second returns tree row with posicion + grupoId
       let callCount = 0;
       mockDb.select = jest.fn(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn(() => {
+        from: jest.fn(() => {
+          const where = jest.fn(() => {
             callCount++;
             if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]); // especie
-            if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]); // árbol
+            if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1', grupoCodigo: 'L1' }]); // árbol
             if (callCount === 3) return Promise.resolve([{ parcelaId: 'p1' }]); // grupo (getGroupParcelaCodigo)
             return Promise.resolve([{ codigo: 'PC' }]); // parcela
-          }),
-        })),
+          });
+          return { where, innerJoin: jest.fn(() => ({ where })) };
+        }),
       }));
 
-      await resolveNNTree('tree-1', 'esp-1', 'L1');
+      const resultado = await cambiarEspecie('tree-1', 'esp-1');
 
+      expect(resultado).toEqual({ subId: 'PCL1ANC3' });
       // Called twice: once for tree update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing if tree or species not found', async () => {
       mockDb.select = jest.fn(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn(() => Promise.resolve([])),
-        })),
+        from: jest.fn(() => {
+          const where = jest.fn(() => Promise.resolve([]));
+          return { where, innerJoin: jest.fn(() => ({ where })) };
+        }),
       }));
 
-      await resolveNNTree('tree-nonexistent', 'esp-nonexistent', 'L1');
+      await cambiarEspecie('tree-nonexistent', 'esp-nonexistent');
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
     });

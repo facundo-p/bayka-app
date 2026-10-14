@@ -1,5 +1,5 @@
 import { useLiveData } from '../database/liveQuery';
-import { useCurrentUserId } from './useCurrentUserId';
+import { useQuienSube } from './useQuienSube';
 import {
   countPendingGroups,
   countNNBlockedGroups,
@@ -8,8 +8,8 @@ import {
 } from '../queries/pendingSyncQueries';
 
 /**
- * Conteos reactivos de entidades pendientes de sync. Los grupos se filtran por
- * el usuario actual (cada usuario ve solo sus grupos pendientes).
+ * Conteos reactivos de entidades pendientes de sync. Grupos y fotos cuentan si
+ * el sync del usuario actual los sube: un técnico, los suyos; un admin, todos.
  *
  * - pendingCount: total pendiente (grupos + parcelas + fotos) para el OrangeDot
  * - syncableCount: grupos pendientes menos los bloqueados por N/N (gating del CTA)
@@ -21,21 +21,21 @@ import {
  * ignoraba y quedaba inconsistente con el trabajo pendiente real.
  */
 export function usePendingSyncCount(plantacionId?: string) {
-  const userId = useCurrentUserId();
+  const { userId, esAdmin } = useQuienSube();
 
   const { data: pendingData } = useLiveData(
-    () => countPendingGroups({ plantacionId, userId }),
-    [plantacionId, userId]
+    () => countPendingGroups({ plantacionId, userId, esAdmin }),
+    [plantacionId, userId, esAdmin]
   );
 
   const { data: nnBlockedData } = useLiveData(
-    () => countNNBlockedGroups({ plantacionId, userId }),
-    [plantacionId, userId]
+    () => countNNBlockedGroups({ plantacionId, userId, esAdmin }),
+    [plantacionId, userId, esAdmin]
   );
 
   const { data: pendingPhotosData } = useLiveData(
-    () => countPendingTreePhotos({ plantacionId }),
-    [plantacionId]
+    () => countPendingTreePhotos({ plantacionId, userId, esAdmin }),
+    [plantacionId, userId, esAdmin]
   );
 
   const { data: pendingParcelasData } = useLiveData(

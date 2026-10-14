@@ -4,12 +4,9 @@ import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { espiarInvalidaciones } from '../../test/espiarInvalidaciones';
-import { PG_ERROR } from '../../lib/postgresErrorCodes';
-import {
-  MENSAJE_FOTO_SIN_MIGRACION,
-  MENSAJE_GPS_SIN_MIGRACION,
-  MENSAJE_VISIBILIDAD_SIN_MIGRACION,
-} from '../../repositories/plantationRepository';
+import { MENSAJE_CONFLICTO_EDICION } from '../../repositories/edicionDePlantacion';
+import { filaPlantacion } from '../../test/fabricas';
+import type { FilaPlantacion } from '../../queries/plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,61 +19,66 @@ const CATALOGO = [
   { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
 ];
 
-/** El RPC que reemplaza la lista de especies entera (049, #548). */
-const RPC_REEMPLAZO = 'reemplazar_especies_plantacion';
+/** Altas y bajas de especies en una transacción (058, #635). */
+const RPC_CAMBIOS_ESPECIES = 'aplicar_cambios_especies';
+
+/** La edición de campos de la plantación va por RPC, con base (#634). */
+const RPC_EDICION = 'editar_plantacion';
 
 const PERFILES = [
   { id: 'tec-1', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true },
   { id: 'tec-2', nombre: 'Pablo Ríos', rol: 'tecnico', email: 'pablo@bayka.app', activo: true },
 ];
 
+/** Fila de plantation_species con las columnas que lee la web. */
+type Asignada = { species_id: string; lugar_color: number };
+
 /** Estado mutable del mock: los updates/inserts lo modifican como la base. */
-let filaPlantacion: Record<string, unknown>;
-let asignadas: Array<{ species_id: string; orden_visual: number }>;
+let plantacionGuardada: FilaPlantacion;
+let asignadas: Asignada[];
 let tecnicosAsignados: string[];
 let arbolesPorEspecie: Record<string, number>;
-let errorUpdatePlantations: { message: string; code?: string } | null;
+/** Si está, el RPC de edición responde esto en vez de aplicar los cambios. */
+let respuestaEdicion: RespuestaMock | null;
 let consultas: ConsultaCapturada[];
 
-function filaAsignadaConEmbed(asignada: { species_id: string; orden_visual: number }) {
+function filaAsignadaConEmbed(asignada: Asignada) {
   return { ...asignada, species: CATALOGO.find((especie) => especie.id === asignada.species_id) };
 }
 
-function resolverPlantations(consulta: ConsultaCapturada): RespuestaMock {
-  if (consulta.operacion === 'update') {
-    if (errorUpdatePlantations) return { error: errorUpdatePlantations };
-    Object.assign(filaPlantacion, consulta.payload);
-    return { data: null };
-  }
-  const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
-  return { data: filtroId?.valor === filaPlantacion.id ? filaPlantacion : null };
+function resolverEdicion(consulta: ConsultaCapturada): RespuestaMock {
+  if (respuestaEdicion) return respuestaEdicion;
+  Object.assign(plantacionGuardada, (consulta.payload as { p_cambios: object }).p_cambios);
+  return { data: { success: true } };
 }
 
-function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
-  if (consulta.operacion === 'insert') {
-    // El toggle individual inserta una fila; el batch inserta un array.
-    const filas = Array.isArray(consulta.payload) ? consulta.payload : [consulta.payload];
-    asignadas.push(...(filas as Array<{ species_id: string; orden_visual: number }>));
-    return { data: null };
-  }
-  if (consulta.operacion === 'delete') {
-    const filtroEspecie = consulta.filtros.find((filtro) => filtro.columna === 'species_id');
-    // eq (toggle) → un id; in (batch) → array de ids.
-    const ids =
-      filtroEspecie?.metodo === 'in' ? (filtroEspecie.valor as string[]) : [filtroEspecie?.valor];
-    asignadas = asignadas.filter((fila) => !ids.includes(fila.species_id));
-    return { data: null };
-  }
+function resolverPlantations(consulta: ConsultaCapturada): RespuestaMock {
+  const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
+  return { data: filtroId?.valor === plantacionGuardada.id ? plantacionGuardada : null };
+}
+
+function resolverPlantationSpecies(): RespuestaMock {
   return { data: asignadas.map(filaAsignadaConEmbed) };
 }
 
-/** El RPC del lote masivo: reemplaza la lista entera, como en la base (#548). */
-function resolverReemplazoEspecies(consulta: ConsultaCapturada): RespuestaMock {
-  const { p_especies: especies } = consulta.payload as {
-    p_especies: Array<{ species_id: string; orden_visual: number }>;
+/** Como el trigger: la especie que se habilita toma el menor lugar libre. */
+function menorLugarLibre(): number {
+  const ocupados = new Set(asignadas.map((fila) => fila.lugar_color));
+  let lugar = 0;
+  while (ocupados.has(lugar)) lugar += 1;
+  return lugar;
+}
+
+/** Doble del RPC: aplica altas y bajas sobre lo asignado, como la base. */
+function resolverCambiosEspecies(consulta: ConsultaCapturada): RespuestaMock {
+  const { p_altas: altas, p_bajas: bajas } = consulta.payload as {
+    p_altas: string[];
+    p_bajas: string[];
   };
-  asignadas = especies.map(({ species_id, orden_visual }) => ({ species_id, orden_visual }));
-  return { data: { success: true } };
+  asignadas = asignadas.filter((fila) => !bajas.includes(fila.species_id));
+  const nuevas = altas.filter((id) => !asignadas.some((fila) => fila.species_id === id));
+  for (const species_id of nuevas) asignadas.push({ species_id, lugar_color: menorLugarLibre() });
+  return { data: { success: true, rechazadas: [] } };
 }
 
 function filaTecnicoAsignado(userId: string) {
@@ -111,8 +113,9 @@ function configurarMock(): void {
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
     if (consulta.tabla === 'plantations') return resolverPlantations(consulta);
-    if (consulta.tabla === 'plantation_species') return resolverPlantationSpecies(consulta);
-    if (consulta.tabla === RPC_REEMPLAZO) return resolverReemplazoEspecies(consulta);
+    if (consulta.tabla === 'plantation_species') return resolverPlantationSpecies();
+    if (consulta.tabla === RPC_CAMBIOS_ESPECIES) return resolverCambiosEspecies(consulta);
+    if (consulta.tabla === RPC_EDICION) return resolverEdicion(consulta);
     if (consulta.tabla === 'trees') return resolverTrees(consulta);
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
@@ -123,7 +126,7 @@ function configurarMock(): void {
 
 beforeEach(() => {
   prepararSesionAdmin();
-  filaPlantacion = {
+  plantacionGuardada = filaPlantacion({
     id: 'plant-1',
     lugar: 'Mendoza',
     periodo: '2025-2026',
@@ -133,26 +136,38 @@ beforeEach(() => {
     gps_capture_frequency: 10,
     gps_capture_required: true,
     photo_capture_all_trees: false,
-  };
+  });
   asignadas = [
-    { species_id: 'sp-1', orden_visual: 0 },
-    { species_id: 'sp-2', orden_visual: 1 },
+    { species_id: 'sp-1', lugar_color: 0 },
+    { species_id: 'sp-2', lugar_color: 1 },
   ];
   arbolesPorEspecie = { 'sp-1': 3 };
   tecnicosAsignados = [];
-  errorUpdatePlantations = null;
+  respuestaEdicion = null;
   consultas = [];
   configurarMock();
 });
 
-function reemplazosDeEspecies(): ConsultaCapturada[] {
-  return consultas.filter((consulta) => consulta.tabla === RPC_REEMPLAZO);
+/** Los cambios que mandó cada llamada al RPC de edición. */
+function cambiosEditados(): Record<string, unknown>[] {
+  return consultas
+    .filter((consulta) => consulta.tabla === RPC_EDICION)
+    .map((consulta) => (consulta.payload as { p_cambios: Record<string, unknown> }).p_cambios);
 }
 
-function consultasEspecies(operacion: ConsultaCapturada['operacion']): ConsultaCapturada[] {
-  return consultas.filter(
-    (consulta) => consulta.tabla === 'plantation_species' && consulta.operacion === operacion,
-  );
+function conflictoEn(campo: string, valorServidor: unknown): RespuestaMock {
+  return {
+    data: {
+      success: false,
+      error: 'CONFLICTO_EDICION',
+      aplicados: [],
+      conflictos: [{ campo, valor_servidor: valorServidor, editado_por: 'Ana', editado_en: null }],
+    },
+  };
+}
+
+function cambiosDeEspecies(): ConsultaCapturada[] {
+  return consultas.filter((consulta) => consulta.tabla === RPC_CAMBIOS_ESPECIES);
 }
 
 describe('checklist de especies', () => {
@@ -169,16 +184,16 @@ describe('checklist de especies', () => {
     expect(screen.getByRole('checkbox', { name: 'Ceibo' })).not.toBeChecked();
   });
 
-  test('habilitar una especie inserta con orden_visual = cantidad habilitada', async () => {
+  test('habilitar una especie manda solo esa alta', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await usuario.click(await screen.findByRole('checkbox', { name: 'Ceibo' }));
 
-    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
-    expect(consultasEspecies('insert')[0].payload).toEqual({
-      plantation_id: 'plant-1',
-      species_id: 'sp-3',
-      orden_visual: 2,
+    await waitFor(() => expect(cambiosDeEspecies()).toHaveLength(1));
+    expect(cambiosDeEspecies()[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_altas: ['sp-3'],
+      p_bajas: [],
     });
   });
 
@@ -187,11 +202,12 @@ describe('checklist de especies', () => {
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await usuario.click(await screen.findByRole('checkbox', { name: 'Algarrobo' }));
 
-    await waitFor(() => expect(consultasEspecies('delete')).toHaveLength(1));
-    expect(consultasEspecies('delete')[0].filtros).toEqual([
-      { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
-      { metodo: 'eq', columna: 'species_id', valor: 'sp-2' },
-    ]);
+    await waitFor(() => expect(cambiosDeEspecies()).toHaveLength(1));
+    expect(cambiosDeEspecies()[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_altas: [],
+      p_bajas: ['sp-2'],
+    });
   });
 
   test('no se puede desmarcar una especie con árboles', async () => {
@@ -199,7 +215,7 @@ describe('checklist de especies', () => {
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await usuario.click(await screen.findByRole('checkbox', { name: 'Quebracho' }));
 
-    expect(consultasEspecies('delete')).toHaveLength(0);
+    expect(cambiosDeEspecies()).toHaveLength(0);
   });
 
   test('el buscador filtra por nombre/código', async () => {
@@ -224,15 +240,12 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
 
     await usuario.click(maestro);
 
-    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
-    // Un solo request con la lista final: las dos que ya estaban más sp-3.
-    expect(reemplazosDeEspecies()[0].payload).toEqual({
+    await waitFor(() => expect(cambiosDeEspecies()).toHaveLength(1));
+    // Un solo request, solo con la que falta: las que ya estaban no viajan.
+    expect(cambiosDeEspecies()[0].payload).toEqual({
       p_plantacion: 'plant-1',
-      p_especies: [
-        { species_id: 'sp-1', orden_visual: 0 },
-        { species_id: 'sp-2', orden_visual: 1 },
-        { species_id: 'sp-3', orden_visual: 2 },
-      ],
+      p_altas: ['sp-3'],
+      p_bajas: [],
     });
     expect(await screen.findByText(/^3 habilitadas ·/)).toBeInTheDocument();
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
@@ -241,9 +254,9 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('desmarca todas dejando las bloqueadas y avisa con el conteo', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-1', orden_visual: 0 },
-      { species_id: 'sp-2', orden_visual: 1 },
-      { species_id: 'sp-3', orden_visual: 2 },
+      { species_id: 'sp-1', lugar_color: 0 },
+      { species_id: 'sp-2', lugar_color: 1 },
+      { species_id: 'sp-3', lugar_color: 2 },
     ];
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
@@ -251,11 +264,12 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
 
     await usuario.click(maestro);
 
-    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
-    // sp-1 tiene árboles → queda; la lista final es solo ella.
-    expect(reemplazosDeEspecies()[0].payload).toEqual({
+    await waitFor(() => expect(cambiosDeEspecies()).toHaveLength(1));
+    // sp-1 tiene árboles → no se pide su baja.
+    expect(cambiosDeEspecies()[0].payload).toEqual({
       p_plantacion: 'plant-1',
-      p_especies: [{ species_id: 'sp-1', orden_visual: 0 }],
+      p_altas: [],
+      p_bajas: ['sp-2', 'sp-3'],
     });
     expect(
       await screen.findByText(/1 especie quedó habilitada porque tiene árboles/),
@@ -266,9 +280,9 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('todas bloqueadas: no borra nada y avisa por todas', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-1', orden_visual: 0 },
-      { species_id: 'sp-2', orden_visual: 1 },
-      { species_id: 'sp-3', orden_visual: 2 },
+      { species_id: 'sp-1', lugar_color: 0 },
+      { species_id: 'sp-2', lugar_color: 1 },
+      { species_id: 'sp-3', lugar_color: 2 },
     ];
     arbolesPorEspecie = { 'sp-1': 3, 'sp-2': 1, 'sp-3': 5 };
     renderRutasEn('/plantaciones/plant-1/configuracion');
@@ -278,14 +292,14 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     await usuario.click(maestro);
 
     expect(await screen.findByText(/3 especies quedaron habilitadas/)).toBeInTheDocument();
-    expect(reemplazosDeEspecies()).toHaveLength(0);
+    expect(cambiosDeEspecies()).toHaveLength(0);
   });
 
   test('sin bloqueadas: desmarcar vacía el checklist sin aviso', async () => {
     const usuario = userEvent.setup();
     asignadas = [
-      { species_id: 'sp-2', orden_visual: 0 },
-      { species_id: 'sp-3', orden_visual: 1 },
+      { species_id: 'sp-2', lugar_color: 0 },
+      { species_id: 'sp-3', lugar_color: 1 },
     ];
     arbolesPorEspecie = {};
     renderRutasEn('/plantaciones/plant-1/configuracion');
@@ -312,26 +326,21 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     expect(maestro).toHaveAttribute('aria-checked', 'false');
     await usuario.click(maestro);
 
-    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
-    // Las no visibles no se tocan: viajan en la lista final tal como estaban.
-    expect(reemplazosDeEspecies()[0].payload).toEqual({
+    await waitFor(() => expect(cambiosDeEspecies()).toHaveLength(1));
+    // Las no visibles no se tocan ni viajan.
+    expect(cambiosDeEspecies()[0].payload).toEqual({
       p_plantacion: 'plant-1',
-      p_especies: [
-        { species_id: 'sp-1', orden_visual: 0 },
-        { species_id: 'sp-2', orden_visual: 1 },
-        { species_id: 'sp-3', orden_visual: 2 },
-      ],
+      p_altas: ['sp-3'],
+      p_bajas: [],
     });
   });
 });
 
 describe('sección GPS', () => {
-  function updatesGps(): ConsultaCapturada[] {
-    return consultas.filter(
-      (consulta) =>
-        consulta.tabla === 'plantations' &&
-        consulta.operacion === 'update' &&
-        (consulta.payload as Record<string, unknown>).gps_capture_frequency !== undefined,
+  function updatesGps(): Record<string, unknown>[] {
+    return cambiosEditados().filter(
+      (cambios) =>
+        cambios.gps_capture_frequency !== undefined || cambios.gps_capture_required !== undefined,
     );
   }
 
@@ -346,11 +355,11 @@ describe('sección GPS', () => {
     await usuario.click(screen.getByRole('radio', { name: /5/ }));
 
     await waitFor(() => expect(updatesGps()).toHaveLength(1));
-    expect(updatesGps()[0].payload).toMatchObject({ gps_capture_frequency: 5 });
+    expect(updatesGps()[0]).toEqual({ gps_capture_frequency: 5 });
   });
 
   test('una frecuencia no preset deja sin preset activo y resalta el input', async () => {
-    filaPlantacion.gps_capture_frequency = 7;
+    plantacionGuardada.gps_capture_frequency = 7;
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await screen.findByRole('checkbox', { name: 'Quebracho' });
 
@@ -383,21 +392,19 @@ describe('sección GPS', () => {
     await usuario.click(screen.getByRole('switch', { name: 'Captura de GPS obligatoria' }));
 
     await waitFor(() => expect(updatesGps()).toHaveLength(1));
-    expect(updatesGps()[0].payload).toMatchObject({ gps_capture_required: false });
+    expect(updatesGps()[0]).toEqual({ gps_capture_required: false });
   });
 
-  test('si falta la migración 023 muestra el mensaje y no rompe', async () => {
+  test('si otro cambió la frecuencia, muestra el aviso y queda la del server', async () => {
     const usuario = userEvent.setup();
-    errorUpdatePlantations = {
-      message: 'column "gps_capture_frequency" does not exist',
-      code: PG_ERROR.UNDEFINED_COLUMN,
-    };
+    respuestaEdicion = conflictoEn('gps_capture_frequency', 20);
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await screen.findByRole('checkbox', { name: 'Quebracho' });
 
     await usuario.click(screen.getByRole('radio', { name: /5/ }));
 
-    expect(await screen.findByText(MENSAJE_GPS_SIN_MIGRACION)).toBeInTheDocument();
+    expect(await screen.findByText(MENSAJE_CONFLICTO_EDICION)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /20/ })).toHaveAttribute('aria-checked', 'true');
   });
 });
 
@@ -463,25 +470,20 @@ describe('sección Foto en todos los botones', () => {
 
     await usuario.click(toggle);
 
-    const update = consultas.find(
-      (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
-    );
-    expect(update?.payload).toEqual({ photo_capture_all_trees: true });
+    await waitFor(() => expect(cambiosEditados()).toEqual([{ photo_capture_all_trees: true }]));
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
   });
 
-  test('si falta la migración 035 muestra el mensaje de migración', async () => {
+  test('una plantación archivada en el server vuelve el toggle atrás con el motivo', async () => {
     const usuario = userEvent.setup();
-    errorUpdatePlantations = {
-      message: 'column "photo_capture_all_trees" does not exist',
-      code: PG_ERROR.UNDEFINED_COLUMN,
-    };
+    respuestaEdicion = { data: { success: false, error: 'PLANTACION_ARCHIVADA' } };
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
 
     await usuario.click(toggle);
 
-    expect(await screen.findByText(MENSAJE_FOTO_SIN_MIGRACION)).toBeInTheDocument();
+    expect(await screen.findByText(/desarchivala/)).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
   });
 });
 
@@ -494,16 +496,13 @@ describe('sección Visibilidad', () => {
 
     await usuario.click(toggle);
 
-    const update = consultas.find(
-      (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
-    );
-    expect(update?.payload).toEqual({ visible_in_app: false });
+    await waitFor(() => expect(cambiosEditados()).toEqual([{ visible_in_app: false }]));
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
   });
 
   test('si el update falla hace rollback visual del toggle', async () => {
     const usuario = userEvent.setup();
-    errorUpdatePlantations = { message: 'TypeError: Failed to fetch' };
+    respuestaEdicion = { error: { message: 'TypeError: Failed to fetch' } };
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
 
@@ -517,17 +516,15 @@ describe('sección Visibilidad', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 
-  test('si falta la migración 024 muestra el mensaje de migración', async () => {
+  test('una plantación finalizada en el server muestra el rechazo', async () => {
     const usuario = userEvent.setup();
-    errorUpdatePlantations = {
-      message: 'column "visible_in_app" does not exist',
-      code: PG_ERROR.UNDEFINED_COLUMN,
-    };
+    respuestaEdicion = { data: { success: false, error: 'PLANTACION_FINALIZADA' } };
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
 
     await usuario.click(toggle);
 
-    expect(await screen.findByText(MENSAJE_VISIBILIDAD_SIN_MIGRACION)).toBeInTheDocument();
+    expect(await screen.findByText(/está finalizada/)).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 });

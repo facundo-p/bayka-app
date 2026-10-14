@@ -6,6 +6,7 @@
 jest.mock('../../src/services/SyncService', () => ({
   ...jest.requireActual('../../src/services/sync/types'),
   ...jest.requireActual('../../src/services/sync/plantacionesOmitidas'),
+  esSesionExpirada: jest.requireActual('../../src/services/sync/sessionGuard').esSesionExpirada,
   syncPlantation: jest.fn(),
   syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),
@@ -482,5 +483,18 @@ describe('useSync — el progreso de fotos no queda pegado entre fases (#450)', 
     await act(async () => { await result.current.startBidirectionalSync(true); });
 
     expect(result.current.photoProgress).toBeNull();
+  });
+
+  it('sin descargar fotos de otros celulares, sube las pendientes y no baja nada (#565)', async () => {
+    (syncPlantation as jest.Mock).mockResolvedValue([]);
+    const { uploadPendingPhotos, downloadPhotosForPlantation } = require('../../src/services/SyncService');
+    (uploadPendingPhotos as jest.Mock).mockResolvedValue({ uploaded: 3, failed: 0 });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(uploadPendingPhotos).toHaveBeenCalledWith('plant-1', expect.any(Function));
+    expect(downloadPhotosForPlantation).not.toHaveBeenCalled();
+    expect(result.current.photoResult).toEqual({ uploaded: 3, uploadFailed: 0 });
   });
 });

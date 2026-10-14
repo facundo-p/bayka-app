@@ -3,7 +3,9 @@ import { File, Directory, Paths } from 'expo-file-system';
 import { manipulateAsync, SaveFormat, Action } from 'expo-image-manipulator';
 import type { PixelCrop } from '../utils/cropGeometry';
 
-const MAX_LONG_SIDE = 1600;
+/** Toda foto guardada es un JPEG cuadrado de este lado (#831). */
+export const PHOTO_SIDE = 1200;
+const PHOTO_JPEG_QUALITY = 0.85;
 
 export interface RawPhoto {
   uri: string;
@@ -44,6 +46,34 @@ function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
   return nombre !== '' && nombre !== '.' && nombre !== '..' && !/[\\/]/.test(nombre);
 }
 
+/** Con barra final: el uri del directorio puede venir con o sin ella. */
+function uriDeLaCarpetaDeFotos(): string | null {
+  try {
+    return carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // El borrado corre después del commit: una excepción acá haría fallar una
+    // operación de datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return null;
+  }
+}
+
+/** Archivo de la carpeta propia de fotos, el único que `borrarFotosLocales` borra. */
+export function esFotoDeLaApp(uri: string): boolean {
+  const carpeta = uriDeLaCarpetaDeFotos();
+  return carpeta !== null && esArchivoSueltoDe(carpeta, uri);
+}
+
+/** Bytes de una foto del dispositivo; 0 si no existe o no se puede leer. */
+export function pesoDeFotoLocal(uri: string): number {
+  try {
+    const archivo = new File(uri);
+    return archivo.exists ? archivo.size ?? 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Borra archivos de fotos del device. Best-effort: un archivo que no se puede borrar
  * se loguea y no corta el resto.
@@ -52,16 +82,8 @@ function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
  * `content://` de la galería no son archivos de la app.
  */
 export function borrarFotosLocales(uris: readonly string[]): void {
-  let carpeta: string;
-  try {
-    // Con barra final: el uri del directorio puede venir con o sin ella.
-    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
-  } catch (e) {
-    // Corre después del commit: una excepción acá haría fallar una operación de
-    // datos que ya se hizo.
-    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
-    return;
-  }
+  const carpeta = uriDeLaCarpetaDeFotos();
+  if (!carpeta) return;
   for (const uri of uris) {
     if (!esArchivoSueltoDe(carpeta, uri)) continue;
     try {
@@ -73,52 +95,26 @@ export function borrarFotosLocales(uris: readonly string[]): void {
   }
 }
 
-/**
- * Recorta (si `pixelCrop` no es null), redimensiona el lado mayor a
- * MAX_LONG_SIDE y guarda como JPEG permanente. Paso único: el recorte es
- * opcional y el guardado es atómico.
- */
-export async function cropResizeAndSave(
-  uri: string,
-  pixelCrop: PixelCrop | null,
-  origWidth: number,
-  origHeight: number
-): Promise<string> {
-  const actions: Action[] = [];
-  if (pixelCrop) actions.push({ crop: pixelCrop });
-  const w = pixelCrop ? pixelCrop.width : origWidth;
-  const h = pixelCrop ? pixelCrop.height : origHeight;
-  const isLandscape = w >= h;
-  actions.push({ resize: isLandscape ? { width: MAX_LONG_SIDE } : { height: MAX_LONG_SIDE } });
-  const result = await manipulateAsync(uri, actions, { compress: 0.85, format: SaveFormat.JPEG });
+/** Recorta el cuadrado, lo lleva a PHOTO_SIDE × PHOTO_SIDE y lo guarda como JPEG permanente. */
+export async function cropResizeAndSave(uri: string, pixelCrop: PixelCrop): Promise<string> {
+  if (!(pixelCrop.width > 0 && pixelCrop.height > 0)) {
+    throw new Error(`[Photo] recorte vacío (${pixelCrop.width}×${pixelCrop.height}): ¿la imagen no informó su tamaño?`);
+  }
+  const actions: Action[] = [
+    { crop: pixelCrop },
+    { resize: { width: PHOTO_SIDE, height: PHOTO_SIDE } },
+  ];
+  const result = await manipulateAsync(uri, actions, { compress: PHOTO_JPEG_QUALITY, format: SaveFormat.JPEG });
   return saveToPhotos(result.uri);
 }
 
-/** Captura con cámara SIN procesar (para el paso de recorte). null si cancela/sin permiso. */
-export async function launchCameraRaw(): Promise<RawPhoto | null> {
-  const permission = await ImagePicker.requestCameraPermissionsAsync();
-  if (!permission.granted) return null;
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 1,
-    // allowsEditing: paso de recorte nativo tras capturar. En Android el
-    // recorte es libre; lo recortado es lo que se guarda. Cancelar degrada sin crash.
-    allowsEditing: true,
-  });
-  if (result.canceled || !result.assets?.[0]) return null;
-  const asset = result.assets[0];
-  return { uri: asset.uri, width: asset.width ?? 0, height: asset.height ?? 0 };
-}
-
-/** Selección de galería SIN procesar (para el paso de recorte). */
+/** Selección de galería sin procesar: el recorte cuadrado lo hace la app, no el picker. */
 export async function launchGalleryRaw(): Promise<RawPhoto | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    mediaTypes: ['images'],
     quality: 1,
-    // allowsEditing: permite recortar la imagen elegida antes de guardarla.
-    allowsEditing: true,
   });
   if (result.canceled || !result.assets?.[0]) return null;
   const asset = result.assets[0];

@@ -15,6 +15,12 @@
     prod + APK de producción.
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
+- **Las migraciones se aplican solo con `supabase db push --db-url`** (vigente
+  desde 2026-10-05, #759), nunca pegándolas en el SQL Editor. El push las
+  registra en `supabase_migrations.schema_migrations`, y `migration list`
+  muestra lo que falta. Siempre `--dry-run` antes; el push real lo corre Facu
+  con el comando que arma `/migrar`. Las migraciones ya no se archivan.
+  Detalle en `docs/db-baseline.md`.
 
 ## Releases y versionado (OBLIGATORIO — vigente desde 2026-08-20)
 
@@ -25,7 +31,9 @@
 - **El pase a prod se arma SOLO con el skill `/deploy`** (#273): calcula bumps
   semver por conventional commits clasificados por paths, propone changelog, y
   con OK de Facu commitea el release en staging y abre el PR staging→main.
-  Detalle en `.claude/skills/deploy/SKILL.md`.
+  Un commit en `shared/` (lógica pura que importan las dos apps, #713) cuenta
+  para web y para mobile: bumpea las dos y exige APK nueva. Detalle en
+  `.claude/skills/deploy/SKILL.md`.
 - **Tags `web-vX.Y.Z` / `mobile-vX.Y.Z` + GitHub Releases**: los crea
   `.github/workflows/release-tags.yml` al mergear a main, con notas extraídas
   de `CHANGELOG.md` (los headers `## `/`### ` del changelog son anclas de ese

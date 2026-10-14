@@ -9,6 +9,7 @@ import {
   MODAL_NUEVA_PLANTACION,
   RUTA,
   SELECTOR_DIALOGO,
+  SELECTOR_MIGA,
   TODOS_LOS_DETAILS,
   claseModulo,
 } from './config.mjs';
@@ -151,6 +152,16 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nFueraViewport > 0,
   },
   {
+    nombre: 'X · diálogo que se sale de la ventana aunque sus controles entren',
+    ruta: RUTA.usuarios,
+    abrir: 'Filtros',
+    raiz: SELECTOR_DIALOGO,
+    ancho: 1280,
+    // Corrido menos que su padding: el borde queda afuera y los controles no.
+    css: `${SELECTOR_DIALOGO}{position:fixed !important;left:-10px !important;right:auto !important}`,
+    espera: (r) => r.nFueraViewport > 0,
+  },
+  {
     nombre: 'X · control recortado por una card que no scrollea',
     ruta: RUTA.especies,
     ancho: 1920,
@@ -210,6 +221,18 @@ const CASOS_AUTOTEST = [
     // puesto tiene que callarse. Si midiera la caja del Range en vez de la
     // pintada, la segunda mitad fallaría.
     css: `${claseModulo('meta')}{overflow:visible !important;text-overflow:clip !important}`,
+    espera: (r) => r.nSolapes > 0,
+    esperaLimpio: (r) => r.nSolapes === 0,
+  },
+  {
+    nombre: 'O · tabs del detalle encima de la miga aplastada',
+    ruta: RUTA.dashboardArchivada,
+    ancho: 390,
+    // El defecto de #825 en la fila que lo ve: con la base de la miga en 0, el
+    // badge de estado queda bajo las tabs. Solo pasa en una ventana angosta
+    // (370–390); si badges o tipografía la corren, esto falla en vez de pasar
+    // la fila a verde sin ejercer.
+    css: `${claseModulo('left')}{flex-basis:0 !important}`,
     espera: (r) => r.nSolapes > 0,
     esperaLimpio: (r) => r.nSolapes === 0,
   },
@@ -286,6 +309,12 @@ const CASOS_AUTOTEST = [
  * `plantaciones` — cobertura fantasma que puntuaba impecable.
  */
 const COBERTURA = [
+  {
+    nombre: 'dashboard-archivada · la miga lleva el badge «Archivada»',
+    ruta: RUTA.dashboardArchivada,
+    vale: async (pagina) =>
+      (await pagina.locator(SELECTOR_MIGA).getByText('Archivada', { exact: true }).count()) > 0,
+  },
   {
     nombre: 'login · se mide el login, no el listado al que redirige',
     ruta: RUTA.loginSinSesion,

@@ -1,19 +1,19 @@
 /**
  * usePlantaciones — all data logic for PlantacionesScreen.
  *
- * Encapsulates plantation list, tree stats, freshness check, and pull logic.
+ * Encapsulates plantation list and tree stats.
  */
-import { useState, useCallback } from 'react';
-import { useLiveData, notifyDataChanged } from '../database/liveQuery';
-import { useFocusEffect } from 'expo-router';
+import { useState } from 'react';
+import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useNetStatus } from './useNetStatus';
 import { useProfileData } from './useProfileData';
 import { useRoutePrefix } from './useRoutePrefix';
+import { esRutaAdmin } from '../constants/rutas';
 import { useConfirm } from './useConfirm';
 import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
-import { checkFreshness } from '../queries/freshnessQueries';
-import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
+import { useDescartarPendientes } from './useDescartarPendientes';
+import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
@@ -24,16 +24,16 @@ import {
   getUnresolvedNNCountsPerPlantation,
 } from '../queries/dashboardQueries';
 
+const SIN_VARADOS = new Map<string, PendientesVarados>();
+
 export function usePlantaciones() {
   const routePrefix = useRoutePrefix();
   const userId = useCurrentUserId();
-  const isAdmin = routePrefix === '(admin)';
+  const isAdmin = esRutaAdmin(routePrefix);
   const { isOnline } = useNetStatus();
   const { profile } = useProfileData();
   const confirm = useConfirm();
 
-  const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const { data: plantationList } = useLiveData(
@@ -46,32 +46,7 @@ export function usePlantaciones() {
   const { data: todayCounts } = useLiveData(() => getTodayTreeCounts(userId), [userId]);
   const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
   const { data: nnCounts } = useLiveData(() => getUnresolvedNNCountsPerPlantation());
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!isOnline || !plantationList?.length) return;
-      checkFreshness(plantationList.map((p) => p.id)).then((hasNewData) => {
-        setShowFreshnessBanner(hasNewData);
-      });
-    }, [isOnline, plantationList])
-  );
-
-  const handleRefresh = async () => {
-    if (!plantationList) return;
-    setRefreshing(true);
-    try {
-      await uploadPendingEdits();
-      for (const p of plantationList) {
-        await pullFromServer(p.id);
-      }
-      notifyDataChanged();
-      setShowFreshnessBanner(false);
-    } catch (e) {
-      console.error('[Freshness] pull failed:', e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const { data: pendientesVarados } = useLiveData(() => getPendientesVarados());
 
   // Título fijo para ambos roles; el nombre de la organización va de subtítulo
   // (se oculta solo si el perfil aún no trae la organización).
@@ -100,6 +75,7 @@ export function usePlantaciones() {
   ) ?? [];
 
   const handleDeletePlantation = useEliminarDelDispositivo(confirm.show);
+  const handleDescartarPendientes = useDescartarPendientes(confirm.show);
 
   return {
     plantationList,
@@ -107,8 +83,6 @@ export function usePlantaciones() {
     estadoCounts,
     activeFilter,
     setActiveFilter,
-    showFreshnessBanner,
-    refreshing,
     headerTitle,
     headerSubtitle,
     isOnline,
@@ -118,8 +92,9 @@ export function usePlantaciones() {
     todayCountMap,
     totalCountMap,
     nnCountMap,
-    handleRefresh,
     handleDeletePlantation,
+    pendientesVarados: pendientesVarados ?? SIN_VARADOS,
+    handleDescartarPendientes,
     confirmProps: confirm.confirmProps,
   };
 }

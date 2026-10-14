@@ -3,11 +3,10 @@
 -- plantation_users por plantation_users, storage.objects de tree-photos por
 -- plantación, triggers de membresía admin acotados a la organización.
 begin;
-select plan(37);
+select plan(36);
 
--- org1 usa el UUID hardcodeado que handle_new_user busca (ver baseline): todo
--- auth.users nuevo cae ahí por default. org2 es una segunda organización para
--- probar el aislamiento cross-org.
+-- org1 es la organización de los fixtures; org2, una segunda para probar el
+-- aislamiento cross-org.
 insert into organizations (id, nombre) values
   ('00000000-0000-0000-0000-000000000001', 'Org1 Test 10'),
   ('10000000-0000-0000-0000-000000000001', 'Org2 Test 10');
@@ -17,20 +16,22 @@ insert into auth.users (id, email) values
   ('10000000-0000-0000-0000-0000000000b2', 't2-10@test.local'),
   ('10000000-0000-0000-0000-0000000000b3', 'a1-10@test.local'),
   ('10000000-0000-0000-0000-0000000000b4', 'u2-10@test.local');
--- trg_handle_new_user les asignó organizacion_id = org1 (rol tecnico) a los 4.
+-- trg_handle_new_user los crea como tecnico sin organización (060).
 
+update profiles set organizacion_id = '00000000-0000-0000-0000-000000000001' where id in (
+  '10000000-0000-0000-0000-0000000000b1',
+  '10000000-0000-0000-0000-0000000000b2',
+  '10000000-0000-0000-0000-0000000000b3');
 update profiles set organizacion_id = '10000000-0000-0000-0000-000000000001'
   where id = '10000000-0000-0000-0000-0000000000b4';
 update profiles set rol = 'admin' where id = '10000000-0000-0000-0000-0000000000b3';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
-  ('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'P1 org1', '2026', '10000000-0000-0000-0000-0000000000b3');
+select tests.crear_plantacion('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-0000000000b3', 'P1 org1');
 -- trg_add_admin_memberships (033): A1 es admin de org1 = org de P1 -> se suma solo.
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
-  ('10000000-0000-0000-0000-000000000020', '10000000-0000-0000-0000-000000000001',
-   'P2 org2', '2026', '10000000-0000-0000-0000-0000000000b4');
+select tests.crear_plantacion('10000000-0000-0000-0000-000000000020', '10000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-0000000000b4', 'P2 org2');
 -- A1 es de org1 != org de P2: NO se suma a P2.
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
@@ -43,7 +44,7 @@ insert into parcelas (id, plantation_id, nombre, codigo) values
 
 insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, usuario_creador) values
   ('10000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000010',
-   '10000000-0000-0000-0000-000000000011', 'G1', 'G1', 'linea', '10000000-0000-0000-0000-0000000000b3'),
+   '10000000-0000-0000-0000-000000000011', 'G1', 'G1', 'linea', '10000000-0000-0000-0000-0000000000b1'),
   ('10000000-0000-0000-0000-000000000022', '10000000-0000-0000-0000-000000000020',
    '10000000-0000-0000-0000-000000000021', 'G2', 'G2', 'linea', '10000000-0000-0000-0000-0000000000b4');
 
@@ -151,13 +152,6 @@ select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-0000000000b2
 select is(
   (select count(*)::int from stats_plantaciones()),
   0, 'stats_plantaciones() no devuelve nada para T2 (sin membresías)'
-);
-
--- ── plantation_ids_status() (032, SECURITY INVOKER): RLS lo filtra igual ──
-select is(
-  (select row(total, con_id, generados) from plantation_ids_status('10000000-0000-0000-0000-000000000010'::uuid)),
-  row(0, 0, false),
-  'plantation_ids_status de P1 da (0,0,false) para T2 (no miembro), pese a tener un árbol real'
 );
 reset role;
 -- Limpia el jwt.claim seteado por el bloque anterior: protect_profile_fields

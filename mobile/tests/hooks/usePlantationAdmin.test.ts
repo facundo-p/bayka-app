@@ -2,7 +2,6 @@
 
 jest.mock('../../src/queries/adminQueries', () => ({
   checkFinalizationGate: jest.fn(),
-  hasIdsGenerated: jest.fn(),
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({
@@ -60,21 +59,27 @@ jest.mock('../../src/utils/alertHelpers', () => ({
   showInfoDialog: jest.fn(),
 }));
 
+jest.mock('../../src/services/PlantationCreationService', () => ({
+  createPlantationWithDefaultParcela: jest.fn(),
+}));
+
 import { renderHook, act } from '@testing-library/react-native';
 import { fetchPlantationMeta, usePlantationAdmin } from '../../src/hooks/usePlantationAdmin';
-import { checkFinalizationGate, hasIdsGenerated } from '../../src/queries/adminQueries';
+import { checkFinalizationGate } from '../../src/queries/adminQueries';
 import { useConfirm } from '../../src/hooks/useConfirm';
 import { useCurrentUserId } from '../../src/hooks/useCurrentUserId';
 import { useProfileData } from '../../src/hooks/useProfileData';
 import { useLiveData } from '../../src/database/liveQuery';
 import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/repositories/PlantationRepository';
 import { showInfoDialog } from '../../src/utils/alertHelpers';
+import { createPlantationWithDefaultParcela } from '../../src/services/PlantationCreationService';
+import { TEXTO_DUPLICADA_EN_SERVIDOR } from '../../src/components/PlantacionesDuplicadasAviso';
+import { setOnline, setOffline, setSinInternet, setRedDesconocida } from '../helpers/networkHelper';
 import type { Plantation } from '../../src/types/plantation';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
 
 const mockCheckGate =checkFinalizationGate as jest.MockedFunction<typeof checkFinalizationGate>;
-const mockHasIds = hasIdsGenerated as jest.MockedFunction<typeof hasIdsGenerated>;
 
 function makePlantation(estado: string, overrides?: Partial<Plantation>): Plantation {
   return {
@@ -99,7 +104,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 
   it('returns canFinalize=false for activa when gate fails', async () => {
@@ -114,7 +119,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 
   it('con fotos sin subir: canFinalize=false y dice qué falta sincronizar (#537)', async () => {
@@ -129,20 +134,11 @@ describe('fetchPlantationMeta', () => {
     expect(result.pendientesSinSubir).toBe('2 fotos sin subir');
   });
 
-  it('returns idsGenerated=true for finalizada with IDs', async () => {
-    mockHasIds.mockResolvedValue(true);
-
+  it('una finalizada no consulta el gate de finalización', async () => {
     const result = await fetchPlantationMeta(makePlantation('finalizada'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
-  });
-
-  it('returns idsGenerated=false for finalizada without IDs', async () => {
-    mockHasIds.mockResolvedValue(false);
-
-    const result = await fetchPlantationMeta(makePlantation('finalizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(mockCheckGate).not.toHaveBeenCalled();
   });
 
   it('handles checkFinalizationGate error gracefully', async () => {
@@ -150,15 +146,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
-  });
-
-  it('handles hasIdsGenerated error gracefully', async () => {
-    mockHasIds.mockRejectedValue(new Error('DB error'));
-
-    const result = await fetchPlantationMeta(makePlantation('finalizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    expect(result).toEqual({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
   });
 });
 
@@ -288,5 +276,121 @@ describe('usePlantationAdmin.handleFinalize', () => {
       expect.any(String),
       expect.anything()
     );
+  });
+});
+
+describe('usePlantationAdmin.handleCreateSubmit', () => {
+  const mockCreate = createPlantationWithDefaultParcela as jest.Mock;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
+    (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
+    (useLiveData as jest.Mock).mockReturnValue({ data: null });
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: jest.fn() });
+  });
+
+  it('online y duplicada:true → devuelve id y duplicada, sin avisar todavía (#655/#656)', async () => {
+    setOnline();
+    mockCreate.mockResolvedValue({ id: 'plantation-1', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa', duplicada: true });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    const created = await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(created).toEqual({ id: 'plantation-1', duplicada: true });
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'online' }));
+    // handleCreateSubmit ya no muestra nada por su cuenta: el caller decide cuándo, vía continuarLuegoDeCrear.
+    expect(showInfoDialog).not.toHaveBeenCalled();
+  });
+
+  it('online y duplicada:false → duplicada:false en el resultado', async () => {
+    setOnline();
+    mockCreate.mockResolvedValue({ id: 'plantation-2', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa', duplicada: false });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    const created = await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(created).toEqual({ id: 'plantation-2', duplicada: false });
+  });
+
+  it('offline: createPlantationWithDefaultParcela no devuelve duplicada → queda undefined (el chequeo llega recién con el próximo sync)', async () => {
+    setOffline();
+    mockCreate.mockResolvedValue({ id: 'plantation-3', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa' });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    const created = await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'offline' }));
+    expect(created).toEqual({ id: 'plantation-3', duplicada: undefined });
+  });
+});
+
+describe('usePlantationAdmin.handleCreateSubmit sin conexión confirmada (#652)', () => {
+  const mockCreate = createPlantationWithDefaultParcela as jest.Mock;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
+    (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
+    (useLiveData as jest.Mock).mockReturnValue({ data: null });
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: jest.fn() });
+    mockCreate.mockResolvedValue({ id: 'plantation-4', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa' });
+  });
+
+  it.each([
+    ['conectado sin internet', setSinInternet],
+    ['red desconocida', setRedDesconocida],
+  ])('%s: crea en modo offline', async (_caso, setRed) => {
+    setRed();
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'offline' }));
+  });
+});
+
+describe('usePlantationAdmin.continuarLuegoDeCrear', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
+    (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
+    (useLiveData as jest.Mock).mockReturnValue({ data: null });
+  });
+
+  it('sin duplicada: corre el siguiente paso directo, sin avisar', () => {
+    const mockShow = jest.fn();
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: mockShow });
+    const siguientePaso = jest.fn();
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    result.current.continuarLuegoDeCrear(false, siguientePaso);
+
+    expect(siguientePaso).toHaveBeenCalledTimes(1);
+    expect(showInfoDialog).not.toHaveBeenCalled();
+  });
+
+  it('con duplicada: avisa primero y el siguiente paso corre recién cuando se cierra el aviso, nunca antes (#656)', () => {
+    const mockShow = jest.fn();
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: mockShow });
+    const siguientePaso = jest.fn();
+    // Réplica mínima del showInfoDialog real: arma el botón "Entendido" con el onDismiss real,
+    // para poder disparar el mismo onPress que tocaría el usuario.
+    (showInfoDialog as jest.Mock).mockImplementation((show, title, message, icon, iconColor, onDismiss) => {
+      show({ title, message, buttons: [{ label: 'Entendido', onPress: () => onDismiss?.() }] });
+    });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    result.current.continuarLuegoDeCrear(true, siguientePaso);
+
+    // El aviso ya se mostró, pero el siguiente paso todavía no corrió.
+    expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ title: 'Mismo lugar y periodo', message: TEXTO_DUPLICADA_EN_SERVIDOR }));
+    expect(siguientePaso).not.toHaveBeenCalled();
+
+    // Recién al tocar "Entendido" (cerrar el aviso) corre el siguiente paso.
+    const entendido = mockShow.mock.calls[0][0].buttons[0];
+    entendido.onPress();
+
+    expect(siguientePaso).toHaveBeenCalledTimes(1);
   });
 });

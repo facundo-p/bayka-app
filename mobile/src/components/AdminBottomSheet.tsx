@@ -15,9 +15,7 @@ import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { ayudaFinalizarConPendientes } from '../utils/finalizarPlantacion';
 import { esActiva, esArchivada, esEliminadaEnServidor, esFinalizada } from '../constants/estados';
-
-/** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
-export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
+import { AYUDA_REABRIR_SIN_CONEXION, ETIQUETA_REABRIR, esReabrible } from '../utils/reaperturaPlantacion';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -26,11 +24,15 @@ type AdminBottomSheetProps = {
   plantation: Plantation | null;
   meta: ExpandedMeta;
   isAdmin: boolean;
+  /** Superadmin: puede reabrir una finalizada (#637). */
+  canReopen: boolean;
+  isOnline: boolean;
   onDismiss: () => void;
   onEdit: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
+  onReopen: () => void;
   onExportCsv: () => void;
   onExportExcel: () => void;
   onExportKml: () => void;
@@ -93,11 +95,14 @@ export default function AdminBottomSheet({
   plantation,
   meta,
   isAdmin,
+  canReopen,
+  isOnline,
   onDismiss,
   onEdit,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
+  onReopen,
   onExportCsv,
   onExportExcel,
   onExportKml,
@@ -177,7 +182,7 @@ export default function AdminBottomSheet({
             {isAdmin && plantacionEsEditable(plantation) && (
               <ActionItem
                 icon="create-outline"
-                label="Editar lugar y periodo"
+                label="Editar plantación"
                 color={colors.primary}
                 onPress={onEdit}
               />
@@ -213,34 +218,33 @@ export default function AdminBottomSheet({
             {isAdmin && esFinalizada(plantation) && (
               <>
                 <View style={styles.divider} />
-                {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}
-                {!meta.idsGenerated && (
-                  <View style={styles.infoNote}>
-                    <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-                    <Text style={styles.infoNoteText}>{AVISO_IDS_DESDE_WEB}</Text>
-                  </View>
-                )}
-                {meta.idsGenerated && (
-                  <>
-                    <ActionItem
-                      icon="document-text-outline"
-                      label="Exportar CSV"
-                      color={colors.primary}
-                      onPress={onExportCsv}
-                    />
-                    <ActionItem
-                      icon="grid-outline"
-                      label="Exportar Excel"
-                      color={colors.primary}
-                      onPress={onExportExcel}
-                    />
-                    <ActionItem
-                      icon="location-outline"
-                      label="Exportar KML"
-                      color={colors.primary}
-                      onPress={onExportKml}
-                    />
-                  </>
+                <ActionItem
+                  icon="document-text-outline"
+                  label="Exportar CSV"
+                  color={colors.primary}
+                  onPress={onExportCsv}
+                />
+                <ActionItem
+                  icon="grid-outline"
+                  label="Exportar Excel"
+                  color={colors.primary}
+                  onPress={onExportExcel}
+                />
+                <ActionItem
+                  icon="location-outline"
+                  label="Exportar KML"
+                  color={colors.primary}
+                  onPress={onExportKml}
+                />
+                {canReopen && esReabrible(plantation) && (
+                  <ActionItem
+                    icon="lock-open-outline"
+                    label={ETIQUETA_REABRIR}
+                    color={colors.primary}
+                    disabled={!isOnline}
+                    onPress={onReopen}
+                    helperText={AYUDA_REABRIR_SIN_CONEXION}
+                  />
                 )}
                 <View style={styles.lockedBadge}>
                   <Ionicons name="lock-closed" size={12} color={colors.stateFinalizada} />

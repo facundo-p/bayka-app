@@ -3,12 +3,14 @@ export { uploadOfflinePlantations, uploadPendingEdits } from './preSteps';
 export { pullSpeciesFromServer } from './catalogoDeEspecies';
 export { pullFromServer } from './pullService';
 export { uploadGroup, uploadSyncableParcelas, uploadSyncableGroups, classifyParcelaRpcResult, pushBorrados } from './pushService';
-export { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
+export { uploadPendingPhotos, downloadPhotosForPlantation, descargarFotoRemota } from './photoService';
 export { syncPlantation, syncAllPlantations } from './orchestrators';
 export type { ResultadoDePlantacion } from './orchestrators';
 export { plantacionesOmitidas, hayOmitidas, SIN_OMITIDAS } from './plantacionesOmitidas';
 export type { PlantacionesOmitidas } from './plantacionesOmitidas';
-export { ensureServerSession, SessionExpiredError } from './sessionGuard';
+export {
+  ensureServerSession, SessionExpiredError, esSesionExpirada, exigirSesionDelServidor, esSinSesionDelServidor,
+} from './sessionGuard';
 export { downloadPlantation, batchDownload } from './downloadService';
 export { hayActividadDeSync, subscribeActividadDeSync, marcandoActividadDeSync, __resetActividadDeSync } from './syncActivityStore';
 export { faseDeProgresoGlobal } from './faseDeProgreso';

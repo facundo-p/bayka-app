@@ -1,0 +1,36 @@
+/* Vive dentro del globo de Leaflet, que trae su propia tipografía: se fija la de la app. */
+.ficha {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: var(--space-xs) var(--space-xl);
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text-body);
+}
+
+.etiqueta {
+  composes: overline from '../../theme/utilidades.module.css';
+}
+
+.valor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.idArbol {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-heading);
+  white-space: nowrap;
+}
+
+.codigo {
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}

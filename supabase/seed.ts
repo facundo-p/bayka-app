@@ -79,7 +79,7 @@ async function seed() {
     const userId = authData.user.id;
 
     // Upsert: el trigger handle_new_user ya crea el profile al crear el auth
-    // user; acá solo se pisan nombre/rol/org con los valores del seed.
+    // user; acá se pisan nombre/rol y se asigna la org (el trigger la deja en null).
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: userId,
       nombre: user.nombre,

@@ -5,8 +5,11 @@ import { PlantationMap } from '../../components/PlantationMap';
 import {
   calcularDashboard,
   obtenerFuenteDashboard,
+  type DashboardFiltrado,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
+import { useColoresEspecie } from '../../hooks/useColoresEspecie';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePlantacion } from '../../hooks/usePlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -14,10 +17,11 @@ import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { useParcelasDatos } from '../datos/useDatosQueries';
 import { asignarColoresEspecies, type EspecieColoreada } from './coloresEspecies';
-import { ResumenPlantacion } from './ResumenPlantacion';
+import { armarAlcance, etiquetaEspecie, filtrarPuntos, parcelasDeTira } from './filtrosDashboard';
+import { ResumenPlantacion, type AlcanceMetrica } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
-import { useFiltroParcela } from './useFiltroParcela';
+import { useFiltrosDashboard } from './useFiltrosDashboard';
 import styles from './DashboardTab.module.css';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 
@@ -34,63 +38,62 @@ function SinArboles() {
   );
 }
 
-/** Puntos de una parcela; sin selección devuelve el MISMO array (si cambia la
- *  referencia, el mapa vuelve a encuadrar aunque no haya filtrado nada). */
-function filtrarPuntos(puntos: PuntoGps[], parcelaId: string | null): PuntoGps[] {
-  if (parcelaId === null) return puntos;
-  return puntos.filter((punto) => punto.parcelaId === parcelaId);
-}
+type Filtro = ReturnType<typeof useFiltrosDashboard>;
 
-type FiltroParcela = ReturnType<typeof useFiltroParcela>;
-
-interface ColumnaMetricasProps {
-  datos: ReturnType<typeof calcularDashboard>;
+/** Lo que muestran los paneles con los filtros aplicados. */
+interface VistaDashboard {
+  datos: DashboardFiltrado;
   especies: EspecieColoreada[];
-  objetivo: number | null;
-  filtro: FiltroParcela;
+  especie?: EspecieColoreada;
+  alcance?: AlcanceMetrica;
+  puntos: PuntoGps[];
+  parcelas: ParcelaConStats[];
 }
 
-function ColumnaMetricas({ datos, especies, objetivo, filtro }: ColumnaMetricasProps) {
+interface ColumnaProps {
+  vista: VistaDashboard;
+  filtro: Filtro;
+}
+
+function ColumnaMetricas({ vista, filtro, objetivo }: ColumnaProps & { objetivo: number | null }) {
+  const { datos, especies, alcance } = vista;
   return (
     <div className={styles.columna}>
       <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
-        <ResumenPlantacion datos={datos} objetivo={objetivo} alcance={filtro.alcance} />
+        <ResumenPlantacion datos={datos} objetivo={objetivo} alcance={alcance} />
       </ErrorBoundary>
       <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
         <SpeciesDistribution
           especies={especies}
-          total={datos.totalArboles}
-          totalEspecies={datos.especiesUsadas}
+          total={datos.composicion.totalArboles}
+          totalEspecies={datos.composicion.especiesUsadas}
           parcelaFiltro={filtro.parcela?.codigo}
+          especieSeleccionada={filtro.filtros.especieCodigo}
+          onSeleccionar={filtro.alternarEspecie}
         />
       </ErrorBoundary>
     </div>
   );
 }
 
-interface ColumnaMapaProps {
-  puntos: PuntoGps[];
-  parcelas: ParcelaConStats[];
-  especies: EspecieColoreada[];
-  filtro: FiltroParcela;
-}
-
-function ColumnaMapa({ puntos, parcelas, especies, filtro }: ColumnaMapaProps) {
-  const parcelaId = filtro.parcela?.id ?? null;
+function ColumnaMapa({ vista, filtro }: ColumnaProps) {
+  const { puntos, parcelas, especies, especie } = vista;
   return (
     <div className={styles.columna}>
       <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
         <PlantationMap
-          puntos={filtrarPuntos(puntos, parcelaId)}
+          puntos={puntos}
           leyenda={especies}
           parcelaFiltro={filtro.parcela?.codigo}
+          especieFiltro={especie && etiquetaEspecie(especie)}
+          parcelas={parcelas}
         />
       </ErrorBoundary>
       <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
         <ParcelasStrip
           parcelas={parcelas}
-          parcelaSeleccionada={parcelaId}
-          onSeleccionar={filtro.alternar}
+          parcelaSeleccionada={filtro.filtros.parcelaId}
+          onSeleccionar={filtro.alternarParcela}
         />
       </ErrorBoundary>
     </div>
@@ -102,27 +105,45 @@ interface ContenidoDashboardProps {
   objetivoArboles: number | null;
   parcelas: ParcelaConStats[];
   puntos: PuntoGps[];
+  colorDe: ColorEspecie;
+}
+
+/** Memos: con 7.600 puntos, redibujar el mapa en cada render se nota. */
+function useVistaDashboard(props: ContenidoDashboardProps, filtro: Filtro): VistaDashboard {
+  const { fuente, parcelas, puntos, colorDe } = props;
+  const { filtros } = filtro;
+  const datos = useMemo(() => calcularDashboard(fuente, filtros), [fuente, filtros]);
+  const especies = useMemo(
+    () => asignarColoresEspecies(datos.porEspecie, colorDe),
+    [datos, colorDe],
+  );
+  const visibles = useMemo(() => filtrarPuntos(puntos, filtros), [puntos, filtros]);
+  const tira = useMemo(
+    () => parcelasDeTira(parcelas, datos.porParcela, filtros.especieCodigo),
+    [parcelas, datos, filtros],
+  );
+  const especie = especies.find((candidata) => candidata.codigo === filtros.especieCodigo);
+  const alcance = armarAlcance(filtro.parcela, especie, filtro.limpiar);
+  return { datos, especies, especie, alcance, puntos: visibles, parcelas: tira };
 }
 
 function ContenidoDashboard(props: ContenidoDashboardProps) {
-  const { fuente, objetivoArboles: objetivo, parcelas, puntos } = props;
-  const filtro = useFiltroParcela(parcelas);
-  const parcelaId = filtro.parcela?.id ?? null;
-  const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
-  // El vacío es de la plantación: una parcela sin árboles muestra ceros y la
+  const filtro = useFiltrosDashboard(props.parcelas);
+  const vista = useVistaDashboard(props, filtro);
+  // El vacío es de la plantación: un filtro sin árboles muestra ceros y la
   // salida a "Ver todos", no una pantalla sin retorno.
-  if (fuente.arboles.length === 0) return <SinArboles />;
-  const especies = asignarColoresEspecies(datos.porEspecie);
+  if (props.fuente.arboles.length === 0) return <SinArboles />;
   return (
     <div className={styles.dashboard}>
-      <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />
-      <ColumnaMapa puntos={puntos} parcelas={parcelas} especies={especies} filtro={filtro} />
+      <ColumnaMetricas vista={vista} filtro={filtro} objetivo={props.objetivoArboles} />
+      <ColumnaMapa vista={vista} filtro={filtro} />
     </div>
   );
 }
 
 /** Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
- *  defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla. */
+ *  defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla. Los colores
+ *  de especie se leen en paralelo y sí se esperan, para no repintar (#777). */
 function useDatosDashboard(plantationId: string) {
   const dashboard = useQuery({
     queryKey: CLAVE_QUERY.dashboard(plantationId),
@@ -134,15 +155,22 @@ function useDatosDashboard(plantationId: string) {
     queryFn: () => listarPuntosGps(plantationId),
   });
   const parcelas = useParcelasDatos(plantationId);
+  const colores = useColoresEspecie(plantationId);
   const objetivoArboles = plantacion.data?.objetivoArboles ?? null;
-  return { dashboard, objetivoArboles, parcelas: parcelas.data ?? [], puntos: mapa.data ?? [] };
+  return {
+    dashboard,
+    colores,
+    objetivoArboles,
+    parcelas: parcelas.data ?? [],
+    puntos: mapa.data ?? [],
+  };
 }
 
 /** Tab Dashboard del detalle de plantación: hero, KPIs, mapa y panel de especies. */
 export function DashboardTab() {
   const id = useIdPlantacion();
-  const { dashboard, ...contexto } = useDatosDashboard(id);
-  if (dashboard.isPending) return <Cargando />;
+  const { dashboard, colores, ...contexto } = useDatosDashboard(id);
+  if (dashboard.isPending || !colores.listo) return <Cargando />;
   if (dashboard.isError) {
     return (
       <ErrorConReintento
@@ -151,5 +179,5 @@ export function DashboardTab() {
       />
     );
   }
-  return <ContenidoDashboard fuente={dashboard.data} {...contexto} />;
+  return <ContenidoDashboard fuente={dashboard.data} colorDe={colores.colorDe} {...contexto} />;
 }

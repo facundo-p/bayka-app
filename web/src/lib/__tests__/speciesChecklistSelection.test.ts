@@ -1,7 +1,5 @@
 import {
-  accionDesdeEstado,
   avisoBloqueadas,
-  estadoMaestro,
   filtrarCatalogo,
   planificarAccionMasiva,
   type ContextoSeleccion,
@@ -32,41 +30,6 @@ describe('filtrarCatalogo', () => {
     expect(filtrarCatalogo(CATALOGO, 'ceib').map((especie) => especie.id)).toEqual(['sp-3']);
     expect(filtrarCatalogo(CATALOGO, 'algarrobo').map((especie) => especie.id)).toEqual(['sp-2']);
     expect(filtrarCatalogo(CATALOGO, 'schinopsis').map((especie) => especie.id)).toEqual(['sp-1']);
-  });
-});
-
-describe('estadoMaestro', () => {
-  test('catálogo visible vacío → ninguna (maestro deshabilitado)', () => {
-    expect(estadoMaestro(contexto({ idsVisibles: [] }))).toBe('ninguna');
-  });
-
-  test('ninguna visible habilitada → ninguna', () => {
-    expect(estadoMaestro(contexto())).toBe('ninguna');
-  });
-
-  test('todas las visibles habilitadas → todas', () => {
-    expect(estadoMaestro(contexto({ habilitadas: new Set(['sp-1', 'sp-2', 'sp-3']) }))).toBe(
-      'todas',
-    );
-  });
-
-  test('algunas visibles habilitadas → parcial', () => {
-    expect(estadoMaestro(contexto({ habilitadas: new Set(['sp-1']) }))).toBe('parcial');
-  });
-
-  test('sólo cuenta las visibles (ignora habilitadas fuera del filtro)', () => {
-    const estado = estadoMaestro(
-      contexto({ idsVisibles: ['sp-3'], habilitadas: new Set(['sp-1', 'sp-2']) }),
-    );
-    expect(estado).toBe('ninguna');
-  });
-});
-
-describe('accionDesdeEstado', () => {
-  test('todas desmarca; ninguna/parcial marca', () => {
-    expect(accionDesdeEstado('todas')).toBe('desmarcar');
-    expect(accionDesdeEstado('ninguna')).toBe('marcar');
-    expect(accionDesdeEstado('parcial')).toBe('marcar');
   });
 });
 

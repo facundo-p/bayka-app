@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+node_modules
 
 # Skills
 .claude/skills/ui-ux-pro-max
@@ -13,6 +13,9 @@ build/
 # Artefactos de migración de entornos (one-shot, no van al repo)
 scripts/copy-storage.mjs
 supabase/.temp/
+
+# Historial local de /codebase-stats (snapshots por corrida, no van al repo)
+.codebase-stats/
 
 # Environment variables
 .env

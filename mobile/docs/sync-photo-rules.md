@@ -11,7 +11,7 @@ Documento pensado para que cualquier persona pueda entender cómo funciona el si
 Las fotos existen en **tres lugares** posibles:
 
 1. **El dispositivo** — archivo local, ruta tipo `file:///data/.../photo_123.jpg`
-2. **Supabase Storage** — archivo en la nube, ruta tipo `plantations/{id}/trees/{id}.jpg`
+2. **Supabase Storage** — archivo en la nube, ruta tipo `plantations/{id}/parcelas/{id}/trees/{id}-{version}.jpg`
 3. **Base de datos del servidor** — campo `foto_url` en la tabla `trees`, apunta al Storage
 
 Para que una foto esté correctamente sincronizada, debe estar en los tres lugares:
@@ -42,20 +42,22 @@ Es un flag booleano **local** (solo existe en el SQLite del dispositivo):
 **Prohibido:** que el campo `foto_url` en la tabla `trees` del servidor contenga una ruta `file:///...`.
 
 **Correcto:** el servidor solo puede tener:
-- Una ruta de Storage (`plantations/{id}/trees/{id}.jpg`)
+- Una ruta de Storage (`plantations/{id}/parcelas/{id}/trees/{id}-{version}.jpg`)
 - `null` (sin foto, o foto que falló al subir)
 
 **Por qué:** las rutas `file://` son locales de un dispositivo específico. Otro dispositivo no puede usarlas.
 
 ### Regla 3: Cualquier cambio en la foto resetea fotoSynced
 
-Cuando se adjunta, reemplaza o elimina una foto de un árbol, `fotoSynced` vuelve a `false`.
+Cuando se adjunta, reemplaza o quita una foto de un árbol, `fotoSynced` vuelve a `false`.
 
 **Por qué:** si cambiaste la foto, la versión anterior en Storage ya no es válida. La nueva foto necesita subirse.
 
+**Excepción, borrar una foto sin subir (#816):** no es un cambio sino deshacerlo. El árbol vuelve a la foto de la última sincronización (`fotoBase`, remota y con `fotoSynced = true`) o queda sin foto, y no se anota nada para el servidor.
+
 ### Regla 4: El pull preserva fotos locales
 
-Cuando se descargan datos del servidor, si el dispositivo ya tiene una foto local (`file://...`), no se sobreescribe con la ruta de Storage del servidor.
+Cuando se descargan datos del servidor, si el dispositivo ya tiene una foto local (`file://...`) de la misma foto que tiene el server, no se sobreescribe con la ruta de Storage del servidor. Si el server la reemplazó o la quitó, y la local ya se había subido, gana el server (#517, #795).
 
 **Por qué:** el dispositivo ya tiene el archivo. No tiene sentido reemplazar una referencia funcional con una que necesitaría re-descargarse.
 
@@ -125,13 +127,26 @@ Si `uploadPhotoToStorage` falla para un árbol:
 - El RPC usa ON CONFLICT DO UPDATE solo para árboles existentes
 - Árboles nuevos se insertan sin conflicto
 
-### Caso 4: Dos dispositivos resuelven el mismo N/N diferente
+### Caso 4: Dos lados cambian el mismo dato (#679, #795)
 
-- Device A resuelve como Especie X, sincroniza → servidor tiene X
-- Device B resuelve como Especie Y, sincroniza → pull detecta conflicto (local Y ≠ server X)
-- Device B muestra banner "Conflicto detectado":
-  - "Aceptar servidor": cambia a X
-  - "Mantener local": mantiene Y (sobreescribe servidor en la próxima sync)
+Vale para la especie (también un N/N resuelto distinto), el GPS, la foto y los datos del grupo, desde la web o desde otro celular. Gana el server.
+
+- Device A (o la web) cambia la foto del árbol → servidor tiene la foto X
+- Device B, con el grupo sin subir, le saca otra foto Y. Su base sigue siendo la anterior, y el pull no toca el árbol
+- Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservados`
+- B adopta X y guarda Y como conflicto. El resumen de la sync avisa cuántos datos esperan que B elija
+- B elige: "conservar la mía" vuelve a subir Y con X como base, y pisa; "descartar" se queda con X
+- Mientras no elija, el grupo sigue pendiente; lo demás del grupo ya subió
+- Un dato que B no tocó también vuelve en `conservados`: B adopta X sin conflicto
+- Si B, en vez de sacar otra foto, quitó la que tenía, pasa lo mismo (#810): el server conserva X, B la adopta y lo quitado queda como conflicto ("Sin foto (la quitaste)"). Conservar la de B quita X
+
+### Caso 4b: Borrar una foto (#816)
+
+- **Sin subir:** se deshace sin preguntar. El árbol vuelve a la foto que tenía en la última sincronización (sin bajar; se baja al abrirla) o queda sin foto. El servidor no se entera: si otro celular subió una foto mientras tanto, no se toca.
+- **Ya subida:** se pide confirmar ("Quitar la foto del árbol. Se quita para todos los que vean este árbol.") y se quita del servidor en la próxima sync, con la foto que el teléfono vio como base (Caso 4). Si la pantalla la mostraba sin subir pero la sync ya la subió, también se pregunta.
+- **Borrada mientras subía:** si el servidor se quedó con ella, se pide quitarla en la próxima sync.
+- **Quitar la del servidor, sacar otra y borrarla:** el árbol queda sin foto y la del servidor se quita igual. El pedido de quitar se conserva hasta que la foto nueva se sube.
+- No hay opción "solo en este celular": para liberar espacio están "borrar las fotos descargadas" de la plantación y la descarga de a una.
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

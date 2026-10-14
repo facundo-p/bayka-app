@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthError, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { reiniciarCacheCodigosPlantacion } from '../queries/busquedaArbol';
 import { getPerfil, ROL, type Perfil } from '../repositories/profileRepository';
 
 export type EstadoAuth = 'cargando' | 'anonimo' | 'sin-acceso' | 'autenticado';
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userId !== usuarioResuelto.current) {
         usuarioResuelto.current = userId;
         queryClient.clear();
+        reiniciarCacheCodigosPlantacion();
       }
       if (!session) {
         setPerfil(null);
@@ -75,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => resolverSesion(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_evento, session) => {
+    const { data } = supabase.auth.onAuthStateChange((evento, session) => {
+      // Repite la sesión que getSession ya resolvió: sin esto, el perfil se pide dos veces al arrancar.
+      if (evento === 'INITIAL_SESSION') return;
       // setTimeout: el SDK sostiene un lock durante el callback; consultar profiles sincrónicamente adentro puede generar deadlock.
       setTimeout(() => void resolverSesion(session), 0);
     });

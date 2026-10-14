@@ -1,0 +1,40 @@
+.casilla {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tamano-casilla);
+  height: var(--tamano-casilla);
+  border: var(--border-medium) solid var(--color-border-strong);
+  border-radius: var(--radius-casilla);
+  color: var(--color-white);
+}
+
+.marcada {
+  border-color: var(--casilla-color, var(--color-primary-accent));
+  background-color: var(--casilla-color, var(--color-primary-accent));
+}
+
+/*
+ * Fila clickeable con su casilla, la base de las listas de casillas. Cada lista
+ * suma su alineación y su relleno con `composes: fila from './Casilla.module.css'`.
+ */
+.fila {
+  display: flex;
+  gap: var(--space-lg);
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fila:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+.fila:disabled {
+  cursor: default;
+}

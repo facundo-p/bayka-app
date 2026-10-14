@@ -1,4 +1,5 @@
 import type { QueryKey } from '@tanstack/react-query';
+import type { FiltrosArboles } from './dataExplorerQueries';
 
 /**
  * Claves de TanStack Query de toda la web. El primer segmento identifica la
@@ -9,10 +10,8 @@ export const CLAVE_QUERY = {
   plantaciones: () => ['plantaciones'] as const,
   plantacion: (plantationId: string) => ['plantacion', plantationId] as const,
   temporadaActiva: () => ['temporada-activa'] as const,
-  idsGenerados: (plantationId: string) => ['ids-generados', plantationId] as const,
   previewEliminacionPlantacion: (plantationId: string) =>
     ['preview-eliminacion-plantacion', plantationId] as const,
-  seedSugerido: () => ['seed-sugerido'] as const,
 
   dashboard: (plantationId: string) => ['dashboard', plantationId] as const,
   mapa: (plantationId: string) => ['mapa', plantationId] as const,
@@ -21,12 +20,17 @@ export const CLAVE_QUERY = {
     ['datos-grupos', plantationId, parcelaId] as const,
   datosArboles: (plantationId: string, filtros: Readonly<Record<string, string>>, pagina: number) =>
     ['datos-arboles', plantationId, filtros, pagina] as const,
+  conteoReporte: (plantationId: string, filtros: FiltrosArboles) =>
+    ['conteo-reporte', plantationId, filtros] as const,
   foto: (fotoUrl: string) => ['foto', fotoUrl] as const,
 
   especiesCatalogo: () => ['especies-catalogo'] as const,
   especiesCatalogoUso: () => ['especies-catalogo-uso'] as const,
+  especiesCientificas: () => ['especies-cientificas'] as const,
   especiePlantaciones: (especieId: string) => ['especie-plantaciones', especieId] as const,
   plantacionEspecies: (plantationId: string) => ['plantacion-especies', plantationId] as const,
+  /** Solo las especies, sin el uso de cada una: lo que ofrece un selector. */
+  especiesHabilitadas: (plantationId: string) => ['especies-habilitadas', plantationId] as const,
 
   perfiles: () => ['perfiles'] as const,
   usuarios: () => ['usuarios'] as const,
@@ -40,3 +44,9 @@ export const CLAVE_QUERY = {
 export function familia(fabrica: (...args: never[]) => QueryKey): QueryKey {
   return [(fabrica as () => QueryKey)()[0]];
 }
+
+/** La tabla de Árboles y los conteos de su reporte: los dos filtran por especie. */
+export const FAMILIAS_ARBOLES_FILTRADOS: readonly QueryKey[] = [
+  familia(CLAVE_QUERY.datosArboles),
+  familia(CLAVE_QUERY.conteoReporte),
+];

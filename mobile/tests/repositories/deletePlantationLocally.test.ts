@@ -1,5 +1,15 @@
 // Cascade delete of a plantation and all related data
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
@@ -42,6 +52,7 @@ import { enTransaccion } from '../../src/database/transaccion';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { getLocalPhotoUrisForPlantation } from '../../src/repositories/TreeRepository';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { archivosDeConflictosDePlantacion } from '../../src/repositories/ConflictosDeSyncRepository';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockEnTransaccion = enTransaccion as jest.Mock;
@@ -68,6 +79,7 @@ describe('deletePlantationLocally', () => {
 
     mockEnTransaccion.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mockDb));
     mockFotosLocales.mockResolvedValue(FOTOS);
+    (archivosDeConflictosDePlantacion as jest.Mock).mockResolvedValue([]);
   });
 
   // Sin esto cada plantación eliminada deja sus fotos ocupando espacio para siempre (#484).
@@ -96,25 +108,25 @@ describe('deletePlantationLocally', () => {
     expect(mockBorrarFotos).not.toHaveBeenCalled();
   });
 
-  it('Test 1: deletes the plantation row itself', async () => {
+  it('deletes the plantation row itself', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('plantations');
   });
 
-  it('Test 2: deletes all groups with plantacionId = id', async () => {
+  it('deletes all groups with plantacionId = id', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('groups');
   });
 
-  it('Test 3: deletes all trees belonging to those groups', async () => {
+  it('deletes all trees belonging to those groups', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('trees');
   });
 
-  it('Test 4: deletes plantationSpecies, plantationUsers, userSpeciesOrder rows', async () => {
+  it('deletes plantationSpecies, plantationUsers, userSpeciesOrder rows', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('plantation_species');
@@ -124,7 +136,7 @@ describe('deletePlantationLocally', () => {
 
   // El rollback en sí lo prueba tests/database/transaccion.test.ts: acá el callback
   // ni corre, solo se verifica que un fallo no dispare el refresco de la UI.
-  it('Test 5: si la transacción falla, no se notifica el cambio de datos', async () => {
+  it('si la transacción falla, no se notifica el cambio de datos', async () => {
     mockEnTransaccion.mockRejectedValue(new Error('DB crash'));
 
     await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');
@@ -140,14 +152,14 @@ describe('deletePlantationLocally', () => {
 
   // El conteo exacto es a propósito: una tabla nueva que se olvide de limpiar acá
   // deja filas huérfanas de una plantación que ya no existe.
-  it('deletes all 8 tables inside the transaction (incluye parcelas #90 y borrados #467)', async () => {
+  it('deletes all 10 tables inside the transaction (incluye parcelas #90, borrados #467, especies #635 y técnicos #636)', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toEqual(expect.arrayContaining([
       'trees', 'groups', 'parcelas', 'plantation_species',
-      'plantation_users', 'user_species_order', 'borrados_pendientes', 'plantations',
+      'plantation_users', 'user_species_order', 'borrados_pendientes', 'cambios_especies_pendientes', 'altas_de_tecnicos_pendientes', 'plantations',
     ]));
-    expect(txDeleteCalls).toHaveLength(8);
+    expect(txDeleteCalls).toHaveLength(10);
     expect(mockEnTransaccion).toHaveBeenCalledTimes(1);
   });
 

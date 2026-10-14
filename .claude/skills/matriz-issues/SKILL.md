@@ -1,6 +1,6 @@
 ---
 name: matriz-issues
-description: Revisa los issues abiertos del repo, los clasifica con labels de GitHub (quién lo resuelve, tipo, área, estado) y republica la matriz impacto × costo — el gráfico de cuadrantes con filtros por tag y puntos arrastrables, que marca cuáles puede resolver Claude solo y cuáles necesitan a Facu. Usalo cuando quieras ver el backlog entero de una y decidir qué sigue.
+description: Revisa los issues abiertos del repo, los clasifica con labels de GitHub (quién lo resuelve, tipo, área, estado) y republica la matriz impacto × costo — el gráfico de cuadrantes con filtros por tag y puntos arrastrables, que marca cuáles puede resolver Claude solo y cuáles necesitan a Facu, con la bandeja de decisiones pendientes y las relaciones entre issues. Publica en cada issue las decisiones que Facu contestó en el dashboard. Usalo cuando quieras ver el backlog entero de una y decidir qué sigue.
 argument-hint: "[dry-run]"
 disable-model-invocation: true
 ---
@@ -24,8 +24,9 @@ Dos cosas que este skill mantiene y que conviene no romper:
   mueve un punto, esa corrección queda guardada en la base del artifact y este
   skill la respeta en la corrida siguiente.
 
-Con `dry-run`: hacé todo menos escribir labels en GitHub y publicar. Mostrá la
-clasificación propuesta y pará.
+Con `dry-run`: hacé todo menos escribir en GitHub (labels, comentarios de
+decisiones), escribir en la base del artifact y publicar. Mostrá la
+clasificación propuesta y las respuestas que se publicarían, y pará.
 
 ## 1. Traer los issues y lo ya decidido
 
@@ -46,14 +47,45 @@ De cada body sacá dos cosas:
   decisiones ya tomadas. En issues largos con eso basta; no hace falta leer la
   crónica entera.
 
-Traé también las posiciones guardadas del artifact, que son las correcciones
-manuales de corridas anteriores:
+Traé también lo que quedó guardado en la base del artifact, con la herramienta
+`ArtifactData` (cargala con ToolSearch si aparece como diferida):
 
 ```
-Artifact action="read_db" url=<artifact> db_op="list" collection="posiciones"
+ArtifactData action="list" url=<artifact> collection="posiciones"
+ArtifactData action="list" url=<artifact> collection="respuestas"
 ```
 
-Cada documento es `i<número>` con `{impacto, costo}`.
+- **`posiciones`**: las correcciones manuales de corridas anteriores. Cada
+  documento es `i<número>` con `{impacto, costo}`.
+- **`respuestas`**: las decisiones que Facu contestó en la bandeja. Cada
+  documento es `i<número>` con `{issue, texto, fecha}`, y `publicada` si una
+  corrida anterior ya la llevó al issue. Las que no tienen `publicada` se
+  publican en el paso siguiente.
+
+## 1b. Publicar las decisiones contestadas
+
+Por cada documento de `respuestas` sin `publicada`, si el issue sigue abierto:
+
+1. Comentá en el issue, con la fecha del campo `fecha` (no la de hoy):
+   ```sh
+   gh issue comment <N> --body "Decisión de Facu (2026-09-29): <texto>"
+   ```
+2. Sacale `requiere-decision`: `gh issue edit <N> --remove-label requiere-decision`.
+3. Marcala publicada, para que la corrida siguiente no la repita y la bandeja
+   no la cuente:
+   ```
+   ArtifactData action="update" url=<artifact> collection="respuestas"
+                doc_id="i<N>" data={"publicada": "<fecha de hoy>"}
+   ```
+
+Hacelo en ese orden: si algo falla a mitad de camino, lo peor que pasa es un
+comentario repetido, nunca una respuesta perdida. Si el issue está cerrado,
+marcala publicada sin comentar y avisalo en el resumen.
+
+Con la respuesta publicada, releé el issue: puede que el label de quién cambie
+(una decisión tomada suele dejar un `necesita-ok` en `hace-claude`) y que la
+línea `Necesita de Facu:` ya no aplique. Proponé el cambio en el resumen; no lo
+apliques solo.
 
 ## 2. Completar los labels que falten
 
@@ -129,6 +161,33 @@ arriba.
 Lo mismo con `need`: es la línea `**Necesita de Facu:**` del body, sin el
 prefijo en negrita. Vacío para los `hace-claude`.
 
+### La decisión, para la bandeja
+
+Cada issue con `requiere-decision` es una tab de la bandeja de decisiones, y
+lleva un campo `decision` que redactás vos a partir del body y los comentarios:
+qué hay que decidir, por qué ahora, qué cambia según la respuesta, las opciones
+y cuál recomendás. Es lo que Facu lee para contestar sin abrir el issue, así que
+vale lo mismo que para el `why`: dato concreto, archivo y línea, cero relleno.
+
+```json
+"decision": {
+  "pregunta": "¿Un técnico debe poder ver nombre, email y rol de todos los usuarios?",
+  "porque": "La policy de profiles scopea por organización y …",
+  "implicancias": "Si es sí, se cierra como wontfix. Si es no, …",
+  "opciones": [
+    { "nombre": "Dejarlo así", "detalle": "Cero trabajo, a cambio de …", "recomendada": true },
+    { "nombre": "Scopear por membresía", "detalle": "Toca 5 consumidores …", "recomendada": false }
+  ],
+  "recomendacion": "Dejarlo así mientras haya una sola organización …",
+  "fuente": "body §La pregunta; sin comentarios",
+  "nota": "Parte ya está decidido: …"
+}
+```
+
+Solo `pregunta` es obligatoria; `nota` va únicamente si parte de lo que el issue
+pregunta ya se decidió. Como mucho una opción `recomendada`. Si no llegás a
+redactarla, el script avisa y la bandeja muestra `need` como pregunta.
+
 El **color** agrupa en tres, y no hay un cuarto disponible: más de tres tonos en
 un scatter dejan de distinguirse entre sí. La separación fina la hacen los
 filtros.
@@ -142,7 +201,19 @@ filtros.
 ## 4. Armar y publicar
 
 Escribí un JSON con los issues y pasalo por el script, que valida rangos,
-campos faltantes y puntos que se pisan:
+campos faltantes y puntos que se pisan. El script además consulta GitHub (una
+sola consulta GraphQL, vía `gh`) y suma a cada issue:
+
+- **Antigüedad**: la última actividad real, el máximo entre creación, última
+  edición del body y último comentario. No `updatedAt`, que lo bumpea cualquier
+  cambio de labels —incluidos los de esta misma corrida—. Los quietos hace 30+
+  días se ven más tenues en el gráfico, y los de 90+, más todavía.
+- **Relaciones**: "bloqueado por" / "bloquea" nativos (solo entre abiertos),
+  épica padre y progreso de sub-issues. Cuándo cargar "bloqueado por" está en
+  `docs/convenciones-issues.md`; si al leer un issue ves una dependencia que no
+  está cargada, cargala antes de armar.
+
+Si el JSON trae un issue que ya no está abierto en GitHub, el script lo rechaza.
 
 ```sh
 python3 .claude/skills/matriz-issues/scripts/build_matriz.py \
@@ -193,16 +264,18 @@ documentos que no corresponden a ningún issue del set actual.
 
 Terminá con el link y un resumen corto, en este orden:
 
-1. **Qué se taggeó de nuevo** — solo los issues que tocaste, con qué labels.
-2. **Qué puede arrancar Claude hoy** — los `hace-claude`, que son los que no
+1. **Qué decisiones publicaste** — cada issue con la respuesta que llevaste y
+   el cambio de labels que proponés a partir de ella.
+2. **Qué se taggeó de nuevo** — solo los issues que tocaste, con qué labels.
+3. **Qué puede arrancar Claude hoy** — los `hace-claude`, que son los que no
    dependen de nadie. Es lo primero que se pregunta quien mira esto.
-3. **Qué está esperándote** — los `necesita-ok` y `necesita-facu`, agrupados por
+4. **Qué está esperándote** — los `necesita-ok` y `necesita-facu`, agrupados por
    lo que hace falta, para que se vea si varios se destraban con una sola
    decisión tuya.
-4. **Qué hay en "hacer ya"** — los de alto impacto y bajo costo, con el número.
-5. **Qué cambió desde la corrida anterior** — issues nuevos, cerrados, o que se
+5. **Qué hay en "hacer ya"** — los de alto impacto y bajo costo, con el número.
+6. **Qué cambió desde la corrida anterior** — issues nuevos, cerrados, o que se
    movieron de cuadrante. Es lo que hace que correrlo seguido valga la pena.
-6. **Contradicciones que viste y no corregiste** — un label que no coincide con
+7. **Contradicciones que viste y no corregiste** — un label que no coincide con
    lo que dice el issue, un `esta-release` que ya no parece de esta release.
 
 No repitas la tabla entera: está en el artifact, y ahí se puede filtrar.

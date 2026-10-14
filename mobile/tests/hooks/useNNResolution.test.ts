@@ -1,14 +1,9 @@
-/**
- * Tests for useNNResolution — conflict resolution (acceptServerResolution /
- * keepLocalResolution) delegates to TreeRepository.clearTreeConflict (#296).
- */
+/** Tests de useNNResolution: permisos de resolución según el estado de la plantación. */
 
-const mockResolveNNTree = jest.fn();
-const mockClearTreeConflict = jest.fn();
+const mockCambiarEspecie = jest.fn();
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
-  resolveNNTree: (...args: unknown[]) => mockResolveNNTree(...args),
-  clearTreeConflict: (...args: unknown[]) => mockClearTreeConflict(...args),
+  cambiarEspecie: (...args: unknown[]) => mockCambiarEspecie(...args),
 }));
 
 jest.mock('../../src/hooks/useTrees', () => ({
@@ -19,8 +14,13 @@ jest.mock('../../src/hooks/usePlantationSpecies', () => ({
   usePlantationSpecies: jest.fn().mockReturnValue({ species: [], loading: false }),
 }));
 
+const mockProfile = { rol: 'admin' };
 jest.mock('../../src/hooks/useProfileData', () => ({
-  useProfileData: jest.fn().mockReturnValue({ profile: { rol: 'admin' }, loading: false }),
+  useProfileData: () => ({ profile: mockProfile, loading: false }),
+}));
+
+jest.mock('../../src/hooks/useCurrentUserId', () => ({
+  useCurrentUserId: () => 'user-1',
 }));
 
 jest.mock('../../src/queries/plantationDetailQueries', () => ({
@@ -35,8 +35,7 @@ const mockPlantationNNTrees: {
   especieId: string | null;
   grupoId: string;
   grupoCodigo?: string;
-  conflictEspecieId?: string | null;
-  conflictEspecieNombre?: string | null;
+  grupoCreador?: string;
 }[] = [];
 
 const mockEstadoDeEdicion: { estado: string; archivadaEn: string | null } = { estado: 'activa', archivadaEn: null };
@@ -62,6 +61,7 @@ beforeEach(() => {
   mockPlantationNNTrees.length = 0;
   mockEstadoDeEdicion.estado = 'activa';
   mockEstadoDeEdicion.archivadaEn = null;
+  mockProfile.rol = 'admin';
 });
 
 describe('useNNResolution — plantación no editable', () => {
@@ -82,7 +82,7 @@ describe('useNNResolution — plantación no editable', () => {
     await act(async () => { await result.current.handleGuardar(jest.fn()); });
 
     expect(result.current.canResolve).toBe(false);
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
+    expect(mockCambiarEspecie).not.toHaveBeenCalled();
   });
 
   test('plantación finalizada → no puede resolver', () => {
@@ -93,75 +93,39 @@ describe('useNNResolution — plantación no editable', () => {
   });
 });
 
-describe('useNNResolution — conflict resolution', () => {
-  const treeWithConflict = {
-    id: 'tree-1',
-    posicion: 1,
-    subId: 'P1L1ANC1',
-    fotoUrl: null,
-    especieId: null,
-    grupoId: 'sg-1',
-    grupoCodigo: 'L1',
-    conflictEspecieId: 'esp-server',
-    conflictEspecieNombre: 'Anco',
-  };
+// #768: el server rechaza a un técnico que escribe en un grupo ajeno.
+describe('useNNResolution — grupos ajenos en modo plantación', () => {
+  const propio = { id: 'tree-1', posicion: 1, subId: 'L1NN1', fotoUrl: null, especieId: null, grupoId: 'sg-1', grupoCreador: 'user-1' };
+  const ajeno = { id: 'tree-2', posicion: 1, subId: 'L2NN1', fotoUrl: null, especieId: null, grupoId: 'sg-2', grupoCreador: 'otro' };
 
-  test('getConflictForTree returns the server conflict info', () => {
-    mockPlantationNNTrees.push(treeWithConflict);
+  test('un técnico resuelve los N/N de sus grupos', () => {
+    mockProfile.rol = 'tecnico';
+    mockPlantationNNTrees.push(propio, ajeno);
     const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
 
-    expect(result.current.getConflictForTree('tree-1')).toEqual({
-      serverEspecieId: 'esp-server',
-      serverEspecieNombre: 'Anco',
-    });
+    expect(result.current.canResolve).toBe(true);
+    act(() => result.current.setCurrentIndex(1));
+    expect(result.current.canResolve).toBe(false);
   });
 
-  test('getConflictForTree returns null when the tree has no conflict', () => {
-    mockPlantationNNTrees.push({ ...treeWithConflict, conflictEspecieId: null, conflictEspecieNombre: null });
+  test('un técnico no guarda la especie de un N/N ajeno', async () => {
+    mockProfile.rol = 'tecnico';
+    mockPlantationNNTrees.push(propio, ajeno);
     const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
 
-    expect(result.current.getConflictForTree('tree-1')).toBeNull();
+    act(() => result.current.handleSelectSpecies('esp-1'));
+    act(() => result.current.setCurrentIndex(1));
+    act(() => result.current.handleSelectSpecies('esp-2'));
+    await act(async () => { await result.current.handleGuardar(jest.fn()); });
+
+    expect(mockCambiarEspecie).toHaveBeenCalledTimes(1);
+    expect(mockCambiarEspecie).toHaveBeenCalledWith('tree-1', 'esp-1');
   });
 
-  test('acceptServerResolution resolves with the server especie then clears the conflict', async () => {
-    mockPlantationNNTrees.push(treeWithConflict);
-    mockResolveNNTree.mockResolvedValue(undefined);
-    mockClearTreeConflict.mockResolvedValue(undefined);
+  test('un admin resuelve también los ajenos', () => {
+    mockPlantationNNTrees.push(ajeno);
     const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
 
-    await act(async () => {
-      await result.current.acceptServerResolution('tree-1');
-    });
-
-    expect(mockResolveNNTree).toHaveBeenCalledWith('tree-1', 'esp-server', 'L1');
-    expect(mockClearTreeConflict).toHaveBeenCalledWith('tree-1');
-    // Order matters: the server resolution must land before the marker clears.
-    expect(mockResolveNNTree.mock.invocationCallOrder[0])
-      .toBeLessThan(mockClearTreeConflict.mock.invocationCallOrder[0]);
-  });
-
-  test('acceptServerResolution does nothing when the tree has no conflict', async () => {
-    mockPlantationNNTrees.push({ ...treeWithConflict, conflictEspecieId: null, conflictEspecieNombre: null });
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    await act(async () => {
-      await result.current.acceptServerResolution('tree-1');
-    });
-
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
-    expect(mockClearTreeConflict).not.toHaveBeenCalled();
-  });
-
-  test('keepLocalResolution only clears the conflict marker (no resolveNNTree call)', async () => {
-    mockPlantationNNTrees.push(treeWithConflict);
-    mockClearTreeConflict.mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    await act(async () => {
-      await result.current.keepLocalResolution('tree-1');
-    });
-
-    expect(mockClearTreeConflict).toHaveBeenCalledWith('tree-1');
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
+    expect(result.current.canResolve).toBe(true);
   });
 });

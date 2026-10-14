@@ -6,8 +6,10 @@
  * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS` y, si otra la
  * embebe, la FK a `COLUMNA_QUE_APUNTA_A`.
  */
+import { tieneFotoSubida } from '../lib/fotoSubida';
 import type { TipoGrupo } from '../queries/dataExplorerQueries';
 import type { EstadoPlantacion } from '../queries/plantationQueries';
+import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
 export type FilaDemo = Record<string, unknown>;
 
@@ -27,13 +29,22 @@ type Plantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  codigo: string;
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app: boolean;
   archivada_en: string | null;
 };
 
-type Especie = { id: string; codigo: string; nombre: string; nombre_cientifico: string | null };
+type Especie = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  nombre_cientifico: string | null;
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+  especie_cientifica_id: string | null;
+};
 
 type Parcela = {
   id: string;
@@ -133,6 +144,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p1',
     lugar: 'San Sebastián',
     periodo: '2025-2026',
+    codigo: 'SS26',
     estado: 'activa',
     created_at: '2025-03-12T12:00:00Z',
     visible_in_app: true,
@@ -142,6 +154,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p2',
     lugar: 'Estancia La Escondida',
     periodo: '2025-2026',
+    codigo: 'LE26',
     estado: 'activa',
     created_at: '2025-04-04T12:00:00Z',
     visible_in_app: true,
@@ -151,6 +164,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p3',
     lugar: 'Campo Los Molles',
     periodo: '2025-2026',
+    codigo: 'LM26',
     estado: 'activa',
     created_at: '2025-05-19T12:00:00Z',
     visible_in_app: true,
@@ -160,6 +174,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p4',
     lugar: 'Puerto Valle',
     periodo: '2024-2025',
+    codigo: 'PV25',
     estado: 'finalizada',
     created_at: '2024-02-08T12:00:00Z',
     visible_in_app: true,
@@ -169,6 +184,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p5',
     lugar: 'Rincón del Socorro',
     periodo: '2024-2025',
+    codigo: 'RS25',
     estado: 'finalizada',
     created_at: '2024-03-22T12:00:00Z',
     visible_in_app: false,
@@ -178,6 +194,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p6',
     lugar: 'La Carolina',
     periodo: '2024-2025',
+    codigo: 'LC25',
     estado: 'activa',
     created_at: '2024-07-30T12:00:00Z',
     visible_in_app: true,
@@ -187,6 +204,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p7',
     lugar: 'Arroyo Ceibo',
     periodo: '2023-2024',
+    codigo: 'AC24',
     estado: 'finalizada',
     created_at: '2023-01-15T12:00:00Z',
     visible_in_app: false,
@@ -231,20 +249,46 @@ function arbolesDePlantacion(plantationId: string): number {
   return porEspecie.reduce((total, arboles) => total + arboles, 0);
 }
 
+/**
+ * Especies científicas de la demo (#753). Algarrobo blanco no agrupa ninguna:
+ * es la que se puede eliminar.
+ */
+const ESPECIES_CIENTIFICAS = [
+  { id: 'ec1', nombre: 'Astronium balansae' },
+  { id: 'ec2', nombre: 'Balfourodendron riedelianum' },
+  { id: 'ec3', nombre: 'Cedrela fissilis' },
+  { id: 'ec4', nombre: 'Enterolobium contortisiliquum' },
+  { id: 'ec5', nombre: 'Handroanthus impetiginosus' },
+  { id: 'ec6', nombre: 'Parapiptadenia rigida' },
+  { id: 'ec7', nombre: 'Peltophorum dubium' },
+  { id: 'ec8', nombre: 'Prosopis alba' },
+];
+
+/** Todas las especies de la demo son árboles: la clasificación por defecto. */
+const ARBOL = TIPOS_ESPECIE.porDefecto;
+
+/** La especie con su científica: la copia del nombre la mantiene el server. */
+function especie(id: string, codigo: string, nombre: string, cientificaId: string | null): Especie {
+  const cientifica = ESPECIES_CIENTIFICAS.find((candidata) => candidata.id === cientificaId);
+  return {
+    id,
+    codigo,
+    nombre,
+    nombre_cientifico: cientifica?.nombre ?? null,
+    especie_cientifica_id: cientifica?.id ?? null,
+    ...ARBOL,
+  };
+}
+
 const ESPECIES: Especie[] = [
-  { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
-  { id: 's2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
-  {
-    id: 's3',
-    codigo: 'LAP',
-    nombre: 'Lapacho rosado',
-    nombre_cientifico: 'Handroanthus impetiginosus',
-  },
-  { id: 's4', codigo: 'TIM', nombre: 'Timbó', nombre_cientifico: 'Enterolobium contortisiliquum' },
-  { id: 's5', codigo: 'GUA', nombre: 'Guatambú', nombre_cientifico: 'Balfourodendron riedelianum' },
-  { id: 's6', codigo: 'CED', nombre: 'Cedro misionero', nombre_cientifico: 'Cedrela fissilis' },
-  { id: 's7', codigo: 'PET', nombre: 'Petiribí', nombre_cientifico: null },
-  { id: 's8', codigo: 'URU', nombre: 'Urunday', nombre_cientifico: 'Astronium balansae' },
+  especie('s1', 'ANC', 'Anchico', 'ec6'),
+  especie('s2', 'IBI', 'Ibirá Pitá', 'ec7'),
+  especie('s3', 'LAP', 'Lapacho rosado', 'ec5'),
+  especie('s4', 'TIM', 'Timbó', 'ec4'),
+  especie('s5', 'GUA', 'Guatambú', 'ec2'),
+  especie('s6', 'CED', 'Cedro misionero', 'ec3'),
+  especie('s7', 'PET', 'Petiribí', null),
+  especie('s8', 'URU', 'Urunday', 'ec1'),
 ];
 
 function especiePorId(id: string): Especie {
@@ -253,10 +297,16 @@ function especiePorId(id: string): Especie {
   return especie;
 }
 
-const PLANTACION_ESPECIES: FilaDemo[] = TOTALES_DE_ARBOLES.map(({ plantation_id, species_id }) => ({
-  plantation_id,
-  species_id,
-}));
+/** El lugar de color sigue el orden en que cada plantación habilitó sus especies,
+ *  no el del código (#845): en p2, GUA se habilitó después que IBI. */
+const PLANTACION_ESPECIES: FilaDemo[] = Object.entries(ARBOLES_POR_PLANTACION).flatMap(
+  ([plantation_id, porEspecie]) =>
+    Object.keys(porEspecie).map((species_id, lugar_color) => ({
+      plantation_id,
+      species_id,
+      lugar_color,
+    })),
+);
 
 /** Modelan especie y plantación, que es por lo que filtran los conteos grandes.
  *  Un filtro por parcela o grupo cuenta las filas de muestra, así el total de
@@ -411,22 +461,6 @@ function parcelasDePlantacion(plantationId: string): number {
   return PARCELAS.filter((parcela) => parcela.plantation_id === plantationId).length;
 }
 
-/** Devuelto por el RPC agregado `stats_plantaciones` (migración 027). Los
- *  árboles salen de la matriz y las parcelas, de las que lista el explorador. */
-const STATS_PLANTACIONES: FilaDemo[] = [
-  { plantation_id: 'p1', usuarios: 6 },
-  { plantation_id: 'p2', usuarios: 4 },
-  { plantation_id: 'p3', usuarios: 3 },
-  { plantation_id: 'p4', usuarios: 5 },
-  { plantation_id: 'p5', usuarios: 2 },
-  { plantation_id: 'p6', usuarios: 3 },
-  { plantation_id: 'p7', usuarios: 2 },
-].map((stats) => ({
-  ...stats,
-  parcelas: parcelasDePlantacion(stats.plantation_id),
-  arboles: arbolesDePlantacion(stats.plantation_id),
-}));
-
 function parcelaPorId(id: string): Parcela {
   const parcela = PARCELAS.find((candidata) => candidata.id === id);
   if (!parcela) throw new Error(`Parcela de demo inexistente: ${id}`);
@@ -497,9 +531,35 @@ const ARBOLES: FilaDemo[] = GRUPOS.flatMap((grupo, indiceGrupo) =>
   ),
 );
 
+function tecnicosDePlantacion(plantationId: string): string[] {
+  return PLANTACION_USUARIOS.filter((fila) => fila.plantation_id === plantationId).map((fila) =>
+    String(fila.user_id),
+  );
+}
+
+/** Puntos GPS y fotos con el criterio del dashboard, sobre los árboles de muestra. */
+function conteosDeMuestra(plantationId: string): FilaDemo {
+  const arboles = arbolesDeLaPlantacion({ p_plantation_id: plantationId });
+  return {
+    puntos_gps: arboles.filter((arbol) => arbol.latitude !== null).length,
+    fotos: arboles.filter((arbol) => tieneFotoSubida(arbol.foto_url as string | null)).length,
+  };
+}
+
+/** Devuelto por el RPC agregado `stats_plantaciones` (migración 078). Los
+ *  árboles salen de la matriz y las parcelas, de las que lista el explorador. */
+const STATS_PLANTACIONES: FilaDemo[] = PLANTACIONES.map(({ id }) => ({
+  plantation_id: id,
+  parcelas: parcelasDePlantacion(id),
+  arboles: arbolesDePlantacion(id),
+  ...conteosDeMuestra(id),
+  tecnicos: tecnicosDePlantacion(id),
+}));
+
 /** Columna con la que otra tabla apunta a cada una. Un nombre por destino
  *  alcanza porque las FK que embebe la web siguen esa convención. */
 export const COLUMNA_QUE_APUNTA_A: Readonly<Record<string, string | undefined>> = {
+  organizations: 'organizacion_id',
   plantations: 'plantation_id',
   species: 'species_id',
   profiles: 'user_id',
@@ -510,9 +570,12 @@ export const COLUMNA_QUE_APUNTA_A: Readonly<Record<string, string | undefined>> 
 export const TABLAS: Record<string, TablaDemo> = {
   organizations: { filas: [ORGANIZACION] },
   profiles: { filas: PERFILES },
-  plantations: { filas: PLANTACIONES },
+  plantations: {
+    filas: PLANTACIONES.map((plantacion) => ({ ...plantacion, organizacion_id: ORGANIZACION.id })),
+  },
   stats_plantaciones: { filas: STATS_PLANTACIONES },
   species: { filas: ESPECIES },
+  especies_cientificas: { filas: ESPECIES_CIENTIFICAS },
   plantation_species: { filas: PLANTACION_ESPECIES },
   plantation_users: { filas: PLANTACION_USUARIOS },
   parcelas: { filas: PARCELAS },
@@ -526,6 +589,13 @@ export const RPC: Record<string, unknown> = {
   // Sin estado: el modal cierra bien, pero la demo no persiste el cambio.
   archivar_plantacion: { success: true },
   desarchivar_plantacion: { success: true },
+  aplicar_cambios_especies: { success: true, rechazadas: [] },
+  quitar_fotos_arboles: {
+    success: true,
+    quitadas: 1,
+    rechazados: [],
+    conservados: { arboles: [] },
+  },
   // Siempre la variante más completa del modal (con datos, escribir el nombre).
   previsualizar_eliminacion_plantacion: {
     success: true,
@@ -537,4 +607,66 @@ export const RPC: Record<string, unknown> = {
     puede: true,
     motivo: null,
   },
+};
+
+/** Rearma el SubID con la especie elegida, como la RPC; la demo no persiste el cambio. */
+function cambiarEspecieDemo(parametros: FilaDemo): FilaDemo {
+  const arbol = ARBOLES.find((fila) => fila.id === parametros.p_tree_id);
+  const grupo = GRUPOS.find((candidato) => candidato.id === arbol?.group_id);
+  if (!arbol || !grupo) return { success: false, error: 'NOT_AUTHORIZED' };
+  const especie = especiePorId(String(parametros.p_species_id));
+  const parcela = parcelaPorId(grupo.parcela_id);
+  return {
+    success: true,
+    sub_id: `${parcela.codigo}${grupo.codigo}${especie.codigo}${String(arbol.posicion)}`,
+  };
+}
+
+const LARGO_MES_ISO = 7;
+
+function arbolesDeLaPlantacion(parametros: FilaDemo): FilaDemo[] {
+  const grupos = new Set(
+    GRUPOS.filter((grupo) => grupo.plantation_id === parametros.p_plantation_id).map(
+      (grupo) => grupo.id,
+    ),
+  );
+  return ARBOLES.filter((arbol) => grupos.has(String(arbol.group_id)));
+}
+
+/** Como el RPC: árboles agrupados por parcela, especie, mes, GPS y foto. */
+function dashboardArbolesDemo(parametros: FilaDemo): FilaDemo[] {
+  const conteos = new Map<string, FilaDemo>();
+  for (const arbol of arbolesDeLaPlantacion(parametros)) {
+    const grupo = GRUPOS.find((candidato) => candidato.id === arbol.group_id);
+    const fila = {
+      parcela_id: grupo?.parcela_id ?? null,
+      species_id: arbol.species_id ?? null,
+      mes: String(arbol.created_at).slice(0, LARGO_MES_ISO),
+      con_gps: arbol.latitude !== null,
+      con_foto: tieneFotoSubida(arbol.foto_url as string | null),
+    };
+    const clave = JSON.stringify(fila);
+    const cantidad = Number(conteos.get(clave)?.cantidad ?? 0);
+    conteos.set(clave, { ...fila, cantidad: cantidad + 1 });
+  }
+  return [...conteos.values()];
+}
+
+/** Como el RPC: cada grupo de la plantación con su parcela y sus árboles. */
+function arbolesPorGrupoDemo(parametros: FilaDemo): FilaDemo[] {
+  const arboles = arbolesDeLaPlantacion(parametros);
+  return GRUPOS.filter((grupo) => grupo.plantation_id === parametros.p_plantation_id).map(
+    (grupo) => ({
+      group_id: grupo.id,
+      parcela_id: grupo.parcela_id,
+      arboles: arboles.filter((arbol) => arbol.group_id === grupo.id).length,
+    }),
+  );
+}
+
+/** Respuestas de `supabase.rpc(...)` que dependen de los parámetros. */
+export const RPC_CON_PARAMETROS: Record<string, (parametros: FilaDemo) => unknown> = {
+  cambiar_especie_arbol: cambiarEspecieDemo,
+  dashboard_arboles: dashboardArbolesDemo,
+  arboles_por_grupo: arbolesPorGrupoDemo,
 };

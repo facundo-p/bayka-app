@@ -1,3 +1,5 @@
+import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
+import { porNombre } from '../lib/ordenEspecies';
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { leerPaginado } from './leerPaginado';
@@ -9,20 +11,27 @@ export type EspecieCatalogo = {
   nombreCientifico: string | null;
 };
 
+/** Especie con su tipo, subtipo (#752) y especie científica (#753): lo que muestra y edita la pantalla de Especies. */
+export type EspecieClasificada = EspecieCatalogo & {
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+  especieCientificaId: string | null;
+};
+
 /** Especie del catálogo + uso agregado a nivel organización. */
-export type EspecieConCatalogoUso = EspecieCatalogo & {
+export type EspecieConCatalogoUso = EspecieClasificada & {
   plantaciones: number;
   arboles: number;
 };
 
-/** Campos editables de una especie (los que expone el formulario de alta/edición). */
-export type EspecieEditable = EspecieCatalogo;
-
-/** Especie habilitada en una plantación, con su orden de aparición en la app. */
-export type EspecieDePlantacion = EspecieCatalogo & { ordenVisual: number };
+/** Especie habilitada en una plantación. La app las ordena por nombre (#635). */
+export type EspecieDePlantacion = EspecieCatalogo & {
+  /** Lugar fijo en la paleta de colores de la plantación (#845); null para N/N. */
+  lugarColor: number | null;
+};
 
 /** Especie habilitada + si tiene árboles registrados (bloquea quitarla). */
-export type EspecieConUso = EspecieDePlantacion & { tieneArboles: boolean };
+export type EspecieConUso = EspecieCatalogo & { tieneArboles: boolean };
 
 type FilaEspecie = {
   id: string;
@@ -31,11 +40,17 @@ type FilaEspecie = {
   nombre_cientifico: string | null;
 };
 
+type FilaEspecieClasificada = FilaEspecie & {
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+  especie_cientifica_id: string | null;
+};
+
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
   species_id: string;
-  orden_visual: number;
-  species: FilaEspecie | null;
+  lugar_color: number | null;
+  species: Omit<FilaEspecie, 'id'> | null;
 };
 
 function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
@@ -47,13 +62,28 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
+/** Una sola lectura del catálogo: la clasificación la usan solo las pantallas de Especies. */
+async function leerCatalogo(): Promise<FilaEspecieClasificada[]> {
   const { data, error } = await supabase
     .from('species')
-    .select('id, codigo, nombre, nombre_cientifico')
+    .select('id, codigo, nombre, nombre_cientifico, tipo, subtipo, especie_cientifica_id')
     .order('codigo', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as FilaEspecie[]).map(mapearEspecie);
+  return (data ?? []) as FilaEspecieClasificada[];
+}
+
+export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
+  return (await leerCatalogo()).map(mapearEspecie);
+}
+
+/** El catálogo con su clasificación, para las pantallas de Especies. */
+export async function listarCatalogoClasificado(): Promise<EspecieClasificada[]> {
+  return (await leerCatalogo()).map((fila) => ({
+    ...mapearEspecie(fila),
+    tipo: fila.tipo,
+    subtipo: fila.subtipo,
+    especieCientificaId: fila.especie_cientifica_id,
+  }));
 }
 
 function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
@@ -62,22 +92,24 @@ function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
     codigo: fila.species?.codigo ?? '',
     nombre: fila.species?.nombre ?? '',
     nombreCientifico: fila.species?.nombre_cientifico ?? null,
-    ordenVisual: fila.orden_visual,
+    lugarColor: fila.lugar_color,
   };
 }
 
-/** Especies habilitadas de la plantación, por orden visual. */
+/**
+ * Especies habilitadas de la plantación, por nombre: el orden de la botonera en la app (#635).
+ * `lugar_color` sale de la migración 079: en una base sin ella, la lectura falla (#863).
+ */
 export async function listarEspeciesDePlantacion(
   plantationId: string,
 ): Promise<EspecieDePlantacion[]> {
   const { data, error } = await supabase
     .from('plantation_species')
-    .select('species_id, orden_visual, species(id, codigo, nombre, nombre_cientifico)')
-    .eq('plantation_id', plantationId)
-    .order('orden_visual', { ascending: true });
+    .select('species_id, lugar_color, species(codigo, nombre, nombre_cientifico)')
+    .eq('plantation_id', plantationId);
   if (error) throw new Error(error.message);
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
-  return ((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada);
+  return porNombre(((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada));
 }
 
 /** Paridad con `hasTreesForSpecies` de mobile: count head trees → groups. */
@@ -106,7 +138,12 @@ export async function listarEspeciesConUso(plantationId: string): Promise<Especi
  */
 async function contarPlantacionesPorEspecie(): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ species_id: string }>((desde, hasta) =>
-    supabase.from('plantation_species').select('species_id').range(desde, hasta),
+    supabase
+      .from('plantation_species')
+      .select('species_id')
+      .order('plantation_id')
+      .order('species_id')
+      .range(desde, hasta),
   );
   const conteos = new Map<string, number>();
   for (const fila of filas) {
@@ -124,10 +161,10 @@ async function contarArbolesDeEspecie(speciesId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden de `listarCatalogo`. */
+/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden por código. */
 export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
   const [catalogo, plantacionesPorEspecie] = await Promise.all([
-    listarCatalogo(),
+    listarCatalogoClasificado(),
     contarPlantacionesPorEspecie(),
   ]);
   const arboles = await Promise.all(catalogo.map((especie) => contarArbolesDeEspecie(especie.id)));

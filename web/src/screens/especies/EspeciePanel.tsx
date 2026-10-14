@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Leaf } from 'lucide-react';
 import {
   Button,
   Input,
@@ -7,13 +8,15 @@ import {
   PanelIdentidad,
   PanelLateral,
   PanelListaEnlaces,
-  PuntoColor,
+  SegmentedControl,
   type EnlacePanel,
 } from '../../components';
+import { TIPOS_ESPECIE, type SubtipoEspecie } from '../../../../shared/tiposEspecie';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
 import { formatearEntero } from '../../lib/formato';
 import { rutaPlantacion } from '../../lib/rutas';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import { ETIQUETA_TIPO_ESPECIE, opcionesDeSubtipo } from '../../lib/tiposEspecie';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeEspecie,
@@ -30,33 +33,70 @@ import {
 import {
   aEspecieInput,
   hayErroresEspecie,
+  SIN_ESPECIE_CIENTIFICA,
   validarEspecie,
   type ErroresEspecie,
   type EspecieFormValues,
 } from '../../services/especieValidaciones';
+import { SelectorEspecieCientifica } from './SelectorEspecieCientifica';
 import styles from './Especies.module.css';
 import { mensajeDeError } from '../../lib/clasificarError';
 
 const ACCION_GUARDAR = 'guardar la especie';
 const NOTA_CODIGO_EDICION =
-  'El código es el identificador global de la especie: cambiarlo afecta su etiqueta y color en toda la app.';
+  'El código es el identificador global de la especie: cambiarlo afecta su etiqueta en toda la app.';
 
 function valoresIniciales(especie: EspecieConCatalogoUso | null): EspecieFormValues {
   return {
     codigo: especie?.codigo ?? '',
     nombre: especie?.nombre ?? '',
-    nombreCientifico: especie?.nombreCientifico ?? '',
+    especieCientificaId: especie?.especieCientificaId ?? SIN_ESPECIE_CIENTIFICA,
+    tipo: especie?.tipo ?? TIPOS_ESPECIE.porDefecto.tipo,
+    subtipo: especie?.subtipo ?? TIPOS_ESPECIE.porDefecto.subtipo,
   };
 }
 
-/** Identidad del panel: punto de color + título + chip con el código actual. */
+/**
+ * Identidad del panel: ícono + título + chip con el código actual. Sin punto de
+ * color: fuera de una plantación la especie no tiene color (#845).
+ */
 function CabeceraEspecie({ especie }: { especie: EspecieConCatalogoUso | null }) {
   return (
     <PanelIdentidad
-      marca={<PuntoColor color={colorEspeciePorCodigo(especie?.codigo ?? null)} tamano="lg" />}
+      marca={<Leaf size={TAMANO_ICONO.lg} className={styles.marcaPanel} aria-hidden />}
       titulo={especie ? 'Editar especie' : 'Nueva especie'}
       complemento={especie && <span className={styles.chipCodigo}>{especie.codigo}</span>}
     />
+  );
+}
+
+/** El tipo se muestra fijo mientras haya uno solo; el subtipo se elige entre los de ese tipo. */
+function CamposClasificacion({
+  valores,
+  onSubtipo,
+}: {
+  valores: EspecieFormValues;
+  onSubtipo: (subtipo: SubtipoEspecie) => void;
+}) {
+  const idSubtipo = useId();
+  return (
+    <div className={styles.clasificacion}>
+      <div className={styles.campoClasificacion}>
+        <span className={styles.etiquetaCampo}>Tipo</span>
+        <span className={styles.tipoFijo}>{ETIQUETA_TIPO_ESPECIE[valores.tipo]}</span>
+      </div>
+      <div className={styles.campoClasificacion}>
+        <span id={idSubtipo} className={styles.etiquetaCampo}>
+          Subtipo *
+        </span>
+        <SegmentedControl
+          options={opcionesDeSubtipo(valores.tipo)}
+          value={valores.subtipo}
+          onChange={onSubtipo}
+          aria-labelledby={idSubtipo}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -129,7 +169,7 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
     },
   });
 
-  function cambiarCampo(campo: keyof EspecieFormValues, valor: string) {
+  function cambiarCampo<C extends keyof EspecieFormValues>(campo: C, valor: EspecieFormValues[C]) {
     setValores((previos) => ({ ...previos, [campo]: valor }));
     // Al cambiar el código, el aviso de duplicado queda viejo.
     if (campo === 'codigo') setDuplicado(false);
@@ -176,11 +216,16 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
           error={errores.nombre}
           onChange={(evento) => cambiarCampo('nombre', evento.target.value)}
         />
-        <Input
-          label="Nombre científico"
-          className={styles.campoCientifico}
-          value={valores.nombreCientifico}
-          onChange={(evento) => cambiarCampo('nombreCientifico', evento.target.value)}
+        <SelectorEspecieCientifica
+          especieId={especie?.id ?? null}
+          value={valores.especieCientificaId}
+          onChange={(especieCientificaId) =>
+            cambiarCampo('especieCientificaId', especieCientificaId)
+          }
+        />
+        <CamposClasificacion
+          valores={valores}
+          onSubtipo={(subtipo) => cambiarCampo('subtipo', subtipo)}
         />
         {duplicado && (
           <p className={styles.advertencia} role="status">

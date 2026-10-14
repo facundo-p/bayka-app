@@ -4,6 +4,7 @@
    entran dos y no tres. Lo que decide es el ancho de la card, no el del
    viewport, y `auto-fit` lo lee solo. */
 .lista {
+  --casilla-color: var(--color-secondary);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   column-gap: var(--space-xl);
@@ -14,30 +15,17 @@
 }
 
 .fila {
-  display: flex;
+  composes: fila from './Casilla.module.css';
   align-items: center;
-  gap: var(--space-lg);
-  width: 100%;
   padding: 9px var(--space-xl);
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
-  font-family: var(--font-body);
-  text-align: left;
-  cursor: pointer;
 }
 
-/* Habilitada: fondo tenue para leer de un vistazo qué entra en la app. */
-.filaMarcada {
+/*
+ * Habilitada: fondo tenue para leer de un vistazo qué entra en la app. Dos
+ * clases para ganarle al fondo de la base sin depender del orden de los módulos.
+ */
+.fila.filaMarcada {
   background-color: var(--color-plantation-bg-light);
-}
-
-.fila:hover:not(:disabled) {
-  background-color: var(--color-surface-sunken);
-}
-
-.fila:disabled {
-  cursor: default;
 }
 
 /*
@@ -59,6 +47,7 @@ input.buscador {
 }
 
 .maestro {
+  --casilla-color: var(--color-secondary);
   display: inline-flex;
   align-items: center;
   gap: var(--space-lg);
@@ -77,27 +66,9 @@ input.buscador {
   cursor: default;
 }
 
-.checkbox {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: var(--border-medium) solid var(--color-border-strong);
-  border-radius: 5px;
-  color: var(--color-white);
-}
-
-.checkboxMarcado {
-  border-color: var(--color-secondary);
-  background-color: var(--color-secondary);
-}
-
 /* Bloqueada (tiene árboles): marcada pero apagada, para que se lea que no se toca. */
-.fila:disabled .checkboxMarcado {
-  border-color: var(--color-plantation-light);
-  background-color: var(--color-plantation-light);
+.fila:disabled {
+  --casilla-color: var(--color-plantation-light);
 }
 
 .sinResultados {

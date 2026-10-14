@@ -2,7 +2,10 @@ import {
   acotarPorcentaje,
   concordar,
   etiquetaCodigoNombre,
+  formatearCoordenadas,
   formatearEntero,
+  formatearPeso,
+  formatearPrecision,
   pluralizar,
   porcentaje,
   porcentajeDeObjetivo,
@@ -23,6 +26,16 @@ test.each([
   [1260, '1.260 árboles'],
 ])('pluralizar %i: "%s"', (cantidad, texto) => {
   expect(pluralizar(cantidad, ARBOL)).toBe(texto);
+});
+
+test('las coordenadas van con seis decimales, o con los que se pidan', () => {
+  expect(formatearCoordenadas(-27.3601234, -55.8974411)).toBe('-27.360123, -55.897441');
+  expect(formatearCoordenadas(-27.36, -55.89, 5)).toBe('-27.36000, -55.89000');
+});
+
+test('la precisión del GPS va redondeada al metro', () => {
+  expect(formatearPrecision(4.4)).toBe('± 4 m');
+  expect(formatearPrecision(12.5)).toBe('± 13 m');
 });
 
 test('etiquetaCodigoNombre separa código y nombre con raya', () => {
@@ -83,4 +96,15 @@ describe('porcentajeDeObjetivo', () => {
   test('sin árboles con objetivo definido es 0, no null', () => {
     expect(porcentajeDeObjetivo(0, 10000)).toBe(0);
   });
+});
+
+test.each([
+  [340_000, '340 KB'],
+  [999_400, '999 KB'],
+  [300, '1 KB'],
+  [1_420_000, '1,4 MB'],
+  [9_960_000, '10 MB'],
+  [12_300_000, '12 MB'],
+])('formatearPeso(%i) → %s', (bytes, texto) => {
+  expect(formatearPeso(bytes)).toBe(texto);
 });

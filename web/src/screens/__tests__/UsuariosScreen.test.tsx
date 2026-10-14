@@ -8,7 +8,9 @@ import {
 } from '../../test/supabaseMock';
 import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
+import { abrirFiltros } from '../../test/panelFiltros';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
@@ -119,6 +121,9 @@ test('un superadmin ve el link, la meta con conteos y la tabla con roles', async
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
   // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
   expect(screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico')).toBeInTheDocument();
+  expect(
+    screen.getByText('3 personas · clic en una fila abre el detalle · ⋯ para acciones rápidas'),
+  ).toBeInTheDocument();
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
@@ -151,17 +156,18 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
 
   // Inactivos: queda sólo Teo.
-  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Inactivos' }));
   expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
 
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
-  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
-  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
+  await usuario.click(filtros.getByRole('radio', { name: 'Activos' }));
   expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
@@ -172,7 +178,8 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Técnicos' }));
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -420,6 +427,26 @@ test('editar con email fallido igual refresca la lista (invalidación en onSettl
   });
 });
 
+test('a ≤900 una acción de la hoja abre su modal encima, y su Escape no cierra la hoja', async () => {
+  simularAncho(ANCHO.tablet);
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+
+  await screen.findByText('Ana Admin');
+  await usuario.click(tablaUsuarios().getByText('Ana Admin'));
+  const hoja = screen.getByRole('dialog', { name: 'Detalle de Ana Admin' });
+  await usuario.click(within(hoja).getByRole('button', { name: 'Cambiar contraseña' }));
+  const accion = screen.getByRole('dialog', { name: 'Cambiar contraseña de Ana Admin' });
+  expect(accion).toHaveFocus();
+  // Montado después: en el DOM va detrás de la hoja, que es como se apila encima.
+  expect(hoja.compareDocumentPosition(accion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  await usuario.keyboard('{Escape}');
+  expect(accion).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Detalle de Ana Admin' })).toBeInTheDocument();
+});
+
 test('cambiar contraseña valida y llama a la edge function', async () => {
   configurarUsuariosMock();
   const usuario = userEvent.setup();
@@ -556,7 +583,8 @@ test('los eliminados se ocultan salvo con su filtro, y no ofrecen acciones ni ed
   await screen.findByText('Ana Admin');
   expect(tablaUsuarios().queryByText('Elsa Eliminada')).not.toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('radio', { name: 'Eliminados' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Eliminados' }));
   expect(tablaUsuarios().getByText('Elsa Eliminada')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Eliminado')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -639,6 +667,8 @@ test('el recuento de la barra sigue a los filtros y concuerda en singular', asyn
   await screen.findByText('Ana Admin');
 
   expect(screen.getByText(textoCompleto('3 personas · 2 activas'))).toBeInTheDocument();
-  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  const filtros = await abrirFiltros(usuario);
+  await usuario.click(filtros.getByRole('radio', { name: 'Inactivos' }));
+  await usuario.keyboard('{Escape}');
   expect(screen.getByText(textoCompleto('1 persona · 0 activas'))).toBeInTheDocument();
 });

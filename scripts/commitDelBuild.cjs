@@ -37,4 +37,4 @@ function commitDelBuild(shaDelCi, git = gitSiEsPosible) {
   return sha.slice(0, LARGO_COMMIT_CORTO) + (sucio ? SUFIJO_ARBOL_SUCIO : '');
 }
 
-module.exports = { commitDelBuild };
+module.exports = { commitDelBuild, SUFIJO_ARBOL_SUCIO };

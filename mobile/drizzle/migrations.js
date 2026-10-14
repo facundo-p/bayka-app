@@ -25,6 +25,18 @@ import m0020 from './0020_indices_de_sync.sql';
 import m0021 from './0021_borrados_pendientes.sql';
 import m0022 from './0022_plantations_archivada_en.sql';
 import m0023 from './0023_plantations_eliminada_en_servidor_en.sql';
+import m0024 from './0024_plantations_campos_editables.sql';
+import m0025 from './0025_plantations_edicion_por_campo.sql';
+import m0026 from './0026_cambios_especies_pendientes.sql';
+import m0027 from './0027_tecnicos_offline.sql';
+import m0028 from './0028_plantations_motivo_varado.sql';
+import m0029 from './0029_parcelas_alta_pendiente_de.sql';
+import m0030 from './0030_plantations_codigo.sql';
+import m0031 from './0031_trees_especie_base.sql';
+import m0032 from './0032_species_tipo_subtipo.sql';
+import m0033 from './0033_trees_drop_conflict_especie.sql';
+import m0034 from './0034_conflictos_de_sync.sql';
+import m0035 from './0035_trees_drop_ids_numericos.sql';
 
   export default {
     journal,
@@ -52,6 +64,18 @@ m0019,
 m0020,
 m0021,
 m0022,
-m0023
+m0023,
+m0024,
+m0025,
+m0026,
+m0027,
+m0028,
+m0029,
+m0030,
+m0031,
+m0032,
+m0033,
+m0034,
+m0035
     }
   }

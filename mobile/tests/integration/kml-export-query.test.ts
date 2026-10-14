@@ -26,7 +26,7 @@ beforeAll(async () => {
   sqlite = r.sqlite;
 
   await mockTestDb.insert(plantations).values({
-    id: 'plant-1', organizacionId: 'org-1', lugar: 'Campo', periodo: '2026',
+    id: 'plant-1', organizacionId: 'org-1', lugar: 'Campo', periodo: '2026', codigo: 'SS26-1',
     estado: 'activa', creadoPor: 'u-1', createdAt: NOW,
   });
   await mockTestDb.insert(parcelas).values({
@@ -68,6 +68,7 @@ test('devuelve solo árboles con coordenadas, N/N incluido con especie null', as
 
   expect(rows.map((r) => r.subId)).toEqual(['PL1EUC1', 'PL1NN2']);
   const conEspecie = rows[0];
+  expect(rows.map((r) => r.idArbol)).toEqual(['PL1EUC1-SS26-1', 'PL1NN2-SS26-1']);
   expect(conEspecie.especieNombre).toBe('Eucalipto');
   expect(conEspecie.parcelaNombre).toBe('Lote A');
   expect(conEspecie.latitude).toBeCloseTo(-31.5);

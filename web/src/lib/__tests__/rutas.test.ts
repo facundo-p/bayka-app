@@ -16,6 +16,7 @@ test('RUTA: la raíz de cada pantalla', () => {
     establecerPassword: '/establecer-password',
     plantaciones: '/plantaciones',
     especies: '/especies',
+    especiesCientificas: '/especies/cientificas',
     novedades: '/novedades',
     usuarios: '/usuarios',
   });

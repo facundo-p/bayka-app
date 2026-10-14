@@ -1,6 +1,6 @@
 -- Cambiar el código de una parcela reescribe el prefijo del SubID de sus
 -- árboles (053, #623). Se prueba por el camino del móvil: upsert de la parcela
--- como técnico miembro, bajo RLS.
+-- como admin miembro, bajo RLS (editar parcelas es de admin desde 056, #640).
 begin;
 select plan(8);
 
@@ -16,11 +16,10 @@ update profiles set organizacion_id = 'b3100000-0000-0000-0000-000000000001'
 update profiles set rol = 'admin', organizacion_id = 'b3100000-0000-0000-0000-000000000001'
   where id = 'b3100000-0000-0000-0000-0000000000a2';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado) values
-  ('b3100000-0000-0000-0000-000000000002', 'b3100000-0000-0000-0000-000000000001',
-   'Activa 31', '2026', 'b3100000-0000-0000-0000-0000000000a2', 'activa'),
-  ('b3100000-0000-0000-0000-000000000003', 'b3100000-0000-0000-0000-000000000001',
-   'Finalizada 31', '2026', 'b3100000-0000-0000-0000-0000000000a2', 'finalizada');
+select tests.crear_plantacion('b3100000-0000-0000-0000-000000000002', 'b3100000-0000-0000-0000-000000000001',
+  'b3100000-0000-0000-0000-0000000000a2', 'Activa 31');
+select tests.crear_plantacion('b3100000-0000-0000-0000-000000000003', 'b3100000-0000-0000-0000-000000000001',
+  'b3100000-0000-0000-0000-0000000000a2', 'Finalizada 31', p_estado => 'finalizada');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b3100000-0000-0000-0000-000000000002', 'b3100000-0000-0000-0000-0000000000a1', 'tecnico'),
@@ -61,7 +60,7 @@ insert into trees (id, group_id, posicion, sub_id, usuario_registro) values
    'b3100000-0000-0000-0000-0000000000a1');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'b3100000-0000-0000-0000-0000000000a1', true);
+select set_config('request.jwt.claim.sub', 'b3100000-0000-0000-0000-0000000000a2', true);
 
 -- Upsert completo, como `uploadParcela` del móvil.
 insert into parcelas (id, plantation_id, nombre, codigo) values
@@ -86,7 +85,7 @@ select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-00000000
 select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d7'),
   'P1L7NN2', 'con el código de grupo del server desactualizado, el árbol queda como estaba');
 select is((select codigo from parcelas where id = 'b3100000-0000-0000-0000-0000000000b3'),
-  'P3', 'el técnico no cambia el código de una parcela de una plantación finalizada');
+  'P3', 'el admin no cambia el código de una parcela de una plantación finalizada');
 select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d5'),
   'P3L1EUC1', 'ni sus SubID');
 

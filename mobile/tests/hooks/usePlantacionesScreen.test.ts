@@ -15,6 +15,8 @@ jest.mock('../../src/hooks/useRoutePrefix', () => ({
 }));
 
 const mockHandleDeletePlantation = jest.fn();
+let mockEsAdmin = true;
+let mockConflictosPorPlantacion = new Map<string, number>();
 jest.mock('../../src/hooks/usePlantaciones', () => ({
   usePlantaciones: () => ({
     plantationList: [],
@@ -25,7 +27,7 @@ jest.mock('../../src/hooks/usePlantaciones', () => ({
     headerTitle: 'Plantaciones',
     headerSubtitle: undefined,
     isOnline: true,
-    isAdmin: true,
+    isAdmin: mockEsAdmin,
     syncedCountMap: new Map(),
     pendingSyncMap: new Map(),
     todayCountMap: new Map(),
@@ -37,8 +39,13 @@ jest.mock('../../src/hooks/usePlantaciones', () => ({
 }));
 
 const mockHandleCreateSubmit = jest.fn();
-const mockHandleAssignTech = jest.fn();
 const mockFetchPlantationMeta = jest.fn();
+// Réplica mínima del comportamiento real de usePlantationAdmin.continuarLuegoDeCrear:
+// sin duplicada corre directo; con duplicada, el test decide cuándo invocar el callback
+// capturado (simula al usuario cerrando el aviso), nunca antes (#656).
+const mockContinuarLuegoDeCrear = jest.fn((duplicada: boolean | undefined, siguientePaso: () => void) => {
+  if (!duplicada) siguientePaso();
+});
 jest.mock('../../src/hooks/usePlantationAdmin', () => ({
   usePlantationAdmin: () => ({
     plantationList: [{ id: 'p1', lugar: 'Lote 1', pendingSync: false }],
@@ -49,7 +56,7 @@ jest.mock('../../src/hooks/usePlantationAdmin', () => ({
     handleExportExcel: jest.fn(),
     handleExportKml: jest.fn(),
     handleCreateSubmit: mockHandleCreateSubmit,
-    handleAssignTech: mockHandleAssignTech,
+    continuarLuegoDeCrear: mockContinuarLuegoDeCrear,
     handleEditSubmit: jest.fn(),
     handleDiscardEdit: jest.fn(),
   }),
@@ -90,6 +97,9 @@ jest.mock('../../src/hooks/usePendingSyncCount', () => ({
   usePendingSyncCount: () => ({ pendingCount: 0 }),
 }));
 
+jest.mock('../../src/hooks/useConflictosDeSyncPorPlantacion', () => ({
+  useConflictosDeSyncPorPlantacion: () => mockConflictosPorPlantacion,
+}));
 jest.mock('../../src/hooks/usePendingSyncMap', () => ({
   usePendingSyncMap: () => new Map(),
 }));
@@ -98,7 +108,33 @@ import { usePlantacionesScreen } from '../../src/hooks/usePlantacionesScreen';
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockFetchPlantationMeta.mockResolvedValue({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+  mockEsAdmin = true;
+  mockConflictosPorPlantacion = new Map();
+  mockFetchPlantationMeta.mockResolvedValue({ canFinalize: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+});
+
+describe('usePlantacionesScreen — cambios por resolver (#634, #804)', () => {
+  const conCambiosDeEdicion = { id: 'p1', conflictosDeEdicion: [{ campo: 'lugar' }] } as never;
+  const sinNada = { id: 'p1', conflictosDeEdicion: null } as never;
+
+  it('admin: los cambios de la edición y los conflictos de sync', () => {
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    expect(result.current.hayCambiosPorResolver(conCambiosDeEdicion)).toBe(true);
+    expect(result.current.hayCambiosPorResolver(sinNada)).toBe(false);
+  });
+
+  it('técnico: los cambios de la edición no son suyos; los conflictos de sync, sí', () => {
+    mockEsAdmin = false;
+    const { result, rerender } = renderHook(() => usePlantacionesScreen());
+
+    expect(result.current.hayCambiosPorResolver(conCambiosDeEdicion)).toBe(false);
+
+    mockConflictosPorPlantacion = new Map([['p1', 2]]);
+    rerender({});
+
+    expect(result.current.hayCambiosPorResolver(sinNada)).toBe(true);
+  });
 });
 
 describe('usePlantacionesScreen — computed flags', () => {
@@ -110,15 +146,15 @@ describe('usePlantacionesScreen — computed flags', () => {
 });
 
 describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', () => {
-  it('crea la plantación, abre config de especies y navega al detalle al cerrarla', async () => {
-    mockHandleCreateSubmit.mockResolvedValue('new-plantation-id');
+  it('sin duplicada: crea la plantación, abre config de especies directo y navega al detalle al cerrarla', async () => {
+    mockHandleCreateSubmit.mockResolvedValue({ id: 'new-plantation-id', duplicada: false });
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {
-      await result.current.handleCreatePlantation('Lote Nuevo', '2026-A', {} as any);
+      await result.current.handleCreatePlantation({ lugar: 'Lote Nuevo', periodo: '2026-A', objetivoArboles: 500 } as any);
     });
 
-    expect(mockHandleCreateSubmit).toHaveBeenCalledWith('Lote Nuevo', '2026-A', {});
+    expect(mockHandleCreateSubmit).toHaveBeenCalledWith('Lote Nuevo', '2026-A', { objetivoArboles: 500 });
     expect(result.current.showCreateModal).toBe(false);
     expect(result.current.configSpeciesPlantacionId).toBe('new-plantation-id');
 
@@ -130,12 +166,33 @@ describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', 
     expect(mockPush).toHaveBeenCalledWith('/(admin)/plantation/new-plantation-id');
   });
 
+  it('con duplicada: no abre config de especies hasta que se cierra el aviso (#656)', async () => {
+    mockHandleCreateSubmit.mockResolvedValue({ id: 'dup-plantation-id', duplicada: true });
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    await act(async () => {
+      await result.current.handleCreatePlantation({ lugar: 'Lote Dup', periodo: '2026-A' } as any);
+    });
+
+    // continuarLuegoDeCrear ya corrió con duplicada:true, pero el mock no invoca el callback
+    // solo: el aviso "cierra" el modal de creación pero el de especies queda sin abrir todavía.
+    expect(mockContinuarLuegoDeCrear).toHaveBeenCalledWith(true, expect.any(Function));
+    expect(result.current.showCreateModal).toBe(false);
+    expect(result.current.configSpeciesPlantacionId).toBeNull();
+
+    // Recién al "cerrar el aviso" (invocar el callback capturado) se abre config de especies.
+    const siguientePaso = mockContinuarLuegoDeCrear.mock.calls[0][1];
+    act(() => { siguientePaso(); });
+
+    expect(result.current.configSpeciesPlantacionId).toBe('dup-plantation-id');
+  });
+
   it('no navega si handleCreateSubmit no devuelve id', async () => {
     mockHandleCreateSubmit.mockResolvedValue(undefined);
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {
-      await result.current.handleCreatePlantation('Lote', '2026-A', {} as any);
+      await result.current.handleCreatePlantation({ lugar: 'Lote', periodo: '2026-A' } as any);
     });
 
     expect(result.current.configSpeciesPlantacionId).toBeNull();
@@ -180,7 +237,7 @@ describe('usePlantacionesScreen — expansión de card y bottom sheet', () => {
   });
 
   it('handleOpenGear carga el meta y abre el bottom sheet', async () => {
-    mockFetchPlantationMeta.mockResolvedValue({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
+    mockFetchPlantationMeta.mockResolvedValue({ canFinalize: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
     const { result } = renderHook(() => usePlantacionesScreen());
     const plantation = { id: 'p1', lugar: 'Lote 1' } as any;
 
@@ -193,8 +250,7 @@ describe('usePlantacionesScreen — expansión de card y bottom sheet', () => {
     expect(result.current.bottomSheetMeta.canFinalize).toBe(true);
   });
 
-  it('onAssignTechFromSheet cierra el sheet y, si hay conexión, abre el modal de asignación', async () => {
-    mockHandleAssignTech.mockResolvedValue(true);
+  it('onAssignTechFromSheet cierra el sheet y abre el modal de asignación, también sin conexión (#636)', async () => {
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {

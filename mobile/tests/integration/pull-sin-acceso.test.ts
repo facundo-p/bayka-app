@@ -8,6 +8,7 @@
  * Mock de Supabase: estado in-memory por tabla + sesión.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -16,6 +17,8 @@ import {
   parcelas,
   groups,
   plantationUsers,
+  plantationSpecies,
+  species,
 } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
@@ -97,6 +100,8 @@ jest.mock('../../src/supabase/client', () => {
           Promise.resolve({
             data: mockSesion.userId ? { session: { user: { id: mockSesion.userId } } } : { session: null },
           }),
+        refreshSession: () =>
+          Promise.resolve({ data: { session: null }, error: { message: 'Auth session missing!' } }),
       },
     },
   };
@@ -123,6 +128,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 }));
 
 import { pullFromServer } from '../../src/services/sync/pullService';
+import { SessionExpiredError } from '../../src/services/sync/sessionGuard';
 
 const PLANTACION_ID = 'plant-1';
 
@@ -208,6 +214,13 @@ describe('pullFromServer con membresía revocada', () => {
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'sin-acceso' });
   });
 
+  it('lo pendiente queda varado sin permiso (#638)', async () => {
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila.motivoVarado).toBe('sin-permiso');
+  });
+
   it('no toca la copia local: los datos quedan para consulta', async () => {
     const antes = await filasLocales();
 
@@ -239,10 +252,17 @@ describe('pullFromServer: cuándo NO hay que gritar "sin acceso"', () => {
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
   });
 
-  it('sin sesión no inventa una revocación', async () => {
+  // Sesión solo local de un login offline (#658): las lecturas saldrían como anon y
+  // la RLS las devolvería vacías.
+  it('sin sesión no lee nada ni borra miembros ni especies', async () => {
+    await mockTestDb.insert(species).values({ id: 'esp-1', codigo: 'ROB', nombre: 'Roble', createdAt: '2026-01-01T00:00:00' });
+    await mockTestDb.insert(plantationSpecies).values({ id: 'ps-1', plantacionId: PLANTACION_ID, especieId: 'esp-1' });
     sesion.userId = null;
 
-    expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
+    await expect(pullFromServer(PLANTACION_ID)).rejects.toBeInstanceOf(SessionExpiredError);
+
+    expect((await filasLocales()).membresias).toHaveLength(1);
+    expect(await mockTestDb.select().from(plantationSpecies)).toHaveLength(1);
   });
 
   it('plantación creada offline (pendiente de push): el server todavía no la conoce', async () => {
@@ -252,6 +272,19 @@ describe('pullFromServer: cuándo NO hay que gritar "sin acceso"', () => {
       .where(eq(plantations.id, PLANTACION_ID));
 
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
+  });
+
+  it('un alta sin terminar que el server ya tiene queda marcada como en el servidor (#638)', async () => {
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+    serverState.plantations.set(PLANTACION_ID, {
+      id: PLANTACION_ID, lugar: 'Campo Test', periodo: '2026', estado: 'activa',
+      creado_por: 'admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
+    });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila).toMatchObject({ pendingSync: true, altaEnServidor: true });
   });
 });
 
@@ -413,3 +446,6 @@ describe('pullFromServer: replace de membresías', () => {
     ]);
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado(() => mockSesion.userId));

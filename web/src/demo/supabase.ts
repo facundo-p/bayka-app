@@ -6,7 +6,14 @@
  * `vite.demo.config.ts` lo pone en lugar de `lib/supabase` por alias, así que
  * ningún módulo de producción lo importa y nunca entra al bundle.
  */
-import { RPC, SESION_DEMO, TABLAS, type FilaDemo, type TablaDemo } from './datos';
+import {
+  RPC,
+  RPC_CON_PARAMETROS,
+  SESION_DEMO,
+  TABLAS,
+  type FilaDemo,
+  type TablaDemo,
+} from './datos';
 import { conEmbebidos, embebidosDe, type Embebido } from './embebidos';
 import {
   OPERADOR,
@@ -41,6 +48,7 @@ interface ConsultaDemo extends PromiseLike<RespuestaDemo>, Record<Operador, Meto
   order: () => ConsultaDemo;
   limit: (cantidad: number) => ConsultaDemo;
   range: (desde: number, hasta: number) => ConsultaDemo;
+  abortSignal: (senal: AbortSignal) => ConsultaDemo;
   maybeSingle: () => Promise<RespuestaDemo>;
   single: () => Promise<RespuestaDemo>;
 }
@@ -127,6 +135,8 @@ function crearConsulta(tabla: string): ConsultaDemo {
       cambiar({ embebidos: embebidosDe(columnas), soloConteo: Boolean(opciones?.head) }),
     not: (columna, operador, valor) => agregar(negacion(columna, operador, valor)),
     or: (condiciones) => agregar(alternativasDe(condiciones)),
+    // Contesta en el acto: no hay pedido en vuelo que cortar.
+    abortSignal: () => consulta,
     maybeSingle: unaSola,
     single: unaSola,
     then: (alCumplir, alFallar) => Promise.resolve(resolver(estado)).then(alCumplir, alFallar),
@@ -134,11 +144,20 @@ function crearConsulta(tabla: string): ConsultaDemo {
   return consulta;
 }
 
+/** Foto de muestra: sin red no hay Storage, y con `data:` el botón Descargar también anda. */
+const FOTO_DEMO = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect width="320" height="320" fill="#cfe3c4"/><circle cx="160" cy="130" r="70" fill="#5b8c4a"/><rect x="150" y="190" width="20" height="80" fill="#7a5a3a"/></svg>',
+)}`;
+
 const SIN_SESION = new URLSearchParams(window.location.search).has(PARAMETRO_SIN_SESION);
 
 export const supabase = {
   from: (tabla: string) => crearConsulta(tabla),
-  rpc: (nombre: string) => Promise.resolve({ data: RPC[nombre] ?? [], error: null }),
+  rpc: (nombre: string, parametros: FilaDemo = {}) =>
+    Promise.resolve({
+      data: RPC_CON_PARAMETROS[nombre]?.(parametros) ?? RPC[nombre] ?? [],
+      error: null,
+    }),
   auth: {
     getSession: () =>
       Promise.resolve({ data: { session: SIN_SESION ? null : SESION_DEMO }, error: null }),
@@ -149,7 +168,12 @@ export const supabase = {
   },
   storage: {
     from: () => ({
-      createSignedUrl: () => Promise.resolve({ data: null, error: null }),
+      createSignedUrl: () => Promise.resolve({ data: { signedUrl: FOTO_DEMO }, error: null }),
+      createSignedUrls: (paths: string[]) =>
+        Promise.resolve({
+          data: paths.map((path) => ({ path, signedUrl: FOTO_DEMO, error: null })),
+          error: null,
+        }),
     }),
   },
   functions: {

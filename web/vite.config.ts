@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
 import { definirConstantesBuild } from './constantesBuild';
+import { pluginClaveImagenPdf } from './pluginClaveImagenPdf';
+import { pluginReact } from './pluginReact';
 import { diagnosticarEnvSupabase } from './src/lib/envSupabase';
 
 // Corta el build si el par VITE_SUPABASE_* es incoherente: las variables se
@@ -31,7 +32,9 @@ function chequearEnvSupabase(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), chequearEnvSupabase()],
+  plugins: [pluginReact(), pluginClaveImagenPdf(), chequearEnvSupabase()],
+  // En el build, el worker no hereda `plugins`.
+  worker: { plugins: () => [pluginClaveImagenPdf()] },
   define: definirConstantesBuild(),
   // Permite que vitest cargue los tests de fuera de web/.
   server: { fs: { allow: ['..'] } },
@@ -40,11 +43,15 @@ export default defineConfig({
     setupFiles: './src/setupTests.ts',
     globals: true,
     // Suma la lógica de las edge functions (nucleo.ts, sin imports de Deno; el
-    // entry index.ts es solo-Deno y queda afuera) y los scripts de la raíz.
+    // entry index.ts es solo-Deno y queda afuera), los scripts de la raíz y la
+    // lógica pura que comparte con mobile.
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
+      // Los de la config de Vite, junto a sus archivos.
+      '*.test.ts',
       '../supabase/functions/**/*.test.ts',
       '../scripts/**/*.test.ts',
+      '../shared/**/*.test.ts',
     ],
     // Config dummy de Supabase para los tests: sin web/.env (p.ej. en CI) el
     // cliente lanzaría al importarse. Los tests mockean las llamadas reales.

@@ -1,0 +1,12 @@
+/* En teléfono queda el ícono, cuadrado: con la etiqueta, el buscador, que crece
+   desde cero, se quedaba en «Buscar Su». La etiqueta sigue nombrando al botón. */
+.etiqueta {
+  composes: soloLectoresEnMovil from '../../theme/utilidades.module.css';
+}
+
+@media (max-width: 600px) {
+  .boton {
+    aspect-ratio: 1;
+    padding: 0;
+  }
+}

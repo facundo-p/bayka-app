@@ -3,6 +3,7 @@
  * Real SQLite via better-sqlite3 + drizzle migrations.
  */
 import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
+import { conRolCacheado } from '../helpers/rolCacheado';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
@@ -50,6 +51,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  conRolCacheado('admin');
   await vaciarTablas(mockTestDb);
 });
 
@@ -85,12 +87,8 @@ async function seedTree(groupId: string, posicion: number): Promise<void> {
     subId: `S-${posicion}`,
     fotoUrl: null,
     fotoSynced: true,
-    plantacionId: null,
-    globalId: null,
     usuarioRegistro: 'u1',
     createdAt: localNow(),
-    conflictEspecieId: null,
-    conflictEspecieNombre: null,
   });
 }
 

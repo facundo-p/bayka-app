@@ -2,7 +2,8 @@ import { useLayoutEffect, useState, type CSSProperties, type RefObject } from 'r
 import { varsCss } from '../lib/cssVars';
 
 const SEPARACION = 4;
-const MARGEN_VIEWPORT = 8;
+/** Lo que un panel flotante deja libre hasta el borde de la ventana. */
+export const MARGEN_VIEWPORT = 8;
 /** Con menos lugar que esto debajo del ancla, se abre hacia arriba si allá hay más. */
 const ALTO_MINIMO_ABAJO = 200;
 

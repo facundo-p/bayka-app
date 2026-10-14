@@ -1,6 +1,7 @@
 /**
  * ParcelasScreen — lista las parcelas de una plantación.
- * Tap → grupos scoped por parcela; long-press → editar; header `+` → crear.
+ * Tap → grupos scoped por parcela; long-press → editar (admin, o el técnico su alta sin subir: #640, #654);
+ * header `+` → crear.
  */
 import { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
@@ -17,6 +18,7 @@ import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
+import { usePuedeEditarParcela } from '../hooks/usePuedeEditarParcela';
 import { colors, iconSizes } from '../theme';
 import { parcelasScreenStyles as styles } from './ParcelasScreen.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -68,6 +70,8 @@ export default function ParcelasScreen() {
   // Finalizada, archivada o eliminada: tampoco se editan ni se borran sus parcelas,
   // que el push sube como tombstone (#469, #477, #478).
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
+  const puedeEditarParcela = usePuedeEditarParcela(routePrefix);
+  const puedeEditar = (p: Parcela) => plantacionEditable && puedeEditarParcela(p);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
   function openCreate() {
@@ -75,7 +79,7 @@ export default function ParcelasScreen() {
     setFormModalState({ mode: 'create', parcela: null });
   }
   function openEdit(p: ParcelaWithStats) {
-    if (!plantacionEditable) return;
+    if (!puedeEditar(p)) return;
     setFormModalState({ mode: 'edit', parcela: p });
   }
   function closeModal() { setFormModalState(null); }
@@ -93,7 +97,7 @@ export default function ParcelasScreen() {
       <ParcelaRow
         parcela={item}
         onPress={() => navigateToGrupos(item.id)}
-        onLongPress={plantacionEditable ? () => openEdit(item) : undefined}
+        onLongPress={puedeEditar(item) ? () => openEdit(item) : undefined}
       />
     );
   }

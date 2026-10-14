@@ -9,8 +9,10 @@ import AdminBottomSheet from './AdminBottomSheet';
 import AdminPlantationModals from './AdminPlantationModals';
 import SyncProgressModal from './SyncProgressModal';
 import SyncConfirmModal from './SyncConfirmModal';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../types/plantation';
+import type { PlantacionConCambios } from '../utils/conflictosDeEdicion';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
@@ -22,15 +24,21 @@ type AdminHook = {
   confirmProps: any;
   exportingId: string | null;
   handleFinalize: (id: string) => void | Promise<void>;
+  canReopen: boolean;
+  handleReopen: (plantation: Plantation) => void | Promise<void>;
   handleExportCsv: (id: string) => void | Promise<void>;
   handleExportExcel: (id: string) => void | Promise<void>;
   handleExportKml: (id: string) => void | Promise<void>;
   handleDiscardEdit: (id: string) => void | Promise<void>;
-  handleEditSubmit: (id: string, lugar: string, periodo: string, gps: any) => Promise<void>;
+  /** Devuelve cuántos campos chocaron con la web (#634). */
+  handleEditSubmit: (
+    id: string, lugar: string, periodo: string, ajustes: any, vistos?: Partial<CamposDePlantacion>
+  ) => Promise<number>;
 };
 
 type Props = {
   isAdmin: boolean;
+  isOnline: boolean;
   adminHook: AdminHook;
 
   // Delete confirm (usePlantaciones)
@@ -45,7 +53,7 @@ type Props = {
   syncConfirmVisible: boolean;
   syncConfirmMode: 'global' | 'plantation';
   syncTargetPlantationId: string | null;
-  handleSyncConfirm: (incluirFotos: boolean) => void;
+  handleSyncConfirm: (descargarFotos: boolean) => void;
   closeSyncConfirm: () => void;
 
   // Sync progress
@@ -73,6 +81,10 @@ type Props = {
   cancelarSync: () => void;
   resetSync: () => void;
   handleSessionExpiredReauth: () => void;
+  /** Abre "Resolver cambios" de una plantación (#634). */
+  irAResolverCambios: (plantacionId: string) => void;
+  /** Plantaciones de la corrida con conflictos de sincronización sin resolver (#804). */
+  conflictosDeSync: PlantacionConCambios[];
 
   // Admin bottom sheet
   bottomSheetVisible: boolean;
@@ -86,19 +98,19 @@ type Props = {
   // Admin create/edit/config-species/assign-tech modals
   showCreateModal: boolean;
   setShowCreateModal: (v: boolean) => void;
-  handleCreatePlantation: (lugar: string, periodo: string, gps: any) => Promise<void>;
+  handleCreatePlantation: (campos: CamposDePlantacion) => Promise<void>;
   editingPlantation: Plantation | null;
   setEditingPlantation: (p: Plantation | null) => void;
   configSpeciesPlantacionId: string | null;
   setConfigSpeciesPlantacionId: (id: string | null) => void;
   handleCloseConfigSpecies: () => void;
-  pendingSyncForSpecies?: boolean;
   assignTechPlantacionId: string | null;
   setAssignTechPlantacionId: (id: string | null) => void;
 };
 
 export default function PlantacionesModals({
   isAdmin,
+  isOnline,
   adminHook,
   confirmProps,
   editingParcela,
@@ -133,6 +145,8 @@ export default function PlantacionesModals({
   cancelarSync,
   resetSync,
   handleSessionExpiredReauth,
+  irAResolverCambios,
+  conflictosDeSync,
   bottomSheetVisible,
   bottomSheetPlantation,
   bottomSheetMeta,
@@ -148,7 +162,6 @@ export default function PlantacionesModals({
   configSpeciesPlantacionId,
   setConfigSpeciesPlantacionId,
   handleCloseConfigSpecies,
-  pendingSyncForSpecies,
   assignTechPlantacionId,
   setAssignTechPlantacionId,
 }: Props) {
@@ -198,14 +211,16 @@ export default function PlantacionesModals({
         huboTimeout={huboTimeout}
         onCancelar={cancelarSync}
         onDismiss={resetSync}
+        conflictosDeSync={conflictosDeSync}
+        onResolverCambios={irAResolverCambios}
       />
 
       <ConfirmModal
         visible={syncState === 'done' && authExpired}
         icon="lock-closed"
         iconColor={colors.secondary}
-        title="Sesión expirada"
-        message="Tu sesión expiró. Iniciá sesión de nuevo para sincronizar."
+        title="Iniciá sesión"
+        message="Para sincronizar tenés que iniciar sesión con conexión."
         buttons={[
           { label: 'Cancelar', style: 'cancel', onPress: resetSync },
           { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },
@@ -218,11 +233,14 @@ export default function PlantacionesModals({
         plantation={bottomSheetPlantation}
         meta={bottomSheetMeta}
         isAdmin={isAdmin}
+        canReopen={adminHook.canReopen}
+        isOnline={isOnline}
         onDismiss={closeBottomSheet}
         onEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) handleEditPress(bottomSheetPlantation); })}
         onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
         onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
         onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
+        onReopen={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleReopen(bottomSheetPlantation); })}
         onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
         onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
         onExportKml={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportKml(bottomSheetPlantation.id); })}
@@ -234,14 +252,22 @@ export default function PlantacionesModals({
           showCreateModal={showCreateModal}
           onCloseCreate={() => setShowCreateModal(false)}
           onCreateSubmit={handleCreatePlantation}
+          plantaciones={adminHook.plantationList}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
+          onEditSubmit={async ({ lugar, periodo, ...ajustes }) => {
+            if (!editingPlantation) return;
+            // Los valores con que se abrió el form: solo se guarda lo que el usuario tocó. Sin
+            // código visto (todavía no lo bajó), el código no cuenta como tocado.
+            const vistos = { ...editingPlantation, codigo: editingPlantation.codigo ?? undefined };
+            const enConflicto = await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes, vistos);
+            setEditingPlantation(null);
+            if (enConflicto > 0) irAResolverCambios(editingPlantation.id);
+          }}
           confirmProps={adminHook.confirmProps}
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}
           onCloseConfigSpecies={handleCloseConfigSpecies}
-          pendingSyncForSpecies={(adminHook.plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
           assignTechPlantacionId={assignTechPlantacionId}
           onCloseAssignTech={() => setAssignTechPlantacionId(null)}
         />

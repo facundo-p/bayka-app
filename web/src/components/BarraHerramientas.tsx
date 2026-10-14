@@ -1,26 +1,34 @@
 import { useState, type ReactNode } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
 import { concordar, formatearEntero, type Sustantivo } from '../lib/formato';
-import { TAMANO_ICONO } from '../theme/iconos';
 import { Button } from './Button';
 import { Divisor } from './Divisor';
 import { Modal } from './Modal';
+import { BotonFiltros, PanelFiltros } from './PanelFiltros';
 import styles from './BarraHerramientas.module.css';
 
 interface BarraHerramientasProps {
-  /** Bloque que abre la barra: el buscador, o el selector de sección en Datos.
-   *  Un divisor lo separa de los filtros. */
+  /** Bloque que abre la barra: el buscador, o el selector de sección en Datos. */
   encabezado?: ReactNode;
-  /** Filtros y selectores propios de la pantalla. */
+  /**
+   * Buscador, cuando el encabezado es otra cosa (en Datos, el selector de
+   * sección). Queda a la vista en todos los anchos, como el buscador que abre
+   * la barra en los demás listados.
+   */
+  busqueda?: ReactNode;
+  /** Filtros propios de la pantalla: van al panel, o a la hoja en teléfono. */
   children?: ReactNode;
+  /** Selector de orden. No filtra: queda a la vista, salvo en teléfono, que va al pie de la hoja. */
+  orden?: ReactNode;
   /** Recuento de lo que quedó visible, pegado a la derecha. */
   recuento?: ReactNode;
-  /** Nombre del diálogo cuando los filtros se guardan en la hoja del teléfono. */
+  /** Botones que actúan sobre el listado, al final de la fila. */
+  acciones?: ReactNode;
+  /** Nombre accesible del panel y de la hoja de filtros. */
   tituloFiltros: string;
-  /** Cuántos filtros están puestos: el botón de la hoja lo muestra. */
+  /** Cuántos filtros están puestos: el botón de filtros lo muestra. */
   filtrosActivos: number;
-  /** Devuelve los filtros a su valor inicial, desde el pie de la hoja. */
+  /** Devuelve los filtros a su valor inicial, desde el pie del panel o de la hoja. */
   onLimpiar?: () => void;
 }
 
@@ -29,54 +37,101 @@ interface BarraHerramientasProps {
  * Especies, Usuarios). Antes era el mismo bloque de CSS copiado en los cuatro
  * módulos: un cambio de estilo obligaba a tocar cuatro archivos.
  *
- * En teléfono los filtros se guardan en una hoja y la fila queda en el buscador
- * más un botón: envolviendo ocupaban tres o cuatro renglones. Se aplican al
- * toque —son baratos y el listado está atrás—, así que la hoja no tiene
- * borrador ni "Aplicar", y el recuento viaja a su botón de cierre.
+ * Los filtros viven detrás de un botón con la cuenta de los puestos (#844): en
+ * línea, cada filtro nuevo sumaba un renglón. Se aplican al toque —son baratos
+ * y el listado está atrás—, así que ni el panel ni la hoja tienen "Aplicar".
  */
 export function BarraHerramientas(props: BarraHerramientasProps) {
-  const { encabezado, children, recuento, tituloFiltros, filtrosActivos, onLimpiar } = props;
   const enMovil = useMediaQuery(BP.movil);
-  const [hojaAbierta, setHojaAbierta] = useState(false);
+  const { children, orden } = props;
+  if (enMovil && (children || orden)) return <BarraMovil {...props} />;
+  return <BarraEscritorio {...props} enMovil={enMovil} />;
+}
 
-  if (enMovil && children) {
-    return (
-      <div className={styles.barra}>
-        {encabezado}
-        <Button variant="contorno" onClick={() => setHojaAbierta(true)}>
-          <SlidersHorizontal size={TAMANO_ICONO.md} aria-hidden />
-          Filtros
-          {filtrosActivos > 0 && <span className={styles.cuenta}>{filtrosActivos}</span>}
-        </Button>
-        <Modal
-          open={hojaAbierta}
-          title={tituloFiltros}
-          posicion="hoja"
-          onClose={() => setHojaAbierta(false)}
-        >
-          <div className={styles.hoja}>{children}</div>
-          <div className={styles.pieHoja}>
-            {onLimpiar && (
-              <Button variant="contorno" disabled={filtrosActivos === 0} onClick={onLimpiar}>
-                Limpiar
-              </Button>
-            )}
-            <Button className={styles.verResultados} onClick={() => setHojaAbierta(false)}>
-              {recuento ? <span className={styles.verRecuento}>Ver {recuento}</span> : 'Listo'}
-            </Button>
-          </div>
-        </Modal>
-      </div>
-    );
-  }
+interface CabezaProps {
+  encabezado?: ReactNode;
+  busqueda?: ReactNode;
+  enMovil: boolean;
+}
 
+/**
+ * Encabezado y buscador. En teléfono el encabezado va en su propio renglón: el
+ * buscador crece desde cero y, al lado del selector de sección de Datos, se
+ * quedaba en la lupa sola.
+ */
+function Cabeza({ encabezado, busqueda, enMovil }: CabezaProps) {
+  const ambos = Boolean(encabezado && busqueda);
+  return (
+    <>
+      {ambos && enMovil ? <div className={styles.renglonPropio}>{encabezado}</div> : encabezado}
+      {ambos && !enMovil && <Divisor />}
+      {busqueda}
+    </>
+  );
+}
+
+/** Buscador, botón de filtros con su panel, orden, recuento y acciones, en ese orden. */
+function BarraEscritorio(props: BarraHerramientasProps & { enMovil: boolean }) {
+  const { encabezado, busqueda, children, orden, recuento, acciones } = props;
   return (
     <div className={styles.barra}>
-      {encabezado}
-      {encabezado && children && <Divisor />}
-      {children}
+      <Cabeza encabezado={encabezado} busqueda={busqueda} enMovil={props.enMovil} />
+      {children && (
+        <PanelFiltros
+          titulo={props.tituloFiltros}
+          activos={props.filtrosActivos}
+          onLimpiar={props.onLimpiar}
+          recuento={recuento}
+        >
+          {children}
+        </PanelFiltros>
+      )}
+      {orden}
       {recuento && <span className={styles.recuento}>{recuento}</span>}
+      {acciones && <div className={styles.acciones}>{acciones}</div>}
     </div>
+  );
+}
+
+/**
+ * En teléfono la fila queda en el encabezado, el buscador y el botón, y los
+ * filtros y el orden van a una hoja: envolviendo ocupaban tres o cuatro
+ * renglones. El recuento viaja al botón que la cierra.
+ */
+function BarraMovil(props: BarraHerramientasProps) {
+  const { encabezado, busqueda, acciones, tituloFiltros, filtrosActivos } = props;
+  const [abierta, setAbierta] = useState(false);
+  return (
+    <div className={styles.barra}>
+      <Cabeza encabezado={encabezado} busqueda={busqueda} enMovil />
+      <BotonFiltros activos={filtrosActivos} onClick={() => setAbierta(true)} />
+      {acciones && <div className={styles.acciones}>{acciones}</div>}
+      <Modal open={abierta} title={tituloFiltros} posicion="hoja" onClose={() => setAbierta(false)}>
+        <HojaFiltros {...props} onCerrar={() => setAbierta(false)} />
+      </Modal>
+    </div>
+  );
+}
+
+function HojaFiltros(props: BarraHerramientasProps & { onCerrar: () => void }) {
+  const { children, orden, recuento, filtrosActivos, onLimpiar } = props;
+  return (
+    <>
+      <div className={styles.hoja}>
+        {children}
+        {orden}
+      </div>
+      <div className={styles.pieHoja}>
+        {onLimpiar && (
+          <Button variant="contorno" disabled={filtrosActivos === 0} onClick={onLimpiar}>
+            Limpiar
+          </Button>
+        )}
+        <Button className={styles.verResultados} onClick={props.onCerrar}>
+          {recuento ? <span className={styles.verRecuento}>Ver {recuento}</span> : 'Listo'}
+        </Button>
+      </div>
+    </>
   );
 }
 

@@ -1,0 +1,21 @@
+import { TEXTO_PLANTILLA } from '../plantilla/textos';
+
+/** Textos visibles del informe de plantación. */
+export const TEXTO_INFORME = {
+  documento: 'Informe de plantación',
+  arboles: 'Árboles registrados',
+  de: TEXTO_PLANTILLA.de,
+  deLaMeta: 'de la meta',
+  conGps: 'Con GPS',
+  conFoto: 'Con foto',
+  especies: 'Distribución por especie',
+  mapa: 'Puntos GPS por especie',
+  sinArboles: 'Todavía no hay árboles registrados.',
+  sinGps: 'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
+  mapaNoDisponible: 'Mapa no disponible.',
+  tienenCoordenadas: 'tienen coordenadas',
+  restanteUno: 'el restante no aparece en el mapa',
+  restantesPrefijo: 'los',
+  restantesSufijo: 'restantes no aparecen en el mapa',
+  separador: TEXTO_PLANTILLA.separador,
+} as const;

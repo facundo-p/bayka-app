@@ -1,22 +1,27 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
+import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
-import { buscar } from '../buscarQueries';
+import { buscar, metaGrupo } from '../buscarQueries';
+import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(resetEstadoMock);
+beforeEach(() => {
+  resetEstadoMock();
+  reiniciarCacheCodigosPlantacion();
+});
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
-};
+});
 
 const FILA_ESPECIE = {
   id: 'sp-1',
@@ -54,6 +59,7 @@ const FILA_GRUPO = {
   codigo: 'L1',
   plantation_id: 'plant-1',
   parcelas: { codigo: 'P1' },
+  plantations: { lugar: 'San Sebastián' },
 };
 
 /** Resolver que enruta cada tabla a su fila de fixture. */
@@ -63,6 +69,8 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
       return { data: [FILA_PLANTACION] };
     case 'species':
       return { data: [FILA_ESPECIE] };
+    case 'especies_cientificas':
+      return { data: [{ id: 'ec-1', nombre: 'Schinopsis balansae' }] };
     case 'profiles':
       return { data: [FILA_USUARIO] };
     case 'trees':
@@ -103,6 +111,16 @@ test('agrega coincidencias de listas cacheadas (plantación, especie, usuario)',
   expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'Administrador', to: '/usuarios' });
 });
 
+test('encuentra la especie científica por su nombre y lleva a su pestaña (#753)', async () => {
+  capturarConsultas(responder);
+  const resultados = await buscar('schinopsis');
+
+  expect(resultados.find((resultado) => resultado.tipo === 'especieCientifica')).toMatchObject({
+    titulo: 'Schinopsis balansae',
+    to: '/especies/cientificas',
+  });
+});
+
 test('las listas cacheadas ignoran tildes en el término y en el dato (#438)', async () => {
   capturarConsultas((consulta) =>
     consulta.tabla === 'species'
@@ -140,6 +158,80 @@ test('la búsqueda de árbol usa ilike sobre sub_id', async () => {
   });
 });
 
+test('un ID Árbol completo filtra por SubID exacto y código de plantación (#705)', async () => {
+  const consultas = capturarConsultas(responder);
+  await buscar('PAL23ANC12-ss26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: 'pal23anc12',
+  });
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'eq',
+    columna: 'groups.plantations.codigo',
+    valor: 'SS26',
+  });
+});
+
+test.each(['PAL23-XX99', 'PAL23'])(
+  'sin código conocido (%s) sigue buscando por SubID parcial',
+  async (texto) => {
+    const consultas = capturarConsultas(responder);
+    await buscar(texto);
+    const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(consultaArbol?.filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: `%${texto.toLowerCase()}%`,
+    });
+    expect(consultaArbol?.filtros.some((f) => f.columna === 'groups.plantations.codigo')).toBe(
+      false,
+    );
+  },
+);
+
+test('escapa los comodines del SubID en un ID Árbol completo', async () => {
+  const consultas = capturarConsultas(responder);
+  await buscar('A_B%-SS26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: 'a\\_b\\%',
+  });
+});
+
+test('si falla la consulta de códigos, busca por SubID parcial', async () => {
+  const consultas = capturarConsultas((consulta) =>
+    consulta.tabla === 'plantations' && consulta.columnas === 'codigo'
+      ? { error: { message: 'sin permisos' } }
+      : responder(consulta),
+  );
+  await buscar('PAL23-SS26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: '%pal23-ss26%',
+  });
+});
+
+test('con un código prefijo de otro gana el más largo', async () => {
+  const consultas = capturarConsultas((consulta) =>
+    consulta.tabla === 'plantations' && consulta.columnas === 'codigo'
+      ? { data: [{ codigo: 'SS26' }, { codigo: 'SS26-1' }] }
+      : responder(consulta),
+  );
+  await buscar('PAL23ANC12-SS26-1');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'eq',
+    columna: 'groups.plantations.codigo',
+    valor: 'SS26-1',
+  });
+});
+
 test('respeta el scope: árboles acotados a la plantación vía groups.plantation_id', async () => {
   const consultas = capturarConsultas(responder);
   await buscar('PAL23', { plantationId: 'plant-1' });
@@ -166,7 +258,7 @@ function esBusquedaArbol(consulta: ConsultaCapturada): boolean {
   );
 }
 
-test('buscarParcelas mapea a resultado de parcela con su plantación y ruta', async () => {
+test('buscarParcelas mapea a resultado de parcela con su plantación y su código en el buscador', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('P1');
   const parcela = resultados.find((resultado) => resultado.tipo === 'parcela');
@@ -174,7 +266,7 @@ test('buscarParcelas mapea a resultado de parcela con su plantación y ruta', as
   expect(parcela).toMatchObject({
     titulo: 'P1 · Norte',
     meta: 'La Maluka',
-    to: '/plantaciones/plant-1/datos/parcelas',
+    to: '/plantaciones/plant-1/datos/parcelas?q=P1',
   });
 });
 
@@ -187,16 +279,23 @@ test('la búsqueda de parcelas arma un .or con ilike escapado sobre código y no
   expect(filtroOr?.valor).toBe('codigo.ilike."%p1%",nombre.ilike."%p1%"');
 });
 
-test('buscarGrupos mapea a resultado de grupo con su parcela y ruta', async () => {
+test('buscarGrupos mapea a resultado de grupo con su parcela y su código en el buscador', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('L1');
   const grupo = resultados.find((resultado) => resultado.tipo === 'grupo');
 
   expect(grupo).toMatchObject({
     titulo: 'L1 · Línea 1',
-    meta: 'Parcela P1',
-    to: '/plantaciones/plant-1/datos/grupos',
+    meta: 'San Sebastián · Parcela P1',
+    to: '/plantaciones/plant-1/datos/grupos?q=L1',
   });
+});
+
+test('metaGrupo arma «lugar · Parcela código» y degrada si falta algún dato', () => {
+  expect(metaGrupo('San Sebastián', 'P1')).toBe('San Sebastián · Parcela P1');
+  expect(metaGrupo('San Sebastián', null)).toBe('San Sebastián');
+  expect(metaGrupo(null, 'P1')).toBe('Parcela P1');
+  expect(metaGrupo(undefined, undefined)).toBeUndefined();
 });
 
 test('tolera error de la búsqueda de árbol sin romper el resto', async () => {

@@ -124,6 +124,50 @@ describe('SyncProgressModal', () => {
       expect(getByText('Sur')).toBeTruthy();
     });
 
+    it('avisa las plantaciones subidas que chocan con otra del server por lugar y periodo', () => {
+      const { getByText, queryByText } = renderModal({
+        plantationResults: [
+          { success: true, plantacionId: 'p1', nombre: 'Lote Norte', duplicada: true },
+          { success: true, plantacionId: 'p2', nombre: 'Campo Sur', duplicada: false },
+        ],
+      });
+      expect(getByText('Datos actualizados')).toBeTruthy();
+      expect(getByText('Mismo lugar y periodo')).toBeTruthy();
+      expect(getByText('Lote Norte')).toBeTruthy();
+      expect(queryByText('Campo Sur')).toBeNull();
+    });
+
+    it('avisa los cambios que chocaron con la web y "Resolver" cierra el resumen y abre la pantalla', () => {
+      const onDismiss = jest.fn();
+      const onResolverCambios = jest.fn();
+      const { getByText } = renderModal({
+        onDismiss,
+        onResolverCambios,
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],
+      });
+      expect(getByText('Un dato cambió también en otro celular o en la web. Elegí cuál queda.')).toBeTruthy();
+
+      fireEvent.press(getByText('Resolver'));
+
+      expect(onDismiss).toHaveBeenCalled();
+      expect(onResolverCambios).toHaveBeenCalledWith('p1');
+    });
+
+    it('sin quien abra la pantalla, el aviso no ofrece "Resolver"', () => {
+      const { getByText, queryByText } = renderModal({
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 2 }],
+      });
+      expect(getByText('2 datos cambiaron también en otro celular o en la web. Elegí cuáles quedan.')).toBeTruthy();
+      expect(queryByText('Resolver')).toBeNull();
+    });
+
+    it('sin duplicadas no muestra el aviso', () => {
+      const { queryByText } = renderModal({
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte' }],
+      });
+      expect(queryByText('Mismo lugar y periodo')).toBeNull();
+    });
+
     it('pull fallido sin timeout pide verificar la conexión', () => {
       const { getByText } = renderModal({ pullSuccess: false });
       expect(getByText('Error al actualizar')).toBeTruthy();
@@ -140,6 +184,26 @@ describe('SyncProgressModal', () => {
       expect(getByText('1 grupo sincronizado')).toBeTruthy();
       expect(getByText('1 foto subida correctamente')).toBeTruthy();
       expect(getByText('1 foto descargada correctamente')).toBeTruthy();
+    });
+
+    it('suma los conflictos de sincronización al aviso de la plantación y "Resolver" la abre (#804)', () => {
+      const onResolverCambios = jest.fn();
+      const { getByText, getAllByText } = renderModal({
+        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1' }],
+        successCount: 1,
+        onResolverCambios,
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],
+        conflictosDeSync: [
+          { plantacionId: 'p1', nombre: 'Lote Norte', cantidad: 2 },
+          { plantacionId: 'p2', nombre: 'Campo Sur', cantidad: 1 },
+        ],
+      });
+      expect(getByText('3 datos cambiaron también en otro celular o en la web. Elegí cuáles quedan.')).toBeTruthy();
+      expect(getByText('Campo Sur')).toBeTruthy();
+
+      fireEvent.press(getAllByText('Resolver')[1]);
+
+      expect(onResolverCambios).toHaveBeenCalledWith('p2');
     });
 
     it('sync sin pull (null) cae en el resultado de push', () => {

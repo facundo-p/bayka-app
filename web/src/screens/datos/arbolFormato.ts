@@ -1,8 +1,7 @@
+import { formatearCoordenadas, formatearPrecision } from '../../lib/formato';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
-import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 
-/** Dato ausente en las tablas y en el panel de Datos. */
-export const SIN_DATO = '—';
+export { etiquetaEspecie, nombreTecnicoDe, SIN_DATO } from '../../lib/formato';
 
 export type ArbolConGps = ArbolDetalle & { latitude: number; longitude: number };
 
@@ -11,19 +10,29 @@ export function tieneGps(arbol: ArbolDetalle): arbol is ArbolConGps {
   return arbol.latitude != null && arbol.longitude != null;
 }
 
-/** "código · nombre" de la especie, con N/N si el árbol no la tiene. */
-export function etiquetaEspecie(arbol: ArbolDetalle): string {
-  const codigo = arbol.especieCodigo ?? ESPECIE_NO_RESUELTA;
-  const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
-  return `${codigo} · ${nombre}`;
+/** La entrada de la parcela del árbol; null sin parcela o si no está entre las cargadas. */
+export function parcelaDe<T>(arbol: ArbolDetalle, parcelas: ReadonlyMap<string, T>): T | null {
+  return (arbol.parcelaId && parcelas.get(arbol.parcelaId)) || null;
 }
 
 /** null si el árbol no tiene parcela o la parcela no está entre las cargadas. */
 export function codigoParcelaDe(arbol: ArbolDetalle, codigos: Map<string, string>): string | null {
-  return (arbol.parcelaId && codigos.get(arbol.parcelaId)) || null;
+  return parcelaDe(arbol, codigos);
 }
 
-/** null si no se sabe quién lo registró o el perfil no tiene nombre. */
-export function nombreTecnicoDe(arbol: ArbolDetalle, nombres: Map<string, string>): string | null {
-  return (arbol.usuarioRegistro && nombres.get(arbol.usuarioRegistro)) || null;
+/** «-27.360120, -55.897440»; por defecto con los mismos decimales que la ficha PDF. */
+export function textoCoordenadas(arbol: ArbolConGps, decimales?: number): string {
+  return formatearCoordenadas(arbol.latitude, arbol.longitude, decimales);
+}
+
+/** «± 4 m»; null si el celular no informó la precisión. */
+export function textoPrecisionGps(arbol: ArbolConGps): string | null {
+  return arbol.gpsAccuracy == null ? null : formatearPrecision(arbol.gpsAccuracy);
+}
+
+const URL_BUSQUEDA_GOOGLE_MAPS = 'https://www.google.com/maps/search/?api=1&query=';
+
+/** El punto en Google Maps, con la URL pública que no pide API key. */
+export function urlGoogleMaps(arbol: ArbolConGps): string {
+  return `${URL_BUSQUEDA_GOOGLE_MAPS}${arbol.latitude},${arbol.longitude}`;
 }

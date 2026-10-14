@@ -125,9 +125,8 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     grupoId: trees.groupId,
     grupoCodigo: groups.codigo,
     grupoNombre: groups.nombre,
+    grupoCreador: groups.usuarioCreador,
     parcelaNombre: parcelas.nombre,
-    conflictEspecieId: trees.conflictEspecieId,
-    conflictEspecieNombre: trees.conflictEspecieNombre,
   })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))

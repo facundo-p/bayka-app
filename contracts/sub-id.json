@@ -1,0 +1,17 @@
+{
+  "_comment": "SubID de un árbol: <código de parcela><código de grupo><código de especie><posición>; sin especie (N/N) el segmento es el código sentinela de species-sentinel.json. `armado` y `cambioDeCodigoDeParcela` los recorren pgTAP (cambiar_especie_arbol, sync_subgroup al conservar la especie, y el trigger del código de parcela; el server nunca arma un N/N) y mobile (insertTree, cambiarEspecie y updateParcela). `idArbol` lo recorren web y mobile contra idDeArbol; el server no arma el ID de árbol. Tests: supabase/tests/48_contrato_sub_id.test.sql, mobile/tests/integration/contrato-sub-id.test.ts, mobile/tests/contracts.test.ts y web/src/lib/__tests__/contracts.test.ts.",
+  "armado": [
+    { "parcela": "P1", "grupo": "L1", "especie": "EUC", "posicion": 1, "subId": "P1L1EUC1" },
+    { "parcela": "LP1", "grupo": "L23B", "especie": "ANC", "posicion": 12, "subId": "LP1L23BANC12" },
+    { "parcela": "P10", "grupo": "B2", "especie": "PIN", "posicion": 105, "subId": "P10B2PIN105" },
+    { "parcela": "MP3", "grupo": "L1", "especie": null, "posicion": 5, "subId": "MP3L1NN5" }
+  ],
+  "cambioDeCodigoDeParcela": [
+    { "anterior": "P1", "nuevo": "PN", "grupo": "L1", "especie": "EUC", "posicion": 3, "subIdAntes": "P1L1EUC3", "subIdDespues": "PNL1EUC3" },
+    { "anterior": "P1", "nuevo": "P12", "grupo": "L2", "especie": null, "posicion": 4, "subIdAntes": "P1L2NN4", "subIdDespues": "P12L2NN4" }
+  ],
+  "idArbol": [
+    { "subId": "P1L1EUC1", "codigoPlantacion": "SS-26", "idArbol": "P1L1EUC1-SS-26" },
+    { "subId": "MP3L1NN5", "codigoPlantacion": null, "idArbol": "MP3L1NN5" }
+  ]
+}

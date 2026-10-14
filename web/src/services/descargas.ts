@@ -6,6 +6,9 @@
 
 import { normalizarTexto } from '../lib/normalizarTexto';
 
+/** Extensión de los PDF que arma la web (ficha, informe, reporte). */
+export const EXTENSION_PDF = 'pdf';
+
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
 export function aSlug(texto: string): string {
   return normalizarTexto(texto)
@@ -13,16 +16,34 @@ export function aSlug(texto: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/** Nombre descriptivo `<prefijo>-<lugar>-<periodo>.<extension>`, omitiendo
- *  partes vacías tras el slug. */
+/** Nombre descriptivo `<prefijo>-<lugar>-<periodo>[-<detalle>].<extension>`,
+ *  omitiendo partes vacías tras el slug. */
 export function nombreArchivoDescarga(
   prefijo: string,
   lugar: string,
   periodo: string,
   extension: string,
+  detalle = '',
 ): string {
-  const partes = [aSlug(lugar), aSlug(periodo)].filter(Boolean);
+  const partes = [aSlug(lugar), aSlug(periodo), aSlug(detalle)].filter(Boolean);
   return `${prefijo}-${partes.join('-')}.${extension}`;
+}
+
+/** Nombre `foto-<lugar>-<periodo>-<subId>.jpg`; mismo formato que la app. */
+export function nombreArchivoFoto(lugar: string, periodo: string, subId: string): string {
+  const partes = [aSlug(lugar), aSlug(periodo), aSlug(subId)].filter(Boolean);
+  return partes.length > 0 ? `foto-${partes.join('-')}.jpg` : 'foto.jpg';
+}
+
+/** Descarga una URL ya firmada con `download`: Storage la sirve como adjunto, porque el
+ *  atributo `download` se ignora en otro origen. */
+export function descargarDesdeUrl(url: string, nombreArchivo: string): void {
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
 }
 
 /** Dispara la descarga de un Blob como archivo vía un enlace temporal. */

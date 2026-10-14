@@ -1,8 +1,9 @@
 /**
  * Parser de NOVEDADES.md (el changelog público). Sin dependencias: solo entiende
  * el subconjunto de markdown que ese archivo usa como contrato — `## Título` por
- * versión, bullets `- **Titular.** Detalle` y sub-bullets indentados con los
- * pasos para probar cada ítem, que nacen en la sección en pruebas (#375) y
+ * versión, `### Web` / `### App` por plataforma (#918), bullets
+ * `- **Titular.** Detalle` y sub-bullets indentados con los pasos para probar
+ * cada ítem, que nacen en la sección en pruebas (#375) y
  * sobreviven al release (#580). Los comentarios `<!-- … -->` de una línea no se
  * muestran; el de `sincronizado-hasta:` es la marca que deja el skill
  * `/novedades`.
@@ -14,13 +15,27 @@
 
 export type ItemNovedad = { titular?: string; detalle: string; pasos?: string[] };
 
-/** Una versión publicada o la sección en pruebas. `titulo` es opaco: no se parsea versión ni fecha. */
-export type EntradaNovedades = { titulo: string; items: ItemNovedad[]; sincronizadoHasta?: string };
+/** Rótulo de cada `### ` de plataforma, en el orden en que van en el archivo y en pantalla. */
+export const PLATAFORMA = { web: 'Web', app: 'App' } as const;
+export type Plataforma = keyof typeof PLATAFORMA;
+export const PLATAFORMAS = Object.keys(PLATAFORMA) as Plataforma[];
+
+/**
+ * Una versión publicada o la sección en pruebas. `titulo` es opaco: no se
+ * parsea versión ni fecha. `general` son los bullets fuera de un `### ` de
+ * plataforma: el de "Mejoras internas", que vale para toda la versión.
+ */
+export type EntradaNovedades = {
+  titulo: string;
+  general: ItemNovedad[];
+  sincronizadoHasta?: string;
+} & Record<Plataforma, ItemNovedad[]>;
 
 /** Prefijo del título de la sección que acumula lo que está en staging. Contrato con `/novedades`. */
 export const TITULO_EN_PRUEBAS = 'En pruebas';
 
 const ENCABEZADO = /^##\s+(.*\S)\s*$/;
+const SUBENCABEZADO = /^###\s+(.*\S)\s*$/;
 const BULLET = /^-\s+(.*\S)\s*$/;
 const PASO = /^\s{2,}-\s+(.*\S)\s*$/;
 const TITULAR = /^\*\*(.+?)\*\*\s*(.*)$/;
@@ -30,12 +45,17 @@ const MARCA = /^\s*sincronizado-hasta:\s*(.*\S)\s*$/;
 type Estado = {
   entradas: EntradaNovedades[];
   actual: EntradaNovedades | null;
+  seccion: Plataforma | null;
   item: ItemNovedad | null;
   enPaso: boolean;
 };
 
 export function esEntradaEnPruebas(entrada: EntradaNovedades): boolean {
   return entrada.titulo.startsWith(TITULO_EN_PRUEBAS);
+}
+
+function plataformaDe(rotulo: string): Plataforma | null {
+  return PLATAFORMAS.find((plataforma) => PLATAFORMA[plataforma] === rotulo) ?? null;
 }
 
 function parsearBullet(contenido: string): ItemNovedad {
@@ -62,8 +82,16 @@ function anotarMarca(entrada: EntradaNovedades | null, comentarios: string[]): v
 }
 
 function abrirEntrada(estado: Estado, titulo: string): void {
-  estado.actual = { titulo, items: [] };
+  estado.actual = { titulo, general: [], web: [], app: [] };
   estado.entradas.push(estado.actual);
+  estado.seccion = null;
+  estado.item = null;
+  estado.enPaso = false;
+}
+
+// Un `### ` desconocido manda lo que sigue a `general`: se ve igual, a lo ancho.
+function abrirSeccion(estado: Estado, rotulo: string): void {
+  estado.seccion = plataformaDe(rotulo);
   estado.item = null;
   estado.enPaso = false;
 }
@@ -87,11 +115,19 @@ function agregarContinuacion(estado: Estado, texto: string): void {
   item.detalle = item.detalle ? `${item.detalle} ${texto}` : texto;
 }
 
+function agregarItem(estado: Estado, actual: EntradaNovedades, contenido: string): void {
+  estado.item = parsearBullet(contenido);
+  actual[estado.seccion ?? 'general'].push(estado.item);
+  estado.enPaso = false;
+}
+
 function procesarVisible(estado: Estado, linea: string): void {
   const encabezado = ENCABEZADO.exec(linea);
   if (encabezado) return abrirEntrada(estado, encabezado[1]);
   // Todo lo anterior al primer `## ` es intro del archivo, no novedades.
   if (!estado.actual) return;
+  const subencabezado = SUBENCABEZADO.exec(linea);
+  if (subencabezado) return abrirSeccion(estado, subencabezado[1]);
 
   if (linea.trim() === '') {
     estado.item = null;
@@ -99,12 +135,7 @@ function procesarVisible(estado: Estado, linea: string): void {
     return;
   }
   const bullet = BULLET.exec(linea);
-  if (bullet) {
-    estado.item = parsearBullet(bullet[1]);
-    estado.actual.items.push(estado.item);
-    estado.enPaso = false;
-    return;
-  }
+  if (bullet) return agregarItem(estado, estado.actual, bullet[1]);
   const paso = PASO.exec(linea);
   if (paso) return agregarPaso(estado, paso[1]);
   agregarContinuacion(estado, linea.trim());
@@ -119,7 +150,7 @@ function procesarLinea(estado: Estado, linea: string): void {
 }
 
 export function parsearNovedades(crudo: string): EntradaNovedades[] {
-  const estado: Estado = { entradas: [], actual: null, item: null, enPaso: false };
+  const estado: Estado = { entradas: [], actual: null, seccion: null, item: null, enPaso: false };
   for (const linea of crudo.split('\n')) procesarLinea(estado, linea);
   return estado.entradas;
 }

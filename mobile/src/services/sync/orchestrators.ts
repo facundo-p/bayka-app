@@ -10,6 +10,7 @@ import { pushBorrados, uploadSyncableGroups, uploadSyncableParcelas } from './pu
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 import { marcandoActividadDeSync } from './syncActivityStore';
 import { relanzarSiEsCancelacion } from './cancelacion';
+import { REINTENTA_TODAS, conRegistroDeVarados } from './pendientesVarados';
 
 /**
  * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
@@ -158,11 +159,15 @@ async function syncDePlantacionEnGlobal(
   }
 }
 
-/** Subida y bajada de fotos al final de la corrida, salteando las que no tienen acceso o se eliminaron. */
+/**
+ * Fotos al final de la corrida, salteando las plantaciones sin acceso o eliminadas.
+ * La subida corre siempre; la bajada, solo con la preferencia prendida (#565).
+ */
 async function syncFotosGlobal(
   localPlantations: PlantacionLocal[],
   resultados: ResultadoDePlantacion[],
   emitir: EmitirProgresoGlobal,
+  descargarFotos: boolean,
 ): Promise<void> {
   for (let i = 0; i < localPlantations.length; i++) {
     const plantation = localPlantations[i];
@@ -172,6 +177,7 @@ async function syncFotosGlobal(
       await uploadPendingPhotos(plantation.id, (fotos) =>
         emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
       );
+      if (!descargarFotos) continue;
       await downloadPhotosForPlantation(plantation.id, (fotos) =>
         emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
       );
@@ -182,10 +188,10 @@ async function syncFotosGlobal(
   }
 }
 
-/** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + sync de fotos opcional al final. */
+/** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + fotos al final. */
 async function correrSyncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
-  incluirFotos: boolean = true,
+  descargarFotos: boolean = true,
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void
 ): Promise<ResultadoDePlantacion[]> {
   await ensureServerSession();
@@ -205,7 +211,7 @@ async function correrSyncAllPlantations(
     emitir(localPlantations[i].lugar, i);
     allResults.push(await syncDePlantacionEnGlobal(localPlantations[i], i, emitir));
   }
-  if (incluirFotos) await syncFotosGlobal(localPlantations, allResults, emitir);
+  await syncFotosGlobal(localPlantations, allResults, emitir, descargarFotos);
 
   notifyDataChanged();
   return allResults;
@@ -213,5 +219,12 @@ async function correrSyncAllPlantations(
 
 // El banner de actualización OTA no puede ofrecer reiniciar la app en medio de una
 // sincronización: la marca la ponen los orquestadores, no el hook (#446).
-export const syncPlantation = marcandoActividadDeSync(correrSyncPlantation);
-export const syncAllPlantations = marcandoActividadDeSync(correrSyncAllPlantations);
+// Lo que no pudo subir se registra al terminar la corrida (#638).
+export const syncPlantation = marcandoActividadDeSync(
+  (plantacionId: string, callbacks?: SyncPlantationCallbacks) =>
+    conRegistroDeVarados(() => correrSyncPlantation(plantacionId, callbacks), { ids: [plantacionId] }),
+);
+export const syncAllPlantations = marcandoActividadDeSync(
+  (onProgress?: (info: GlobalSyncProgress) => void, descargarFotos?: boolean, onPlantationResults?: (plantations: SyncPlantationResult[]) => void) =>
+    conRegistroDeVarados(() => correrSyncAllPlantations(onProgress, descargarFotos, onPlantationResults), REINTENTA_TODAS),
+);

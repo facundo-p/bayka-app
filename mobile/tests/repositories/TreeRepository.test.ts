@@ -6,6 +6,16 @@ let mockInsertValues: jest.Mock;
 let mockDeleteWhere: jest.Mock;
 let mockUpdateWhere: jest.Mock;
 
+// Los conflictos de sync (#795) tienen su propio test contra SQLite real.
+jest.mock('../../src/repositories/ConflictosDeSyncRepository', () => ({
+  archivosDeConflictosDeArbol: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDeGrupo: jest.fn().mockResolvedValue([]),
+  archivosDeConflictosDePlantacion: jest.fn().mockResolvedValue([]),
+  quitarConflictosDeArbol: jest.fn(),
+  quitarConflictosDeGrupo: jest.fn(),
+  quitarConflictosDePlantacion: jest.fn(),
+}));
+
 jest.mock('../../src/database/client', () => {
   return {
     get db() {
@@ -28,6 +38,12 @@ jest.mock('../../src/database/liveQuery', () => ({
 
 jest.mock('../../src/services/PhotoService', () => ({
   borrarFotosLocales: jest.fn(),
+}));
+
+const mockPuedeEditarArbolesDe = jest.fn().mockResolvedValue(true);
+jest.mock('../../src/repositories/edicionDeArboles', () => ({
+  ...jest.requireActual('../../src/repositories/edicionDeArboles'),
+  puedeEditarArbolesDe: (...args: unknown[]) => mockPuedeEditarArbolesDe(...args),
 }));
 
 let mockDb: any;
@@ -91,13 +107,15 @@ import {
   insertTree,
   deleteLastTree,
   reverseTreeOrder,
-  resolveNNTree,
+  cambiarEspecie,
   updateTreePhoto,
+  quitarFotoDelArbol,
   deleteTreeAndRecalculate,
 } from '../../src/repositories/TreeRepository';
 import { enTransaccion } from '../../src/database/transaccion';
 import { ENTIDAD_BORRADA } from '../../src/constants/entidadBorrada';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { SIN_PERMISO_SOBRE_ARBOLES } from '../../src/repositories/edicionDeArboles';
 
 const mockBorrarFotos = borrarFotosLocales as jest.Mock;
 const FOTO_VIEJA = 'file://document/photos/photo_1.jpg';
@@ -294,34 +312,42 @@ describe('TreeRepository', () => {
     });
   });
 
-  describe('resolveNNTree', () => {
+  describe('cambiarEspecie', () => {
     it('sets especieId and recalculates subId', async () => {
       let callCount = 0;
       mockDb = {
         ...buildMockDb([]),
         select: jest.fn(() => ({
-          from: jest.fn(() => ({
-            where: jest.fn(() => {
+          from: jest.fn(() => {
+            const where = jest.fn(() => {
               callCount++;
               if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]); // especie
-              if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]); // árbol
+              if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1', grupoCodigo: 'L1' }]); // árbol
               if (callCount === 3) return Promise.resolve([{ parcelaId: 'p1' }]); // grupo (getGroupParcelaCodigo)
               return Promise.resolve([{ codigo: 'PC' }]); // parcela
-            }),
-          })),
+            });
+            return { where, innerJoin: jest.fn(() => ({ where })) };
+          }),
         })),
       };
 
-      await resolveNNTree('tree-1', 'esp-1', 'L1');
+      const resultado = await cambiarEspecie('tree-1', 'esp-1');
 
+      expect(resultado).toEqual({ subId: 'PCL1ANC3' });
       // Called twice: once for tree update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing if species or tree not found', async () => {
       mockDb = buildMockDb([]);
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => {
+          const where = jest.fn(() => Promise.resolve([]));
+          return { where, innerJoin: jest.fn(() => ({ where })) };
+        }),
+      }));
 
-      await resolveNNTree('tree-nonexistent', 'esp-nonexistent', 'L1');
+      await cambiarEspecie('tree-nonexistent', 'esp-nonexistent');
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
     });
@@ -425,13 +451,13 @@ describe('TreeRepository', () => {
       );
     });
 
-    // Si quedara anotada, el push pondría en null la foto nueva en el server.
-    it('poner otra foto descarta la quitada y no anota nada', async () => {
+    // #816: la quitada se conserva hasta que la foto nueva se sube.
+    it('poner otra foto no descarta la quitada ni anota nada', async () => {
       mockDb = buildMockDb(arbolExistente);
 
       await updateTreePhoto('tree-1', 'file://document/photos/photo_new.jpg');
 
-      expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
+      expect(mockDeleteWhere).not.toHaveBeenCalled();
       expect(mockInsertValues).not.toHaveBeenCalled();
     });
 
@@ -462,6 +488,51 @@ describe('TreeRepository', () => {
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
       expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    // #768: el server rechazaría la foto; la fila local no cambia ni se marca pendiente.
+    it('sin permiso sobre los árboles del grupo lanza y no escribe nada', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_VIEJA, grupoId: 'sg-1', plantacionId: 'plant-1' }]);
+      mockPuedeEditarArbolesDe.mockResolvedValueOnce(false);
+
+      await expect(updateTreePhoto('tree-1', FOTO_NUEVA)).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
+
+      expect(mockPuedeEditarArbolesDe).toHaveBeenCalledWith('sg-1');
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+  });
+
+  // El deshacer de una foto sin subir se prueba contra SQLite real (borrados-propagados).
+  describe('quitarFotoDelArbol (#816)', () => {
+    it('una foto ya subida se anota para quitarla del server', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
+
+      await quitarFotoDelArbol('tree-1', true);
+
+      expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ id: 'tree-1', tipo: ENTIDAD_BORRADA.foto }));
+    });
+
+    // La UI creyó que estaba sin subir y no preguntó.
+    it('una foto ya subida sin confirmar no se quita y pide confirmación', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', plantacionId: 'plant-1', fotoUrl: FOTO_VIEJA, fotoSynced: true, fotoBase: null }]);
+
+      expect(await quitarFotoDelArbol('tree-1', false)).toEqual({ requiereConfirmacion: true });
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
+    it('sin permiso lanza y no escribe nada', async () => {
+      mockDb = buildMockDb([{ grupoId: 'sg-1', fotoUrl: FOTO_VIEJA, fotoSynced: false, fotoBase: null }]);
+      mockPuedeEditarArbolesDe.mockResolvedValueOnce(false);
+
+      await expect(quitarFotoDelArbol('tree-1', false)).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
     });
   });
 

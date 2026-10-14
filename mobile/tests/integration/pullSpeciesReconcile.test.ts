@@ -61,8 +61,9 @@ jest.mock('../../src/supabase/client', () => {
   return {
     supabase: {
       from: (tabla: string) => builder(tabla),
-      // Sin sesión el pull no consulta el acceso remoto.
-      auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
+      auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-1' } } } }) },
+      rpc: (_fn: string, args: { p_ids: string[] }) =>
+        Promise.resolve({ data: args.p_ids.map((id) => ({ id, estado: 'ok' })), error: null }),
     },
   };
 });
@@ -74,6 +75,10 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
 import { pullFromServer } from '../../src/services/sync/pullService';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-1'));
 
 const LOCAL_ID = 'a0000000-0000-0000-0000-000000000012';
 const SERVER_ID = 'b1111111-1111-1111-1111-111111111111';
@@ -122,10 +127,10 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     // Un árbol apuntando al id del server no puede existir antes de reconciliar:
     // las FKs lo rechazan (#617). Los dos apuntan al id local.
     await mockTestDb.insert(trees).values([
-      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
+      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1' }),
       {
-        ...createTestTree({ id: 't2', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC2', globalId: 6002 }),
-        conflictEspecieId: LOCAL_ID,
+        ...createTestTree({ id: 't2', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC2' }),
+        especieBaseId: LOCAL_ID,
       },
     ]);
     await mockTestDb.insert(plantationSpecies).values({
@@ -149,7 +154,7 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     // Ambos árboles resuelven al server id (clave del bug de export).
     const treeRows = await mockTestDb.select().from(trees);
     expect(treeRows.every((t) => t.especieId === SERVER_ID)).toBe(true);
-    expect(treeRows.find((t) => t.id === 't2')?.conflictEspecieId).toBe(SERVER_ID);
+    expect(treeRows.find((t) => t.id === 't2')?.especieBaseId).toBe(SERVER_ID);
 
     // plantation_species re-apuntado, con el id que después usa el pull.
     const ps = await especiesDePlantacion(plantation.id);
@@ -205,7 +210,7 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     const { group } = await crearPlantacionConGrupo();
     await insertarEspecie(LOCAL_ID, 'COC');
     await mockTestDb.insert(trees).values(
-      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
+      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1' }),
     );
     mockServer.species = [especieDelServer(SERVER_ID, 'COC')];
     // Hace fallar el último paso: el borrado de la especie duplicada.
@@ -252,5 +257,30 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     expect(rows[0].id).toBe('same-id');
     expect(rows[0].nombre).toBe('Kokú nuevo');
     expect(rows[0].nombreCientifico).toBe('Coccoloba');
+  });
+});
+
+describe('pullSpeciesFromServer — tipo y subtipo (#752)', () => {
+  const clasificacion = async (id: string) => {
+    const [fila] = await mockTestDb.select({ tipo: species.tipo, subtipo: species.subtipo })
+      .from(species).where(eq(species.id, id));
+    return fila;
+  };
+
+  it('guarda el tipo y el subtipo del server, también al actualizar una especie que ya estaba', async () => {
+    await insertarEspecie(SERVER_ID, 'CHI');
+    mockServer.species = [{ ...especieDelServer(SERVER_ID, 'CHI'), tipo: 'flora', subtipo: 'arbusto' }];
+
+    await pullSpeciesFromServer();
+
+    expect(await clasificacion(SERVER_ID)).toEqual({ tipo: 'flora', subtipo: 'arbusto' });
+  });
+
+  it('un server sin las columnas deja la clasificación por defecto', async () => {
+    mockServer.species = [especieDelServer(SERVER_ID, 'CHI')];
+
+    await pullSpeciesFromServer();
+
+    expect(await clasificacion(SERVER_ID)).toEqual({ tipo: 'flora', subtipo: 'arbol' });
   });
 });

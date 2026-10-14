@@ -10,10 +10,15 @@ import ConfirmModal from './ConfirmModal';
 import EntityFormModal from './EntityFormModal';
 import FormActions from './FormActions';
 import { useNewParcela } from '../hooks/useNewParcela';
+import { useConfirm } from '../hooks/useConfirm';
+import { useAvisoCambioDeIds } from '../hooks/useAvisoCambioDeIds';
+import { nuncaSubida } from '../utils/permisosDeEdicion';
 import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
-import { camposDuplicados, esPlantacionNoEditable, MENSAJE_PLANTACION_NO_EDITABLE } from '../constants/errorDeEdicion';
+import {
+  camposDuplicados, esPlantacionNoEditable, esSinPermiso, MENSAJE_PARCELA_SIN_PERMISO, MENSAJE_PLANTACION_NO_EDITABLE,
+} from '../constants/errorDeEdicion';
 
 const MAX_DESCRIPCION = 10000;
 const DESCRIPCION_WARN_THRESHOLD = 9000;
@@ -73,17 +78,22 @@ function erroresDelGuardado(error: string): ErrorState {
   if (esPlantacionNoEditable(error)) {
     return { nombre: null, codigo: null, general: MENSAJE_PLANTACION_NO_EDITABLE };
   }
+  if (esSinPermiso(error)) {
+    return { nombre: null, codigo: null, general: MENSAJE_PARCELA_SIN_PERMISO };
+  }
   return { nombre: null, codigo: null, general: 'Error al guardar. Intentá de nuevo.' };
 }
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
-  const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
+  const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela, arbolesDeLaParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
   const [descripcion, setDescripcion] = useState(parcela?.descripcion ?? '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<ErrorState>({ nombre: null, codigo: null, general: null });
   const [hasChildrenError, setHasChildrenError] = useState<number | null>(null);
+  const confirm = useConfirm();
+  const avisoDeIds = useAvisoCambioDeIds();
 
   const canSubmit = nombre.trim().length > 0 && codigo.trim().length > 0 && !loading;
 
@@ -105,8 +115,14 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
     onClose();
   }
 
+  async function confirmaCambioDeIds(nuevoCodigo: string): Promise<boolean> {
+    if (mode !== 'edit' || !parcela || nuevoCodigo === parcela.codigo) return true;
+    return avisoDeIds.confirmarSiCambianIds(await arbolesDeLaParcela(parcela.id), 'parcela');
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
+    if (!(await confirmaCambioDeIds(codigo.trim().toUpperCase()))) return;
     setErrors({ nombre: null, codigo: null, general: null });
     setLoading(true);
     try {
@@ -128,11 +144,28 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
     }
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!parcela) return;
+    if (!nuncaSubida(parcela)) {
+      eliminar(parcela);
+      return;
+    }
+    confirm.show({
+      icon: 'trash-outline',
+      iconColor: colors.danger,
+      title: 'Eliminar parcela',
+      message: 'Todavía no se sincronizó: si la eliminás, no queda copia en el servidor para recuperarla.',
+      buttons: [
+        { label: 'Cancelar', onPress: () => {}, style: 'cancel' },
+        { label: 'Eliminar', onPress: () => eliminar(parcela), style: 'danger' },
+      ],
+    });
+  }
+
+  async function eliminar(objetivo: Parcela) {
     setLoading(true);
     try {
-      const result = await handleDeleteParcela(parcela.id);
+      const result = await handleDeleteParcela(objetivo.id);
       if (result.deleted) {
         clearAndClose();
         return;
@@ -140,7 +173,8 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       if (result.error === 'has_children') {
         setHasChildrenError(result.childCount);
       } else {
-        setErrors((e) => ({ ...e, general: 'No se pudo eliminar la parcela.' }));
+        const general = esSinPermiso(result.error) ? MENSAJE_PARCELA_SIN_PERMISO : 'No se pudo eliminar la parcela.';
+        setErrors((e) => ({ ...e, general }));
       }
     } finally {
       setLoading(false);
@@ -153,15 +187,19 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       title={mode === 'create' ? 'Nueva parcela' : 'Editar parcela'}
       onClose={clearAndClose}
       extraContent={
-        <ConfirmModal
-          visible={hasChildrenError !== null}
-          icon="alert-circle"
-          iconColor={colors.danger}
-          title="No se puede eliminar"
-          message={`Esta parcela tiene ${hasChildrenError ?? 0} grupo${hasChildrenError === 1 ? '' : 's'} asociado${hasChildrenError === 1 ? '' : 's'}. Eliminá los grupos antes de borrar la parcela.`}
-          buttons={[{ label: 'Entendido', onPress: () => setHasChildrenError(null), style: 'primary' }]}
-          onDismiss={() => setHasChildrenError(null)}
-        />
+        <>
+          <ConfirmModal {...confirm.confirmProps} />
+          <ConfirmModal {...avisoDeIds.confirmProps} />
+          <ConfirmModal
+            visible={hasChildrenError !== null}
+            icon="alert-circle"
+            iconColor={colors.danger}
+            title="No se puede eliminar"
+            message={`Esta parcela tiene ${hasChildrenError ?? 0} grupo${hasChildrenError === 1 ? '' : 's'} asociado${hasChildrenError === 1 ? '' : 's'}. Eliminá los grupos antes de borrar la parcela.`}
+            buttons={[{ label: 'Entendido', onPress: () => setHasChildrenError(null), style: 'primary' }]}
+            onDismiss={() => setHasChildrenError(null)}
+          />
+        </>
       }
       footer={
         <FormActions

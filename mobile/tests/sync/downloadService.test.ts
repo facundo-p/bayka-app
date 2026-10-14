@@ -16,7 +16,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
-    auth: { getSession: jest.fn(), getUser: jest.fn() },
+    auth: { getSession: jest.fn(), getUser: jest.fn(), refreshSession: jest.fn() },
     rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
@@ -54,6 +54,7 @@ import {
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { cancelarCorrida, iniciarCorrida, SyncCanceladoError, terminarCorrida } from '../../src/services/sync/cancelacion';
 import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
+import { conSesionDelServidor, conUsuarioCacheado } from '../helpers/rolCacheado';
 
 /**
  * `jest.resetAllMocks()` borra la implementación de los mocks de módulo, así que el
@@ -111,6 +112,7 @@ function setupSesion() {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({
     data: { session: { user: { id: 'user-1' } } },
   });
+  conUsuarioCacheado('user-1');
   (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
 }
 
@@ -222,7 +224,7 @@ describe('downloadPlantation', () => {
     setupTransaccionPassthrough();
   });
 
-  it('Test 1: upserts plantation row into local SQLite then calls pullFromServer', async () => {
+  it('upserts plantation row into local SQLite then calls pullFromServer', async () => {
     const sp = makeServerPlantation('p-1');
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
 
@@ -243,7 +245,7 @@ describe('downloadPlantation', () => {
     expect(supabase.from).toHaveBeenCalled();
   });
 
-  it('Test 2: uses onConflictDoUpdate with target plantations.id and set estado', async () => {
+  it('uses onConflictDoUpdate with target plantations.id and set estado', async () => {
     const sp = makeServerPlantation('p-2');
     const onConflictSpy = jest.fn().mockResolvedValue(undefined);
     const valuesSpy = jest.fn().mockReturnValue({ onConflictDoUpdate: onConflictSpy });
@@ -259,44 +261,56 @@ describe('downloadPlantation', () => {
     expect(conflictArgs.set).toHaveProperty('estado');
   });
 
-  it('mapea visible_in_app del server al campo local visibleInApp', async () => {
+  it('propaga el error si el upsert local falla', async () => {
+    const sp = makeServerPlantation('p-3');
+    setupDbInsertFailure();
+
+    await expect(downloadPlantation(sp)).rejects.toThrow('DB write error');
+  });
+
+  it('mapea visible_in_app del server; en conflicto no pisa valor vivo ni snapshot (los pone el pull)', async () => {
     const sp = { ...makeServerPlantation('p-oculta'), visible_in_app: false };
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
 
     await downloadPlantation(sp);
 
-    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: false }));
-    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: false });
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: false, visibleInAppServer: false }));
+    const set = onConflictSpy.mock.calls[0][0].set;
+    expect(set).not.toHaveProperty('visibleInApp');
+    expect(set).not.toHaveProperty('visibleInAppServer');
   });
 
-  it('defaultea visibleInApp=true cuando el server no trae la columna (migración sin aplicar)', async () => {
-    const sp = makeServerPlantation('p-sin-columna'); // sin visible_in_app
+  it('sin la columna en el server no manda el campo: queda el default del schema', async () => {
+    const sp = makeServerPlantation('p-sin-columna'); // sin visible_in_app ni photo_capture_all_trees
+    const { valuesSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    const values = valuesSpy.mock.calls[0][0];
+    expect(values).not.toHaveProperty('visibleInApp');
+    expect(values).not.toHaveProperty('photoCaptureAllTrees');
+  });
+
+  it('mapea photo_capture_all_trees y los datos de #633 del server', async () => {
+    const sp = {
+      ...makeServerPlantation('p-foto'),
+      photo_capture_all_trees: true,
+      descripcion: 'Ribera',
+      fecha_inicio: '2026-04-15',
+      objetivo_arboles: 12000,
+    };
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
 
     await downloadPlantation(sp);
 
-    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: true }));
-    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: true });
-  });
-
-  it('mapea photo_capture_all_trees del server al campo local photoCaptureAllTrees (#439)', async () => {
-    const sp = { ...makeServerPlantation('p-foto'), photo_capture_all_trees: true };
-    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
-
-    await downloadPlantation(sp);
-
-    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: true }));
-    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: true });
-  });
-
-  it('defaultea photoCaptureAllTrees=false cuando el server no trae la columna (035 sin aplicar)', async () => {
-    const sp = makeServerPlantation('p-sin-foto-flag');
-    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
-
-    await downloadPlantation(sp);
-
-    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: false }));
-    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: false });
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({
+      photoCaptureAllTrees: true,
+      descripcion: 'Ribera',
+      fechaInicio: '2026-04-15',
+      objetivoArboles: 12000,
+      objetivoArbolesServer: 12000,
+    }));
+    expect(onConflictSpy.mock.calls[0][0].set).not.toHaveProperty('descripcionServer');
   });
 
   it('mapea archivada_en del server al campo local archivadaEn (#477)', async () => {
@@ -407,7 +421,19 @@ describe('batchDownload', () => {
     setupTransaccionPassthrough();
   });
 
-  it('Test 3: calls downloadPlantation (db.insert) for each selected plantation in order', async () => {
+  it('sin sesión del servidor lanza SessionExpiredError sin leer ni escribir nada (#658)', async () => {
+    setupDbInsertSuccess();
+    conSesionDelServidor(supabase.auth, null);
+
+    await expect(batchDownload([makeServerPlantation('p-1', 'Bosque Norte')]))
+      .rejects.toMatchObject({ name: 'SessionExpiredError' });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(notifyDataChanged).not.toHaveBeenCalled();
+  });
+
+  it('calls downloadPlantation (db.insert) for each selected plantation in order', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -422,7 +448,7 @@ describe('batchDownload', () => {
     expect(db.insert).toHaveBeenCalledTimes(3);
   });
 
-  it('Test 4: emits onProgress with plantation index and name as the batch advances', async () => {
+  it('emits onProgress with plantation index and name as the batch advances', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -452,7 +478,7 @@ describe('batchDownload', () => {
     });
   });
 
-  it('Test 5: continues on per-plantation error and includes failure in results', async () => {
+  it('continues on per-plantation error and includes failure in results', async () => {
     // p-1 succeeds, p-2 fails (db error), p-3 succeeds
     const onConflictResolve = jest.fn().mockResolvedValue(undefined);
     const onConflictReject = jest.fn().mockRejectedValue(new Error('Network timeout'));
@@ -476,7 +502,7 @@ describe('batchDownload', () => {
     expect(results[2]).toEqual({ success: true, id: 'p-3', nombre: 'Parcela Este' });
   });
 
-  it('Test 6: calls notifyDataChanged exactly once after the loop (not per iteration)', async () => {
+  it('calls notifyDataChanged exactly once after the loop (not per iteration)', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -490,7 +516,7 @@ describe('batchDownload', () => {
     expect(notifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('Test 7: returns DownloadResult[] with success/failure per plantation', async () => {
+  it('returns DownloadResult[] with success/failure per plantation', async () => {
     const onConflictResolve = jest.fn().mockResolvedValue(undefined);
     const onConflictReject = jest.fn().mockRejectedValue(new Error('Error'));
 

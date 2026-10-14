@@ -1,68 +1,200 @@
-import { useState, useEffect } from 'react';
-import { Switch, Text, View } from 'react-native';
-import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
-import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
+import { useState, useEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
 import { colors } from '../theme';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
+import { buscarCodigoRepetido, buscarDuplicada } from '../utils/duplicadoDePlantacion';
+import {
+  CODIGO_PLANTACION,
+  MENSAJE_CODIGO_PLANTACION,
+  normalizarCodigoPlantacion,
+} from '../../../shared/codigoPlantacion';
+import {
+  aCamposDePlantacion,
+  codigoLlegaConElPull,
+  validarFormulario,
+  valoresIniciales,
+  type PlantacionEditable,
+  type ValoresDelFormulario,
+} from '../utils/formularioDePlantacion';
+import type { Plantation } from '../types/plantation';
 import FormField from './FormField';
+import CampoFecha from './CampoFecha';
+import SwitchRow from './SwitchRow';
 import EntityFormModal from './EntityFormModal';
 import FormActions from './FormActions';
+import AvisoPlantacionDuplicada from './AvisoPlantacionDuplicada';
 import { plantationFormModalStyles as styles } from './PlantationFormModal.styles';
-
-type Plantation = {
-  id: string;
-  lugar: string;
-  periodo: string;
-  gpsCaptureFrequency?: number;
-  gpsCaptureRequired?: boolean;
-};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (lugar: string, periodo: string, gps: PlantationGpsSettings) => Promise<void>;
+  onSubmit: (campos: CamposDePlantacion) => Promise<void>;
   /** When provided, the modal works in edit mode */
-  editingPlantation?: Plantation | null;
+  editingPlantation?: (PlantacionEditable & { id: string }) | null;
+  /** Plantaciones del dispositivo, para avisar si lugar + periodo ya existe. */
+  plantaciones?: readonly Plantation[] | null;
 };
 
-/** Valida el campo de frecuencia: entero ≥ 1. Devuelve mensaje de error o null. */
-export function validateGpsFrequency(raw: string): string | null {
-  const value = Number(raw.trim());
-  if (raw.trim() === '' || !Number.isInteger(value) || value < 1) {
-    return 'La frecuencia debe ser un número entero mayor o igual a 1.';
-  }
-  return null;
+type Setter = <K extends keyof ValoresDelFormulario>(campo: K) => (valor: ValoresDelFormulario[K]) => void;
+type SeccionProps = { valores: ValoresDelFormulario; set: Setter; editable: boolean };
+
+const AYUDA_CODIGO = 'Forma el ID de los árboles. Hasta 8 letras, números o guiones.';
+const AYUDA_CODIGO_PENDIENTE = 'Llega del servidor en la próxima sincronización.';
+
+function CampoCodigo({ valores, set, editable, repetido, llegaConElPull }: SeccionProps & {
+  repetido: boolean;
+  llegaConElPull: boolean;
+}) {
+  return (
+    <FormField
+      label="Código"
+      value={valores.codigo}
+      onChangeText={(texto) => set('codigo')(normalizarCodigoPlantacion(texto))}
+      placeholder="SS26-1"
+      autoCapitalize="characters"
+      autoCorrect={false}
+      maxLength={CODIGO_PLANTACION.longitudMaxima}
+      editable={editable && !llegaConElPull}
+      error={repetido ? MENSAJE_CODIGO_PLANTACION.duplicado : null}
+      helperText={llegaConElPull ? AYUDA_CODIGO_PENDIENTE : AYUDA_CODIGO}
+    />
+  );
+}
+
+type DatosProps = SeccionProps & {
+  duplicada: Plantation | null;
+  editando: boolean;
+  codigoRepetido: boolean;
+  codigoLlegaConElPull: boolean;
+};
+
+function DatosDeLaPlantacion({ valores, set, editable, duplicada, editando, codigoRepetido, codigoLlegaConElPull }: DatosProps) {
+  return (
+    <>
+      <View style={styles.fila}>
+        <View style={styles.columna}>
+          <FormField label="Lugar" value={valores.lugar} onChangeText={set('lugar')} placeholder="Lote Norte" editable={editable} />
+        </View>
+        <View style={styles.columna}>
+          <FormField label="Periodo" value={valores.periodo} onChangeText={set('periodo')} placeholder="Otoño 2026" editable={editable} />
+        </View>
+      </View>
+      {duplicada ? <AvisoPlantacionDuplicada lugar={duplicada.lugar} periodo={duplicada.periodo} editando={editando} /> : null}
+      <CampoCodigo
+        valores={valores}
+        set={set}
+        editable={editable}
+        repetido={codigoRepetido}
+        llegaConElPull={codigoLlegaConElPull}
+      />
+      <View style={styles.fila}>
+        <View style={styles.columna}>
+          <CampoFecha
+            testID="fecha-inicio"
+            label="Fecha de inicio (opcional)"
+            value={valores.fechaInicio}
+            onChange={set('fechaInicio')}
+            placeholder="DD/MM/AAAA"
+            editable={editable}
+          />
+        </View>
+        <View style={styles.columna}>
+          <FormField
+            label="Objetivo (árboles)"
+            value={valores.objetivoArboles}
+            onChangeText={set('objetivoArboles')}
+            placeholder="Opcional"
+            keyboardType="numeric"
+            editable={editable}
+          />
+        </View>
+      </View>
+      <FormField
+        label="Descripción (opcional)"
+        value={valores.descripcion}
+        onChangeText={set('descripcion')}
+        placeholder="Notas, ubicación, observaciones..."
+        multiline
+        editable={editable}
+      />
+    </>
+  );
+}
+
+function ComportamientoEnCampo({ valores, set, editable }: SeccionProps) {
+  return (
+    <>
+      <Text style={styles.grupoTitulo}>Comportamiento en campo</Text>
+      <SwitchRow
+        testID="gps-required-switch"
+        label="Captura GPS obligatoria"
+        helperText="Si está activa, registrar árboles exige GPS encendido y con permiso."
+        value={valores.gpsRequired}
+        onValueChange={set('gpsRequired')}
+        disabled={!editable}
+        activeColor={colors.gpsGood}
+      />
+      <FormField
+        label="Capturar GPS cada N árboles"
+        value={valores.gpsFrequency}
+        onChangeText={set('gpsFrequency')}
+        placeholder={String(GPS_CAPTURE_FREQUENCY_DEFAULT)}
+        keyboardType="numeric"
+        editable={editable}
+        helperText="1 = todos los árboles. El primero de cada grupo siempre captura."
+      />
+      <SwitchRow
+        testID="foto-en-todos-switch"
+        label="Foto en todos los botones"
+        helperText="Cada especie pide foto al registrar, no solo N/N."
+        value={valores.fotoEnTodos}
+        onValueChange={set('fotoEnTodos')}
+        disabled={!editable}
+      />
+      <SwitchRow
+        testID="visible-tecnicos-switch"
+        label="Visible para técnicos"
+        helperText="Si está apagada, los técnicos no la ven en su listado."
+        value={valores.visibleParaTecnicos}
+        onValueChange={set('visibleParaTecnicos')}
+        disabled={!editable}
+      />
+    </>
+  );
 }
 
 /**
- * Creación/edición de plantación. Full-screen coherente con Parcela y Grupo
- * (#89): header verde con safe-area, cuerpo keyboard-aware y footer fijo.
+ * Creación/edición de plantación con todos sus datos en un solo formulario (#633).
  * Solo lo monta el flujo admin (AdminPlantationModals); el técnico nunca lo ve.
  */
-export default function PlantationFormModal({
-  visible,
-  onClose,
-  onSubmit,
-  editingPlantation,
-}: Props) {
+export default function PlantationFormModal({ visible, onClose, onSubmit, editingPlantation, plantaciones }: Props) {
   const isEdit = !!editingPlantation;
 
-  const [lugar, setLugar] = useState('');
-  const [periodo, setPeriodo] = useState('');
-  const [gpsFrequency, setGpsFrequency] = useState(String(GPS_CAPTURE_FREQUENCY_DEFAULT));
-  const [gpsRequired, setGpsRequired] = useState(GPS_CAPTURE_REQUIRED_DEFAULT);
+  const [valores, setValores] = useState<ValoresDelFormulario>(() => valoresIniciales(editingPlantation));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setLugar(editingPlantation?.lugar ?? '');
-      setPeriodo(editingPlantation?.periodo ?? '');
-      setGpsFrequency(String(editingPlantation?.gpsCaptureFrequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT));
-      setGpsRequired(editingPlantation?.gpsCaptureRequired ?? GPS_CAPTURE_REQUIRED_DEFAULT);
+      setValores(valoresIniciales(editingPlantation));
       setError(null);
       setLoading(false);
     }
   }, [visible, editingPlantation]);
+
+  const duplicada = useMemo(
+    () => buscarDuplicada(plantaciones ?? [], valores, editingPlantation?.id),
+    [plantaciones, valores, editingPlantation?.id],
+  );
+
+  const codigoRepetido = useMemo(
+    () => buscarCodigoRepetido(plantaciones ?? [], valores.codigo, editingPlantation?.id) !== null,
+    [plantaciones, valores.codigo, editingPlantation?.id],
+  );
+  const llegaConElPull = codigoLlegaConElPull(editingPlantation);
+
+  const set: Setter = (campo) => (valor) => setValores((actuales) => ({ ...actuales, [campo]: valor }));
 
   function handleClose() {
     setError(null);
@@ -70,30 +202,20 @@ export default function PlantationFormModal({
     onClose();
   }
 
-  function validate(): string | null {
-    if (lugar.trim().length < 2) return 'Lugar debe tener al menos 2 caracteres.';
-    if (periodo.trim().length < 2) return 'Periodo debe tener al menos 2 caracteres.';
-    return validateGpsFrequency(gpsFrequency);
-  }
-
   async function handleSubmit() {
-    const validationError = validate();
+    const validationError = validarFormulario(valores, { codigoEditable: !llegaConElPull });
     if (validationError) {
       setError(validationError);
       return;
     }
+    // El campo ya lo marca: no se repite abajo.
+    if (codigoRepetido) return;
     setLoading(true);
     setError(null);
     try {
-      await onSubmit(lugar.trim(), periodo.trim(), {
-        gpsCaptureFrequency: Number(gpsFrequency.trim()),
-        gpsCaptureRequired: gpsRequired,
-      });
+      await onSubmit(aCamposDePlantacion(valores));
     } catch (e: any) {
-      setError(
-        e?.message ??
-          (isEdit ? 'Error al actualizar la plantación.' : 'Error al crear la plantación.')
-      );
+      setError(e?.message ?? (isEdit ? 'Error al actualizar la plantación.' : 'Error al crear la plantación.'));
     } finally {
       setLoading(false);
     }
@@ -115,44 +237,16 @@ export default function PlantationFormModal({
         />
       }
     >
-      <FormField
-        label="Lugar"
-        value={lugar}
-        onChangeText={setLugar}
-        placeholder="Nombre del lugar de plantación"
+      <DatosDeLaPlantacion
+        valores={valores}
+        set={set}
         editable={!loading}
+        duplicada={duplicada}
+        editando={isEdit}
+        codigoRepetido={codigoRepetido}
+        codigoLlegaConElPull={llegaConElPull}
       />
-      <FormField
-        label="Periodo"
-        value={periodo}
-        onChangeText={setPeriodo}
-        placeholder="Periodo de plantación"
-        editable={!loading}
-      />
-      <FormField
-        label="Capturar GPS cada N árboles"
-        value={gpsFrequency}
-        onChangeText={setGpsFrequency}
-        placeholder={String(GPS_CAPTURE_FREQUENCY_DEFAULT)}
-        keyboardType="numeric"
-        editable={!loading}
-        helperText="1 = todos los árboles. El primero de cada grupo siempre captura."
-      />
-      <View style={styles.switchRow}>
-        <View style={styles.switchLabels}>
-          <Text style={styles.switchLabel}>Captura GPS obligatoria</Text>
-          <Text style={styles.switchHelper}>
-            Si está activa, registrar árboles exige GPS encendido y con permiso.
-          </Text>
-        </View>
-        <Switch
-          testID="gps-required-switch"
-          value={gpsRequired}
-          onValueChange={setGpsRequired}
-          disabled={loading}
-          trackColor={{ false: colors.border, true: colors.gpsGood }}
-        />
-      </View>
+      <ComportamientoEnCampo valores={valores} set={set} editable={!loading} />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </EntityFormModal>
   );

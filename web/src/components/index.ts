@@ -1,6 +1,7 @@
 export { Aviso } from './Aviso';
 export { Badge } from './Badge';
 export { BarraHerramientas, RecuentoItem } from './BarraHerramientas';
+export { BotonCopiar } from './BotonCopiar';
 export { BotonIcono } from './BotonIcono';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';

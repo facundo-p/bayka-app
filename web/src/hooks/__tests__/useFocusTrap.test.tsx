@@ -48,6 +48,34 @@ test('Shift+Tab en el primer elemento manda el foco al último', () => {
   expect(document.activeElement).toBe(ref.current!.querySelector('#b'));
 });
 
+test('los bordes son los que alcanza el Tab: una opción con tabindex -1 no cuenta', () => {
+  const ref = contenedorConBotones(
+    '<button id="a" tabindex="-1">A</button><button id="b">B</button><button id="c">C</button>',
+  );
+  const { result } = renderHook(() => useFocusTrap(ref));
+  ref.current!.querySelector<HTMLElement>('#b')!.focus();
+
+  const evento = eventoTab({ shiftKey: true });
+  result.current(evento);
+
+  expect(evento.preventDefault).toHaveBeenCalled();
+  expect(document.activeElement).toBe(ref.current!.querySelector('#c'));
+});
+
+test('cuenta los links y los textarea: el último de un panel puede ser un link', () => {
+  const ref = contenedorConBotones(
+    '<textarea id="a"></textarea><button id="b">B</button><a id="c" href="/p1">P1</a>',
+  );
+  const { result } = renderHook(() => useFocusTrap(ref));
+  ref.current!.querySelector<HTMLElement>('#c')!.focus();
+
+  const evento = eventoTab();
+  result.current(evento);
+
+  expect(evento.preventDefault).toHaveBeenCalled();
+  expect(document.activeElement).toBe(ref.current!.querySelector('#a'));
+});
+
 test('Tab en un elemento intermedio no hace nada (deja que el navegador maneje el foco)', () => {
   const ref = contenedorConBotones(
     '<button id="a">A</button><button id="b">B</button><button id="c">C</button>',

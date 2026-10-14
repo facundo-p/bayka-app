@@ -20,6 +20,8 @@ const LARGO_ETIQUETA = 30;
 
 const AFUERA = Object.freeze({ no: 0, x: 1, y: 2 });
 const ENFOCABLES = 'button, a, input, select, textarea, [role="radio"], [role="checkbox"]';
+/** `SELECTOR_DIALOGO` de config.mjs, que acá no se puede importar. */
+const DIALOGO = '[role="dialog"]';
 const CONTROLES = 'input, select, button, [role="radio"]';
 
 /**
@@ -299,7 +301,7 @@ function recorteHorizontal(padre, r) {
 // ── X · controles inalcanzables ───────────────────────────────────────────
 
 function detectarInalcanzables(raiz) {
-  const inalcanzables = [];
+  const inalcanzables = detectarDialogosAfuera(raiz);
   for (const el of raiz.querySelectorAll(ENFOCABLES)) {
     if (!pintado(el)) continue;
     const motivo = motivoInalcanzable(el);
@@ -308,9 +310,24 @@ function detectarInalcanzables(raiz) {
   return inalcanzables;
 }
 
+/**
+ * Un diálogo que se sale de costado de la ventana: con el padding de por medio,
+ * sus controles pueden entrar y su borde quedar cortado. Así se escapó el panel
+ * de filtros de Usuarios entre 601 y 741 (#844).
+ */
+function detectarDialogosAfuera(raiz) {
+  const dialogos = [raiz, ...raiz.querySelectorAll(DIALOGO)].filter((el) => el.matches(DIALOGO));
+  return dialogos
+    .filter((el) => pintado(el) && seSaleDeCostado(el.getBoundingClientRect()))
+    .map((el) => ({ q: etiqueta(el), motivo: 'diálogo fuera del viewport' }));
+}
+
+function seSaleDeCostado(r) {
+  return r.right > window.innerWidth + TOLERANCIA_PX || r.left < -TOLERANCIA_PX;
+}
+
 function motivoInalcanzable(el) {
-  const r = el.getBoundingClientRect();
-  if (r.right > window.innerWidth + TOLERANCIA_PX || r.left < -TOLERANCIA_PX) {
+  if (seSaleDeCostado(el.getBoundingClientRect())) {
     return alcanzableScrolleando(el) ? null : 'fuera del viewport';
   }
   return recortadoSinScroll(el) ? 'recortado sin scroll' : null;

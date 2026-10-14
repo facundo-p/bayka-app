@@ -8,6 +8,7 @@ import { queryClient } from './lib/queryClient';
 import { PATRON_DETALLE_PLANTACION, RUTA, SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutas';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
+import { EspeciesCientificasScreen } from './screens/EspeciesCientificasScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
 import { NovedadesScreen } from './screens/NovedadesScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
@@ -42,6 +43,7 @@ export function AppRoutes() {
             <Route path={TAB_DETALLE.configuracion} element={<ConfiguracionTab />} />
           </Route>
           <Route path={RUTA.especies} element={<EspeciesScreen />} />
+          <Route path={RUTA.especiesCientificas} element={<EspeciesCientificasScreen />} />
           <Route path={RUTA.novedades} element={<NovedadesScreen />} />
           <Route element={<RequireSuperadmin />}>
             <Route path={RUTA.usuarios} element={<UsuariosScreen />} />

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MaestroEspecies, SpeciesChecklist } from '../SpeciesChecklist';
-import type { EstadoMaestro } from '../../lib/speciesChecklistSelection';
+import type { EstadoMaestro } from '../../lib/seleccionMaestro';
 import type { EspecieCatalogo } from '../../queries/especieQueries';
 
 const CATALOGO: EspecieCatalogo[] = [

@@ -1,9 +1,7 @@
 /**
- * AssignTechniciansScreen — technician toggle assignment for a plantation.
- *
- * Loads all technicians in the organization from Supabase (profiles table is server-only).
- * Loads currently assigned technicians from local SQLite.
- * Allows toggling assignment and saving atomically.
+ * AssignTechniciansScreen — asignar técnicos a una plantación, también sin conexión
+ * (#636). Una asignación sin subir dice "Se asignará al sincronizar"; quitar a alguien
+ * ya asignado en el servidor requiere conexión.
  */
 import {
   View,
@@ -22,6 +20,14 @@ import ScreenContainer from '../components/ScreenContainer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAssignTechnicians } from '../hooks/useAssignTechnicians';
 import { assignTechniciansScreenStyles as styles } from './AssignTechniciansScreen.styles';
+import {
+  AYUDA_QUITAR_SIN_CONEXION,
+  ETIQUETA_TECNICO,
+  ICONO_TECNICOS,
+  esAltaPendiente,
+  SE_ASIGNARA_AL_SINCRONIZAR,
+  SIN_TECNICOS,
+} from '../utils/tecnicosDePlantacion';
 
 type Props = {
   plantacionIdProp?: string;
@@ -37,10 +43,10 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
     items,
     loading,
     saving,
-    networkError,
+    sinConexion,
     assignedCount,
     confirmProps,
-    loadData,
+    puedeQuitar,
     handleToggle,
     handleSave,
   } = useAssignTechnicians(plantacionId);
@@ -54,20 +60,6 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
     );
   }
 
-  if (networkError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="wifi-outline" size={48} color={colors.textMuted} />
-        <Text style={styles.errorTitle}>Sin conexión</Text>
-        <Text style={styles.errorText}>Se necesita conexión a internet para gestionar técnicos.</Text>
-        <Pressable style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]} onPress={loadData}>
-          <Ionicons name="refresh-outline" size={16} color={colors.white} />
-          <Text style={styles.retryButtonText}>Reintentar</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   return (
     <ScreenContainer withTexture>
       <FlatList
@@ -75,14 +67,22 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <Text style={styles.listHeader}>
-            {assignedCount} técnico{assignedCount !== 1 ? 's' : ''} asignado{assignedCount !== 1 ? 's' : ''}
-          </Text>
+          <View style={styles.listHeaderContainer}>
+            <Text style={styles.listHeader}>
+              {assignedCount} técnico{assignedCount !== 1 ? 's' : ''} asignado{assignedCount !== 1 ? 's' : ''}
+            </Text>
+            {sinConexion && (
+              <View style={styles.offlineNote}>
+                <Ionicons name="cloud-offline-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.offlineNoteText}>{AYUDA_QUITAR_SIN_CONEXION}</Text>
+              </View>
+            )}
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No hay técnicos en la organización</Text>
+            <Ionicons name={ICONO_TECNICOS} size={40} color={colors.textMuted} />
+            <Text style={styles.emptyText}>{SIN_TECNICOS}</Text>
           </View>
         }
         renderItem={({ item, index }) => (
@@ -90,13 +90,16 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
             <View style={[styles.row, item.assigned && styles.rowAssigned]}>
               <Switch
                 value={item.assigned}
+                disabled={item.assigned && !puedeQuitar(item.id)}
                 onValueChange={(val) => handleToggle(item.id, val)}
                 trackColor={{ false: colors.border, true: colors.primaryBgMuted }}
                 thumbColor={item.assigned ? colors.primary : colors.disabled}
               />
               <View style={styles.rowInfo}>
                 <Text style={[styles.rowName, !item.assigned && styles.rowNameMuted]}>{item.nombre}</Text>
-                <Text style={styles.rowRole}>Técnico</Text>
+                <Text style={[styles.rowRole, esAltaPendiente(item) && styles.rowPendiente]}>
+                  {esAltaPendiente(item) ? SE_ASIGNARA_AL_SINCRONIZAR : ETIQUETA_TECNICO}
+                </Text>
               </View>
               {item.assigned && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
             </View>

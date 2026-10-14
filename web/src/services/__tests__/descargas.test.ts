@@ -1,4 +1,10 @@
-import { aSlug, nombreArchivoDescarga, descargarBlob, descargarTexto } from '../descargas';
+import {
+  aSlug,
+  nombreArchivoDescarga,
+  nombreArchivoFoto,
+  descargarBlob,
+  descargarTexto,
+} from '../descargas';
 
 test('aSlug pasa a minúsculas, saca acentos y símbolos, y no deja guiones en las puntas', () => {
   expect(aSlug('Finca "El Álamo" Ñuñoa')).toBe('finca-el-alamo-nunoa');
@@ -12,6 +18,12 @@ test('aSlug de string vacío da string vacío', () => {
 test('nombreArchivoDescarga arma <prefijo>-<lugar>-<periodo>.<extension>', () => {
   expect(nombreArchivoDescarga('arboles', 'Mendoza', '2025-2026', 'csv')).toBe(
     'arboles-mendoza-2025-2026.csv',
+  );
+});
+
+test('nombreArchivoDescarga suma el detalle como slug al final', () => {
+  expect(nombreArchivoDescarga('ficha', 'San Sebastián', '2025-2026', 'pdf', 'LP12L10ANC23')).toBe(
+    'ficha-san-sebastian-2025-2026-lp12l10anc23.pdf',
   );
 });
 
@@ -61,4 +73,12 @@ describe('descargarTexto', () => {
 
     vi.restoreAllMocks();
   });
+});
+
+test('nombreArchivoFoto arma foto-<lugar>-<periodo>-<subId>.jpg y omite partes vacías', () => {
+  expect(nombreArchivoFoto('Finca "El Álamo"', '2026', 'A-12')).toBe(
+    'foto-finca-el-alamo-2026-a-12.jpg',
+  );
+  expect(nombreArchivoFoto('', '2026', 'A-12')).toBe('foto-2026-a-12.jpg');
+  expect(nombreArchivoFoto('', '', '')).toBe('foto.jpg');
 });

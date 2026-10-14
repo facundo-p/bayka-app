@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # supabase/tests/lib.sh — funciones compartidas por run-db-tests.sh y
 # regenerate-baseline.sh: detección del CLI, armado de un proyecto Supabase
-# temporal (baseline + migraciones pendientes) y su cleanup. No se ejecuta
+# temporal (baseline + migraciones) y su cleanup. No se ejecuta
 # solo: se hace `source`.
 
 # CLI pinneado a la versión que resolvía `npx supabase@latest --version` al
@@ -58,6 +58,27 @@ make_tmp_project() {
   if [[ ${#tests[@]} -gt 0 ]]; then
     cp "${tests[@]}" "$tmp_supabase/tests/"
   fi
+}
+
+# write_contracts_migration <contracts_dir> <out_file>
+# Escribe una migración que carga cada <contracts_dir>/*.json en
+# tests.contratos (nombre, contenido jsonb). El JSON va entre $contrato$: si
+# algún contrato contuviera ese delimitador, falla en vez de cortarlo.
+write_contracts_migration() {
+  local contracts_dir="$1" out_file="$2" f contenido
+  {
+    echo 'create schema if not exists tests;'
+    echo 'create table tests.contratos (nombre text primary key, contenido jsonb not null);'
+    for f in "$contracts_dir"/*.json; do
+      contenido="$(cat "$f")"
+      if [[ "$contenido" == *'$contrato$'* ]]; then
+        echo "ERROR: $f contiene \$contrato\$" >&2
+        return 1
+      fi
+      printf "insert into tests.contratos values ('%s', \$contrato\$%s\$contrato\$::jsonb);\n" \
+        "$(basename "$f")" "$contenido"
+    done
+  } > "$out_file"
 }
 
 # stack_cleanup <tmp_root> [stop_on_exit]

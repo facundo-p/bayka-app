@@ -1,5 +1,6 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
+import { PAGINAS_EN_PARALELO } from '../leerPaginado';
 import {
   listarCatalogo,
   listarCatalogoConUso,
@@ -28,8 +29,15 @@ const FILA_ALGARROBO = {
   nombre_cientifico: null,
 };
 
-function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO, orden: number) {
-  return { species_id: fila.id, orden_visual: orden, species: fila };
+const FILA_NN = {
+  id: 'sp-nn',
+  codigo: 'NN',
+  nombre: 'N/N',
+  nombre_cientifico: null,
+};
+
+function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO, lugarColor = 0) {
+  return { species_id: fila.id, lugar_color: lugarColor, species: fila };
 }
 
 describe('listarCatalogo', () => {
@@ -52,9 +60,9 @@ describe('listarCatalogo', () => {
 });
 
 describe('listarEspeciesDePlantacion', () => {
-  test('filtra por plantación, ordena por orden_visual y mapea el embed', async () => {
+  test('filtra por plantación, ordena por nombre y mapea el embed con el lugar de color', async () => {
     const consultas = capturarConsultas(() => ({
-      data: [filaAsignada(FILA_ALGARROBO, 0), filaAsignada(FILA_QUEBRACHO, 1)],
+      data: [filaAsignada(FILA_QUEBRACHO, 0), filaAsignada(FILA_ALGARROBO, 3)],
     }));
     const especies = await listarEspeciesDePlantacion('plant-1');
 
@@ -62,17 +70,34 @@ describe('listarEspeciesDePlantacion', () => {
     expect(consultas[0].filtros).toEqual([
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
     ]);
-    expect(consultas[0].orden).toEqual({ columna: 'orden_visual', ascending: true });
     expect(especies).toEqual([
-      { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombreCientifico: null, ordenVisual: 0 },
+      { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombreCientifico: null, lugarColor: 3 },
       {
         id: 'sp-1',
         codigo: 'QB',
         nombre: 'Quebracho',
         nombreCientifico: 'Schinopsis balansae',
-        ordenVisual: 1,
+        lugarColor: 0,
       },
     ]);
+  });
+
+  test('pide solo las columnas que mapea, sin `*` (#863)', async () => {
+    const consultas = capturarConsultas(() => ({ data: [] }));
+    await listarEspeciesDePlantacion('plant-1');
+
+    expect(consultas[0].columnas).toBe(
+      'species_id, lugar_color, species(codigo, nombre, nombre_cientifico)',
+    );
+  });
+
+  test('N/N no ocupa lugar en la paleta: llega con el lugar en null', async () => {
+    capturarConsultas(() => ({
+      data: [{ species_id: FILA_NN.id, lugar_color: null, species: FILA_NN }],
+    }));
+    const [especie] = await listarEspeciesDePlantacion('plant-1');
+
+    expect(especie).toMatchObject({ codigo: 'NN', lugarColor: null });
   });
 
   test('propaga el error de Supabase', async () => {
@@ -85,7 +110,7 @@ describe('listarEspeciesConUso', () => {
   test('marca tieneArboles con un count por especie (join trees → groups)', async () => {
     const consultas = capturarConsultas((consulta) => {
       if (consulta.tabla === 'plantation_species') {
-        return { data: [filaAsignada(FILA_QUEBRACHO, 0), filaAsignada(FILA_ALGARROBO, 1)] };
+        return { data: [filaAsignada(FILA_QUEBRACHO), filaAsignada(FILA_ALGARROBO)] };
       }
       const especieId = consulta.filtros.find((filtro) => filtro.columna === 'species_id')?.valor;
       return { count: especieId === 'sp-1' ? 3 : 0 };
@@ -93,22 +118,22 @@ describe('listarEspeciesConUso', () => {
     const especies = await listarEspeciesConUso('plant-1');
 
     expect(especies.map((especie) => [especie.id, especie.tieneArboles])).toEqual([
-      ['sp-1', true],
       ['sp-2', false],
+      ['sp-1', true],
     ]);
     const countsArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     expect(countsArboles).toHaveLength(2);
     expect(countsArboles[0].opciones).toEqual({ count: 'exact', head: true });
     expect(countsArboles[0].filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
-      { metodo: 'eq', columna: 'species_id', valor: 'sp-1' },
+      { metodo: 'eq', columna: 'species_id', valor: 'sp-2' },
     ]);
   });
 
   test('propaga el error del count de árboles', async () => {
     capturarConsultas((consulta) =>
       consulta.tabla === 'plantation_species'
-        ? { data: [filaAsignada(FILA_QUEBRACHO, 0)] }
+        ? { data: [filaAsignada(FILA_QUEBRACHO)] }
         : { error: { message: 'falló el count' } },
     );
     await expect(listarEspeciesConUso('plant-1')).rejects.toThrow('falló el count');
@@ -117,8 +142,15 @@ describe('listarEspeciesConUso', () => {
 
 describe('listarCatalogoConUso', () => {
   test('cuenta plantaciones por especie y árboles totales, manteniendo el orden del catálogo', async () => {
-    capturarConsultas((consulta) => {
-      if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO, FILA_ALGARROBO] };
+    const consultas = capturarConsultas((consulta) => {
+      if (consulta.tabla === 'species') {
+        return {
+          data: [
+            { ...FILA_QUEBRACHO, tipo: 'flora', subtipo: 'arbol', especie_cientifica_id: 'ec-1' },
+            { ...FILA_ALGARROBO, tipo: 'flora', subtipo: 'arbusto', especie_cientifica_id: null },
+          ],
+        };
+      }
       if (consulta.tabla === 'plantation_species') {
         // Quebracho habilitado en 2 plantaciones; Algarrobo en ninguna.
         return { data: [{ species_id: 'sp-1' }, { species_id: 'sp-1' }] };
@@ -130,12 +162,18 @@ describe('listarCatalogoConUso', () => {
 
     const catalogo = await listarCatalogoConUso();
 
+    expect(consultas.find((consulta) => consulta.tabla === 'species')?.columnas).toBe(
+      'id, codigo, nombre, nombre_cientifico, tipo, subtipo, especie_cientifica_id',
+    );
     expect(catalogo).toEqual([
       {
         id: 'sp-1',
         codigo: 'QB',
         nombre: 'Quebracho',
         nombreCientifico: 'Schinopsis balansae',
+        tipo: 'flora',
+        subtipo: 'arbol',
+        especieCientificaId: 'ec-1',
         plantaciones: 2,
         arboles: 42,
       },
@@ -144,6 +182,9 @@ describe('listarCatalogoConUso', () => {
         codigo: 'AL',
         nombre: 'Algarrobo',
         nombreCientifico: null,
+        tipo: 'flora',
+        subtipo: 'arbusto',
+        especieCientificaId: null,
         plantaciones: 0,
         arboles: 0,
       },
@@ -170,8 +211,8 @@ describe('listarCatalogoConUso', () => {
 
     expect(catalogo[0].plantaciones).toBe(totalFilas);
     const lecturas = consultas.filter((consulta) => consulta.tabla === 'plantation_species');
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
-    expect(lecturas).toHaveLength(2);
+    // Página 0 llena → una tanda en paralelo, cuya primera página (500) ya es la última.
+    expect(lecturas).toHaveLength(1 + PAGINAS_EN_PARALELO);
     expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
     expect(lecturas[1].rango).toEqual({ desde: 1000, hasta: 1999 });
   });

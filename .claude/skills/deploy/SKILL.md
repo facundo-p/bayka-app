@@ -65,35 +65,58 @@ Release notes comerciales para usuarios y clientes: solo lo que el usuario nota
 `#N`, sin jerga interna (staging, RLS, back-merge, …), en voseo.
 
 ```markdown
-## Web X.Y.Z · <D de mes de AAAA>
+## Web X.Y.Z · Mobile A.B.C · <D de mes de AAAA>
+
+### Web
 
 - **<Titular corto.>** <Qué puede hacer o qué mejora ve el usuario.>
-  - <Dónde, en la web o en la app, y qué hacer.>
+  - En la web de pruebas, <dónde y qué hacer.>
+  - Esperá ver: <lo que confirma que funciona.>
+
+### App
+
+- **<Titular corto.>** <Lo que nota en la app.>
+  - En la app Bayka TEST, <dónde y qué hacer.>
   - Esperá ver: <lo que confirma que funciona.>
 ```
 
 - H2 solo con las apps que participan, `·` como separador; mismo sufijo ` (2)`
   si hay dos releases el mismo día.
+- **Plataformas (#918)**: cada ítem va bajo `### Web` o `### App`, exactos y en
+  ese orden; el que no tiene ítems se omite. La web los muestra en dos
+  columnas. Es por dónde lo nota el usuario, no por dónde está el código: un
+  cambio en `shared/` o en la DB va donde se ve. Un ítem que se nota en **las
+  dos** se duplica, una copia por sección, cada una con su detalle y los pasos
+  de su entorno.
 - Los sub-bullets son los pasos que nacieron en la sección pendiente (abajo) y
   sobreviven a la conversión tal cual (#580, #582). La web de pruebas los
   muestra plegados bajo "Cómo probarlo" en cada versión; producción ve solo
   titular y detalle.
 - Si nada es visible, un único bullet: `- Mejoras internas y de estabilidad.`
-  Tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
-  versión vacía.
+  Va sin `###` (es de toda la versión; la pantalla lo muestra a lo ancho) y
+  tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
+  versión vacía. Es el único bullet que va fuera de una plataforma.
 
 ### Sección pendiente (staging, #375)
 
 Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
 
 ```markdown
-## En pruebas · próxima versión
+## En pruebas · actualizado el 13 de octubre de 2026
 <!-- sincronizado-hasta: 5930146 #374 -->
+
+### Web
 
 - **Titular corto.** Qué puede hacer o qué mejora ve el usuario. <!-- #344 #350 -->
   - En la web de pruebas, entrá a Plantaciones y abrí una.
   - Tocá un árbol del listado.
   - Esperá ver: el detalle se abre a la derecha, sin tapar el listado.
+
+### App
+
+- **Titular corto.** Lo que nota en la app. <!-- #351 -->
+  - En la app Bayka TEST, abrí una plantación.
+  - Esperá ver: …
 ```
 
 `CHANGELOG.md`:
@@ -118,7 +141,8 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   **idéntica en los dos archivos**: así se sabe que están sincronizados.
 - **Traza**: cada bullet de NOVEDADES termina en `<!-- #N #M -->` (la web no la
   muestra); cada bullet de CHANGELOG, en `(#N, #M)`. Todo ítem pendiente la
-  tiene: es lo que permite saber qué ítems toca un PR nuevo.
+  tiene: es lo que permite saber qué ítems toca un PR nuevo. Las dos copias de
+  un ítem duplicado llevan la misma traza: un PR que toca una toca las dos.
 - **Pasos**: sub-bullets indentados 2 espacios. El primero dice dónde probar
   (web de pruebas, o app **Bayka TEST**); el último arranca con "Esperá ver:".
   Wrap a 80 columnas con 4 espacios; una línea de continuación nunca empieza
@@ -126,9 +150,19 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   el entorno de pruebas (#580, #582), así que pueden nombrar la web de pruebas
   y la app Bayka TEST.
 - El título de NOVEDADES empieza con **"En pruebas"**: es contrato con
-  `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
-  sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
-  y además la sección nunca llega a main.
+  `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`, igual que los rótulos
+  `### Web` / `### App` con `PLATAFORMA`. Los `### Web` / `### Mobile` sin
+  versión de CHANGELOG no chocan con `release-tags.yml` (busca `### Web X.Y.Z`
+  exacto) y además la sección nunca llega a main; `release-tags.yml` no lee
+  NOVEDADES.
+- **Fecha** en el título de NOVEDADES: el día, en Argentina, del último commit
+  de `/novedades`; todo commit la actualiza. Con ella la web de pruebas muestra
+  cuándo se actualizó el listado (#897). Va con el formato de las entradas
+  publicadas, aunque nadie la parsea, y CHANGELOG no la lleva:
+
+  ```bash
+  LC_ALL=es_ES.UTF-8 TZ=America/Argentina/Buenos_Aires date '+%-d de %B de %Y'
+  ```
 - Redacción: la de las entradas publicadas de arriba, en cada archivo; las apps
   o categorías vacías se omiten.
 - Si nada de lo pendiente es visible, NOVEDADES lleva un único bullet, sin traza
@@ -142,8 +176,9 @@ pendiente y el próximo `/novedades` arranca de cero desde `origin/main`:
 - `CHANGELOG.md`: `## Sin publicar` → `## <YYYY-MM-DD> · web X.Y.Z · mobile A.B.C`;
   `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
   Se borran la marca y las apps sin cambios.
-- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`. Se
-  borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan tal
+- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · Mobile A.B.C · <D de mes
+  de AAAA>`, solo con las apps que participan y la fecha del release. Se borran la marca y las trazas `<!-- #N -->`; los
+  `### Web` / `### App` quedan como están. **Los pasos se conservan tal
   cual** (#580, #582): en la web de pruebas siguen siendo el "Cómo probarlo" de
   cada versión y en producción no se muestran. No se resumen, no se reescriben
   ni se les quita la mención al entorno. El bullet de "nada visible" pasa al
@@ -157,9 +192,10 @@ Antes de cada commit que toque estos archivos:
 (cd web && npx vitest run src/lib/__tests__/parsearNovedades.test.ts)
 ```
 
-Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, fuera
-de staging ningún ítem con pasos, y la sección en pruebas, si está, una sola y
-arriba de todo. Después de una conversión, además, este sin resultados:
+Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, todo
+ítem con titular bajo `### Web` o `### App`, fuera de staging ningún ítem con
+pasos, y la sección en pruebas, si está, una sola y arriba de todo. Después de
+una conversión, además, este sin resultados:
 
 ```bash
 grep -nE 'sincronizado-hasta|<!-- #|^## (Sin publicar|En pruebas)' NOVEDADES.md CHANGELOG.md
@@ -215,17 +251,23 @@ git rev-list --count $RANGE      # 0 → abortar: "staging y main están al día
 
 # PRs mergeados (para el resumen del PR de release):
 git log --merges --first-parent --pretty='%h %s' $RANGE
-# Clasificación por paths (un commit que toca ambas apps cuenta para ambas):
-git log --no-merges --pretty='%h|%s' $RANGE -- web/
-git log --no-merges --pretty='%h|%s' $RANGE -- mobile/
-git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile'
+# Clasificación por paths (un commit que toca ambas apps cuenta para ambas;
+# shared/ lo importan las dos, así que cuenta para web y para mobile):
+git log --no-merges --pretty='%h|%s' $RANGE -- web/ shared/
+git log --no-merges --pretty='%h|%s' $RANGE -- mobile/ shared/
+git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile' ':(exclude)shared'
+# Edge functions que cambian, separadas por espacio, para el <functions> del
+# checklist post-merge (solo carpetas; _shared no se deploya):
+git diff --name-only $RANGE -- supabase/functions \
+  | awk -F/ 'NF > 3 && $3 !~ /^_/ { print $3 }' | sort -u | tr '\n' ' '
 # Breaking changes declarados en el body:
 git log --no-merges --pretty='%h %s%n%b--END--' $RANGE | grep -B3 'BREAKING CHANGE' || true
 ```
 
 **Los paths deciden, el scope refuerza**: si un `feat(web):` solo tocó
 `mobile/**`, se clasifica como mobile y la inconsistencia se lista en la
-propuesta para que Facu la vea.
+propuesta para que Facu la vea. Un `feat(web):` que solo tocó `shared/**` cuenta
+para las dos apps sin que eso sea inconsistencia.
 
 ## 2. Calcular bumps (semver por app)
 
@@ -240,8 +282,12 @@ Sobre los subjects de la lista de cada app:
 | Subject que no matchea conventional commits | patch + aviso en la propuesta |
 
 Gana el bump más alto de la lista. Reglas extra:
-- `supabase/**` y demás paths fuera de `web/`/`mobile/` → sección `### Otros`
-  del changelog; **no bumpean ninguna app por sí solos**.
+- `shared/**` (#713) entra en la lista de **las dos apps**: un `feat`/`fix` ahí
+  bumpea web y mobile, y mobile lleva versionCode +1 ⇒ APK nueva. Las APKs
+  viejas siguen en uso semanas: si el cambio rompe compatibilidad con ellas,
+  marcarlo en la propuesta.
+- `supabase/**` y demás paths fuera de `web/`/`mobile/`/`shared/` → sección
+  `### Otros` del changelog; **no bumpean ninguna app por sí solos**.
 - `versionCode` de mobile: **+1 solo si mobile bumpea**.
 
 ## 3. Proponer y ESPERAR el OK
@@ -297,19 +343,59 @@ Facu):
 
 ```markdown
 ## Post-merge (manual)
+- [ ] Si el release incluye migraciones supabase/**: el push va apenas termina
+      el deploy de la web de prod, ni antes ni mucho después. Antes, la web
+      vieja puede usar lo que la migración saca; después, la nueva puede pedir
+      lo que la migración agrega. El deploy terminó cuando el check «Cloudflare
+      Pages» del merge en main da `completed success`:
+
+      ```sh
+      gh api repos/facundo-p/bayka-app/commits/main/check-runs \
+        --jq '.check_runs[] | select(.name == "Cloudflare Pages") | "\(.head_sha[0:7]) \(.status) \(.conclusion)"'
+      ```
+
+      Sin salida, el deploy sigue en curso. Con `failure`, no pushear: la web
+      vieja sigue viva y la migración puede sacarle lo que usa.
+
+      Mientras tanto, en el checkout principal (el único con `.env.migration`),
+      con main actualizado (`git switch main && git pull`):
+      1. Drift check: `migration list` contra prod y contra staging. Lo
+         registrado en prod tiene que ser lo de staging menos las migraciones de
+         este release, sin huecos ni extras.
+      2. `db push --dry-run` contra prod: tiene que listar justo las migraciones
+         de este release.
+      3. Con el deploy en verde y confirmación dedicada, Facu corre el mismo
+         push sin `--dry-run` (nunca el SQL Editor; ver docs/db-baseline.md).
+
+      ```sh
+      PROD="$(grep '^PROD_DB_URL=' .env.migration | cut -d= -f2-)"
+      STG="$(grep '^STAGING_DB_URL=' .env.migration | cut -d= -f2-)"
+      npx --yes supabase@2.116.0 migration list --db-url "$STG"
+      npx --yes supabase@2.116.0 migration list --db-url "$PROD"
+      npx --yes supabase@2.116.0 db push --dry-run --db-url "$PROD"
+      ```
+- [ ] Si el release cambia `supabase/functions/**`: deployar a prod las
+      functions cambiadas apenas termina el push. Ningún workflow las deploya, y
+      una function vieja contra el schema nuevo falla (o al revés, si va antes
+      del push). `<functions>` es la lista del paso 1. Desde la raíz del
+      checkout principal, con main actualizado (deploya el código de esa
+      carpeta):
+
+      ```sh
+      npx --yes supabase@2.116.0 functions deploy <functions> \
+        --project-ref mgtaeogxzuavxrfhrefi --use-api
+      npx --yes supabase@2.116.0 functions list --project-ref mgtaeogxzuavxrfhrefi
+      ```
+
+      En el `list`, cada una con `updated_at` de recién y `version` +1.
 - [ ] Workflow release-tags verde: `gh run list --workflow=release-tags.yml -L 1`
       → debe crear web-vX.Y.Z / mobile-vA.B.C (tag + GitHub Release)
 - [ ] Cerrar este Issue a mano: `gh issue close <issue>` — `Closes #N` NO cierra
       en PRs a main (el default branch es staging)
 - [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
 - [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
-      distribuirlo a los dispositivos
-- [ ] Si el release incluye migraciones supabase/**: primero drift check
-      (`npx --yes supabase@latest migration list --db-url "$PROD_DB_URL"` con
-      la URL de `.env.migration`: lo aplicado en prod tiene que ser exactamente
-      lo aplicado en staging antes de este release, sin huecos ni extras);
-      después aplicarlas a prod con confirmación dedicada (CLAUDE.md, "Flujo
-      de branches")
+      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
+      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 
@@ -319,8 +405,10 @@ Facu):
 gh pr checks <numero-pr> --watch    # correr con run_in_background y timeout amplio
 ```
 
-- **Verde** → reportar "PR de release listo para tu merge" con el link. FIN: el
-  merge es de Facu, a mano. No mergear, no aprobar, no tocar más staging.
+- **Verde** → reportar "PR de release listo para tu merge" con el link. Si el
+  release trae migraciones, el aviso recuerda que el push de prod va apenas el
+  check «Cloudflare Pages» del merge en main da verde. FIN: el merge es de
+  Facu, a mano. No mergear, no aprobar, no tocar más staging.
 - **Rojo** → reportar el check fallido y PARAR. No arreglar en caliente sin un
   nuevo OK (el fix entra por el flujo normal de PR a staging, y después se
   refresca el release).

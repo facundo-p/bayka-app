@@ -140,6 +140,14 @@ describe('cliente demo: árboles de muestra', () => {
     }
   });
 
+  it('cada especie habilitada tiene su lugar de color, sin repetir en la plantación (#845)', async () => {
+    for (const plantacion of await plantacionesConArboles()) {
+      const lugares = (await listarEspeciesDePlantacion(plantacion)).map((e) => e.lugarColor);
+      expect(lugares.includes(null), plantacion).toBe(false);
+      expect(new Set(lugares).size, plantacion).toBe(lugares.length);
+    }
+  });
+
   it('la tarjeta cuenta las parcelas que lista el explorador', async () => {
     const { data } = await supabase.rpc('stats_plantaciones');
 
@@ -149,13 +157,25 @@ describe('cliente demo: árboles de muestra', () => {
     }
   });
 
+  it('el listado cuenta los mismos puntos GPS y fotos que el dashboard', async () => {
+    const { data } = await supabase.rpc('stats_plantaciones');
+
+    for (const stats of data as FilaDemo[]) {
+      const { arboles } = await obtenerFuenteDashboard(String(stats.plantation_id));
+      const contar = (criterio: (conteo: (typeof arboles)[number]) => boolean) =>
+        arboles.filter(criterio).reduce((total, { cantidad }) => total + cantidad, 0);
+      expect(stats.puntos_gps, String(stats.plantation_id)).toBe(contar((c) => c.conGps));
+      expect(stats.fotos, String(stats.plantation_id)).toBe(contar((c) => c.conFoto));
+    }
+  });
+
   it('el dashboard y el mapa de p2 tienen árboles', async () => {
     const [fuente, puntos] = await Promise.all([
       obtenerFuenteDashboard('p2'),
       listarPuntosGps('p2'),
     ]);
 
-    expect(fuente.arboles).toHaveLength(32);
+    expect(fuente.arboles.reduce((total, { cantidad }) => total + cantidad, 0)).toBe(32);
     expect(fuente.parcelas).toHaveLength(2);
     expect(puntos.length).toBeGreaterThan(0);
   });
@@ -220,5 +240,28 @@ describe('cliente demo: or(), ilike y paginación', () => {
 
     expect(() => consulta().or('sub_id.fts.anc')).toThrow('"fts"');
     expect(() => consulta().not('posicion', 'gt', 3)).toThrow('"gt"');
+  });
+});
+
+describe('cliente demo: cambiar_especie_arbol', () => {
+  it('rearma el SubID con el código de la especie elegida', async () => {
+    const { data: arboles } = await supabase.from('trees').select('id, sub_id, species_id');
+    const arbol = (arboles as FilaDemo[]).find((fila) => fila.species_id !== 's4');
+    if (!arbol) throw new Error('la demo no tiene árboles');
+    const { data } = await supabase.rpc('cambiar_especie_arbol', {
+      p_tree_id: arbol.id,
+      p_species_id: 's4',
+      p_base: arbol.species_id,
+    });
+    expect(data).toEqual({ success: true, sub_id: expect.stringContaining('TIM') });
+  });
+
+  it('un árbol inexistente se rechaza', async () => {
+    const { data } = await supabase.rpc('cambiar_especie_arbol', {
+      p_tree_id: 'no-existe',
+      p_species_id: 's4',
+      p_base: null,
+    });
+    expect(data).toEqual({ success: false, error: 'NOT_AUTHORIZED' });
   });
 });

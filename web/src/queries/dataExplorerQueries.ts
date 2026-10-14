@@ -1,10 +1,17 @@
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { supabase } from '../lib/supabase';
+import {
+  COLUMNA_CODIGO_PLANTACION,
+  resolverBusquedaArbol,
+  type BusquedaArbol,
+} from './busquedaArbol';
 import { contarOLanzar } from './conteo';
-import { citarValorOr, patronContiene } from './escaparBusqueda';
+import { citarValorOr } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { ESQUEMAS_FOTO_LOCAL } from './fotoConstantes';
-import { leerPaginado } from './leerPaginado';
 import type { EstadoPlantacion } from './plantationQueries';
+
+const RPC_ARBOLES_POR_GRUPO = 'arboles_por_grupo';
 
 export type TipoGrupo = 'linea' | 'bosquete';
 export type EstadoGrupo = EstadoPlantacion;
@@ -39,11 +46,17 @@ export type GrupoConDetalle = {
 export type ArbolDetalle = {
   id: string;
   subId: string;
+  /** `<SubID>-<código de plantación>` (#559). */
+  idArbol: string;
   posicion: number | null;
+  /** null = N/N. */
+  especieId: string | null;
   especieCodigo: string | null;
   especieNombre: string | null;
+  especieNombreCientifico: string | null;
   grupoId: string;
   grupoCodigo: string;
+  grupoNombre: string | null;
   parcelaId: string | null;
   fotoUrl: string | null;
   usuarioRegistro: string | null;
@@ -75,7 +88,7 @@ export type PaginaArboles = {
   totalPaginas: number;
 };
 
-type FilaParcela = {
+export type FilaParcela = {
   id: string;
   nombre: string;
   codigo: string;
@@ -83,7 +96,7 @@ type FilaParcela = {
   created_at: string;
 };
 
-type FilaGrupo = {
+export type FilaGrupo = {
   id: string;
   nombre: string;
   codigo: string;
@@ -94,7 +107,7 @@ type FilaGrupo = {
   parcelas: { codigo: string } | null;
 };
 
-type FilaArbol = {
+export type FilaArbol = {
   id: string;
   sub_id: string;
   posicion: number | null;
@@ -106,69 +119,53 @@ type FilaArbol = {
   longitude?: number | null;
   gps_accuracy?: number | null;
   gps_captured_at?: string | null;
-  species: { codigo: string; nombre: string } | null;
-  groups: { codigo: string; parcela_id: string | null } | null;
+  species_id: string | null;
+  species: { codigo: string; nombre: string; nombre_cientifico: string | null } | null;
+  groups: {
+    codigo: string;
+    nombre: string;
+    parcela_id: string | null;
+    plantations: { codigo: string } | null;
+  } | null;
 };
 
-async function contarGruposDeParcela(parcelaId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('groups')
-    .select('id', { count: 'exact', head: true })
-    .eq('parcela_id', parcelaId);
-  return contarOLanzar(count, error);
+type ArbolesDeGrupo = { group_id: string; parcela_id: string | null; arboles: number };
+
+/** Cada grupo de la plantación con su parcela y su cantidad de árboles, incluidos los vacíos (#684). */
+async function listarArbolesPorGrupo(plantationId: string): Promise<ArbolesDeGrupo[]> {
+  const { data, error } = await supabase.rpc(RPC_ARBOLES_POR_GRUPO, {
+    p_plantation_id: plantationId,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ArbolesDeGrupo[];
 }
 
-/** Árboles de la parcela: trees → groups (join interno por parcela_id). */
-async function contarArbolesDeParcela(parcelaId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('trees')
-    .select('id, groups!inner(parcela_id)', { count: 'exact', head: true })
-    .eq('groups.parcela_id', parcelaId);
-  return contarOLanzar(count, error);
-}
-
-async function parcelaConStats(fila: FilaParcela): Promise<ParcelaConStats> {
-  const [grupos, arboles] = await Promise.all([
-    contarGruposDeParcela(fila.id),
-    contarArbolesDeParcela(fila.id),
-  ]);
+function statsDeParcela(fila: FilaParcela, grupos: ArbolesDeGrupo[]): ParcelaConStats {
+  const deLaParcela = grupos.filter((grupo) => grupo.parcela_id === fila.id);
   return {
     id: fila.id,
     nombre: fila.nombre,
     codigo: fila.codigo,
     descripcion: fila.descripcion,
     createdAt: fila.created_at,
-    grupos,
-    arboles,
+    grupos: deLaParcela.length,
+    arboles: deLaParcela.reduce((total, grupo) => total + grupo.arboles, 0),
   };
 }
 
-/** Parcelas activas con counts de grupos/árboles: dos counts head en paralelo por parcela (costo marginal). */
+/** Parcelas activas con sus conteos de grupos y árboles, contados en el server. */
 export async function listarParcelasConStats(plantationId: string): Promise<ParcelaConStats[]> {
-  const { data, error } = await supabase
-    .from('parcelas')
-    .select('id, nombre, codigo, descripcion, created_at')
-    .eq('plantation_id', plantationId)
-    .is('deleted_at', null)
-    .order('codigo', { ascending: true });
-  if (error) throw new Error(error.message);
-  return Promise.all(((data ?? []) as FilaParcela[]).map(parcelaConStats));
-}
-
-/** Agrega en cliente (no count head por grupo, ~250 grupos → N+1); paginado para evitar el tope de 1000 de PostgREST. */
-async function contarArbolesPorGrupo(plantationId: string): Promise<Map<string, number>> {
-  const filas = await leerPaginado<{ group_id: string }>((desde, hasta) =>
+  const [{ data, error }, grupos] = await Promise.all([
     supabase
-      .from('trees')
-      .select('group_id, groups!inner(plantation_id)')
-      .eq('groups.plantation_id', plantationId)
-      .range(desde, hasta),
-  );
-  const conteos = new Map<string, number>();
-  for (const fila of filas) {
-    conteos.set(fila.group_id, (conteos.get(fila.group_id) ?? 0) + 1);
-  }
-  return conteos;
+      .from('parcelas')
+      .select('id, nombre, codigo, descripcion, created_at')
+      .eq('plantation_id', plantationId)
+      .is('deleted_at', null)
+      .order('codigo', { ascending: true }),
+    listarArbolesPorGrupo(plantationId),
+  ]);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as FilaParcela[]).map((fila) => statsDeParcela(fila, grupos));
 }
 
 function mapearGrupo(fila: FilaGrupo, arboles: number): GrupoConDetalle {
@@ -195,27 +192,46 @@ export async function listarGrupos(
     .select('id, nombre, codigo, tipo, estado, parcela_id, created_at, parcelas(codigo)')
     .eq('plantation_id', plantationId);
   if (filtros.parcelaId) consulta = consulta.eq('parcela_id', filtros.parcelaId);
-  const [{ data, error }, conteos] = await Promise.all([
+  const [{ data, error }, grupos] = await Promise.all([
     consulta.order('codigo', { ascending: true }),
-    contarArbolesPorGrupo(plantationId),
+    listarArbolesPorGrupo(plantationId),
   ]);
   if (error) throw new Error(error.message);
+  const conteos = new Map(grupos.map((grupo) => [grupo.group_id, grupo.arboles]));
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const filas = (data ?? []) as unknown as FilaGrupo[];
   return filas.map((fila) => mapearGrupo(fila, conteos.get(fila.id) ?? 0));
 }
 
-/** Base del listado de árboles: embeds + scope por plantación vía join interno. */
-function consultaBaseArboles(plantationId: string) {
-  return supabase
-    .from('trees')
-    .select('*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id)', {
-      count: 'exact',
-    })
-    .eq('groups.plantation_id', plantationId);
+/**
+ * Qué trae una consulta de árboles. Los filtros miran `groups.parcela_id` y
+ * `groups.plantations.codigo`: las columnas tienen que embeber
+ * `groups!inner(parcela_id, plantation_id, plantations!inner(codigo))`, o el
+ * filtro acota el embed y no los árboles.
+ */
+export type SelectArboles = {
+  columnas: string;
+  opciones?: { count?: 'exact'; head?: boolean };
+};
+
+const SELECT_LISTADO: SelectArboles = {
+  columnas:
+    '*, species(codigo, nombre, nombre_cientifico), groups!inner(codigo, nombre, parcela_id, plantation_id, plantations!inner(codigo))',
+  opciones: { count: 'exact' },
+};
+
+/** Lo mínimo para contar con todos los filtros, sin traer filas. */
+const SELECT_CONTEO: SelectArboles = {
+  columnas: 'id, groups!inner(parcela_id, plantation_id, plantations!inner(codigo))',
+  opciones: { count: 'exact', head: true },
+};
+
+/** Árboles de la plantación, con el scope vía join interno. */
+function consultaBaseArboles(plantationId: string, { columnas, opciones }: SelectArboles) {
+  return supabase.from('trees').select(columnas, opciones).eq('groups.plantation_id', plantationId);
 }
 
-type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
+export type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
 
 /** Patrón LIKE de un esquema local, ej. `file://%`. */
 function patronEsquemaLocal(esquema: string): string {
@@ -247,6 +263,7 @@ function aplicarFiltroFoto(consulta: ConsultaArboles, conFoto: boolean): Consult
 function aplicarFiltrosArboles(
   consulta: ConsultaArboles,
   filtros: FiltrosArboles,
+  busqueda?: BusquedaArbol,
 ): ConsultaArboles {
   if (filtros.parcelaId) consulta = consulta.eq('groups.parcela_id', filtros.parcelaId);
   if (filtros.groupId) consulta = consulta.eq('group_id', filtros.groupId);
@@ -255,8 +272,35 @@ function aplicarFiltrosArboles(
   if (filtros.conGps === true) consulta = consulta.not('latitude', 'is', null);
   if (filtros.conGps === false) consulta = consulta.is('latitude', null);
   if (filtros.conFoto !== undefined) consulta = aplicarFiltroFoto(consulta, filtros.conFoto);
-  if (filtros.busqueda) consulta = consulta.ilike('sub_id', patronContiene(filtros.busqueda));
+  if (busqueda) consulta = consulta.ilike('sub_id', busqueda.patronSubId);
+  if (busqueda?.codigo) consulta = consulta.eq(COLUMNA_CODIGO_PLANTACION, busqueda.codigo);
   return consulta;
+}
+
+/** La búsqueda por ID del filtro, resuelta: un ID Árbol completo consulta los códigos de plantación. */
+export function resolverBusquedaDeFiltros(
+  filtros: FiltrosArboles,
+): Promise<BusquedaArbol | undefined> {
+  return filtros.busqueda ? resolverBusquedaArbol(filtros.busqueda) : Promise.resolve(undefined);
+}
+
+/**
+ * Árboles de la plantación con los filtros del listado. Recibe la búsqueda ya
+ * resuelta para que una lectura paginada arme una consulta por página sin
+ * resolverla de nuevo.
+ */
+export function consultaArbolesFiltrados(
+  plantationId: string,
+  filtros: FiltrosArboles,
+  busqueda: BusquedaArbol | undefined,
+  select: SelectArboles = SELECT_LISTADO,
+): ConsultaArboles {
+  return aplicarFiltrosArboles(consultaBaseArboles(plantationId, select), filtros, busqueda);
+}
+
+/** Más nuevos primero. El id desempata: paginar con `range` no repite ni saltea filas. */
+export function ordenarComoListado(consulta: ConsultaArboles): ConsultaArboles {
+  return consulta.order('created_at', { ascending: false }).order('id', { ascending: false });
 }
 
 /** Coordenadas GPS de la fila: undefined si la migración 023 no está o no hay dato. */
@@ -273,11 +317,15 @@ function mapearArbol(fila: FilaArbol): ArbolDetalle {
   return {
     id: fila.id,
     subId: fila.sub_id,
+    idArbol: idDeArbol(fila.sub_id, fila.groups?.plantations?.codigo),
     posicion: fila.posicion,
+    especieId: fila.species_id,
     especieCodigo: fila.species?.codigo ?? null,
     especieNombre: fila.species?.nombre ?? null,
+    especieNombreCientifico: fila.species?.nombre_cientifico ?? null,
     grupoId: fila.group_id,
     grupoCodigo: fila.groups?.codigo ?? '',
+    grupoNombre: fila.groups?.nombre ?? null,
     parcelaId: fila.groups?.parcela_id ?? null,
     fotoUrl: fila.foto_url,
     usuarioRegistro: fila.usuario_registro,
@@ -293,12 +341,10 @@ export async function listarArboles(
   pagina = 1,
 ): Promise<PaginaArboles> {
   const desde = (pagina - 1) * ARBOLES_POR_PAGINA;
-  const { data, error, count } = await aplicarFiltrosArboles(
-    consultaBaseArboles(plantationId),
-    filtros,
-  )
-    .order('created_at', { ascending: false })
-    .range(desde, desde + ARBOLES_POR_PAGINA - 1);
+  const busqueda = await resolverBusquedaDeFiltros(filtros);
+  const { data, error, count } = await ordenarComoListado(
+    consultaArbolesFiltrados(plantationId, filtros, busqueda),
+  ).range(desde, desde + ARBOLES_POR_PAGINA - 1);
   if (error) throw new Error(error.message);
   const total = count ?? 0;
   return {
@@ -306,4 +352,31 @@ export async function listarArboles(
     total,
     totalPaginas: Math.max(1, Math.ceil(total / ARBOLES_POR_PAGINA)),
   };
+}
+
+/** Cuántos árboles deja el filtro y cuántos de ellos tienen la foto subida. */
+export type ConteoDelFiltro = { total: number; conFoto: number };
+
+type Contar = (filtros: FiltrosArboles) => Promise<number>;
+
+/** Si el filtro ya fija la foto, el segundo conteo sale sin consultar. */
+function contarConFoto(filtros: FiltrosArboles, total: Promise<number>, contar: Contar) {
+  if (filtros.conFoto === undefined) return contar({ ...filtros, conFoto: true });
+  return filtros.conFoto ? total : Promise.resolve(0);
+}
+
+/** Conteos del filtro del listado, con `count` sin traer filas. */
+export async function contarArbolesDelFiltro(
+  plantationId: string,
+  filtros: FiltrosArboles,
+): Promise<ConteoDelFiltro> {
+  const busqueda = await resolverBusquedaDeFiltros(filtros);
+  const contar: Contar = async (conFiltros) => {
+    const consulta = consultaArbolesFiltrados(plantationId, conFiltros, busqueda, SELECT_CONTEO);
+    const { count, error } = await consulta;
+    return contarOLanzar(count, error);
+  };
+  const total = contar(filtros);
+  const [totalLeido, conFoto] = await Promise.all([total, contarConFoto(filtros, total, contar)]);
+  return { total: totalLeido, conFoto };
 }

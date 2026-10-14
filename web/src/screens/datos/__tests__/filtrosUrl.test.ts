@@ -1,5 +1,12 @@
 import { FILTROS_INICIALES } from '../filtrosArboles';
-import { conFiltro, filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from '../filtrosUrl';
+import {
+  conFiltro,
+  filtrosAlCambiarDeSeccion,
+  filtrosAParams,
+  contarFiltros,
+  hayFiltroOBusqueda,
+  leerFiltrosDeUrl,
+} from '../filtrosUrl';
 
 test('conFiltro cambia el campo y, si es la parcela, suelta el grupo', () => {
   const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', groupId: 'g1', speciesId: 'e1' };
@@ -38,13 +45,24 @@ test('filtrosAParams omite los campos vacíos y usa las claves de URL', () => {
   expect(params.has('grupo')).toBe(false);
 });
 
-test('hayFiltroActivo distingue el estado inicial de uno con filtro', () => {
-  expect(hayFiltroActivo(FILTROS_INICIALES)).toBe(false);
-  expect(hayFiltroActivo({ ...FILTROS_INICIALES, parcelaId: 'p1' })).toBe(true);
-  expect(hayFiltroActivo({ ...FILTROS_INICIALES, gps: 'sin' })).toBe(true);
+test('la búsqueda no cuenta como filtro del panel', () => {
+  expect(contarFiltros({ ...FILTROS_INICIALES, busqueda: 'A-12' })).toBe(0);
+  expect(contarFiltros({ ...FILTROS_INICIALES, busqueda: 'A-12', parcelaId: 'p1' })).toBe(1);
+});
+
+test('hayFiltroOBusqueda distingue el estado inicial de uno acotado, búsqueda incluida', () => {
+  expect(hayFiltroOBusqueda(FILTROS_INICIALES)).toBe(false);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, parcelaId: 'p1' })).toBe(true);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, gps: 'sin' })).toBe(true);
+  expect(hayFiltroOBusqueda({ ...FILTROS_INICIALES, busqueda: 'A-12' })).toBe(true);
 });
 
 test('roundtrip: filtrosAParams → leerFiltrosDeUrl preserva los valores', () => {
   const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', speciesId: 'NN', foto: 'con' as const };
   expect(leerFiltrosDeUrl(filtrosAParams(filtros))).toEqual(filtros);
+});
+
+test('al cambiar de sección viaja el scope pero no la búsqueda', () => {
+  const params = filtrosAlCambiarDeSeccion('?parcela=p1&grupo=g1&q=PAL23');
+  expect(params.toString()).toBe('parcela=p1&grupo=g1');
 });

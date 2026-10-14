@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLiveData } from '../database/liveQuery';
-import { useCurrentUserId } from './useCurrentUserId';
+import { useQuienSube } from './useQuienSube';
 import {
   countPendingGroupsByPlantation,
   countPendingParcelasByPlantation,
@@ -10,19 +10,22 @@ import {
 /**
  * Map plantacionId → total de pendientes de sync de esa plantación.
  *
- * Issue #71: cuenta lo mismo que usePendingSyncCount (grupos del usuario +
- * parcelas, incl. tombstones + fotos), para que el dot de cada tarjeta
+ * Issue #71: cuenta lo mismo que usePendingSyncCount (grupos y fotos que sube el
+ * usuario + parcelas, incl. tombstones), para que el dot de cada tarjeta
  * señale exactamente qué plantación enciende el global.
  */
 export function usePendingSyncMap(): Map<string, number> {
-  const userId = useCurrentUserId();
+  const { userId, esAdmin } = useQuienSube();
 
   const { data: groupRows } = useLiveData(
-    () => countPendingGroupsByPlantation(userId),
-    [userId]
+    () => countPendingGroupsByPlantation({ userId, esAdmin }),
+    [userId, esAdmin]
   );
   const { data: parcelaRows } = useLiveData(() => countPendingParcelasByPlantation());
-  const { data: photoRows } = useLiveData(() => countPendingTreePhotosByPlantation());
+  const { data: photoRows } = useLiveData(
+    () => countPendingTreePhotosByPlantation({ userId, esAdmin }),
+    [userId, esAdmin]
+  );
 
   return useMemo(() => {
     const map = new Map<string, number>();

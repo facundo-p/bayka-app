@@ -74,6 +74,8 @@ async function contarAsignacionesPorUsuario(): Promise<Map<string, number>> {
       .from('plantation_users')
       .select('user_id')
       .eq('rol_en_plantacion', ROL.TECNICO)
+      .order('plantation_id')
+      .order('user_id')
       .range(desde, hasta),
   );
   const conteos = new Map<string, number>();

@@ -1,33 +1,35 @@
 /**
  * usePlantationAdmin — all data logic for AdminScreen.
  *
- * Encapsulates plantation list, finalization, and export. Los IDs finales se
- * generan desde la web de gestión (issue #232); acá solo se lee el gate
- * idsGenerated para habilitar los exports.
+ * Encapsulates plantation list, finalization, and export.
  * Screens import this hook and pass callbacks to components.
  */
 import { useState } from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import { hayConexion } from '../services/conexion';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
 import { useConfirm } from './useConfirm';
+import { useReaperturaPlantacion } from './useReaperturaPlantacion';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
-import { checkFinalizationGate, hasIdsGenerated, type FinalizationGate } from '../queries/adminQueries';
+import { checkFinalizationGate, type FinalizationGate } from '../queries/adminQueries';
 import {
   updatePlantation,
   finalizePlantation,
   discardPlantationEdit,
   FinalizePlantationLocalSyncError,
   FinalizePlantationPendientesError,
-  PlantationGpsSettings,
+  type AjustesDePlantacion,
 } from '../repositories/PlantationRepository';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
+import { TEXTO_DUPLICADA_EN_SERVIDOR } from '../components/PlantacionesDuplicadasAviso';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { puedeReabrir } from '../utils/reaperturaPlantacion';
 import { mensajeFinalizarConPendientes, tienePendientes } from '../utils/finalizarPlantacion';
 import { detalleDePendientes } from '../utils/avisoEliminarDelDispositivo';
 import type { Plantation } from '../types/plantation';
@@ -36,7 +38,6 @@ import type { Plantation } from '../types/plantation';
 
 export type ExpandedMeta = {
   canFinalize: boolean;
-  idsGenerated: boolean;
   unresolvedNNCount: number;
   unresolvedNNGroups: number;
   /** Detalle de lo que falta subir; vacío si no falta nada. */
@@ -62,21 +63,10 @@ async function fetchMetaDeFinalizacion(plantacionId: string) {
   }
 }
 
-async function fetchIdsGenerated(plantacionId: string): Promise<boolean> {
-  try {
-    return await hasIdsGenerated(plantacionId);
-  } catch (e) {
-    console.error('[fetchPlantationMeta] hasIdsGenerated failed:', e);
-    return false;
-  }
-}
-
 export async function fetchPlantationMeta(plantation: Plantation): Promise<ExpandedMeta> {
-  const finalizacion = plantation.estado === ESTADO_PLANTACION.activa
-    ? await fetchMetaDeFinalizacion(plantation.id)
+  return plantation.estado === ESTADO_PLANTACION.activa
+    ? fetchMetaDeFinalizacion(plantation.id)
     : SIN_META_DE_FINALIZACION;
-  const idsGenerated = plantation.estado === ESTADO_PLANTACION.finalizada && await fetchIdsGenerated(plantation.id);
-  return { ...finalizacion, idsGenerated };
 }
 
 export function usePlantationAdmin() {
@@ -84,6 +74,7 @@ export function usePlantationAdmin() {
   const { profile } = useProfileData();
   const organizacionId = profile?.organizacionId ?? null;
   const { confirmProps, show: showConfirm } = useConfirm();
+  const { handleReopen } = useReaperturaPlantacion(showConfirm);
 
   const [finalizing, setFinalizing] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -210,40 +201,45 @@ export function usePlantationAdmin() {
   async function handleCreateSubmit(
     lugar: string,
     periodo: string,
-    gps?: PlantationGpsSettings
-  ): Promise<string> {
+    ajustes?: Partial<AjustesDePlantacion>
+  ): Promise<{ id: string; duplicada?: boolean }> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intentá de nuevo.');
     }
     // El alta es local-first; con red se empuja en el acto y si falla queda pendiente de sync.
-    const net = await NetInfo.fetch();
+    const conectado = await hayConexion();
     const result = await createPlantationWithDefaultParcela({
       lugar,
       periodo,
       organizacionId,
       creadoPor: userId,
-      gps,
-      mode: net.isConnected === false ? 'offline' : 'online',
+      ajustes,
+      mode: conectado ? 'online' : 'offline',
     });
-    return result.id;
+    return { id: result.id, duplicada: result.duplicada };
   }
 
-  async function handleAssignTech(plantacionId: string): Promise<boolean> {
-    const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
-      showInfoDialog(showConfirm, 'Sin conexión', 'La asignación de técnicos requiere conexión a internet.', 'wifi-outline', colors.info);
-      return false;
+  /**
+   * Encadena el siguiente paso del alta (abrir config de especies) después del aviso de
+   * duplicado (#655/#656): si no hay duplicado corre directo. Si lo hay, recién al cerrar
+   * el aviso — así nunca hay dos modales nativos abiertos a la vez.
+   */
+  function continuarLuegoDeCrear(duplicada: boolean | undefined, siguientePaso: () => void) {
+    if (!duplicada) {
+      siguientePaso();
+      return;
     }
-    return true;
+    showInfoDialog(showConfirm, 'Mismo lugar y periodo', TEXTO_DUPLICADA_EN_SERVIDOR, 'alert-circle-outline', colors.info, siguientePaso);
   }
 
   async function handleEditSubmit(
     plantacionId: string,
     lugar: string,
     periodo: string,
-    gps?: PlantationGpsSettings
-  ) {
-    await updatePlantation(plantacionId, lugar, periodo, gps);
+    ajustes?: Partial<AjustesDePlantacion>,
+    vistos?: Partial<CamposDePlantacion>
+  ): Promise<number> {
+    return updatePlantation(plantacionId, lugar, periodo, ajustes, vistos);
   }
 
   function handleDiscardEdit(plantacionId: string) {
@@ -269,11 +265,13 @@ export function usePlantationAdmin() {
     exportingId,
     confirmProps,
     handleFinalize,
+    canReopen: puedeReabrir(profile?.rol),
+    handleReopen,
     handleExportCsv,
     handleExportExcel,
     handleExportKml,
     handleCreateSubmit,
-    handleAssignTech,
+    continuarLuegoDeCrear,
     handleEditSubmit,
     handleDiscardEdit,
   };

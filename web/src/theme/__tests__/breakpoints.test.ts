@@ -1,5 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { archivosCss } from '../../test/archivosCss';
 import { valoresPx } from '../../test/consultaMedia';
 import { ALTO_BP, ANCHO_BP } from '../breakpoints';
 
@@ -15,21 +14,7 @@ import { ALTO_BP, ANCHO_BP } from '../breakpoints';
 const ANCHOS_VALIDOS: number[] = Object.values(ANCHO_BP);
 const ALTOS_VALIDOS: number[] = Object.values(ALTO_BP);
 
-// vitest corre con cwd en `web/`; los .css que importan son todos los de src/.
-const RAIZ = join(process.cwd(), 'src');
-
-function archivosCss(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entrada) => {
-    const ruta = join(dir, entrada.name);
-    if (entrada.isDirectory()) return archivosCss(ruta);
-    return entrada.name.endsWith('.css') ? [ruta] : [];
-  });
-}
-
-const CSS = archivosCss(RAIZ).map((ruta) => ({
-  ruta: ruta.slice(RAIZ.length),
-  texto: readFileSync(ruta, 'utf8'),
-}));
+const CSS = archivosCss();
 
 /** Lo que `revisar` objete del prelude de cada `@media`, con el archivo adelante. */
 function hallazgosEnMedia(revisar: (prelude: string) => string[]): string[] {

@@ -7,6 +7,11 @@ import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationRe
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
 import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
+import PlantacionesDuplicadasAviso from './PlantacionesDuplicadasAviso';
+import CambiosPorResolverAviso from './CambiosPorResolverAviso';
+import type { PlantacionConCambios } from '../utils/conflictosDeEdicion';
+import EspeciesConArbolesAviso from './EspeciesConArbolesAviso';
+import TecnicosNoAsignadosAviso from './TecnicosNoAsignadosAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -45,6 +50,10 @@ interface Props {
   huboTimeout: boolean;
   onCancelar: () => void;
   onDismiss: () => void;
+  /** Abre "Resolver cambios" de una plantación (#634); sin esto el aviso no ofrece el botón. */
+  onResolverCambios?: (plantacionId: string) => void;
+  /** Plantaciones de la corrida con conflictos de sincronización sin resolver (#804). */
+  conflictosDeSync?: PlantacionConCambios[];
 }
 
 type GlobalProgress = { plantationName: string; done: number; total: number } | null | undefined;
@@ -230,7 +239,9 @@ function cantidad(n: number, singular: string, plural: string): string {
   return `${n} ${n > 1 ? plural : singular}`;
 }
 
-function Conteo({ n, singular, plural, falla }: { n?: number; singular: string; plural: string; falla?: boolean }) {
+type PropsDeConteo = { n?: number; singular: string; plural: string; falla?: boolean };
+
+function Conteo({ n, singular, plural, falla }: PropsDeConteo) {
   if (n == null || n <= 0) return null;
   return <Text style={falla ? styles.failureMessage : styles.successText}>{cantidad(n, singular, plural)}</Text>;
 }
@@ -260,6 +271,14 @@ function hayFallas(p: Props): boolean {
   return p.failureCount > 0 || p.parcelaFailureCount > 0 || p.plantationFailureCount > 0;
 }
 
+/** Cierra el resumen y abre la pantalla donde se elige. */
+function AvisoDeCambiosPorResolver({ plantationResults, conflictosDeSync, onDismiss, onResolverCambios }: Props) {
+  const resolver = onResolverCambios
+    ? (plantacionId: string) => { onDismiss(); onResolverCambios(plantacionId); }
+    : undefined;
+  return <CambiosPorResolverAviso resultados={plantationResults} conflictosDeSync={conflictosDeSync} onResolver={resolver} />;
+}
+
 /** Solo hubo pull: no se subió ni falló nada que listar. */
 function esSoloPull(p: Props): boolean {
   return p.pullSuccess !== null && p.results.length === 0 && !hayFallas(p);
@@ -275,6 +294,10 @@ function ResultadoPull(p: Props) {
       </Text>
       <FotosDescargadas photoResult={p.photoResult} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
+      <EspeciesConArbolesAviso resultados={p.plantationResults} />
+      <TecnicosNoAsignadosAviso resultados={p.plantationResults} />
+      <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );
@@ -310,6 +333,10 @@ function ResultadoPush(p: Props) {
       <FailureList label="parcela" results={p.parcelaResults} getKey={(r) => r.parcelaId} />
       <FailureList label="grupo" results={p.results} getKey={(r) => r.groupId} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
+      <EspeciesConArbolesAviso resultados={p.plantationResults} />
+      <TecnicosNoAsignadosAviso resultados={p.plantationResults} />
+      <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );

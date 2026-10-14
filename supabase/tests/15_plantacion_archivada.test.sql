@@ -28,13 +28,12 @@ update profiles set rol = 'superadmin', organizacion_id = 'b1500000-0000-0000-00
 
 -- P1: activa, para la matriz de roles. P2: finalizada y archivada. P3: activa y
 -- archivada, con datos, para las escrituras.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en) values
-  ('b1500000-0000-0000-0000-000000000010', 'b1500000-0000-0000-0000-000000000001',
-   'Matriz 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'activa', null),
-  ('b1500000-0000-0000-0000-000000000020', 'b1500000-0000-0000-0000-000000000001',
-   'Finalizada 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'finalizada', now()),
-  ('b1500000-0000-0000-0000-000000000030', 'b1500000-0000-0000-0000-000000000001',
-   'Archivada 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'activa', now());
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000010', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Matriz 15');
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000020', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Finalizada 15', p_estado => 'finalizada', p_archivada_en => now());
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000030', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Archivada 15', p_archivada_en => now());
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b1500000-0000-0000-0000-000000000021', 'b1500000-0000-0000-0000-000000000020', 'P15f', 'P15f'),
@@ -215,14 +214,14 @@ select throws_ok(
 -- Los UPDATE bloqueados por USING no explotan: quedan en cero filas.
 update trees set sub_id = 'X' where id = 'b1500000-0000-0000-0000-000000000f33';
 update parcelas set deleted_at = now() where id = 'b1500000-0000-0000-0000-000000000031';
-update plantations set lugar = 'Cambiada' where id = 'b1500000-0000-0000-0000-000000000030';
+update plantations set estado = 'finalizada' where id = 'b1500000-0000-0000-0000-000000000030';
 
 reset role;
 select is((select sub_id from trees where id = 'b1500000-0000-0000-0000-000000000f33'), 'A1',
   'superadmin no edita árboles de una archivada');
 select is((select deleted_at from parcelas where id = 'b1500000-0000-0000-0000-000000000031'), null,
   'superadmin no tombstonea parcelas de una archivada');
-select is((select lugar from plantations where id = 'b1500000-0000-0000-0000-000000000030'), 'Archivada 15',
+select is((select estado from plantations where id = 'b1500000-0000-0000-0000-000000000030'), 'activa',
   'superadmin no edita la plantación archivada');
 select is((select count(*)::int from trees where id = 'b1500000-0000-0000-0000-000000000f33'), 1,
   'el árbol sigue vivo');

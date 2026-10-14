@@ -27,6 +27,7 @@ export type NewPlantation = {
   // Opcional: si no se pasa, aplica el default del schema (visible).
   visibleInApp?: boolean;
   eliminadaEnServidorEn?: string | null;
+  codigo?: string | null;
 };
 
 export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPlantation {
@@ -113,10 +114,16 @@ export type NewTree = {
   subId: string;
   fotoUrl: string | null;
   fotoSynced?: boolean;
-  plantacionId: number | null;
-  globalId: number | null;
   usuarioRegistro: string;
   createdAt: string;
+  fotoBase?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  gpsAccuracy?: number | null;
+  gpsCapturedAt?: string | null;
+  latitudeBase?: number | null;
+  longitudeBase?: number | null;
+  gpsCapturedAtBase?: string | null;
 };
 
 export function createTestTree(overrides?: Partial<NewTree>): NewTree {
@@ -127,8 +134,6 @@ export function createTestTree(overrides?: Partial<NewTree>): NewTree {
     posicion: 1,
     subId: 'LA-EUC-1',
     fotoUrl: null,
-    plantacionId: null,
-    globalId: null,
     usuarioRegistro: 'user-tecnico-1',
     createdAt: nowIso(),
     ...overrides,

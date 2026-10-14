@@ -82,7 +82,7 @@
 }
 
 .novedades:hover {
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 /* En teléfono el acceso queda como la versión sola. */

@@ -9,7 +9,18 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
   deleteLastTree: jest.fn(),
   reverseTreeOrder: jest.fn(),
   updateTreePhoto: jest.fn(),
+  quitarFotoDelArbol: jest.fn(),
   deleteTreeAndRecalculate: jest.fn(),
+  updateTreeGps: jest.fn(),
+  RESULTADO_DE_QUITAR_FOTO: jest.requireActual('../../src/repositories/TreeRepository').RESULTADO_DE_QUITAR_FOTO,
+}));
+
+jest.mock('../../src/services/settings/gpsEnabledStore', () => ({
+  getGpsEnabled: () => true,
+}));
+
+jest.mock('../../src/services/gps/locationClient', () => ({
+  getCurrentGpsFix: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('../../src/repositories/GroupRepository', () => ({
@@ -36,10 +47,11 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getGroupById: jest.fn(),
 }));
 
-const { insertTree, deleteLastTree } = require('../../src/repositories/TreeRepository');
+const { insertTree, deleteLastTree, updateTreePhoto, quitarFotoDelArbol, updateTreeGps } = require('../../src/repositories/TreeRepository');
 const { finalizeGroup, canEdit } = require('../../src/repositories/GroupRepository');
 const { useLiveData } = require('../../src/database/liveQuery');
 const { useTrees } = require('../../src/hooks/useTrees');
+const { getCurrentGpsFix } = require('../../src/services/gps/locationClient');
 
 import { renderHook, act } from '@testing-library/react-native';
 import { useTreeRegistration } from '../../src/hooks/useTreeRegistration';
@@ -51,6 +63,7 @@ const DEFAULT_PARAMS = {
   plantacionId: 'plant-1',
   grupoCodigo: 'L1',
   userId: 'user-1',
+  esAdmin: false,
   pickPhoto,
 };
 
@@ -176,11 +189,12 @@ describe('useTreeRegistration', () => {
       });
 
       expect(result.current.photoCaptureAllTrees).toBe(true);
-      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ optional: true }));
       expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: FOTO }));
     });
 
-    it('con el flag prendido y sin foto no registra (la foto es obligatoria)', async () => {
+    // #908: fuera de N/N la foto es opcional; sin foto el árbol se registra igual.
+    it('con el flag prendido y sin foto registra el árbol sin foto', async () => {
       mockLiveQueries({ captureConfig: CONFIG_FOTO });
       pickPhoto.mockResolvedValue(null);
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -189,7 +203,31 @@ describe('useTreeRegistration', () => {
         await result.current.registerTree('esp-1', 'ANC');
       });
 
-      expect(insertTree).not.toHaveBeenCalled();
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: null }));
+    });
+
+    it('un segundo toque con la cámara abierta se ignora y registra un solo árbol', async () => {
+      mockLiveQueries({ captureConfig: CONFIG_FOTO });
+      // Como PhotoCropProvider: un pedido nuevo resuelve null el anterior.
+      let sacarFoto: (uri: string | null) => void = () => {};
+      pickPhoto.mockImplementation(() => new Promise((resolve) => {
+        sacarFoto(null);
+        sacarFoto = resolve;
+      }));
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        const toques = [
+          result.current.registerTree('esp-1', 'ANC'),
+          result.current.registerTree('esp-1', 'ANC'),
+        ];
+        sacarFoto(FOTO);
+        await Promise.all(toques);
+      });
+
+      expect(pickPhoto).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: FOTO }));
     });
 
     it('en solo lectura no abre el selector aunque el flag esté prendido', async () => {
@@ -206,6 +244,108 @@ describe('useTreeRegistration', () => {
     });
   });
 
+  // #910: el punto se fija al tocar el botón; alejarse a sacar la foto no lo mueve.
+  describe('punto GPS al toque', () => {
+    const CONFIG_GPS_Y_FOTO = { gpsFrequency: 1, gpsRequired: true, photoAllTrees: true };
+    const fixEn = (latitude: number) => ({ latitude, longitude: -60, accuracy: 2, timestamp: Date.now() });
+    let watcher = fixEn(-31);
+    const params = { ...DEFAULT_PARAMS, getLastGpsFix: () => watcher };
+
+    /** La foto se saca después de alejarse: el watcher ya marca otro lugar. */
+    function sacarFotoAlejado(resultado: string | null) {
+      pickPhoto.mockImplementation(async () => {
+        watcher = fixEn(-40);
+        return resultado;
+      });
+    }
+
+    beforeEach(() => {
+      watcher = fixEn(-31);
+      mockLiveQueries({ captureConfig: CONFIG_GPS_Y_FOTO });
+    });
+
+    async function registrar(fn: (r: ReturnType<typeof useTreeRegistration>) => Promise<void>) {
+      const { result } = renderHook(() => useTreeRegistration(params));
+      await act(async () => {
+        await fn(result.current);
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    }
+
+    it('con foto: el árbol queda con el punto del toque, no el de la foto', async () => {
+      sacarFotoAlejado(FOTO);
+
+      await registrar((r) => r.registerTree('esp-1', 'ANC'));
+
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: FOTO }));
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('"Sin foto" (opcional): registra el árbol con el punto del toque', async () => {
+      sacarFotoAlejado(null);
+
+      await registrar((r) => r.registerTree('esp-1', 'ANC'));
+
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ fotoUrl: null }));
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('un segundo toque con la cámara abierta no pide GPS', async () => {
+      watcher = { ...fixEn(-31), timestamp: 0 };
+      let sacarFoto: (uri: string | null) => void = () => {};
+      pickPhoto.mockImplementation(() => new Promise((resolve) => { sacarFoto = resolve; }));
+
+      await registrar(async (r) => {
+        const toques = [r.registerTree('esp-1', 'ANC'), r.registerTree('esp-1', 'ANC')];
+        sacarFoto(FOTO);
+        await Promise.all(toques);
+      });
+
+      expect(getCurrentGpsFix).toHaveBeenCalledTimes(1);
+      expect(insertTree).toHaveBeenCalledTimes(1);
+    });
+
+    // #912: con el punto en camino, la cámara lo muestra y el botón GPS del árbol nuevo gira.
+    it('punto en camino: lo recibe la cámara y el árbol nuevo queda "capturando" hasta que llega', async () => {
+      watcher = { ...fixEn(-31), timestamp: 0 };
+      let llegaFix: (fix: ReturnType<typeof fixEn> | null) => void = () => {};
+      (getCurrentGpsFix as jest.Mock).mockReturnValueOnce(new Promise((resolve) => { llegaFix = resolve; }));
+      pickPhoto.mockResolvedValue(FOTO);
+      const { result } = renderHook(() => useTreeRegistration(params));
+
+      await act(async () => { await result.current.registerTree('esp-1', 'ANC'); });
+
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ puntoGps: expect.any(Promise) }));
+      expect(result.current.gpsCapturingTreeId).toBe('tree-new');
+
+      await act(async () => {
+        llegaFix(fixEn(-31));
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(result.current.gpsCapturingTreeId).toBeNull();
+      expect(updateTreeGps).toHaveBeenCalledWith('tree-new', expect.objectContaining({ latitude: -31 }));
+    });
+
+    it('punto resuelto al toque: la cámara no recibe aviso ni el botón gira', async () => {
+      const { result } = renderHook(() => useTreeRegistration(params));
+
+      await act(async () => { await result.current.registerTree('esp-1', 'ANC'); });
+
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ puntoGps: undefined }));
+      expect(result.current.gpsCapturingTreeId).toBeNull();
+    });
+
+    it('N/N sin foto (obligatoria): no registra el árbol ni el punto', async () => {
+      sacarFotoAlejado(null);
+
+      await registrar((r) => r.registerNN());
+
+      expect(insertTree).not.toHaveBeenCalled();
+      expect(updateTreeGps).not.toHaveBeenCalled();
+    });
+  });
+
   describe('registerNN', () => {
     it('pide foto obligatoria y registra sin especie con código NN', async () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -214,7 +354,7 @@ describe('useTreeRegistration', () => {
         await result.current.registerNN();
       });
 
-      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(pickPhoto).toHaveBeenCalledWith(expect.objectContaining({ optional: false }));
       expect(insertTree).toHaveBeenCalledWith({
         grupoId: 'sg-1',
         grupoCodigo: 'L1',
@@ -297,6 +437,80 @@ describe('useTreeRegistration', () => {
       });
 
       expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // #768: el server rechaza la foto de un técnico en un grupo ajeno; un admin sí la edita.
+  describe('foto de un árbol según quién creó el grupo', () => {
+    const grupoAjeno = { ...mockGroup, usuarioCreador: 'otro-tecnico' };
+
+    it.each([
+      ['updatePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.updatePhoto('tree-1', FOTO)],
+      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1', true)],
+      ['addPhotoToTree', (r: ReturnType<typeof useTreeRegistration>) => r.addPhotoToTree('tree-1')],
+    ])('%s: un técnico no escribe en un grupo ajeno', async (_, accion) => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await accion(result.current); });
+
+      expect(updateTreePhoto).not.toHaveBeenCalled();
+      expect(quitarFotoDelArbol).not.toHaveBeenCalled();
+    });
+
+    it('updatePhoto: un admin escribe en un grupo ajeno', async () => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
+
+      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', FOTO);
+    });
+
+    it('removePhoto: un admin quita la foto en un grupo ajeno', async () => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await result.current.removePhoto('tree-1', true); });
+
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1', true);
+      expect(updateTreePhoto).not.toHaveBeenCalled();
+    });
+
+    it('el creador escribe en su grupo', async () => {
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
+
+      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', FOTO);
+    });
+
+    it('el creador quita la foto en su grupo', async () => {
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await result.current.removePhoto('tree-1', true); });
+
+      expect(quitarFotoDelArbol).toHaveBeenCalledWith('tree-1', true);
+    });
+
+    // #816: la foto se subió mientras la UI creía que no; la UI tiene que preguntar.
+    it('removePhoto devuelve si falta confirmar', async () => {
+      (quitarFotoDelArbol as jest.Mock).mockResolvedValueOnce({ requiereConfirmacion: true });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      let resultado: unknown;
+      await act(async () => { resultado = await result.current.removePhoto('tree-1', false); });
+
+      expect(resultado).toEqual({ requiereConfirmacion: true });
+    });
+
+    it('nadie escribe en una plantación finalizada', async () => {
+      mockLiveQueries({ group: grupoAjeno, plantacionEstado: 'finalizada' });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
+
+      expect(updateTreePhoto).not.toHaveBeenCalled();
     });
   });
 

@@ -9,10 +9,11 @@
  * para poder seguir el borrado de punta a punta.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species, borradosPendientes } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, borradosPendientes, conflictosDeSync, plantationSpecies } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -68,17 +69,22 @@ jest.mock('../../src/supabase/client', () => {
         };
 
         // Doble de `quitar_fotos_arboles` (#498): pone la foto en null, mismo criterio de rechazo.
+        // Con base (#810), la foto que no es la que vio el teléfono vuelve en `conservados`.
         if (nombre === 'quitar_fotos_arboles') {
           let quitadas = 0;
           const rechazados: string[] = [];
+          const conservados: { id: string; foto_url: string }[] = [];
+          const bases: Record<string, string | null> = args.p_bases ?? {};
           for (const id of args.p_arboles as string[]) {
             const arbol = mockServerState.trees.get(id);
             if (!arbol) continue;
             if (!escribible(arbol.group_id)) { rechazados.push(id); continue; }
-            if (arbol.foto_url !== null) quitadas++;
+            if (arbol.foto_url === null) continue;
+            if (id in bases && bases[id] !== arbol.foto_url) { conservados.push({ id, foto_url: arbol.foto_url }); continue; }
+            quitadas++;
             arbol.foto_url = null;
           }
-          return Promise.resolve({ data: { success: true, quitadas, rechazados }, error: null });
+          return Promise.resolve({ data: { success: true, quitadas, rechazados, conservados: { arboles: conservados } }, error: null });
         }
         if (nombre !== 'sincronizar_borrados') return Promise.resolve({ data: null, error: { message: `rpc ${nombre} no mockeado` } });
 
@@ -125,6 +131,10 @@ jest.mock('../../src/database/client', () => ({
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
+jest.mock('../../src/services/PhotoService', () => ({
+  ...jest.requireActual('../../src/services/PhotoService'),
+  borrarFotosLocales: jest.fn(),
+}));
 jest.mock('expo-crypto', () => ({ randomUUID: () => `uuid-${Math.random().toString(36).slice(2)}` }));
 jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn(), warn: jest.fn() },
@@ -132,32 +142,18 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { pushBorrados } from '../../src/services/sync/pushService';
-import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../../src/repositories/TreeRepository';
-import { deleteGroup } from '../../src/repositories/GroupRepository';
+import { deleteLastTree, deleteTreeAndRecalculate, quitarFotoDelArbol, updateTreePhoto } from '../../src/repositories/TreeRepository';
+import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { deleteGroup, type Group } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
+import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
+import { conservarLaMia, descartarConflicto } from '../../src/services/ConflictosDeSyncService';
+import { asentarFotosQuitadas, asentarGrupo } from '../../src/services/sync/asentarGrupo';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
 const ROBLE = 'sp-roble';
 const PINO = 'sp-pino';
-
-/** SQL efectivamente ejecutado, para contar statements. Drizzle cachea el `prepare`, así que se instrumenta la ejecución. */
-function registrarSql(conexion: InstanceType<typeof Database>): string[] {
-  const ejecutadas: string[] = [];
-  const prepareOriginal = conexion.prepare.bind(conexion);
-  (conexion as any).prepare = (sentencia: string) => {
-    const stmt: any = prepareOriginal(sentencia);
-    for (const metodo of ['all', 'get', 'run'] as const) {
-      const original = stmt[metodo].bind(stmt);
-      stmt[metodo] = (...args: any[]) => {
-        ejecutadas.push(sentencia);
-        return original(...args);
-      };
-    }
-    return stmt;
-  };
-  return ejecutadas;
-}
 
 const arbolDelServer = (id: string, speciesId: string | null) => ({
   id,
@@ -549,6 +545,8 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
     const arbol = await leerArbol('t2');
     expect(arbol.fotoUrl).toBeNull();
     expect(arbol.fotoSynced).toBe(false);
+    // El server la sigue teniendo: con base null, el push la devolvería como conservada.
+    expect(arbol.fotoBase).toBe(FOTO_EN_STORAGE);
   });
 
   it('el push la quita del server y limpia el registro', async () => {
@@ -579,25 +577,37 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
     expect(serverState.trees.get('t2').foto_url).toBeNull();
   });
 
-  it('en una plantación finalizada el server la rechaza y queda pendiente', async () => {
+  it('en una plantación finalizada el server la rechaza y queda pendiente, con su base', async () => {
     await arbolConFotoSincronizada();
+    await mockTestDb.update(trees).set({ fotoBase: FOTO_EN_STORAGE }).where(eq(trees.id, 't2'));
     await updateTreePhoto('t2', '');
     serverState.plantations.get(PLANTACION_ID).estado = 'finalizada';
 
-    await sincronizar();
+    await pushBorrados(PLANTACION_ID);
 
     expect(serverState.trees.get('t2').foto_url).toBe(FOTO_EN_STORAGE);
     expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+    expect((await leerArbol('t2')).fotoBase).toBe(FOTO_EN_STORAGE);
   });
 
-  // Si la quitada siguiera anotada, el push dejaría en null la foto nueva.
-  it('poner otra foto antes de sincronizar descarta la quitada', async () => {
+  // #816: si la nueva se borra antes de subirse, el árbol tiene que quedar sin foto.
+  it('poner otra foto antes de sincronizar conserva la quitada', async () => {
     await arbolConFotoSincronizada();
     await updateTreePhoto('t2', '');
 
     await updateTreePhoto('t2', 'file:///document/photos/photo_t2_nueva.jpg');
 
-    expect(await pendientes()).toEqual([]);
+    expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+  });
+
+  it('quitada en el server, la base pasa a ser sin foto', async () => {
+    await arbolConFotoSincronizada();
+    await mockTestDb.update(trees).set({ fotoBase: FOTO_EN_STORAGE }).where(eq(trees.id, 't2'));
+    await updateTreePhoto('t2', '');
+
+    await sincronizar();
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoBase: null });
   });
 
   // Mismo id en el registro: el borrado de la fila tiene que ganar, o el árbol
@@ -628,3 +638,363 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
     rpc.mockRestore();
   });
 });
+
+describe('borrar una foto que no se subió (#816)', () => {
+  const FOTO_VISTA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v1.jpg';
+  const DEL_OTRO = 'plantations/plant-1/parcelas/parc-1/trees/t2-v9.jpg';
+  const SUBIDA = 'plantations/plant-1/parcelas/parc-1/trees/t2-nueva.jpg';
+  const NUEVA = 'file:///document/photos/photo_t2_nueva.jpg';
+  const OTRA = 'file:///document/photos/photo_t2_otra.jpg';
+  const SIN_CONFIRMAR = false;
+  const CONFIRMADO = true;
+  const pendientes = () => mockTestDb.select().from(borradosPendientes);
+  const tiposPendientes = async () => (await pendientes()).map((b: any) => b.tipo);
+  const conflictos = () => mockTestDb.select().from(conflictosDeSync);
+  const leerGrupo = async () => (await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID)))[0] as Group;
+
+  /** t2 con la foto que el teléfono vio en el server, sin bajar. */
+  async function arbolConFotoRemota() {
+    await grupoSincronizadoDeTres();
+    serverState.trees.get('t2').foto_url = FOTO_VISTA;
+    await mockTestDb.update(trees).set({ fotoUrl: FOTO_VISTA, fotoSynced: true, fotoBase: FOTO_VISTA }).where(eq(trees.id, 't2'));
+  }
+
+  /** El push del grupo confirmó la subida de `enviado` con el path SUBIDA. */
+  async function confirmarSubida(enviado: any) {
+    await asentarGrupo(await leerGrupo(), [enviado], new Map([['t2', SUBIDA]]), {
+      success: true, conservados: { grupo: {}, arboles: [] },
+    });
+  }
+
+  it('vuelve a la foto del server, sin bajar, y no anota nada para el server', async () => {
+    await arbolConFotoRemota();
+    await updateTreePhoto('t2', NUEVA);
+    (borrarFotosLocales as jest.Mock).mockClear();
+
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: false });
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: FOTO_VISTA, fotoSynced: true, fotoBase: FOTO_VISTA });
+    expect(await pendientes()).toEqual([]);
+    expect(borrarFotosLocales).toHaveBeenCalledWith([NUEVA]);
+  });
+
+  it('sin foto en la última sincronización queda sin foto', async () => {
+    await grupoSincronizadoDeTres();
+    await updateTreePhoto('t2', NUEVA);
+
+    await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoSynced: false });
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('después de sincronizar, el server conserva su foto', async () => {
+    await arbolConFotoRemota();
+    await updateTreePhoto('t2', NUEVA);
+    await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(FOTO_VISTA);
+  });
+
+  it('una foto ya subida, confirmada, se anota para quitarla del server', async () => {
+    await arbolConFotoRemota();
+
+    await quitarFotoDelArbol('t2', CONFIRMADO);
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoBase: FOTO_VISTA });
+    expect(await tiposPendientes()).toEqual(['foto']);
+  });
+
+  it('una foto ya subida sin confirmar no se toca y pide confirmación', async () => {
+    await arbolConFotoRemota();
+
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: true });
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: FOTO_VISTA, fotoSynced: true });
+    expect(await pendientes()).toEqual([]);
+  });
+
+  // La sync confirmó la subida entre la lectura y la escritura: no se deshace ni se quita sin preguntar.
+  it('si la foto se subió mientras se deshacía, pide confirmación', async () => {
+    await arbolConFotoRemota();
+    await updateTreePhoto('t2', NUEVA);
+    const borrados = jest.requireActual('../../src/repositories/BorradosRepository');
+    const real = borrados.tieneFotoQuitadaPendiente;
+    const espia = jest.spyOn(borrados, 'tieneFotoQuitadaPendiente').mockImplementationOnce(async (exec: any, id: any) => {
+      await mockTestDb.update(trees).set({ fotoSynced: true, fotoBase: SUBIDA }).where(eq(trees.id, 't2'));
+      return real(exec, id);
+    });
+
+    expect(await quitarFotoDelArbol('t2', SIN_CONFIRMAR)).toEqual({ requiereConfirmacion: true });
+
+    espia.mockRestore();
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true });
+    expect(await pendientes()).toEqual([]);
+  });
+
+  describe('quitar la del server, sacar una nueva y borrarla', () => {
+    async function quitarYBorrarLaNueva() {
+      await arbolConFotoRemota();
+      await quitarFotoDelArbol('t2', CONFIRMADO);
+      await updateTreePhoto('t2', NUEVA);
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+    }
+
+    it('deja el árbol sin foto y el pedido de quitar pendiente', async () => {
+      await quitarYBorrarLaNueva();
+
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoSynced: false });
+      expect(await tiposPendientes()).toEqual(['foto']);
+    });
+
+    it('el pedido de quitar llega al server', async () => {
+      await quitarYBorrarLaNueva();
+
+      await sincronizar();
+
+      expect(serverState.trees.get('t2').foto_url).toBeNull();
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: null, fotoBase: null });
+      expect(await pendientes()).toEqual([]);
+    });
+  });
+
+  describe('la subida de la nueva', () => {
+    it('confirmada, descarta la quitada', async () => {
+      await arbolConFotoRemota();
+      await quitarFotoDelArbol('t2', CONFIRMADO);
+      await updateTreePhoto('t2', NUEVA);
+
+      await confirmarSubida(await leerArbol('t2'));
+
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true, fotoBase: SUBIDA });
+      expect(await pendientes()).toEqual([]);
+    });
+
+    it('si la nueva se borró mientras subía, la quitada sigue pendiente', async () => {
+      await arbolConFotoRemota();
+      await quitarFotoDelArbol('t2', CONFIRMADO);
+      await updateTreePhoto('t2', NUEVA);
+      const enviado = await leerArbol('t2');
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+
+      await confirmarSubida(enviado);
+
+      expect(await tiposPendientes()).toEqual(['foto']);
+      expect((await leerArbol('t2')).fotoBase).toBe(SUBIDA);
+    });
+
+    // El server se quedó con la que se borró: hay que pedir quitarla.
+    it('si se borró mientras subía, sin quitada previa, anota la quitada con la subida como base', async () => {
+      await arbolConFotoRemota();
+      await updateTreePhoto('t2', NUEVA);
+      const enviado = await leerArbol('t2');
+      await quitarFotoDelArbol('t2', SIN_CONFIRMAR);
+
+      await confirmarSubida(enviado);
+
+      expect(await tiposPendientes()).toEqual(['foto']);
+      expect((await leerArbol('t2')).fotoBase).toBe(SUBIDA);
+    });
+
+    it('si mientras subía se sacó otra, no anota quitada: la otra la reemplaza al subirse', async () => {
+      await arbolConFotoRemota();
+      await updateTreePhoto('t2', NUEVA);
+      const enviado = await leerArbol('t2');
+      await updateTreePhoto('t2', OTRA);
+
+      await confirmarSubida(enviado);
+
+      expect(await pendientes()).toEqual([]);
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: OTRA, fotoSynced: false, fotoBase: SUBIDA });
+    });
+  });
+
+  it('en un lote mixto, solo la quitada aplicada deja la base sin foto', async () => {
+    await grupoSincronizadoDeTres();
+    const conBase = (id: string) => `plantations/plant-1/parcelas/parc-1/trees/${id}-v1.jpg`;
+    for (const id of ['t1', 't2', 't3']) {
+      await mockTestDb.update(trees).set({ fotoUrl: conBase(id), fotoSynced: true, fotoBase: conBase(id) }).where(eq(trees.id, id));
+      await quitarFotoDelArbol(id, CONFIRMADO);
+    }
+
+    await asentarFotosQuitadas(await pendientes() as any, {
+      success: true, rechazados: ['t2'], conservados: { arboles: [{ id: 't3', foto_url: DEL_OTRO }] },
+    }, new Set(['t2']));
+
+    expect((await leerArbol('t1')).fotoBase).toBeNull();
+    expect((await leerArbol('t2')).fotoBase).toBe(conBase('t2'));
+    expect((await leerArbol('t3')).fotoBase).toBe(DEL_OTRO);
+  });
+
+  describe('quitada pendiente con una nueva sin subir, y el server con otra', () => {
+    async function quitarYSacarOtra() {
+      await arbolConFotoRemota();
+      await quitarFotoDelArbol('t2', CONFIRMADO);
+      await updateTreePhoto('t2', NUEVA);
+      serverState.trees.get('t2').foto_url = DEL_OTRO;
+    }
+
+    async function esperarConflictoConLaNueva() {
+      expect(await leerArbol('t2')).toMatchObject({ fotoUrl: DEL_OTRO, fotoSynced: true, fotoBase: DEL_OTRO });
+      expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', campo: 'foto', mio: NUEVA, servidor: DEL_OTRO })]);
+      expect(await pendientes()).toEqual([]);
+    }
+
+    it('por el push de fotos quitadas, la nueva queda como conflicto', async () => {
+      await quitarYSacarOtra();
+
+      await pushBorrados(PLANTACION_ID);
+
+      await esperarConflictoConLaNueva();
+    });
+
+    it('por el push del grupo, la nueva queda como conflicto', async () => {
+      await quitarYSacarOtra();
+
+      await asentarGrupo(await leerGrupo(), [await leerArbol('t2')], new Map(), {
+        success: true, conservados: { grupo: {}, arboles: [{ id: 't2', foto_url: DEL_OTRO }] },
+      });
+
+      await esperarConflictoConLaNueva();
+    });
+  });
+});
+
+describe('quitar una foto que cambió en el server (#810)', () => {
+  const VISTA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v1.jpg';
+  const NUEVA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v2.jpg';
+
+  /** t2 con la foto que el teléfono vio (v1); `enServer` es la que tiene hoy el server. */
+  async function quitarFotoVista(enServer: string) {
+    await grupoSincronizadoDeTres();
+    serverState.trees.get('t2').foto_url = enServer;
+    await mockTestDb.update(trees).set({ fotoUrl: VISTA, fotoSynced: true, fotoBase: VISTA }).where(eq(trees.id, 't2'));
+    await updateTreePhoto('t2', '');
+  }
+
+  const conflictos = () => mockTestDb.select().from(conflictosDeSync);
+  const pendientes = () => mockTestDb.select().from(borradosPendientes);
+
+  it('manda la foto que vio y, si sigue siendo la del server, la quita', async () => {
+    await quitarFotoVista(VISTA);
+    const { supabase } = jest.requireMock('../../src/supabase/client');
+    const rpc = jest.spyOn(supabase, 'rpc');
+
+    await sincronizar();
+
+    expect(rpc).toHaveBeenCalledWith('quitar_fotos_arboles', { p_arboles: ['t2'], p_bases: { t2: VISTA } });
+    rpc.mockRestore();
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+    expect(await conflictos()).toEqual([]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('si el server tiene otra, la conserva: el teléfono la adopta y lo quitado queda como conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true, fotoBase: NUEVA });
+    expect(await conflictos()).toEqual([expect.objectContaining({
+      entidadId: 't2', campo: 'foto', grupoId: GRUPO_ID, plantacionId: PLANTACION_ID, mio: null, servidor: NUEVA,
+    })]);
+    expect(await pendientes()).toEqual([]);
+    const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
+    expect(grupo.pendingSync).toBe(true);
+  });
+
+  it('conservar la mía la vuelve a quitar con la del server como base, y el push siguiente la quita', async () => {
+    await quitarFotoVista(NUEVA);
+    await sincronizar();
+
+    expect(await conservarLaMia('t2', 'foto')).toEqual({ success: true });
+    expect((await leerArbol('t2')).fotoUrl).toBeNull();
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+    expect(await conflictos()).toEqual([]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('descartar se queda con la del server', async () => {
+    await quitarFotoVista(NUEVA);
+    await sincronizar();
+
+    await descartarConflicto('t2', 'foto');
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect((await leerArbol('t2')).fotoUrl).toBe(NUEVA);
+    expect(await conflictos()).toEqual([]);
+  });
+
+  // El grupo sube aunque falle la quitada; el pull siguiente no lo omite.
+  it('con el grupo ya subido, el pull no cambia la base: la foto nueva del server igual queda en conflicto', async () => {
+    await quitarFotoVista(VISTA);
+    await mockTestDb.update(groups).set({ pendingSync: false }).where(eq(groups.id, GRUPO_ID));
+    serverState.trees.get('t2').foto_url = NUEVA;
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', mio: null, servidor: NUEVA })]);
+  });
+
+  it('si el push del grupo trae la foto nueva antes que la quitada, también queda en conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+    const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
+
+    await asentarGrupo(grupo as Group, [await leerArbol('t2')], new Map(), {
+      success: true, conservados: { grupo: {}, arboles: [{ id: 't2', foto_url: NUEVA }] },
+    });
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoBase: NUEVA });
+    expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', mio: null, servidor: NUEVA })]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('si el server falla al responder, la quitada queda pendiente y sin conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+    rpcFalla.activo = true;
+
+    await sincronizar();
+
+    expect(await pendientes()).toHaveLength(1);
+    expect(await conflictos()).toEqual([]);
+  });
+});
+
+describe('especie quitada de la plantación en el server (#632)', () => {
+  const especieLocal = (especieId: string, ordenVisual: number) => ({
+    id: plantationSpeciesId(PLANTACION_ID, especieId), plantacionId: PLANTACION_ID, especieId, ordenVisual,
+  });
+  const especiesLocales = async () =>
+    (await mockTestDb.select().from(plantationSpecies).where(eq(plantationSpecies.plantacionId, PLANTACION_ID)))
+      .map((ps) => ps.especieId).sort();
+
+  beforeEach(async () => {
+    await mockTestDb.insert(plantationSpecies).values([especieLocal(ROBLE, 0), especieLocal(PINO, 1)]);
+  });
+
+  it('el pull la borra del teléfono', async () => {
+    serverState.plantation_species.set(ROBLE, { plantation_id: PLANTACION_ID, species_id: ROBLE, orden_visual: 0 });
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await especiesLocales()).toEqual([ROBLE]);
+  });
+
+  it('con la plantación sin subir, el pull no toca las especies locales', async () => {
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await especiesLocales()).toEqual([PINO, ROBLE].sort());
+  });
+});
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

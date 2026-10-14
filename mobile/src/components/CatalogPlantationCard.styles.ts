@@ -51,17 +51,21 @@ export const catalogPlantationCardStyles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: spacing.md,
-    gap: spacing.xl,
+    columnGap: spacing.xxl,
+    rowGap: spacing.xs,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   statText: {
     fontSize: fontSize.xs,
     fontFamily: fonts.regular,
     color: colors.textMuted,
-  },
-  statSpacer: {
-    width: spacing.xl,
   },
   estadoChip: {
     alignSelf: 'flex-start',

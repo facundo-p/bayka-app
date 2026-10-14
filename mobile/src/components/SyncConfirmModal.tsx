@@ -4,7 +4,7 @@ import { colors } from '../theme';
 import { syncConfirmModalStyles as styles } from './SyncConfirmModal.styles';
 import BaseModal from './BaseModal';
 import CheckboxRow from './CheckboxRow';
-import { useSyncSetting } from '../hooks/useSyncSetting';
+import { useDescargaDeFotosSetting } from '../hooks/useDescargaDeFotosSetting';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { formatPendingBreakdown } from '../utils/pendingBreakdown';
 
@@ -13,12 +13,12 @@ type Props = {
   title?: string;
   /** Sin plantacionId el desglose de pendientes es global (sync general). */
   plantacionId?: string;
-  onConfirm: (incluirFotos: boolean) => void;
+  onConfirm: (descargarFotos: boolean) => void;
   onClose: () => void;
 };
 
 export default function SyncConfirmModal({ visible, title = 'Sincronizar', plantacionId, onConfirm, onClose }: Props) {
-  const { incluirFotos, toggleIncluirFotos } = useSyncSetting();
+  const { descargarFotos, setDescargarFotos } = useDescargaDeFotosSetting();
   // #71: desglosar qué está pendiente (no solo el total) hace diagnosticable
   // un indicador naranja residual.
   const { pendingGroupsCount, pendingParcelasCount, pendingPhotosCount } = usePendingSyncCount(plantacionId);
@@ -29,7 +29,7 @@ export default function SyncConfirmModal({ visible, title = 'Sincronizar', plant
   });
 
   function handleConfirm() {
-    onConfirm(incluirFotos);
+    onConfirm(descargarFotos);
   }
 
   return (
@@ -41,9 +41,9 @@ export default function SyncConfirmModal({ visible, title = 'Sincronizar', plant
       </Text>
       <View style={styles.checkboxContainer}>
         <CheckboxRow
-          label="Incluir fotos"
-          checked={incluirFotos}
-          onToggle={() => toggleIncluirFotos(!incluirFotos)}
+          label="Descargar fotos de otros celulares"
+          checked={descargarFotos}
+          onToggle={() => setDescargarFotos(!descargarFotos)}
         />
       </View>
       <View style={styles.buttonGroup}>

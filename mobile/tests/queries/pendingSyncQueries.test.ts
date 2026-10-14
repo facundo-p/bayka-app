@@ -78,7 +78,7 @@ describe('variantes agrupadas por plantación (dot por tarjeta)', () => {
 
   test('countPendingGroupsByPlantation devuelve filas por plantación', async () => {
     mockGroupByChain([{ plantacionId: 'p1', cnt: 2 }]);
-    const result = await countPendingGroupsByPlantation('user-1');
+    const result = await countPendingGroupsByPlantation({ userId: 'user-1' });
     expect(result).toEqual([{ plantacionId: 'p1', cnt: 2 }]);
   });
 

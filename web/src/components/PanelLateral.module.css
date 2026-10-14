@@ -148,14 +148,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Ventana angosta: el panel deja de ser columna y se apila bajo el listado. */
+/* Ventana angosta: el panel sale en una hoja modal y el listado no le deja
+   columna. Que el scroll del detalle no arrastre la lista de atrás. */
 @media (max-width: 900px) {
   .layout,
   .layoutConPanel {
     display: block;
   }
 
-  .panel {
-    margin-top: var(--space-3xl);
+  .cuerpo {
+    overscroll-behavior: contain;
   }
 }

@@ -52,10 +52,12 @@ function mockLiveQueries({
   plantacionEstado = 'activa',
   archivadaEn = null as string | null,
   estadoCargado = true,
+  arbolesPorGrupo = [] as { grupoId: string; treeCount: number }[],
 } = {}) {
   (useLiveData as jest.Mock).mockImplementation((queryFn: () => unknown) => {
     const fuente = String(queryFn);
     if (fuente.includes('getGroupsForPlantation')) return { data: grupos };
+    if (fuente.includes('getTreeCountsPerGroup')) return { data: arbolesPorGrupo };
     if (fuente.includes('getPlantationEstadoDeEdicion')) {
       return { data: estadoCargado ? [{ estado: plantacionEstado, archivadaEn }] : undefined };
     }
@@ -204,5 +206,36 @@ describe('usePlantationDetail — permisosDeGrupo', () => {
     act(() => result.current.handleLongPress(GRUPO));
 
     expect(result.current.editingGroup).toBeNull();
+  });
+});
+
+describe('usePlantationDetail — cambiar el código del grupo (#559)', () => {
+  const { useConfirm } = require('../../src/hooks/useConfirm');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('user-1');
+    mockLiveQueries({ arbolesPorGrupo: [{ grupoId: 'g-1', treeCount: 5 }] });
+  });
+
+  it('con árboles avisa que cambian sus IDs antes de guardar', async () => {
+    const { result } = renderHook(() => usePlantationDetail('p-1', 'par-1'));
+    act(() => result.current.handleLongPress(GRUPO));
+
+    let respuesta!: Promise<boolean>;
+    act(() => { respuesta = result.current.confirmarCodigoDelGrupo('G2'); });
+
+    const show = (useConfirm as jest.Mock).mock.results.at(-1)!.value.show as jest.Mock;
+    const aviso = show.mock.calls.at(-1)[0];
+    expect(aviso.message).toMatch(/Los IDs de los 5 árboles de este grupo/);
+    act(() => aviso.buttons.find((b: { label: string }) => b.label === 'Cambiar código').onPress());
+    await expect(respuesta).resolves.toBe(true);
+  });
+
+  it('sin cambiar el código no pregunta', async () => {
+    const { result } = renderHook(() => usePlantationDetail('p-1', 'par-1'));
+    act(() => result.current.handleLongPress(GRUPO));
+
+    await expect(result.current.confirmarCodigoDelGrupo('G1')).resolves.toBe(true);
   });
 });

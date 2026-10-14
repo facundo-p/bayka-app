@@ -42,12 +42,21 @@ Consecuencias prácticas:
   viajan solos.
 - El script valida que `EAS_PROJECT_ID` esté en `.env`: sin él `updates.url` sale
   vacía y el APK tampoco recibiría nada.
-- El canal solo empareja con updates de la **misma** `expo.version` (política
-  `runtimeVersion: appVersion`). Un bump de versión de mobile deja a los devices
-  viejos afuera hasta que instalen el APK nuevo.
+- El canal solo empareja con updates del **mismo fingerprint** nativo (política
+  `runtimeVersion: fingerprint`, #678; qué entra en el hash: `mobile/fingerprint.config.js`).
+  Un módulo nativo o config plugin nuevo, o un bump de versión, deja a los devices
+  viejos afuera hasta que instalen el APK nuevo. Los APK de hasta mobile 1.3.0 se
+  compilaron con `appVersion` y no reciben ningún OTA con fingerprint.
+- El gradle graba el fingerprint en el APK, en `assets/fingerprint`:
+  `unzip -p mobile/build-output-test.apk assets/fingerprint`. Es el que tiene que
+  coincidir con el del working tree al publicar un OTA (`push-update-apk`, paso 5).
+- Compilar desde un checkout con `node_modules` propio: con el symlinkeado de un
+  worktree el fingerprint sale distinto al de los OTA publicados desde el principal.
 - En los builds de EAS el canal lo sigue poniendo el `channel` del profile de
   `eas.json` (ahí existe además `preview`, que no tiene variante local): `app.config.js`
   omite el header cuando detecta `EAS_BUILD=true`, así no hay dos fuentes peleando.
+  Por eso un APK de EAS tiene otro fingerprint que un `eas update` local y no recibe
+  esos OTA.
 
 ## Versionado
 
@@ -90,7 +99,7 @@ Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a ta
 (distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
 gradlew cubre la race de worklets (ver Troubleshooting).
 
-El script termina imprimiendo package, label, canal de OTA y tamaño **ya verificados**
+El script termina imprimiendo package, label, canal de OTA, fingerprint y tamaño **ya verificados**
 (falla si el APK no corresponde a la variante; avisa sin cortar si no puede confirmar
 el canal). Instalar: `adb install -r mobile/<artefacto>`.
 

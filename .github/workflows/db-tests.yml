@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - 'supabase/**'
+      # Los tests recorren contracts/*.json.
+      - 'contracts/**'
       - '.github/workflows/db-tests.yml'
   pull_request:
     branches:
@@ -14,6 +16,8 @@ on:
       - staging
     paths:
       - 'supabase/**'
+      # Los tests recorren contracts/*.json.
+      - 'contracts/**'
       - '.github/workflows/db-tests.yml'
 
 concurrency:

@@ -4,7 +4,7 @@ import styles from './PuntoColor.module.css';
 
 interface PuntoColorProps {
   color: string;
-  /** `lg`: paneles y leyenda del mapa; `md`, tablas. */
+  /** `lg`: paneles; `md`: tablas. */
   tamano?: 'md' | 'lg';
   /** Borde blanco y anillo, como los marcadores del mapa. */
   conAro?: boolean;

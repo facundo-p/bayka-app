@@ -1,6 +1,6 @@
 /*
  * Estilos compartidos por las secciones de la tab Datos
- * (Parcelas, Grupos, Árboles): layout, fila de filtros y celdas especiales.
+ * (Parcelas, Grupos, Árboles): layout y celdas especiales.
  */
 
 /* Columna acotada: la card de tabla llena el alto y scrollea por dentro. */
@@ -10,47 +10,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl-plus);
-}
-
-/* Cluster de filtros compacto que vive dentro de la toolbar.
-   `flex-grow: 1` para que tome el espacio libre de su fila: sin él los seis
-   controles envolvían a 1920 con 342px vacíos al lado. */
-.filtrosCompactos {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  flex-grow: 1;
-  gap: var(--space-md);
-  min-width: 0;
-}
-
-/* Anchos por control: el más informativo (parcela) es el más ancho. */
-.filtroParcela {
-  width: var(--ancho-filtro-lg);
-}
-
-.filtroGrupo {
-  width: var(--ancho-filtro-md);
-}
-
-.filtroEspecie {
-  width: var(--ancho-filtro-md);
-}
-
-.filtroGps {
-  width: var(--ancho-filtro-xs);
-}
-
-.filtroFoto {
-  width: var(--ancho-filtro-sm);
-}
-
-/* Filtro sin sentido todavía (Grupo sin parcela elegida): se ve apagado, no
-   invisible, así queda claro que aparece al elegir parcela. */
-.filtrosCompactos select:disabled {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-disabled);
-  cursor: not-allowed;
 }
 
 /* La celda es texto corrido, no un flex: el hueco con el nombre lo pone el punto. */
@@ -73,10 +32,12 @@
   font-family: var(--font-mono);
 }
 
-/* SubID del árbol: mono en azul de acento (es el identificador principal). */
-.subId {
+/* ID del árbol: mono en azul de acento (es el identificador principal). En un
+   solo renglón: partido no se lee, y si no entra la tabla scrollea. */
+.idArbol {
   font-family: var(--font-mono);
   color: var(--color-primary-accent);
+  white-space: nowrap;
 }
 
 /* Conteos numéricos alineados a la derecha: dígitos de ancho fijo. */

@@ -20,9 +20,18 @@ describe('useNetStatus', () => {
     capturedListener = null;
   });
 
-  it('returns isOnline=false initially (default safe state)', () => {
+  it('returns isOnline=false initially (default safe state), sin conexión conocida', () => {
     const { result } = renderHook(() => useNetStatus());
     expect(result.current.isOnline).toBe(false);
+    expect(result.current.conexionConocida).toBe(false);
+  });
+
+  it('conexionConocida pasa a true con el primer evento de NetInfo, aunque sea sin conexión', () => {
+    const { result } = renderHook(() => useNetStatus());
+    act(() => {
+      capturedListener!({ isConnected: false, isInternetReachable: false });
+    });
+    expect(result.current.conexionConocida).toBe(true);
   });
 
   it('returns isOnline=true when NetInfo fires with isConnected=true and isInternetReachable=true', () => {

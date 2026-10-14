@@ -1,0 +1,57 @@
+/* Modal del reporte PDF de árboles: modo de fotos, estimación y progreso. */
+
+.cuerpo {
+  composes: form from '../../components/Formulario.module.css';
+}
+
+/* Toma el foco al cambiar de fase; como el diálogo, sin anillo: no es un control. */
+.cuerpo:focus {
+  outline: none;
+}
+
+.info {
+  composes: info from '../../components/Formulario.module.css';
+}
+
+.errorConteo {
+  composes: errorEnvio from '../../components/Formulario.module.css';
+}
+
+.anuncio {
+  composes: soloLectores from '../../theme/utilidades.module.css';
+}
+
+.modo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.rotulo {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Spinner o botón al lado del texto. */
+.renglon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-body);
+}
+
+.estimacion {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.progreso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}

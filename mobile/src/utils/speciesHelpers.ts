@@ -1,12 +1,10 @@
 import { notLike } from 'drizzle-orm';
 import { species as speciesTable } from '../database/schema';
 import { especieDelSubId } from './idGenerator';
+import { NN_SPECIES_LABEL } from '../constants/especies';
 
 /** Placeholder especie codigo embedded in a tree's subId when unresolved (N/N). */
 export const UNKNOWN_SPECIES_CODE = 'NN';
-
-/** Etiqueta de un árbol sin especie (N/N). */
-export const NN_SPECIES_LABEL = 'N/N';
 
 /** Etiqueta de un árbol con especie que no está en el catálogo local, o es una recuperada. */
 const ETIQUETA_ESPECIE_FUERA_DE_CATALOGO = '??';
@@ -29,25 +27,6 @@ export const soloEspeciesDelCatalogo = () =>
 /** El codigo si es de una especie del catálogo; null si falta o es de una recuperada. */
 const codigoDelCatalogo = (codigo: string | null | undefined) =>
   codigo && !esEspecieRecuperada(codigo) ? codigo : null;
-
-type EspecieConfigurada = { especieId: string; ordenVisual: number };
-
-/**
- * Suma a las especies elegidas las recuperadas que ya tenía la plantación. La configuración no
- * las muestra y guardar reemplaza la lista entera: sin esto se borrarían del server.
- */
-export function conservarEspeciesRecuperadas(
-  elegidas: EspecieConfigurada[],
-  actuales: (EspecieConfigurada & { codigo: string })[],
-): EspecieConfigurada[] {
-  const elegidasIds = new Set(elegidas.map((e) => e.especieId));
-  const recuperadas = actuales.filter((e) => esEspecieRecuperada(e.codigo) && !elegidasIds.has(e.especieId));
-  const siguiente = Math.max(-1, ...elegidas.map((e) => e.ordenVisual)) + 1;
-  return [
-    ...elegidas,
-    ...recuperadas.map((e, i) => ({ especieId: e.especieId, ordenVisual: siguiente + i })),
-  ];
-}
 
 /** Codigo que va en un SubID: una especie recuperada sube como NN, igual que una sin resolver. */
 export function codigoParaSubId(codigo: string | null | undefined): string {

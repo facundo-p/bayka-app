@@ -54,12 +54,22 @@ export const colors = {
   info: '#2563EB',
   infoBg: '#EFF6FF',
   entornoPruebasBg: yellow.dark,
+  /** Advertencia no bloqueante (p. ej. plantación duplicada). */
+  warningBg: yellow.light,
+  warningBorder: yellow.medium,
+  warningText: '#6B4E00',
+  /** Cambio que chocó con la web y espera que el usuario elija (#634). */
+  conflictoBg: '#FEF2F2',
+  conflictoBorder: '#F2A7A7',
+  conflictoText: '#991B1B',
 
   textHeading: '#0A3760',
   textPrimary: '#1E293B',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textDisabled: '#CBD5E1',
+  /** Título de un grupo de campos dentro de un formulario. */
+  textSectionTitle: '#6B8F3C',
 
   // Aliases legacy — migrar a textPrimary/Secondary/Muted/Disabled.
   text: '#1E293B',
@@ -119,6 +129,7 @@ export const colors = {
 } as const;
 
 export const spacing = {
+  xxs: 2,
   xs: 4,
   sm: 6,
   md: 8,
@@ -204,10 +215,29 @@ export const headerActionButton = {
 // ─── Icon size tokens ────────────────────────────────────────────────────────
 export const iconSizes = {
   action: 18,
+  /** Íconos de estado dentro de una fila de lista. */
+  fila: 16,
   stat: 14,
   checkbox: 20,
   badge: 12,
   header: 24,
+} as const;
+
+// ─── Hit slop tokens ─────────────────────────────────────────────────────────
+// Área extra de toque para botones chicos dentro de una card (chip ~24px + 2*12 ≥ 44).
+export const hitSlops = {
+  chip: 12,
+} as const;
+
+// ─── Touch target ────────────────────────────────────────────────────────────
+// Área mínima tocable de la guía de UX.
+export const touchTarget = {
+  min: 44,
+} as const;
+
+// ─── Input size tokens ───────────────────────────────────────────────────────
+export const inputSizes = {
+  multilineMinHeight: 96,
 } as const;
 
 // ─── Chip size presets ───────────────────────────────────────────────────────

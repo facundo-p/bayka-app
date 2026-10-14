@@ -1,121 +1,108 @@
-import { useQuery } from '@tanstack/react-query';
-import { Cargando, MapaPuntos, PanelBloque, PanelLateral } from '../../components';
+import { BotonCopiar, PanelLateral } from '../../components';
 import { formatearFechaCorta } from '../../lib/fechas';
-import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
-import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
-import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
-import { Coordenadas, EspecieConPunto } from './celdas';
+import type { CodigoNombre } from '../../queries/fichasQueries';
+import { SIN_DATO } from './arbolFormato';
+import { BloqueEspecie } from './BloqueEspecie';
+import { BotonFichaPdf } from './BotonFichaPdf';
+import { FotoYMapa } from './FotoYMapa';
+import type { EdicionDeEspecie } from './useCambioDeEspecie';
+import type { EliminacionDeFoto } from './useEliminarFoto';
 import styles from './ArbolDetallePanel.module.css';
 
 interface ArbolDetallePanelProps {
   arbol: ArbolDetalle;
-  parcelaCodigo: string | null;
+  /** null si el árbol no tiene parcela o todavía no cargaron. */
+  parcela: CodigoNombre | null;
   tecnicoNombre: string | null;
+  /** Nombre del archivo al descargar la foto; null mientras no cargó la plantación. */
+  nombreFoto: string | null;
+  /** Genera y descarga la ficha PDF; null mientras no cargó la plantación. */
+  descargarFicha: (() => Promise<void>) | null;
+  /** Sin esto la especie es de solo lectura. */
+  edicionDeEspecie?: EdicionDeEspecie;
+  /** Sin esto no se ofrece eliminar la foto. */
+  eliminacionDeFoto?: EliminacionDeFoto;
   onCerrar: () => void;
 }
 
-function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
+function CabeceraArbol({ idArbol }: { idArbol: string }) {
   return (
-    <PanelBloque titulo="Especie">
-      <EspecieConPunto arbol={arbol} tamano="lg" className={styles.especie} />
-    </PanelBloque>
-  );
-}
-
-/** Tenue mientras carga o si no se pudo firmar la URL. */
-function FotoSubida({ fotoUrl, alt }: { fotoUrl: string; alt: string }) {
-  const foto = useQuery({
-    queryKey: CLAVE_QUERY.foto(fotoUrl),
-    queryFn: () => obtenerUrlFoto(fotoUrl),
-  });
-  if (foto.isPending) return <Cargando />;
-  if (!foto.data) return <span className={styles.tenue}>No se pudo cargar la foto</span>;
-  return <img className={styles.foto} src={foto.data} alt={alt} />;
-}
-
-function BloqueFoto({ arbol }: { arbol: ArbolDetalle }) {
-  return (
-    <PanelBloque titulo="Foto">
-      {tieneFotoSubida(arbol.fotoUrl) ? (
-        <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.subId}`} />
-      ) : (
-        <span className={styles.tenue}>Sin foto</span>
-      )}
-    </PanelBloque>
-  );
-}
-
-/** El único punto del árbol, con el color de su especie. */
-function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
-  const codigo = arbol.especieCodigo ?? ESPECIE_SIN_IDENTIFICAR;
-  const punto = {
-    lat: arbol.latitude,
-    lng: arbol.longitude,
-    codigo,
-    nombre: arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR,
-    parcelaId: arbol.parcelaId,
-  };
-  const colorPorCodigo = new Map([[codigo, colorEspeciePorCodigo(arbol.especieCodigo)]]);
-  return <MapaPuntos variante="compacto" puntos={[punto]} colorPorCodigo={colorPorCodigo} />;
-}
-
-function BloqueGps({ arbol }: { arbol: ArbolDetalle }) {
-  return (
-    <PanelBloque titulo="GPS">
-      {tieneGps(arbol) ? (
-        <>
-          <MapaDelArbol arbol={arbol} />
-          <Coordenadas arbol={arbol} className={styles.coordenadas} />
-        </>
-      ) : (
-        <span className={styles.tenue}>Sin coordenada GPS</span>
-      )}
-    </PanelBloque>
-  );
-}
-
-function MetaDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return (
-    <div className={styles.metaDato}>
-      <span className={styles.etiqueta}>{etiqueta}</span>
-      <span className={styles.metaValor}>{valor}</span>
+    <div className={styles.identidad}>
+      <h2 className={styles.titulo}>{idArbol}</h2>
+      <BotonCopiar texto={idArbol} etiqueta="Copiar ID Árbol" />
     </div>
   );
 }
 
-type BloqueMetaProps = Omit<ArbolDetallePanelProps, 'onCerrar'>;
+interface CeldaUbicacionProps {
+  etiqueta: string;
+  codigo: string | null;
+  nombre?: string | null;
+}
 
-function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
+function CeldaUbicacion({ etiqueta, codigo, nombre }: CeldaUbicacionProps) {
   return (
-    <dl className={styles.meta}>
-      <MetaDato etiqueta="Parcela" valor={parcelaCodigo ?? SIN_DATO} />
-      <MetaDato etiqueta="Grupo" valor={arbol.grupoCodigo} />
-      <MetaDato
-        etiqueta="Posición"
-        valor={arbol.posicion != null ? String(arbol.posicion) : SIN_DATO}
+    <div className={styles.celdaUbicacion}>
+      <dt className={styles.rotulo}>{etiqueta}</dt>
+      <dd className={styles.codigoUbicacion}>{codigo ?? SIN_DATO}</dd>
+      {nombre && (
+        <dd className={styles.nombreUbicacion} title={nombre}>
+          {nombre}
+        </dd>
+      )}
+    </div>
+  );
+}
+
+function UbicacionArbol({ arbol, parcela }: Pick<ArbolDetallePanelProps, 'arbol' | 'parcela'>) {
+  return (
+    <dl className={styles.ubicacion}>
+      <CeldaUbicacion
+        etiqueta="Parcela"
+        codigo={parcela?.codigo ?? null}
+        nombre={parcela?.nombre}
       />
-      <MetaDato etiqueta="Registrado" valor={formatearFechaCorta(arbol.createdAt)} />
-      <MetaDato etiqueta="Técnico" valor={tecnicoNombre ?? SIN_DATO} />
+      <CeldaUbicacion etiqueta="Grupo" codigo={arbol.grupoCodigo} nombre={arbol.grupoNombre} />
+      <CeldaUbicacion
+        etiqueta="Posición"
+        codigo={arbol.posicion != null ? String(arbol.posicion) : null}
+      />
     </dl>
   );
 }
 
-/** Detalle de solo lectura de un árbol, al costado del listado: sin pie de acciones. */
-export function ArbolDetallePanel({ onCerrar, ...datos }: ArbolDetallePanelProps) {
-  const { arbol } = datos;
+function RegistroArbol({ createdAt, tecnico }: { createdAt: string; tecnico: string | null }) {
+  return (
+    <p className={styles.registro}>
+      Registrado el <strong>{formatearFechaCorta(createdAt)}</strong> por{' '}
+      <strong>{tecnico ?? SIN_DATO}</strong>
+    </p>
+  );
+}
+
+/** Detalle de un árbol al costado del listado: se edita la especie (#679) y se elimina la foto (#903). */
+export function ArbolDetallePanel({
+  arbol,
+  parcela,
+  tecnicoNombre,
+  nombreFoto,
+  descargarFicha,
+  edicionDeEspecie,
+  eliminacionDeFoto,
+  onCerrar,
+}: ArbolDetallePanelProps) {
   return (
     <PanelLateral
-      etiqueta={`Detalle del árbol ${arbol.subId}`}
-      cabecera={<h2 className={styles.titulo}>{arbol.subId}</h2>}
+      etiqueta={`Detalle del árbol ${arbol.idArbol}`}
+      cabecera={<CabeceraArbol idArbol={arbol.idArbol} />}
+      pie={<BotonFichaPdf descargar={descargarFicha} />}
       onCerrar={onCerrar}
     >
-      <BloqueEspecie arbol={arbol} />
-      <BloqueFoto arbol={arbol} />
-      <BloqueGps arbol={arbol} />
-      <BloqueMeta {...datos} />
+      <BloqueEspecie arbol={arbol} edicion={edicionDeEspecie} />
+      <UbicacionArbol arbol={arbol} parcela={parcela} />
+      <FotoYMapa arbol={arbol} nombreFoto={nombreFoto} eliminacion={eliminacionDeFoto} />
+      <RegistroArbol createdAt={arbol.createdAt} tecnico={tecnicoNombre} />
     </PanelLateral>
   );
 }

@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useInvalidarConListado } from '../../hooks/useInvalidarConListado';
-import { mensajeErrorConocido } from '../../lib/mensajeErrorConocido';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
+import { mensajeDeErrorDeEdicion } from '../../repositories/edicionDePlantacion';
 
 interface ToggleConfigPlantacion {
   plantacionId: string;
   valorInicial: boolean;
   guardar: (plantacionId: string, valor: boolean) => Promise<void>;
-  /** Mensaje que el repositorio lanza cuando falta la migración de la columna. */
-  mensajeSinMigracion: string;
   /** Acción en infinitivo para el mensaje de cualquier otro error: "actualizar la visibilidad". */
   accion: string;
 }
 
-/** Toggle booleano de la plantación que guarda al cambiar, sin botón aparte: responde al instante y, si el update falla, vuelve al valor anterior. */
+/**
+ * Toggle booleano de la plantación que guarda al cambiar, sin botón aparte: responde al
+ * instante y, si el guardado falla, vuelve al valor anterior. Un booleano no puede chocar:
+ * la base es el opuesto, así que el server tiene uno de los dos valores que la RPC acepta.
+ */
 export function useToggleConfigPlantacion({
   plantacionId,
   valorInicial,
   guardar,
-  mensajeSinMigracion,
   accion,
 }: ToggleConfigPlantacion) {
   const [activo, setActivo] = useState(valorInicial);
@@ -37,6 +38,6 @@ export function useToggleConfigPlantacion({
     activo,
     cambiar,
     guardando: mutacion.isPending,
-    mensajeError: mensajeErrorConocido(mutacion.error, mensajeSinMigracion, accion),
+    mensajeError: mensajeDeErrorDeEdicion(mutacion.error, accion),
   };
 }

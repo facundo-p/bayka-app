@@ -9,7 +9,8 @@ import {
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
-import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
+import { filaPlantacion } from '../../test/fabricas';
+import { descargarInformePdf } from '../../services/pdfInforme';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,14 +23,17 @@ vi.mock('write-excel-file/browser', () => ({
   default: vi.fn(() => ({ toBlob: () => Promise.resolve(new Blob(['xlsx'])) })),
 }));
 
-const FILA_PLANTACION = {
+/** El informe se prueba en su service; acá alcanza con que el menú lo dispare. */
+vi.mock('../../services/pdfInforme', () => ({ descargarInformePdf: vi.fn() }));
+
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
   estado: 'activa',
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: false,
-};
+});
 
 const PERFILES = [
   { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico', email: 'beto@bayka.org', activo: true },
@@ -57,10 +61,7 @@ function filaAsignada(userId: string, rolEnPlantacion: string): FilaAsignada {
 /** Estado mutable del mock: el insert/delete lo actualiza como haría la base. */
 let asignadas: FilaAsignada[];
 let consultas: ConsultaCapturada[];
-/** Conteos de árboles para el gate de "Generar IDs" / "Exportar". */
-let totalArboles: number;
-let conIdArboles: number;
-/** Filas que devuelve la query de exportación (select con `plantacion_id`). */
+/** Filas que devuelve la query de exportación. */
 let filasExport: unknown[];
 /** `archivada_en` de la plantación; los RPC de archivado lo cambian como la base. */
 let archivadaEn: string | null;
@@ -99,11 +100,13 @@ async function itemExportar(usuario: Usuario, etiqueta: string) {
 /** Fila cruda del embed de exportación (trees → groups → plantations/…). */
 function filaExport(subId: string) {
   return {
-    global_id: 1001,
-    plantacion_id: 12,
+    id: `arbol-${subId}`,
+    posicion: 1,
     sub_id: subId,
     species: { nombre: 'Quebracho' },
     groups: {
+      id: 'grupo-1',
+      created_at: '2026-06-12T12:00:00Z',
       nombre: 'Línea 1',
       plantation_id: 'plant-1',
       plantations: { lugar: 'Mendoza', periodo: '2025-2026' },
@@ -129,25 +132,6 @@ function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
 function configurarDetalleMock(): void {
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
-    if (consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids') {
-      // El RPC asigna todos los IDs → el gate pasa a "generado" al re-consultar.
-      conIdArboles = totalArboles;
-      return { data: { success: true, updated: totalArboles, seed: 1001 } };
-    }
-    if (consulta.operacion === 'rpc' && consulta.tabla === 'plantation_ids_status') {
-      return {
-        data: [
-          {
-            total: totalArboles,
-            con_id: conIdArboles,
-            generados: totalArboles > 0 && totalArboles === conIdArboles,
-          },
-        ],
-      };
-    }
-    if (consulta.operacion === 'rpc' && consulta.tabla === 'next_global_id_seed') {
-      return { data: 1001 };
-    }
     if (consulta.operacion === 'rpc' && consulta.tabla === 'previsualizar_eliminacion_plantacion') {
       return { data: previewEliminacion };
     }
@@ -171,8 +155,8 @@ function configurarDetalleMock(): void {
     if (consulta.tabla === 'profiles') return { data: PERFILES };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
     if (consulta.tabla === 'trees') {
-      // La query de exportación se distingue por seleccionar `plantacion_id`.
-      if (consulta.columnas?.includes('plantacion_id')) return { data: filasExport };
+      // La query de exportación se distingue por embeber el alta del grupo.
+      if (consulta.columnas?.includes('groups!inner(id, created_at')) return { data: filasExport };
       return { data: [], count: 0 };
     }
     return { data: [], count: 0 };
@@ -183,8 +167,6 @@ beforeEach(() => {
   prepararSesionAdmin();
   asignadas = [filaAsignada('user-2', 'tecnico')];
   consultas = [];
-  totalArboles = 0;
-  conIdArboles = 0;
   filasExport = [];
   archivadaEn = null;
   estadoPlantacion = 'activa';
@@ -213,90 +195,47 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
 });
 
-test('"Generar IDs" abre el modal, confirma con el seed sugerido y habilita los exports', async () => {
+test('ofrece las cuatro descargas habilitadas y ya no ofrece «Generar IDs»', async () => {
   const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 3; // set parcial → todavía no generado
-  renderRutasEn('/plantaciones/plant-1');
-
-  await usuario.click(await screen.findByRole('button', { name: 'Generar IDs' }));
-  const dialogo = await screen.findByRole('dialog', { name: 'Generar IDs' });
-  // Advertencia de irreversibilidad y seed sugerido = MAX global + 1.
-  expect(dialogo).toHaveTextContent('Esta acción no se puede deshacer.');
-  const input = within(dialogo).getByLabelText('ID global inicial');
-  await vi.waitFor(() => expect(input).toHaveValue(1001));
-
-  await usuario.click(within(dialogo).getByRole('button', { name: 'Generar' }));
-
-  // Se ejecuta el RPC transaccional con el seed y, tras invalidar el gate,
-  // el modal se cierra y las planillas quedan habilitadas en el menú.
-  await vi.waitFor(() =>
-    expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument(),
-  );
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(await itemExportar(usuario, 'Exportar Excel')).toBeEnabled();
-  // El dashboard también dispara un RPC (stats): se busca el de generación.
-  const rpc = consultas.find(
-    (consulta) => consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids',
-  );
-  expect(rpc?.payload).toEqual({ p_plantation_id: 'plant-1', p_seed: 1001 });
-});
-
-test('si otra sesión ya generó (ALREADY_GENERATED) el modal muestra el error', async () => {
-  const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 0;
-  const resolverBase = estadoMock.resolverConsulta!;
-  estadoMock.resolverConsulta = (consulta) =>
-    consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids'
-      ? { data: { success: false, error: ERRORES_GENERACION_IDS.YA_GENERADOS } }
-      : resolverBase(consulta);
-  renderRutasEn('/plantaciones/plant-1');
-
-  await usuario.click(await screen.findByRole('button', { name: 'Generar IDs' }));
-  const dialogo = await screen.findByRole('dialog', { name: 'Generar IDs' });
-  await vi.waitFor(() =>
-    expect(within(dialogo).getByLabelText('ID global inicial')).toHaveValue(1001),
-  );
-  await usuario.click(within(dialogo).getByRole('button', { name: 'Generar' }));
-
-  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
-    'Los IDs de esta plantación ya fueron generados',
-  );
-});
-
-test('ofrece las tres descargas (y oculta "Generar IDs") con los IDs generados', async () => {
-  const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 5; // todos con global_id → generado
   renderRutasEn('/plantaciones/plant-1');
 
   expect(await itemExportar(usuario, 'Descargar KML')).toBeEnabled();
   expect(screen.getByRole('menuitem', { name: 'Exportar Excel' })).toBeEnabled();
   expect(screen.getByRole('menuitem', { name: 'Exportar CSV' })).toBeEnabled();
+  expect(screen.getByRole('menuitem', { name: 'Informe PDF' })).toBeEnabled();
   expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
 });
 
-test('sin IDs generados el KML sigue disponible y las planillas explican por qué no', async () => {
+test('«Informe PDF» abre las opciones y genera el informe con las elegidas', async () => {
   const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 3; // set parcial → todavía no generado
   renderRutasEn('/plantaciones/plant-1');
 
-  expect(await screen.findByRole('button', { name: 'Generar IDs' })).toBeInTheDocument();
-  expect(await itemExportar(usuario, 'Descargar KML')).toBeEnabled();
-  const excel = screen.getByRole('menuitem', { name: 'Exportar Excel' });
-  expect(excel).toBeDisabled();
-  expect(excel).toHaveAttribute(
-    'title',
-    'Generá los IDs de la plantación para exportar la planilla',
-  );
+  const informe = await itemExportar(usuario, 'Informe PDF');
+  expect(informe).toBeEnabled();
+  await usuario.click(informe);
+  const modal = screen.getByRole('dialog', { name: 'Informe PDF' });
+  await usuario.click(within(modal).getByRole('checkbox', { name: 'Mapa de puntos GPS' }));
+  await usuario.click(within(modal).getByRole('button', { name: 'Generar informe' }));
+  await vi.waitFor(() => expect(descargarInformePdf).toHaveBeenCalledTimes(1));
+  const [plantacionPedida, , opciones] = vi.mocked(descargarInformePdf).mock.calls[0];
+  expect(plantacionPedida).toMatchObject({ id: 'plant-1' });
+  expect(opciones).toEqual({ meta: false, gps: false, foto: false, mapa: true });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+test('si el informe falla, se avisa en el modal', async () => {
+  const usuario = userEvent.setup();
+  vi.mocked(descargarInformePdf).mockRejectedValueOnce(new Error('canvas'));
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await itemExportar(usuario, 'Informe PDF'));
+  await usuario.click(screen.getByRole('button', { name: 'Generar informe' }));
+  const modal = screen.getByRole('dialog', { name: 'Informe PDF' });
+  expect(await within(modal).findByText('No se pudo generar el informe PDF.')).toBeInTheDocument();
 });
 
 test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
   const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 5;
   filasExport = []; // la query de exportación no devuelve filas
   renderRutasEn('/plantaciones/plant-1');
 
@@ -311,8 +250,6 @@ test('"Exportar CSV" con árboles dispara la descarga del CSV', async () => {
   const crearUrl = vi.fn(() => 'blob:export');
   const revocarUrl = vi.fn();
   vi.stubGlobal('URL', { ...URL, createObjectURL: crearUrl, revokeObjectURL: revocarUrl });
-  totalArboles = 5;
-  conIdArboles = 5;
   filasExport = [filaExport('A-001'), filaExport('A-002')];
   renderRutasEn('/plantaciones/plant-1');
 
@@ -329,8 +266,6 @@ test('"Exportar Excel" arma el XLSX con las filas y las 9 columnas y lo descarga
   const crearUrl = vi.fn(() => 'blob:export');
   const revocarUrl = vi.fn();
   vi.stubGlobal('URL', { ...URL, createObjectURL: crearUrl, revokeObjectURL: revocarUrl });
-  totalArboles = 5;
-  conIdArboles = 5;
   filasExport = [filaExport('A-001'), filaExport('A-002')];
   renderRutasEn('/plantaciones/plant-1');
 
@@ -476,8 +411,6 @@ test('quitar pide confirmación, cancela sin borrar y confirma borrando', async 
 test('a ≤900px las acciones se pliegan en un solo «⋯» sin perder ninguna', async () => {
   simularAncho(ANCHO.tablet);
   const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 3; // set parcial → "Generar IDs" sigue en juego
   renderRutasEn('/plantaciones/plant-1');
 
   // Los tres controles sueltos de la barra ancha ya no están sueltos.
@@ -487,16 +420,12 @@ test('a ≤900px las acciones se pliegan en un solo «⋯» sin perder ninguna',
 
   await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
   const menu = screen.getByRole('menu', { name: 'Acciones de la plantación' });
-  expect(await within(menu).findByRole('menuitem', { name: 'Generar IDs' })).toBeInTheDocument();
   expect(within(menu).getByRole('menuitem', { name: 'Editar plantación' })).toBeInTheDocument();
   expect(within(menu).getByRole('menuitem', { name: 'Descargar KML' })).toBeEnabled();
-  // El gate de las planillas viaja con la acción, no con el control que la muestra.
-  const excel = within(menu).getByRole('menuitem', { name: 'Exportar Excel' });
-  expect(excel).toBeDisabled();
-  expect(excel).toHaveAttribute(
-    'title',
-    'Generá los IDs de la plantación para exportar la planilla',
-  );
+  expect(within(menu).getByRole('menuitem', { name: 'Exportar Excel' })).toBeEnabled();
+  expect(within(menu).getByRole('menuitem', { name: 'Exportar CSV' })).toBeEnabled();
+  expect(within(menu).getByRole('menuitem', { name: 'Informe PDF' })).toBeEnabled();
+  expect(within(menu).queryByRole('menuitem', { name: 'Generar IDs' })).not.toBeInTheDocument();
 });
 
 test('plegado, "Editar plantación" abre el mismo formulario que el botón de la barra ancha', async () => {
@@ -510,22 +439,6 @@ test('plegado, "Editar plantación" abre el mismo formulario que el botón de la
 
   const dialogo = await screen.findByRole('dialog');
   expect(within(dialogo).getByLabelText(/Lugar/)).toHaveValue('Mendoza');
-});
-
-test('plegado, "Generar IDs" abre el modal de confirmación', async () => {
-  simularAncho(ANCHO.tablet);
-  const usuario = userEvent.setup();
-  totalArboles = 5;
-  conIdArboles = 3;
-  renderRutasEn('/plantaciones/plant-1');
-  await screen.findByRole('heading', { name: 'Mendoza' });
-
-  await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
-  await usuario.click(await screen.findByRole('menuitem', { name: 'Generar IDs' }));
-
-  expect(await screen.findByRole('dialog', { name: 'Generar IDs' })).toHaveTextContent(
-    'Esta acción no se puede deshacer.',
-  );
 });
 
 describe('archivado', () => {

@@ -1,8 +1,10 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ATRIBUTO_SCROLL_BLOQUEADO } from '../../../hooks/useBloquearScroll';
 import { PERFIL_SUPERADMIN, estadoMock, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { renderRutasEn } from '../../../test/renderConRutas';
+import { filaPlantacion } from '../../../test/fabricas';
 
 vi.mock('../../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../../test/supabaseMock');
@@ -14,14 +16,14 @@ vi.mock('../../PlantationMap', () => ({
   PlantationMap: () => <div>Mapa de la plantación</div>,
 }));
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
   visible_in_app: true,
-};
+});
 
 const FILA_ESPECIE = {
   id: 'sp-1',
@@ -172,7 +174,9 @@ test('sin texto, recientes ni plantaciones: mensaje neutro, sin encabezados ni c
   estadoMock.resolverConsulta = (consulta) =>
     consulta.tabla === 'plantations' ? { data: [], count: 0 } : responder(consulta);
   renderRutasEn('/plantaciones');
-  await screen.findByRole('button', { name: /Buscar/ });
+  // El trigger no alcanza: el listener de ⌘K es un effect que puede correr después
+  // de pintarlo, y React lo vacía antes del render siguiente, el del listado (#809).
+  await screen.findByText('Sin plantaciones');
   fireEvent.keyDown(document, { key: 'k', metaKey: true });
   const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
 
@@ -264,6 +268,32 @@ test('Escape cierra la paleta', async () => {
   await waitFor(() =>
     expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
   );
+});
+
+test('abierta, el fondo no mueve la lista de atrás: bloquea el scroll del documento', async () => {
+  const dialog = await abrirPaleta();
+  expect(document.documentElement).toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO);
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() =>
+    expect(document.documentElement).not.toHaveAttribute(ATRIBUTO_SCROLL_BLOQUEADO),
+  );
+});
+
+test('arriba de 900 px, el Escape cierra solo la paleta: el detalle de al lado sigue abierto', async () => {
+  renderRutasEn('/especies');
+  const usuario = userEvent.setup();
+  await usuario.click(await screen.findByRole('cell', { name: FILA_ESPECIE.nombre }));
+  const detalle = await screen.findByRole('complementary', { name: 'Editar especie' });
+
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  await screen.findByRole('dialog', { name: 'Buscar' });
+  await usuario.keyboard('{Escape}');
+
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
+  );
+  expect(detalle).toBeInTheDocument();
 });
 
 test('el click afuera cierra la paleta y devuelve el foco al trigger; adentro no', async () => {

@@ -1,5 +1,12 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { obtenerUrlFoto, tieneFotoSubida } from '../fotoService';
+import {
+  esFotoLocal,
+  firmarFotos,
+  fotoSubida,
+  obtenerUrlDescargaFoto,
+  obtenerUrlFoto,
+  tieneFotoSubida,
+} from '../fotoService';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,6 +29,26 @@ describe('tieneFotoSubida', () => {
   test('true para paths y URLs del bucket', () => {
     expect(tieneFotoSubida(PATH_FOTO)).toBe(true);
     expect(tieneFotoSubida(URL_COMPLETA)).toBe(true);
+  });
+});
+
+describe('esFotoLocal', () => {
+  test('true solo para fotos que siguen en el celular', () => {
+    expect(esFotoLocal('file:///data/foto.jpg')).toBe(true);
+    expect(esFotoLocal('content://media/foto.jpg')).toBe(true);
+    expect(esFotoLocal(PATH_FOTO)).toBe(false);
+    expect(esFotoLocal(URL_COMPLETA)).toBe(false);
+    expect(esFotoLocal(null)).toBe(false);
+    expect(esFotoLocal('')).toBe(false);
+  });
+});
+
+describe('fotoSubida', () => {
+  test('devuelve la URL solo si la foto está en el bucket', () => {
+    expect(fotoSubida(PATH_FOTO)).toBe(PATH_FOTO);
+    expect(fotoSubida('file:///data/foto.jpg')).toBeNull();
+    expect(fotoSubida(null)).toBeNull();
+    expect(fotoSubida('')).toBeNull();
   });
 });
 
@@ -53,5 +80,54 @@ describe('obtenerUrlFoto', () => {
   test('propaga el error de Storage', async () => {
     estadoMock.errorFirma = { message: 'objeto inexistente' };
     await expect(obtenerUrlFoto(PATH_FOTO)).rejects.toThrow('objeto inexistente');
+  });
+});
+
+describe('obtenerUrlDescargaFoto', () => {
+  test('firma pidiendo el nombre del archivo como descarga', async () => {
+    await obtenerUrlDescargaFoto(PATH_FOTO, 'foto-finca-2026-a-1.jpg');
+    expect(estadoMock.firmas).toEqual([
+      {
+        bucket: 'tree-photos',
+        path: PATH_FOTO,
+        segundos: 3600,
+        download: 'foto-finca-2026-a-1.jpg',
+      },
+    ]);
+  });
+
+  test('sin foto subida devuelve null sin firmar', async () => {
+    expect(await obtenerUrlDescargaFoto('file:///data/foto.jpg', 'x.jpg')).toBeNull();
+    expect(estadoMock.firmas).toHaveLength(0);
+  });
+});
+
+describe('firmarFotos', () => {
+  test('firma todo en una llamada, en orden, extrayendo el path', async () => {
+    const urls = await firmarFotos([PATH_FOTO, URL_COMPLETA]);
+    expect(estadoMock.firmas).toEqual([
+      { bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 },
+      { bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 },
+    ]);
+    expect(urls).toEqual([
+      `https://firmada.test/${PATH_FOTO}`,
+      `https://firmada.test/${PATH_FOTO}`,
+    ]);
+  });
+
+  test('una foto que Storage no firma queda en null sin afectar al resto', async () => {
+    estadoMock.pathsSinFirma = ['plantations/p1/trees/ajena.jpg'];
+    const urls = await firmarFotos(['plantations/p1/trees/ajena.jpg', PATH_FOTO]);
+    expect(urls).toEqual([null, `https://firmada.test/${PATH_FOTO}`]);
+  });
+
+  test('si falla la llamada entera, todas quedan en null', async () => {
+    estadoMock.errorFirma = { message: 'sin red' };
+    expect(await firmarFotos([PATH_FOTO])).toEqual([null]);
+  });
+
+  test('sin fotos no llama a Storage', async () => {
+    expect(await firmarFotos([])).toEqual([]);
+    expect(estadoMock.firmas).toHaveLength(0);
   });
 });

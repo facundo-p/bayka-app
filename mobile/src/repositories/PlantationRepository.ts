@@ -1,27 +1,44 @@
 /**
  * PlantationRepository — mutaciones admin: escriben a Supabase primero, sincronizan a SQLite después.
- * IDs finales (plantacion_id/global_id) los genera el server (RPC generate_tree_ids, #232) y llegan vía pull.
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
-import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes } from '../database/schema';
+import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes, cambiosEspeciesPendientes } from '../database/schema';
+import { archivosDeConflictosDePlantacion, quitarConflictosDePlantacion } from './ConflictosDeSyncRepository';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
-import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
-import NetInfo from '@react-native-community/netinfo';
+import { hayConexion } from '../services/conexion';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
-import { ESTADO_PLANTACION } from '../constants/estados';
-import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
-import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
+import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
+import { esMotivoNoEscribible, PlantacionNoEscribibleError } from '../services/PlantacionEscribibleService';
+import { borrarAltasDeTecnicosDePlantacion } from './TecnicosDePlantacionRepository';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
+import { ensureServerSession, exigirSesionDelServidor } from '../services/sync/sessionGuard';
 import { borrarFotosLocales } from '../services/PhotoService';
-import { plantationSpeciesId } from '../utils/plantationSpeciesId';
+import {
+  esRechazada,
+  mensajeDeRechazo,
+  registrarEdicionSubida,
+  subirEdicion,
+} from '../services/sync/edicionDePlantacion';
+import {
+  baseDeLaEdicion,
+  camposDeFila,
+  edicionDelFormulario,
+  type EdicionDelFormulario,
+  sinEdicionPendiente,
+  snapshotAntesDeEditar,
+  type AjustesDePlantacion,
+  type CampoDePlantacion,
+  type CamposDePlantacion,
+} from '../utils/camposDePlantacion';
+import { ELECCION, combinarConflictos, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -38,20 +55,7 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
     .onConflictDoNothing();
 }
 
-/** Config GPS por plantación que el admin puede definir en el form. */
-export interface PlantationGpsSettings {
-  gpsCaptureFrequency: number;
-  gpsCaptureRequired: boolean;
-}
-
-/** Mapea la config GPS a las columnas del server; vacío si no se pasó. */
-function gpsToRemoteColumns(gps?: PlantationGpsSettings) {
-  if (!gps) return {};
-  return {
-    gps_capture_frequency: gps.gpsCaptureFrequency,
-    gps_capture_required: gps.gpsCaptureRequired,
-  };
-}
+export type { AjustesDePlantacion } from '../utils/camposDePlantacion';
 
 // ─── createPlantationLocally ──────────────────────────────────────────────────
 
@@ -61,7 +65,7 @@ export async function createPlantationLocally(
   periodo: string,
   organizacionId: string,
   creadoPor: string,
-  gps?: PlantationGpsSettings
+  ajustes?: Partial<AjustesDePlantacion>
 ): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
@@ -74,7 +78,7 @@ export async function createPlantationLocally(
     creadoPor,
     createdAt: now,
     pendingSync: true,
-    ...(gps ?? {}),
+    ...(ajustes ?? {}),
   });
   await upsertLocalAdminMembership(id, creadoPor);
   notifyDataChanged();
@@ -83,167 +87,110 @@ export async function createPlantationLocally(
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
-/** Lee el estado actual de la plantación necesario para decidir cómo aplicar la edición. */
-async function resolveCurrentPlantationRow(plantacionId: string) {
-  const [row] = await db
-    .select({
-      pendingSync: plantations.pendingSync,
-      pendingEdit: plantations.pendingEdit,
-      lugarServer: plantations.lugarServer,
-      periodoServer: plantations.periodoServer,
-      lugarCurrent: plantations.lugar,
-      periodoCurrent: plantations.periodo,
-      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
-      gpsReqServer: plantations.gpsCaptureRequiredServer,
-      gpsFreqCurrent: plantations.gpsCaptureFrequency,
-      gpsReqCurrent: plantations.gpsCaptureRequired,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-
+async function filaDePlantacion(plantacionId: string) {
+  const [row] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
   if (!row) throw new Error('Plantación no encontrada');
   return row;
 }
 
-/** Fila mínima necesaria para decidir el camino online/offline y armar el snapshot de server. */
-type CurrentPlantationRow = Awaited<ReturnType<typeof resolveCurrentPlantationRow>>;
+type FilaDePlantacion = Awaited<ReturnType<typeof filaDePlantacion>>;
 
-/** Snapshot de las columnas *Server tras un push exitoso (solo si se editó la config GPS). */
-function buildGpsServerSnapshot(gps?: PlantationGpsSettings) {
-  return gps
-    ? {
-        gpsCaptureFrequencyServer: gps.gpsCaptureFrequency,
-        gpsCaptureRequiredServer: gps.gpsCaptureRequired,
-      }
-    : {};
+/** El server rechazó la edición por permisos o datos: no se guarda nada. */
+export class EdicionRechazadaError extends Error {
+  readonly codigo: string;
+  constructor(codigo: string) {
+    super(mensajeDeRechazo(codigo));
+    this.name = 'EdicionRechazadaError';
+    this.codigo = codigo;
+  }
 }
 
-/** Sincroniza el mirror local tras un push exitoso: valores actuales + snapshot *Server + limpia pendingEdit. */
-async function updateLocalMirrorAfterPush(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined
-): Promise<void> {
-  await db
-    .update(plantations)
-    .set({
-      lugar,
-      periodo,
-      lugarServer: lugar,
-      periodoServer: periodo,
-      pendingEdit: false,
-      ...(gps ?? {}),
-      ...buildGpsServerSnapshot(gps),
-    })
-    .where(eq(plantations.id, plantacionId));
+function errorDeRechazo(codigo: string): Error {
+  return esMotivoNoEscribible(codigo) ? new PlantacionNoEscribibleError(codigo) : new EdicionRechazadaError(codigo);
 }
 
-/**
- * Intenta pushear la edición a Supabase y, si sale bien, sincroniza las columnas *Server local.
- * Devuelve false (sin tocar nada más) ante una falla de red, para que el caller caiga al camino
- * offline; cualquier otro error del server se propaga tal cual.
- */
-async function tryPushPlantationUpdateOnline(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined
-): Promise<boolean> {
+/** Sin una sesión del servidor confirmada no sale nada: la edición queda pendiente para el sync (#658). */
+async function haySesionParaSubir(): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('plantations')
-      .update({ lugar, periodo, ...gpsToRemoteColumns(gps) })
-      .eq('id', plantacionId);
-    if (error) throw error;
-
-    await updateLocalMirrorAfterPush(plantacionId, lugar, periodo, gps);
+    await ensureServerSession();
     return true;
-  } catch (e: any) {
-    if (!isNetworkRequestFailed(e)) throw e;
+  } catch {
     return false;
   }
 }
 
-/** Snapshot de server SOLO en la primera edición offline, para que discardPlantationEdit revierta al último valor confirmado. */
-function buildOfflineEditSnapshot(row: CurrentPlantationRow) {
-  if (row.pendingEdit) return {};
-  return {
-    lugarServer: row.lugarServer ?? row.lugarCurrent,
-    periodoServer: row.periodoServer ?? row.periodoCurrent,
-    gpsCaptureFrequencyServer: row.gpsFreqServer ?? row.gpsFreqCurrent,
-    gpsCaptureRequiredServer: row.gpsReqServer ?? row.gpsReqCurrent,
-  };
-}
-
-/** Guarda la edición local con pendingEdit=true (sin red disponible, o tras una falla de red del push). */
-async function applyOfflineEdit(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined,
-  row: CurrentPlantationRow
-): Promise<void> {
-  await db
-    .update(plantations)
-    .set({
-      lugar,
-      periodo,
-      ...(gps ?? {}),
-      pendingEdit: true,
-      ...buildOfflineEditSnapshot(row),
-    })
-    .where(eq(plantations.id, plantacionId));
+/**
+ * Sube por `editar_plantacion` solo lo que cambió y deja la fila con lo que quedó en el server.
+ * Devuelve cuántos campos chocaron con la web, o null ante una falla de red, para que el caller
+ * caiga al camino offline. Un rechazo lanza el error con el motivo; otro error, tal cual.
+ */
+async function tryPushPlantationUpdateOnline(row: FilaDePlantacion, edicion: EdicionDelFormulario): Promise<number | null> {
+  const { tocados, cambios, base } = edicion;
+  if (!(await haySesionParaSubir())) return null;
+  try {
+    const resultado = await subirEdicion(row.id, cambios, base);
+    if (esRechazada(resultado)) throw errorDeRechazo(resultado.rechazo ?? '');
+    return await registrarEdicionSubida(row, { vivos: tocados, cambios, base, resultado });
+  } catch (e: any) {
+    if (!isNetworkRequestFailed(e)) throw e;
+    return null;
+  }
 }
 
 /**
- * Actualiza lugar/periodo/GPS: online pushea a Supabase y sincroniza las columnas *Server; offline
- * guarda local con pendingEdit=true, snapshoteando el valor original SOLO la primera vez (para que
- * discardPlantationEdit revierta al último server). No aplica a plantaciones creadas offline.
+ * Guarda lo tocado con pendingEdit=true. El snapshot se toma solo en la primera edición,
+ * para que descartar vuelva al valor del server; la base se amplía con lo recién tocado.
+ */
+async function applyOfflineEdit(row: FilaDePlantacion, edicion: EdicionDelFormulario): Promise<void> {
+  await db
+    .update(plantations)
+    .set({
+      ...edicion.tocados,
+      pendingEdit: true,
+      editadaLocalmenteEn: new Date().toISOString(),
+      baseDeEdicion: edicion.baseDeEdicion,
+      // Volver a editar un campo en conflicto lo supera: sube con su propia base.
+      conflictosDeEdicion: combinarConflictos(row.conflictosDeEdicion, edicion.tocados, []),
+      ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
+    })
+    .where(eq(plantations.id, row.id));
+}
+
+/**
+ * Actualiza los datos de la plantación: online sube por `editar_plantacion`; offline guarda
+ * local con pendingEdit=true. Una creada offline (pendingSync) solo se edita local: el alta
+ * sube todo. `vistos` son los valores con que se abrió el formulario: solo se escribe lo que
+ * difiere de ellos. Devuelve cuántos campos chocaron con un cambio de la web (quedan para
+ * "Resolver cambios"); 0 offline.
  */
 export async function updatePlantation(
   plantacionId: string,
   lugar: string,
   periodo: string,
-  gps?: PlantationGpsSettings
-): Promise<void> {
-  const row = await resolveCurrentPlantationRow(plantacionId);
+  ajustes?: Partial<AjustesDePlantacion>,
+  vistos?: Partial<CamposDePlantacion>
+): Promise<number> {
+  const row = await filaDePlantacion(plantacionId);
+  const campos: Partial<CamposDePlantacion> = { lugar, periodo, ...(ajustes ?? {}) };
 
   if (row.pendingSync) {
-    await db
-      .update(plantations)
-      .set({ lugar, periodo, ...(gps ?? {}) })
-      .where(eq(plantations.id, plantacionId));
+    await db.update(plantations).set(campos).where(eq(plantations.id, plantacionId));
     notifyDataChanged();
-    return;
+    return 0;
   }
 
-  const net = await NetInfo.fetch();
-  if (net.isConnected !== false) {
-    const pushed = await tryPushPlantationUpdateOnline(plantacionId, lugar, periodo, gps);
-    if (pushed) {
-      notifyDataChanged();
-      return;
-    }
-  }
-
-  await applyOfflineEdit(plantacionId, lugar, periodo, gps, row);
+  const edicion = edicionDelFormulario(row, campos, vistos);
+  const enConflicto = (await hayConexion()) ? await tryPushPlantationUpdateOnline(row, edicion) : null;
+  if (enConflicto === null) await applyOfflineEdit(row, edicion);
   notifyDataChanged();
+  return enConflicto ?? 0;
 }
 
 // ─── discardPlantationEdit ───────────────────────────────────────────────────
 
-/** Revierte una edición offline pendiente: restaura lugar/periodo/GPS desde las columnas *Server y limpia pendingEdit. Funciona sin red. */
+/** Revierte una edición offline pendiente a los snapshots *Server y limpia pendingEdit. Funciona sin red. */
 export async function discardPlantationEdit(plantacionId: string): Promise<void> {
-  const [row] = await db
-    .select({
-      lugarServer: plantations.lugarServer,
-      periodoServer: plantations.periodoServer,
-      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
-      gpsReqServer: plantations.gpsCaptureRequiredServer,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
+  const [row] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
 
   if (!row || !row.lugarServer || !row.periodoServer) {
     throw new Error('No hay datos del servidor para restaurar');
@@ -251,16 +198,47 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
   await db
     .update(plantations)
+    .set(sinEdicionPendiente(row))
+    .where(eq(plantations.id, plantacionId));
+  notifyDataChanged();
+}
+
+// ─── resolverCambios ──────────────────────────────────────────────────────────
+
+export type Elecciones = Partial<Record<CampoDePlantacion, Eleccion>>;
+
+/**
+ * Resuelve los campos que chocaron con la web (#634), todos en un solo UPDATE. Con la web, el
+ * valor ya está: se descarta el propio. Con el propio, se re-encola como edición offline con
+ * la web como base y sube en el próximo sync (si alguien lo volvió a cambiar, vuelve a chocar).
+ * Los campos sin elección siguen pendientes.
+ */
+export async function resolverCambios(plantacionId: string, elecciones: Elecciones): Promise<void> {
+  const row = await filaDePlantacion(plantacionId);
+  const conflictos = row.conflictosDeEdicion ?? [];
+  const resueltos = conflictos.filter((c) => elecciones[c.campo] !== undefined);
+  if (resueltos.length === 0) return;
+  const pendientes = conflictos.filter((c) => elecciones[c.campo] === undefined);
+  const propios = resueltos.filter((c) => elecciones[c.campo] === ELECCION.mio);
+  await db
+    .update(plantations)
     .set({
-      lugar: row.lugarServer,
-      periodo: row.periodoServer,
-      pendingEdit: false,
-      // Solo revertir GPS si hay snapshot: plantaciones editadas antes de esas columnas no lo tienen.
-      ...(row.gpsFreqServer !== null ? { gpsCaptureFrequency: row.gpsFreqServer } : {}),
-      ...(row.gpsReqServer !== null ? { gpsCaptureRequired: row.gpsReqServer } : {}),
+      conflictosDeEdicion: pendientes.length > 0 ? pendientes : null,
+      ...(propios.length > 0 ? edicionReencolada(row, propios) : {}),
     })
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();
+}
+
+function edicionReencolada(row: FilaDePlantacion, propios: ConflictoDeCampo[]) {
+  const baseAnterior = row.pendingEdit ? baseDeLaEdicion(row) : camposDeFila(row);
+  return {
+    ...Object.fromEntries(propios.map((c) => [c.campo, c.mio])),
+    pendingEdit: true,
+    editadaLocalmenteEn: row.editadaLocalmenteEn ?? propios[0].mioEn,
+    baseDeEdicion: { ...baseAnterior, ...Object.fromEntries(propios.map((c) => [c.campo, c.web])) },
+    ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
+  };
 }
 
 // ─── finalizePlantation ───────────────────────────────────────────────────────
@@ -292,6 +270,7 @@ export class FinalizePlantationPendientesError extends Error {
 export async function finalizePlantation(plantacionId: string): Promise<void> {
   const pendientes = await getResumenDePendientes(plantacionId);
   if (tienePendientes(pendientes)) throw new FinalizePlantationPendientesError(pendientes);
+  await exigirSesionDelServidor('finalizar la plantación');
 
   const { error } = await supabase
     .from('plantations')
@@ -300,126 +279,63 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
   if (error) throw error;
 
+  await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.finalizada, (e) => new FinalizePlantationLocalSyncError(e));
+}
+
+/** Refleja en SQLite un cambio de estado que el server ya confirmó, sin esperar el pull. */
+async function reflejarEstadoLocal(
+  plantacionId: string,
+  estado: EstadoPlantacion,
+  errorDeDesfase: (causa: unknown) => Error,
+): Promise<void> {
   try {
-    await db
-      .update(plantations)
-      .set({ estado: ESTADO_PLANTACION.finalizada })
-      .where(eq(plantations.id, plantacionId));
+    await db.update(plantations).set({ estado }).where(eq(plantations.id, plantacionId));
   } catch (e) {
-    syncLog.error(`finalizePlantation: update local falló tras éxito en server para ${plantacionId}`, e);
-    throw new FinalizePlantationLocalSyncError(e);
-  }
-
-  notifyDataChanged();
-}
-
-// ─── saveSpeciesConfig ────────────────────────────────────────────────────────
-
-/** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
-export async function saveSpeciesConfig(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  await reemplazarConfiguracion({
-    rpc: RPC_REEMPLAZAR_ESPECIES,
-    args: {
-      p_plantacion: plantacionId,
-      p_especies: items.map((item) => ({ species_id: item.especieId, orden_visual: item.ordenVisual })),
-    },
-    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesSinRpc(plantacionId, items)),
-  });
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
-}
-
-/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
-async function reemplazarEspeciesSinRpc(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  const { error: deleteError } = await supabase
-    .from('plantation_species')
-    .delete()
-    .eq('plantation_id', plantacionId);
-
-  if (deleteError) throw deleteError;
-  if (items.length === 0) return;
-
-  const { error: insertError } = await supabase
-    .from('plantation_species')
-    .insert(
-      items.map((item) => ({
-        plantation_id: plantacionId,
-        species_id: item.especieId,
-        orden_visual: item.ordenVisual,
-      }))
-    );
-
-  if (insertError) throw insertError;
-}
-
-// ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
-
-/** Reemplaza atómicamente el species config solo en SQLite local (sin Supabase) — para configuración offline. */
-export async function saveSpeciesConfigLocally(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  await db.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
-  if (items.length > 0) {
-    await db.insert(plantationSpecies).values(
-      items.map((item) => ({
-        id: plantationSpeciesId(plantacionId, item.especieId),
-        plantacionId,
-        especieId: item.especieId,
-        ordenVisual: item.ordenVisual,
-      }))
-    );
+    syncLog.error(`Estado local '${estado}' falló tras éxito en server para ${plantacionId}`, e);
+    throw errorDeDesfase(e);
   }
   notifyDataChanged();
 }
 
-// ─── assignTechnicians ────────────────────────────────────────────────────────
+// ─── reabrirPlantacion ────────────────────────────────────────────────────────
 
-/** Reemplaza las asignaciones de técnicos en una sola transacción, sin tocar las membresías admin (#67), y sincroniza vía pullFromServer. */
-export async function assignTechnicians(
-  plantacionId: string,
-  userIds: string[]
-): Promise<void> {
-  await reemplazarConfiguracion({
-    rpc: RPC_REEMPLAZAR_TECNICOS,
-    args: { p_plantacion: plantacionId, p_user_ids: userIds },
-    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosSinRpc(plantacionId, userIds)),
-  });
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
+const RPC_REABRIR_PLANTACION = 'reabrir_plantacion';
+
+const ERRORES_REAPERTURA = {
+  /** No es superadmin activo de la organización de la plantación. */
+  noAutorizado: 'NOT_AUTHORIZED',
+  archivada: 'PLANTACION_ARCHIVADA',
+} as const;
+
+const MENSAJE_ERROR_REAPERTURA = 'No se pudo reabrir la plantación. Probá de nuevo.';
+
+const MENSAJES_ERROR_REAPERTURA: Record<string, string> = {
+  [ERRORES_REAPERTURA.noAutorizado]: 'Solo un superadmin puede reabrir una plantación.',
+  [ERRORES_REAPERTURA.archivada]: 'La plantación está archivada: desarchivala antes de reabrirla.',
+};
+
+/** El server reabrió pero SQLite no se enteró: el próximo pull lo reconcilia. */
+export class ReabrirPlantacionLocalSyncError extends Error {
+  constructor(cause: unknown) {
+    super('La plantación se reabrió en el servidor, pero no se pudo reflejar localmente');
+    this.name = 'ReabrirPlantacionLocalSyncError';
+    this.cause = cause;
+  }
 }
 
-/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
-async function reemplazarTecnicosSinRpc(plantacionId: string, userIds: string[]): Promise<void> {
-  const { error: deleteError, count: deleteCount } = await supabase
-    .from('plantation_users')
-    .delete()
-    .eq('plantation_id', plantacionId)
-    .eq('rol_en_plantacion', ROL.tecnico);
-
-  console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
-  if (deleteError) throw deleteError;
-  if (userIds.length === 0) return;
-
-  const now = new Date().toISOString();
-  const { error: insertError } = await supabase
-    .from('plantation_users')
-    .insert(
-      userIds.map((userId) => ({
-        plantation_id: plantacionId,
-        user_id: userId,
-        rol_en_plantacion: ROL.tecnico,
-        assigned_at: now,
-      }))
-    );
-
-  if (insertError) throw insertError;
+/**
+ * Devuelve una finalizada al estado activo (#470, #637). Solo online y solo
+ * superadmin: lo valida el RPC. Los grupos conservan su estado.
+ */
+export async function reabrirPlantacion(plantacionId: string): Promise<void> {
+  await exigirSesionDelServidor('reabrir la plantación');
+  const { data, error } = await supabase.rpc(RPC_REABRIR_PLANTACION, { p_id: plantacionId });
+  if (error) throw new Error(MENSAJE_ERROR_REAPERTURA);
+  const respuesta = data as { success?: boolean; error?: string } | null;
+  if (!respuesta?.success) {
+    throw new Error(MENSAJES_ERROR_REAPERTURA[respuesta?.error ?? ''] ?? MENSAJE_ERROR_REAPERTURA);
+  }
+  await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.activa, (e) => new ReabrirPlantacionLocalSyncError(e));
 }
 
 // ─── createPlantationWithParcelaLocally ──────────────────────────────────────
@@ -429,7 +345,7 @@ export interface CreatePlantationWithParcelaParams {
   periodo: string;
   organizacionId: string;
   creadoPor: string;
-  gps?: PlantationGpsSettings;
+  ajustes?: Partial<AjustesDePlantacion>;
   /** Parcela default a crear junto con la plantación; omitir/null = solo plantación (AUTO_PARCELA_DEFAULT off). */
   parcela?: { nombre: string; codigo: string } | null;
 }
@@ -457,7 +373,7 @@ export async function createPlantationWithParcelaLocally(
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
-      ...(params.gps ?? {}),
+      ...(params.ajustes ?? {}),
     });
 
     await tx
@@ -465,7 +381,7 @@ export async function createPlantationWithParcelaLocally(
       .values({
         plantationId,
         userId: params.creadoPor,
-        rolEnPlantacion: 'admin',
+        rolEnPlantacion: ROL.admin,
         assignedAt: now,
       })
       .onConflictDoNothing();
@@ -481,6 +397,7 @@ export async function createPlantationWithParcelaLocally(
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
+        altaPendienteDe: params.creadoPor,
       });
     }
   });
@@ -493,7 +410,10 @@ export async function createPlantationWithParcelaLocally(
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
-  const fotos = await getLocalPhotoUrisForPlantation(plantacionId);
+  const fotos = [
+    ...await getLocalPhotoUrisForPlantation(plantacionId),
+    ...await archivosDeConflictosDePlantacion(plantacionId),
+  ];
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
@@ -507,7 +427,10 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     // toca Supabase, así que no hay nada que propagar. Y si quedaran, al volver a
     // descargarla el pull escondería esos árboles para siempre (#467).
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
+    await tx.delete(cambiosEspeciesPendientes).where(eq(cambiosEspeciesPendientes.plantacionId, plantacionId));
+    await borrarAltasDeTecnicosDePlantacion(tx, plantacionId);
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
+    await quitarConflictosDePlantacion(tx, plantacionId);
   });
   // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).
   borrarFotosLocales(fotos);

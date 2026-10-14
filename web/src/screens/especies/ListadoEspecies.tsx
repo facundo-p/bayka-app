@@ -1,12 +1,12 @@
 import { CardTabla, LayoutConPanel, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { AYUDA_FILA } from '../../lib/ayudaFila';
 import { pluralizar } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 import { COLUMNAS_ESPECIES } from './columnas';
 import { EspeciePanel } from './EspeciePanel';
 
-const PIE_AYUDA = 'clic en una fila abre la edición en el panel lateral';
 const PIE_NOTA = 'Las especies sin uso aparecen atenuadas';
 
 /** Selección del panel: una especie a editar, o el alta (panel vacío). */
@@ -20,7 +20,7 @@ interface ListadoEspeciesProps {
 
 /** Tabla del catálogo con el panel de edición al costado. */
 export function ListadoEspecies({ visibles, seleccion, onSeleccionar }: ListadoEspeciesProps) {
-  const columnas = useColumnasVisibles(COLUMNAS_ESPECIES);
+  const columnas = useColumnasVisibles(COLUMNAS_ESPECIES, seleccion !== null);
   const panel = seleccion && (
     <EspeciePanel
       // Remonta el panel al cambiar de especie: los campos se reinicializan
@@ -33,7 +33,7 @@ export function ListadoEspecies({ visibles, seleccion, onSeleccionar }: ListadoE
   return (
     <LayoutConPanel panel={panel}>
       <CardTabla
-        pie={`${pluralizar(visibles.length, SUSTANTIVO.especie)} · ${PIE_AYUDA}`}
+        pie={`${pluralizar(visibles.length, SUSTANTIVO.especie)} · ${AYUDA_FILA.edicion}`}
         pieDerecha={PIE_NOTA}
       >
         <Table

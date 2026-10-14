@@ -3,6 +3,7 @@
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
+    rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
 }));
@@ -19,7 +20,6 @@ const { db } = require('../../src/database/client');
 import {
   getServerCatalog,
   getLocalPlantationIds,
-  ServerPlantation,
 } from '../../src/queries/catalogQueries';
 
 const makePlantation = (id: string): any => ({
@@ -42,34 +42,16 @@ function makeOrderTerminalChain(resolvedValue: any) {
   return chain;
 }
 
-// Tecnico plantation_users chain, terminal at eq() (select().eq())
-function makeEqTerminalChain(resolvedValue: any) {
-  const eqSpy = jest.fn().mockResolvedValue(resolvedValue);
-  const chain: any = {
-    select: () => chain,
-    eq: eqSpy,
-  };
-  return chain;
-}
-
-// Groups/trees count chain, terminal at in() (select().eq().in())
-function makeInTerminalChain(resolvedValue: any) {
-  const chain: any = {};
-  chain.select = () => chain;
-  chain.eq = () => chain;
-  chain.in = () => Promise.resolve(resolvedValue);
-  return chain;
-}
-
 describe('catalogQueries', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
   });
 
   // ─── getServerCatalog ─────────────────────────────────────────────────────────
 
   describe('getServerCatalog — admin path', () => {
-    it('Test 1: admin path queries plantations filtered by organizacion_id', async () => {
+    it('admin path queries plantations filtered by organizacion_id', async () => {
       const remotePlantations = [makePlantation('p-1'), makePlantation('p-2')];
 
       const eqCalls: any[] = [];
@@ -80,9 +62,7 @@ describe('catalogQueries', () => {
       plantationsChain.order = () => Promise.resolve({ data: remotePlantations, error: null });
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(plantationsChain)
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))  // groups
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null })); // trees
+        .mockReturnValueOnce(plantationsChain);
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -94,7 +74,7 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — tecnico path', () => {
-    it('Test 2: tecnico path queries plantation_users first, then fetches assigned plantations', async () => {
+    it('tecnico path queries plantation_users first, then fetches assigned plantations', async () => {
       const assignedPu = [{ plantation_id: 'p-1' }];
       const remotePlantations = [makePlantation('p-1')];
 
@@ -106,9 +86,7 @@ describe('catalogQueries', () => {
 
       (supabase.from as jest.Mock)
         .mockReturnValueOnce(puChain)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(false, 'user-tec', 'org-1');
 
@@ -119,7 +97,7 @@ describe('catalogQueries', () => {
       expect(results).toHaveLength(1);
     });
 
-    it('Test 3: tecnico with no assignments returns empty array without querying plantations', async () => {
+    it('tecnico with no assignments returns empty array without querying plantations', async () => {
       const puChain: any = {
         select: () => puChain,
         eq: () => Promise.resolve({ data: [], error: null }),
@@ -136,44 +114,66 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — counts', () => {
-    it('Test 5: merges subgroup and tree counts into results', async () => {
-      const remotePlantations = [makePlantation('p-1')];
-
-      const subgroupsData = [
-        { plantation_id: 'p-1', id: 'sg-1' },
-        { plantation_id: 'p-1', id: 'sg-2' },
-      ];
-
-      const treesData = [
-        { group_id: 'sg-1' },
-        { group_id: 'sg-1' },
-        { group_id: 'sg-2' },
-      ];
+    it('toma los conteos del RPC catalogo_conteos', async () => {
+      const remotePlantations = [makePlantation('p-1'), makePlantation('p-2')];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: subgroupsData, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: treesData, error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [{ plantation_id: 'p-1', grupos: 2, arboles: 3 }],
+        error: null,
+      });
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
-      expect(results).toHaveLength(1);
-      expect(results[0].group_count).toBe(2);
-      expect(results[0].tree_count).toBe(3);
+      expect(supabase.rpc).toHaveBeenCalledWith('catalogo_conteos', { p_ids: ['p-1', 'p-2'] });
+      expect(supabase.from).not.toHaveBeenCalledWith('trees');
+      expect(supabase.from).not.toHaveBeenCalledWith('groups');
+      expect(results.map((p) => [p.id, p.group_count, p.tree_count])).toEqual([
+        ['p-1', 2, 3],
+        ['p-2', 0, 0],
+      ]);
     });
 
-    it('Test 5b: defaults to 0 counts when no groups or trees for plantation', async () => {
+    it('defaults to 0 counts when no groups or trees for plantation', async () => {
       const remotePlantations = [makePlantation('p-empty')];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
       expect(results[0].group_count).toBe(0);
       expect(results[0].tree_count).toBe(0);
+    });
+  });
+
+  describe('getServerCatalog — peso de fotos (#685)', () => {
+    const conRpc = async (filas: any[]) => {
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({
+          data: [makePlantation('p-1'), makePlantation('p-2')],
+          error: null,
+        }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({ data: filas, error: null });
+      return getServerCatalog(true, 'user-admin', 'org-1');
+    };
+
+    it('toma fotos y bytes del RPC catalogo_conteos', async () => {
+      const results = await conRpc([
+        { plantation_id: 'p-1', grupos: 2, arboles: 3, fotos: 2, bytes_fotos: 3500 },
+      ]);
+
+      expect(results.map((p) => [p.id, p.photo_count, p.photo_bytes])).toEqual([
+        ['p-1', 2, 3500],
+        ['p-2', null, null],
+      ]);
+    });
+
+    it('server sin la migración: sin el peso, con los conteos de siempre', async () => {
+      const results = await conRpc([{ plantation_id: 'p-1', grupos: 2, arboles: 3 }]);
+
+      expect(results[0]).toMatchObject({ group_count: 2, tree_count: 3, photo_count: null, photo_bytes: null });
     });
   });
 
@@ -185,9 +185,7 @@ describe('catalogQueries', () => {
       ];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -203,9 +201,7 @@ describe('catalogQueries', () => {
 
     it('admin: no lista las archivadas y tolera servers sin la columna', async () => {
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada, noArchivada, sinColumna], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada, noArchivada, sinColumna], error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -226,7 +222,7 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — error handling', () => {
-    it('Test 6: throws error when supabase plantations query fails', async () => {
+    it('throws error when supabase plantations query fails', async () => {
       const errorChain: any = {};
       errorChain.select = () => errorChain;
       errorChain.eq = () => errorChain;
@@ -237,12 +233,20 @@ describe('catalogQueries', () => {
 
       await expect(getServerCatalog(true, 'user-admin', 'org-1')).rejects.toBeTruthy();
     });
+
+    it('propaga el error del RPC de conteos', async () => {
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [makePlantation('p-1')], error: null }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: new Error('RPC Error') });
+
+      await expect(getServerCatalog(true, 'user-admin', 'org-1')).rejects.toThrow('RPC Error');
+    });
   });
 
   // ─── getLocalPlantationIds ────────────────────────────────────────────────────
 
   describe('getLocalPlantationIds', () => {
-    it('Test 4: returns Set of local plantation IDs from SQLite', async () => {
+    it('returns Set of local plantation IDs from SQLite', async () => {
       const mockRows = [{ id: 'p-1' }, { id: 'p-2' }, { id: 'p-3' }];
 
       (db.select as jest.Mock).mockReturnValue({

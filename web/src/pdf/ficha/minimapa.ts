@@ -1,0 +1,82 @@
+import type { ArbolParaFicha } from '../../queries/fichasQueries';
+import type { PuntoGps } from '../../queries/mapaQueries';
+import type { ColorEspecie } from '../../theme/coloresEspecie';
+import { capaSatelital } from '../mapa/capaSatelital';
+import { dibujarMapa } from '../mapa/dibujarMapa';
+import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
+import { planificarMapa, type ContenidoMapa } from '../mapa/planMapa';
+import { distanciaMetros, type LatLng } from '../../../../shared/distancia';
+import { TOPE_TILES } from '../mapa/tiles';
+import { radioSegunVecinos } from '../mapa/vecinos';
+import { DIBUJO_MINIMAPA } from './rasterFicha';
+
+/**
+ * Un vecino más lejos que esto es un GPS errado (0,0 o un dígito de más): si
+ * entrara al encuadre, achicaría la parcela a un punto.
+ */
+export const RADIO_VECINOS_M = 2000;
+
+/**
+ * Radio de los puntos vecinos en unidades del dibujo: sigue a la separación
+ * para que una parcela densa no tape el satélite, y queda debajo del resaltado.
+ */
+const RADIO_PUNTO_VECINO = { minimo: 0.6, maximo: 1.4 } as const;
+
+function vecinosDe(arbol: ArbolParaFicha, centro: LatLng, puntos: readonly PuntoGps[]) {
+  const { parcelaId } = arbol;
+  // Sin parcela no hay vecinos: «sin parcela» juntaría árboles de toda la plantación.
+  if (!parcelaId) return [];
+  return puntos.filter(
+    (punto) =>
+      punto.parcelaId === parcelaId &&
+      punto.idArbol !== arbol.idArbol &&
+      distanciaMetros(centro, punto) <= RADIO_VECINOS_M,
+  );
+}
+
+/** Toda la parcela del árbol, con el árbol resaltado; null si el árbol no tiene GPS. */
+export function contenidoMinimapa(
+  arbol: ArbolParaFicha,
+  puntos: readonly PuntoGps[],
+  colorDe: ColorEspecie,
+): ContenidoMapa | null {
+  if (!arbol.gps) return null;
+  const { lat, lng } = arbol.gps;
+  return {
+    puntos: vecinosDe(arbol, { lat, lng }, puntos).map((vecino) => ({
+      lat: vecino.lat,
+      lng: vecino.lng,
+      color: colorDe(vecino.codigo),
+    })),
+    resaltado: { lat, lng, color: colorDe(arbol.especie?.codigo ?? null) },
+    ancho: DIBUJO_MINIMAPA.lado,
+    alto: DIBUJO_MINIMAPA.lado,
+    margen: DIBUJO_MINIMAPA.margen,
+  };
+}
+
+function radioDeVecinos(contenido: ContenidoMapa): number {
+  const ubicados = planificarMapa(contenido)?.puntos ?? [];
+  return radioSegunVecinos(ubicados, RADIO_PUNTO_VECINO);
+}
+
+/** Si el canvas falla, la ficha de ese árbol dice «Mapa no disponible» y el resto sigue. */
+export async function minimapaDeArbol(
+  arbol: ArbolParaFicha,
+  puntos: readonly PuntoGps[],
+  colorDe: ColorEspecie,
+): Promise<MapaPdf> {
+  const contenido = contenidoMinimapa(arbol, puntos, colorDe);
+  if (!contenido) return MAPA_SIN_GPS;
+  try {
+    const dibujado = await dibujarMapa({
+      ...contenido,
+      escalaRender: DIBUJO_MINIMAPA.escalaRender,
+      radioPunto: radioDeVecinos(contenido),
+      fondo: capaSatelital(TOPE_TILES.ficha),
+    });
+    return mapaDeDibujo(dibujado);
+  } catch {
+    return MAPA_NO_DISPONIBLE;
+  }
+}

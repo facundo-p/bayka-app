@@ -1,4 +1,15 @@
-import { isLocalUri, isRemoteUri, ensureFileUri } from '../../src/utils/photoUri';
+import { SQLiteSyncDialect } from 'drizzle-orm/sqlite-core';
+import { isLocalUri, isRemoteUri, ensureFileUri, sqlIsLocalUri } from '../../src/utils/photoUri';
+import { trees } from '../../src/database/schema';
+
+describe('sqlIsLocalUri', () => {
+  test('arma un LIKE literal por esquema local, sin parámetros', () => {
+    expect(new SQLiteSyncDialect().sqlToQuery(sqlIsLocalUri(trees.fotoUrl))).toEqual({
+      sql: `("trees"."foto_url" LIKE 'file://%' OR "trees"."foto_url" LIKE 'content://%')`,
+      params: [],
+    });
+  });
+});
 
 describe('isLocalUri', () => {
   test('file:// is local', () => {

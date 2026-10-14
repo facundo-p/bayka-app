@@ -3,6 +3,7 @@
  * se pierde, y para una plantación eliminada en el server, que eso ya no se puede subir (#478).
  */
 import type { ResumenDePendientes } from '../queries/catalogQueries';
+import { plural } from './plural';
 
 export interface AvisoEliminarDelDispositivo {
   titulo: string;
@@ -11,12 +12,8 @@ export interface AvisoEliminarDelDispositivo {
   confirmacionFinal?: string;
 }
 
-const CONFIRMACION_FINAL =
+export const CONFIRMACION_FINAL =
   'Los datos sin sincronizar se perderán para siempre. Esta acción no se puede deshacer.';
-
-function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
-  return `${n} ${n === 1 ? singular : pluralForm}`;
-}
 
 /** "2 grupos sin subir (1 activo, 1 finalizado), 3 fotos sin subir". Vacío si no hay nada. */
 export function detalleDePendientes(r: ResumenDePendientes): string {
@@ -27,6 +24,8 @@ export function detalleDePendientes(r: ResumenDePendientes): string {
     r.parcelas > 0 && `${plural(r.parcelas, 'parcela pendiente', 'parcelas pendientes')}`,
     r.fotos > 0 && `${plural(r.fotos, 'foto')} sin subir`,
     r.borrados > 0 && `${plural(r.borrados, 'borrado pendiente', 'borrados pendientes')}`,
+    r.especies > 0 && `${plural(r.especies, 'cambio de especies', 'cambios de especies')} sin subir`,
+    r.tecnicos > 0 && `${plural(r.tecnicos, 'técnico asignado', 'técnicos asignados')} sin subir`,
   ];
   return partes.filter(Boolean).join(', ');
 }

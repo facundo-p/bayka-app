@@ -5,6 +5,7 @@
  * sync_subgroup, y pull (llegada de coordenadas, no pisar con NULL, config).
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
@@ -185,8 +186,6 @@ function serverTree(overrides: Record<string, any> = {}) {
     posicion: 1,
     sub_id: 'PL1NN1',
     foto_url: null,
-    plantacion_id: null,
-    global_id: null,
     usuario_registro: 'user-tecnico-1',
     created_at: NOW,
     latitude: null,
@@ -423,3 +422,6 @@ describe('GPS — pull de config de plantación (fix del gap de metadata)', () =
     expect(row.gpsCaptureRequired).toBe(true);
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

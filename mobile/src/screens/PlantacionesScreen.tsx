@@ -14,11 +14,17 @@ import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
+import { avisoDeLaTarjeta } from '../utils/avisoPendientesVarados';
 
 export default function PlantacionesScreen() {
   const s = usePlantacionesScreen();
 
   const filterConfigs = filtrosDeEstado(s.estadoCounts);
+
+  const avisoDeVarados = (plantacionId: string) => {
+    const varados = s.pendientesVarados.get(plantacionId);
+    return varados && { ...avisoDeLaTarjeta(varados), onDescartar: () => s.handleDescartarPendientes(plantacionId) };
+  };
 
   return (
     <TexturedBackground>
@@ -76,9 +82,11 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
+                  // Editar y borrar parcelas es de admin, salvo el alta propia sin subir (#640, #654).
                   onParcelaLongPress={plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
+                  parcelaEditable={s.puedeEditarParcela}
                   cardProps={{
                     lugar: item.lugar,
                     periodo: item.periodo,
@@ -91,6 +99,10 @@ export default function PlantacionesScreen() {
                     nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
                     eliminadaEnServidor: esEliminadaEnServidor(item),
+                    onResolverCambios: s.hayCambiosPorResolver(item)
+                      ? () => s.irAResolverCambios(item.id)
+                      : undefined,
+                    pendientesVarados: avisoDeVarados(item.id),
                     onPress: () => s.router.push(`/${s.routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     // Long-press abre la edición, como en las demás cards (#94).
                     onLongPress: s.isAdmin ? () => s.handleEditPress(item as Plantation) : undefined,

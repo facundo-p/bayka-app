@@ -39,6 +39,12 @@ describe('useColumnasVisibles', () => {
     expect(claves(result.current)).toEqual(['id', 'fecha', 'acciones']);
   });
 
+  it('a ≤900 el panel va en una hoja: la tabla conserva las que el panel repite', () => {
+    simularAncho(ANCHO.tablet);
+    const { result } = renderHook(() => useColumnasVisibles(COLUMNAS, true));
+    expect(claves(result.current)).toEqual(['id', 'fecha', 'gps', 'acciones']);
+  });
+
   it('en móvil con el panel abierto saca las dos clases', () => {
     simularAncho(ANCHO.movil);
     const { result } = renderHook(() => useColumnasVisibles(COLUMNAS, true));
@@ -68,7 +74,7 @@ describe('lo que nunca se cae en móvil', () => {
     ['usuarios', usuarios, 'usuario'],
     ['parcelas', COLUMNAS_PARCELAS, 'nombre'],
     ['grupos', COLUMNAS_GRUPOS, 'codigo'],
-    ['arboles', arboles, 'subId'],
+    ['arboles', arboles, 'idArbol'],
   ])('%s conserva su columna de identidad', (_nombre, columnas, identidad) => {
     simularAncho(ANCHO.movil);
     const { result } = renderHook(() =>

@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useDescarga } from '../hooks/useDescarga';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
-import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarFilasExportacion } from '../queries/exportacionQueries';
-import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
 import type { Perfil } from '../repositories/profileRepository';
+import { leerColoresEspecie } from '../services/coloresDePlantacion';
 import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
@@ -21,6 +20,7 @@ import {
 } from './plantaciones/archivado';
 import { ETIQUETA_MENU_ELIMINAR } from './plantaciones/eliminacion';
 import { ETIQUETA_MENU_REABRIR, esReabrible, puedeReabrir } from './plantaciones/reapertura';
+import { useInformePdf } from './plantaciones/useInformePdf';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
@@ -29,11 +29,13 @@ const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.'
 
 /** Descarga los puntos GPS como KML (Google Maps/Earth); no descarga si no hay puntos. */
 function useDescargaKml(plantacion: Plantacion) {
+  const queryClient = useQueryClient();
   return useDescarga(async () => {
     const puntos = await listarPuntosGps(plantacion.id);
     if (puntos.length === 0) return MENSAJE_SIN_PUNTOS;
+    const colorDe = await leerColoresEspecie(queryClient, plantacion.id);
     const nombreDocumento = `Puntos GPS – ${plantacion.lugar} (${plantacion.periodo})`;
-    const kml = construirKml(puntos, { nombreDocumento });
+    const kml = construirKml(puntos, { nombreDocumento, colorDe });
     descargarTexto(kml, nombreArchivoKml(plantacion.lugar, plantacion.periodo), TIPO_MIME_KML);
     return null;
   }, MENSAJE_ERROR_KML);
@@ -58,17 +60,17 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
 
 type Descarga = ReturnType<typeof useDescargaKml>;
 
+/** «Informe PDF» abre el modal de opciones; la descarga arranca desde ahí. */
+export type AccionInforme = { abrir: () => void; descargando: boolean };
+
 export interface AccionesProps {
   kml: Descarga;
   xlsx: Descarga;
   csv: Descarga;
-  /** Las planillas necesitan los IDs definitivos; el KML no. */
-  idsPendientes: boolean;
+  pdf: AccionInforme;
   /** null = se puede editar; texto = por qué no (plantación archivada). Exportar sigue disponible. */
   motivoEdicion: string | null;
   onEditar: () => void;
-  /** Solo la web genera los IDs, server-side vía RPC (#232). */
-  onGenerarIds: () => void;
   /** Archivar/desarchivar y eliminar; vacío si el perfil no puede. */
   administracion: AccionMenu[];
 }
@@ -89,21 +91,15 @@ export const MODAL_ADMINISTRACION = {
 
 export type ModalAdministracion = (typeof MODAL_ADMINISTRACION)[keyof typeof MODAL_ADMINISTRACION];
 
-/** Las tres descargas de la barra, con el mensaje que devuelva cualquiera. */
+/** Las descargas de la barra, con el mensaje que devuelva cualquiera. */
 function useDescargasDetalle(plantacion: Plantacion) {
   const kml = useDescargaKml(plantacion);
   const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
   const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
-  return { kml, xlsx, csv, mensaje: xlsx.mensaje ?? csv.mensaje ?? kml.mensaje };
-}
-
-/** Mientras la consulta no responde no se ofrece generar: solo con un `false` explícito. */
-function useIdsPendientes(plantationId: string): boolean {
-  const { data: generados } = useQuery({
-    queryKey: CLAVE_QUERY.idsGenerados(plantationId),
-    queryFn: () => idsGenerados(plantationId),
-  });
-  return generados === false;
+  const informe = useInformePdf(plantacion);
+  const pdf = { abrir: informe.abrir, descargando: informe.descargando };
+  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
+  return { kml, xlsx, csv, pdf, mensaje, informe };
 }
 
 /** Solo superadmin, y solo sobre una finalizada que no esté archivada (#470). */
@@ -156,20 +152,17 @@ function useAdministracionDetalle(plantacion: Plantacion) {
   return { administracion, modalAdministracion, abrirArchivado, cerrarModal };
 }
 
-/** Descargas, generación de IDs, administración y si la barra va plegada en un solo «⋯». */
+/** Descargas, el informe, administración y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
-  const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
+  const { mensaje, informe, ...descargas } = useDescargasDetalle(plantacion);
   const { administracion, ...modales } = useAdministracionDetalle(plantacion);
-  const [generandoIds, setGenerandoIds] = useState(false);
+  const { perfil } = useAuth();
   const acciones: AccionesProps = {
     ...descargas,
-    idsPendientes: useIdsPendientes(plantacion.id),
-    motivoEdicion: motivoEdicion(plantacion),
+    motivoEdicion: motivoEdicion(perfil, plantacion),
     onEditar,
-    onGenerarIds: () => setGenerandoIds(true),
     administracion,
   };
-  const cerrarGenerarIds = () => setGenerandoIds(false);
   const plegado = useMediaQuery(BP.tablet);
-  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds, ...modales };
+  return { acciones, mensaje, plegado, informe, ...modales };
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
-import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, Download, MoreHorizontal, Pencil } from 'lucide-react';
 import {
   Aviso,
   Badge,
@@ -28,13 +28,10 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
 import { ReaperturaModal } from './plantaciones/ReaperturaModal';
 import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
-import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
+import { InformePdfModal } from './plantaciones/InformePdfModal';
 import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
-
-/** La planilla se arma con los IDs definitivos: sin generarlos no hay qué exportar. */
-const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar la planilla';
 
 const AVISO_ARCHIVADA =
   'Plantación archivada: no aparece en los listados ni en la app, y queda en solo lectura. ' +
@@ -69,32 +66,23 @@ function PlantacionNoEncontrada() {
   );
 }
 
-/** Línea de metadatos: período · fecha de creación. */
+/** Línea de metadatos: código · período · fecha de creación. */
 function lineaMeta(plantacion: Plantacion): string {
-  return `${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
+  return `${plantacion.codigo} · ${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
 }
 
-function itemsExportar({ kml, xlsx, csv, idsPendientes }: AccionesProps): ItemDesplegable[] {
-  const motivoPlanilla = idsPendientes ? MOTIVO_IDS_PENDIENTES : null;
+function itemsExportar({ kml, xlsx, csv, pdf }: AccionesProps): ItemDesplegable[] {
   return [
     { clave: 'kml', etiqueta: 'Descargar KML', onSeleccionar: () => void kml.descargar() },
-    {
-      clave: 'xlsx',
-      etiqueta: 'Exportar Excel',
-      motivo: motivoPlanilla,
-      onSeleccionar: () => void xlsx.descargar(),
-    },
-    {
-      clave: 'csv',
-      etiqueta: 'Exportar CSV',
-      motivo: motivoPlanilla,
-      onSeleccionar: () => void csv.descargar(),
-    },
+    { clave: 'xlsx', etiqueta: 'Exportar Excel', onSeleccionar: () => void xlsx.descargar() },
+    { clave: 'csv', etiqueta: 'Exportar CSV', onSeleccionar: () => void csv.descargar() },
+    { clave: 'pdf', etiqueta: 'Informe PDF', onSeleccionar: pdf.abrir },
   ];
 }
 
 function MenuExportar(props: AccionesProps) {
-  const descargando = props.kml.descargando || props.xlsx.descargando || props.csv.descargando;
+  const { kml, xlsx, csv, pdf } = props;
+  const descargando = [kml, xlsx, csv, pdf].some((descarga) => descarga.descargando);
   return (
     <MenuDesplegable
       etiqueta="Exportar"
@@ -161,18 +149,6 @@ function AccionesDesplegadas(props: AccionesProps) {
     <>
       <BotonEditar onEditar={props.onEditar} motivo={props.motivoEdicion} />
       <MenuExportar {...props} />
-      {props.idsPendientes && (
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={props.onGenerarIds}
-          disabled={Boolean(props.motivoEdicion)}
-          title={props.motivoEdicion ?? undefined}
-        >
-          <Plus size={TAMANO_ICONO.md} aria-hidden />
-          Generar IDs
-        </Button>
-      )}
       {secundarias.length > 0 && (
         <MenuMasAcciones etiqueta="Más acciones" items={secundarias} tamano="sm" />
       )}
@@ -181,15 +157,12 @@ function AccionesDesplegadas(props: AccionesProps) {
 }
 
 function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
-  const { motivoEdicion: motivo, onEditar, onGenerarIds } = props;
-  const items: ItemDesplegable[] = [
+  const { motivoEdicion: motivo, onEditar } = props;
+  return [
     { clave: 'editar', etiqueta: 'Editar plantación', motivo, onSeleccionar: onEditar },
     ...itemsExportar(props),
+    ...itemsAdministracion(props),
   ];
-  if (props.idsPendientes) {
-    items.push({ clave: 'ids', etiqueta: 'Generar IDs', motivo, onSeleccionar: onGenerarIds });
-  }
-  return [...items, ...itemsAdministracion(props)];
 }
 
 /** Barra angosta: las mismas acciones en un solo «⋯». Desplegadas se comen
@@ -250,10 +223,8 @@ function AccionesDetalle({ plantacion, onEditar }: AccionesDetalleProps) {
           {detalle.mensaje}
         </span>
       )}
-      {detalle.generandoIds && (
-        <GenerarIdsModal plantationId={plantacion.id} onClose={detalle.cerrarGenerarIds} />
-      )}
       <ModalAdministracionDetalle plantacion={plantacion} detalle={detalle} />
+      {detalle.informe.abierto && <InformePdfModal informe={detalle.informe} />}
     </div>
   );
 }

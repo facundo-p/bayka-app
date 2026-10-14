@@ -1,4 +1,7 @@
-import { getTreeEditGating, getGroupGating, plantacionEsEditable } from '../../src/utils/permisosDeEdicion';
+import {
+  getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcela, getCambioDeEspecie,
+  puedeEditarArbolesDelGrupo,
+} from '../../src/utils/permisosDeEdicion';
 import { esArchivada, esEliminadaEnServidor } from '../../src/constants/estados';
 
 const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
@@ -11,33 +14,58 @@ const SIN_PERMISOS_DE_GRUPO = { canEdit: false, canDelete: false, canReactivate:
 
 describe('getTreeEditGating', () => {
   test('grupo activo + plantación activa + creador → editar y eliminar', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: true, canDelete: true });
   });
 
   test('grupo finalizado + plantación activa + creador → editar, sin eliminar', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'finalizada', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'finalizada', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: true, canDelete: false });
   });
 
   test('grupo sincronizado + plantación activa + creador → editar, sin eliminar', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'sincronizada', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'sincronizada', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: true, canDelete: false });
   });
 
   test('plantación finalizada → sólo lectura (aunque grupo activo y creador)', () => {
-    expect(getTreeEditGating({ plantacion: FINALIZADA, subgroupEstado: 'activa', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: FINALIZADA, subgroupEstado: 'activa', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: false, canDelete: false });
   });
 
   test('plantación activa archivada → sólo lectura (#477)', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA_ARCHIVADA, subgroupEstado: 'activa', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: ACTIVA_ARCHIVADA, subgroupEstado: 'activa', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: false, canDelete: false });
   });
 
   test('no-creador → sólo lectura', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: false }))
+    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: false, esAdmin: false }))
       .toEqual({ canEdit: false, canDelete: false });
+  });
+
+  // #768: admin y superadmin editan foto y GPS de un grupo ajeno, pero no borran sus árboles.
+  test.each(['activa', 'finalizada'])('admin en un grupo ajeno %s → editar, sin eliminar', (subgroupEstado) => {
+    expect(getTreeEditGating({ plantacion: ACTIVA, subgroupEstado, isCreator: false, esAdmin: true }))
+      .toEqual({ canEdit: true, canDelete: false });
+  });
+
+  test.each([
+    ['finalizada', FINALIZADA],
+    ['archivada', ACTIVA_ARCHIVADA],
+  ])('admin en un grupo ajeno de una plantación %s → sólo lectura', (_, plantacion) => {
+    expect(getTreeEditGating({ plantacion, subgroupEstado: 'activa', isCreator: false, esAdmin: true }))
+      .toEqual({ canEdit: false, canDelete: false });
+  });
+});
+
+describe('puedeEditarArbolesDelGrupo (#768)', () => {
+  test.each([
+    [true, false, true],
+    [false, false, false],
+    [false, true, true],
+    [true, true, true],
+  ])('creador %s, admin %s → %s', (isCreator, esAdmin, esperado) => {
+    expect(puedeEditarArbolesDelGrupo({ plantacion: ACTIVA, isCreator, esAdmin })).toBe(esperado);
   });
 });
 
@@ -102,6 +130,36 @@ describe('plantacionEsEditable', () => {
   });
 });
 
+describe('puedeEditarParcela (#640, #654)', () => {
+  const SUBIDA = { altaPendienteDe: null };
+  const ALTA_DE_ANA = { altaPendienteDe: 'ana' };
+  const ADMIN = { esAdmin: true, userId: 'admin-1' };
+  const ANA = { esAdmin: false, userId: 'ana' };
+  const BETO = { esAdmin: false, userId: 'beto' };
+
+  test('admin edita cualquiera, subida o no', () => {
+    expect(puedeEditarParcela(SUBIDA, ADMIN)).toBe(true);
+    expect(puedeEditarParcela(ALTA_DE_ANA, ADMIN)).toBe(true);
+  });
+
+  test('técnico edita su alta sin subir', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, ANA)).toBe(true);
+  });
+
+  test('técnico no edita una parcela subida', () => {
+    expect(puedeEditarParcela(SUBIDA, ANA)).toBe(false);
+  });
+
+  test('técnico no edita el alta sin subir de otro usuario del dispositivo', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, BETO)).toBe(false);
+  });
+
+  test('sin userId no hay alta propia', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, { esAdmin: false, userId: null })).toBe(false);
+    expect(puedeEditarParcela(SUBIDA, { esAdmin: false, userId: null })).toBe(false);
+  });
+});
+
 describe('esArchivada', () => {
   test('archivada_en null → no archivada', () => {
     expect(esArchivada(ACTIVA)).toBe(false);
@@ -121,7 +179,7 @@ describe('eliminada en el servidor (#478)', () => {
   });
 
   test('el creador tampoco edita ni borra árboles ni grupos', () => {
-    expect(getTreeEditGating({ plantacion: ACTIVA_ELIMINADA, subgroupEstado: 'activa', isCreator: true }))
+    expect(getTreeEditGating({ plantacion: ACTIVA_ELIMINADA, subgroupEstado: 'activa', isCreator: true, esAdmin: false }))
       .toEqual({ canEdit: false, canDelete: false });
     expect(getGroupGating({ plantacion: ACTIVA_ELIMINADA, subgroupEstado: 'finalizada', isCreator: true }))
       .toEqual(SIN_PERMISOS_DE_GRUPO);
@@ -130,5 +188,29 @@ describe('eliminada en el servidor (#478)', () => {
   test('esEliminadaEnServidor mira solo la marca, no el estado', () => {
     expect(esEliminadaEnServidor(ACTIVA)).toBe(false);
     expect(esEliminadaEnServidor(ACTIVA_ELIMINADA)).toBe(true);
+  });
+});
+
+describe('getCambioDeEspecie (#679)', () => {
+  test('grupo activo y editable → disponible', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: true })).toBe('disponible');
+  });
+
+  test('grupo finalizado que se puede reabrir → requiere reabrir', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'finalizada', isCreator: true }))
+      .toBe('requiere-reabrir');
+  });
+
+  test('grupo sincronizado: no se reabre → no disponible', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'sincronizada', isCreator: true }))
+      .toBe('no-disponible');
+  });
+
+  test.each([
+    ['plantación finalizada', FINALIZADA, true],
+    ['plantación archivada', ACTIVA_ARCHIVADA, true],
+    ['no creador', ACTIVA, false],
+  ])('%s → no disponible', (_caso, plantacion, isCreator) => {
+    expect(getCambioDeEspecie({ plantacion, subgroupEstado: 'activa', isCreator })).toBe('no-disponible');
   });
 });

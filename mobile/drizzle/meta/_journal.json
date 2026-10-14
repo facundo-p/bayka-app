@@ -169,6 +169,90 @@
       "when": 1790121600000,
       "tag": "0023_plantations_eliminada_en_servidor_en",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1790208000000,
+      "tag": "0024_plantations_campos_editables",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1790294400000,
+      "tag": "0025_plantations_edicion_por_campo",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1790380800000,
+      "tag": "0026_cambios_especies_pendientes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1790467200000,
+      "tag": "0027_tecnicos_offline",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1790553600000,
+      "tag": "0028_plantations_motivo_varado",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1790640000000,
+      "tag": "0029_parcelas_alta_pendiente_de",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1790726400000,
+      "tag": "0030_plantations_codigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1790812800000,
+      "tag": "0031_trees_especie_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1790899200000,
+      "tag": "0032_species_tipo_subtipo",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1790985600000,
+      "tag": "0033_trees_drop_conflict_especie",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1791072000000,
+      "tag": "0034_conflictos_de_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1791158400000,
+      "tag": "0035_trees_drop_ids_numericos",
+      "breakpoints": true
     }
   ]
 }

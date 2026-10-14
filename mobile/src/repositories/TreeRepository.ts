@@ -8,12 +8,15 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
-import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { gruposQueSube, type Subidor } from './subidor';
+import { plantacionDelGrupo, registrarBorrado, tieneFotoQuitadaPendiente } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
-import { codigoParaSubId, especieCodigoParaSubId } from '../utils/speciesHelpers';
+import { fotoSinSubir, isLocalUri, isRemoteUri, sqlIsLocalUri } from '../utils/photoUri';
+import { codigoParaSubId, especieCodigoParaSubId, esEspecieRecuperada } from '../utils/speciesHelpers';
 import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
+import { puedeEditarArbolesDe, SIN_PERMISO_SOBRE_ARBOLES } from './edicionDeArboles';
+import { archivosDeConflictosDeArbol, quitarConflictosDeArbol } from './ConflictosDeSyncRepository';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -46,6 +49,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     id,
     groupId: params.grupoId,
     especieId: params.especieId,
+    especieBaseId: params.especieId,
     posicion: nextPosition,
     subId,
     fotoUrl: params.fotoUrl ?? null,
@@ -76,13 +80,15 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
     throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
   }
 
+  const archivosDeConflictos = await archivosDeConflictosDeArbol(maxResult.id);
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.id, maxResult.id));
     await registrarBorrado(tx, {
       id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
     });
+    await quitarConflictosDeArbol(tx, maxResult.id);
   });
-  borrarFotoLocal(maxResult.fotoUrl);
+  borrarFotosDelArbol(maxResult.fotoUrl, archivosDeConflictos);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
@@ -113,29 +119,41 @@ export async function reverseTreeOrder(
   notifyDataChanged();
 }
 
-export async function resolveNNTree(
-  treeId: string,
-  especieId: string,
-  grupoCodigo: string
-): Promise<void> {
+/**
+ * El árbol listo para pasar a `especieId`, con su SubID nuevo; null si falta el
+ * árbol o la especie, o si es una recuperada: sin su código real no hay SubID.
+ */
+export async function destinoDelCambio(treeId: string, especieId: string) {
   const [sp] = await db.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
     .where(eq(speciesTable.id, especieId));
-
-  const [tree] = await db.select({ posicion: trees.posicion, grupoId: trees.groupId })
+  const [tree] = await db.select({ posicion: trees.posicion, grupoId: trees.groupId, grupoCodigo: groups.codigo })
     .from(trees)
+    .innerJoin(groups, eq(groups.id, trees.groupId))
     .where(eq(trees.id, treeId));
-
-  if (!sp || !tree) return;
+  if (!sp || !tree || esEspecieRecuperada(sp.codigo)) return null;
 
   const parcelaCodigo = await getGroupParcelaCodigo(tree.grupoId);
-  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, codigoParaSubId(sp.codigo), tree.posicion);
+  const subId = generateSubId(parcelaCodigo, tree.grupoCodigo, sp.codigo, tree.posicion);
+  return { grupoId: tree.grupoId, subId };
+}
 
-  await db.update(trees)
-    .set({ especieId, subId: newSubId })
-    .where(eq(trees.id, treeId));
-  await markGroupPendingSync(tree.grupoId);
+/**
+ * Cambia la especie de un árbol y rearma su SubID (#679). También resuelve un N/N.
+ * No toca la base: el push la manda para que el server no pise un cambio que este
+ * dispositivo no vio. Devuelve el SubID nuevo, o null si el árbol o la especie no
+ * están.
+ */
+export async function cambiarEspecie(treeId: string, especieId: string): Promise<{ subId: string } | null> {
+  const destino = await destinoDelCambio(treeId, especieId);
+  if (!destino) return null;
+  // Con la marca del grupo en la misma transacción: sin ella, el cambio no sube nunca.
+  await enTransaccion(async (tx) => {
+    await tx.update(trees).set({ especieId, subId: destino.subId }).where(eq(trees.id, treeId));
+    await markGroupPendingSync(destino.grupoId);
+  });
   notifyDataChanged();
+  return { subId: destino.subId };
 }
 
 export interface TreeGpsPoint {
@@ -163,49 +181,128 @@ function borrarFotoLocal(fotoUrl: string | null | undefined): void {
   if (fotoUrl) borrarFotosLocales([fotoUrl]);
 }
 
+/** La foto de un árbol borrado y las de sus conflictos (#795). */
+function borrarFotosDelArbol(fotoUrl: string | null | undefined, deConflictos: string[]): void {
+  borrarFotoLocal(fotoUrl);
+  if (deConflictos.length > 0) borrarFotosLocales(deConflictos);
+}
+
+type FotoDelArbol = Pick<typeof trees.$inferSelect, 'fotoUrl' | 'fotoSynced' | 'fotoBase'> & { grupoId: string };
+
+/** La foto de un árbol que se puede editar; null si el árbol ya no está. */
+async function fotoEditable(treeId: string): Promise<FotoDelArbol | null> {
+  const [arbol] = await db.select({
+    grupoId: trees.groupId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced, fotoBase: trees.fotoBase,
+  }).from(trees).where(eq(trees.id, treeId));
+  if (!arbol) return null;
+  if (!(await puedeEditarArbolesDe(arbol.grupoId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
+  return arbol;
+}
+
 /**
  * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
  * fotoSynced=false para forzar re-upload a Storage.
- *
- * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
- * foto en null en el server, y el pull la restauraría. Va en la misma transacción
- * que el update, por lo mismo que los borrados de fila.
  */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
-  const nueva = fotoUrl || null;
-  const [treeRow] = await db.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl })
-    .from(trees).where(eq(trees.id, treeId));
-  if (!treeRow) return;
-  const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
+  const arbol = await fotoEditable(treeId);
+  if (arbol) await escribirFoto(treeId, arbol, fotoUrl || null);
+}
 
+/**
+ * Escribe la foto sobre la fila ya leída. Quitarla se anota para propagarlo
+ * (#498): el push del grupo no puede poner la foto en null en el server, y el
+ * pull la restauraría. Va en la misma transacción que el update, por lo mismo que
+ * los borrados de fila. Una foto nueva no descarta esa anotación: lo hace su
+ * subida (#816).
+ */
+async function escribirFoto(treeId: string, arbol: FotoDelArbol, nueva: string | null): Promise<void> {
+  const plantacionId = await plantacionDelGrupo(db, arbol.grupoId);
   await enTransaccion(async (tx) => {
     await tx.update(trees)
       .set({ fotoUrl: nueva, fotoSynced: false })
       .where(eq(trees.id, treeId));
-    if (fotoUrl) {
-      await descartarFotoQuitada(tx, treeId);
-    } else if (plantacionId) {
-      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: treeRow.grupoId, plantacionId });
+    if (!nueva && plantacionId) {
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: arbol.grupoId, plantacionId });
     }
   });
   // Mismo path: el archivo "anterior" es el que queda en la fila.
-  if (treeRow.fotoUrl !== nueva) borrarFotoLocal(treeRow.fotoUrl);
-  await markGroupPendingSync(treeRow.grupoId);
+  if (arbol.fotoUrl !== nueva) borrarFotoLocal(arbol.fotoUrl);
+  await markGroupPendingSync(arbol.grupoId);
   notifyDataChanged();
 }
 
-/** Árboles con fotos locales sin subir a Storage en toda la plantación (cualquier grupo, sincronizado o no); filtra a file:// (rutas remotas del pull no se re-suben). */
-export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
+/** Quita la foto para todos: el push la quita del servidor con la que vio como base (#810). */
+export const quitarFotoParaTodos = (treeId: string): Promise<void> => updateTreePhoto(treeId, '');
+
+/**
+ * Deshace una foto sin subir (#816): el árbol vuelve a lo que tenía en la última
+ * sincronización, sin anotar nada para el servidor. Si antes se había pedido
+ * quitar la del servidor, queda sin foto y ese pedido sigue pendiente. El grupo
+ * queda pendiente: `pendingSync` no distingue qué cambió.
+ *
+ * Devuelve false si la fila cambió desde que se leyó (por ejemplo, la sync subió
+ * la foto): no toca nada.
+ */
+async function deshacerFotoSinSubir(treeId: string, arbol: FotoDelArbol): Promise<boolean> {
+  const deshecho = await enTransaccion(async (tx) => {
+    const vuelta = (await tieneFotoQuitadaPendiente(tx, treeId)) ? null : arbol.fotoBase;
+    const escritas = await tx.update(trees)
+      .set({ fotoUrl: vuelta, fotoSynced: isRemoteUri(vuelta) })
+      .where(and(eq(trees.id, treeId), eq(trees.fotoUrl, arbol.fotoUrl!), eq(trees.fotoSynced, false)))
+      .returning({ id: trees.id });
+    return escritas.length > 0;
+  });
+  if (!deshecho) return false;
+  borrarFotoLocal(arbol.fotoUrl);
+  notifyDataChanged();
+  return true;
+}
+
+/** Quitar una foto ya subida la quita para todos: sin la confirmación de la persona, no se hace. */
+export type ResultadoDeQuitarFoto = { requiereConfirmacion: boolean };
+
+export const RESULTADO_DE_QUITAR_FOTO = {
+  hecho: { requiereConfirmacion: false },
+  faltaConfirmar: { requiereConfirmacion: true },
+} as const satisfies Record<string, ResultadoDeQuitarFoto>;
+
+/**
+ * Borra la foto que se ve: si no se subió, deshace el cambio; si ya está en el
+ * servidor, la quita para todos, solo con `confirmado`. La UI decide si pregunta
+ * con lo que muestra; si la fila ya cambió, la respuesta le pide preguntar.
+ */
+export async function quitarFotoDelArbol(treeId: string, confirmado: boolean): Promise<ResultadoDeQuitarFoto> {
+  const arbol = await fotoEditable(treeId);
+  if (!arbol) return RESULTADO_DE_QUITAR_FOTO.hecho;
+  if (fotoSinSubir(arbol)) {
+    // Si la fila cambió entre la lectura y la escritura, se decide de nuevo con la fila nueva.
+    return (await deshacerFotoSinSubir(treeId, arbol)) ? RESULTADO_DE_QUITAR_FOTO.hecho : quitarFotoDelArbol(treeId, confirmado);
+  }
+  if (!confirmado) return RESULTADO_DE_QUITAR_FOTO.faltaConfirmar;
+  await escribirFoto(treeId, arbol, null);
+  return RESULTADO_DE_QUITAR_FOTO.hecho;
+}
+
+export interface ArbolConFotoPendiente {
   id: string;
   fotoUrl: string;
+  /** El path que el teléfono vio en el server (#795). */
+  fotoBase: string | null;
   grupoId: string;
   plantacionId: string;
   parcelaId: string | null;
-}[]> {
+}
+
+/**
+ * Árboles con fotos locales sin subir a Storage en la plantación, de los grupos que sube
+ * `subidor` (sincronizados o no); filtra a file:// (rutas remotas del pull no se re-suben).
+ */
+export async function getTreesWithPendingPhotos(plantacionId: string, subidor: Subidor): Promise<ArbolConFotoPendiente[]> {
   const rows = await db
     .select({
       id: trees.id,
       fotoUrl: trees.fotoUrl,
+      fotoBase: trees.fotoBase,
       grupoId: trees.groupId,
       plantacionId: groups.plantacionId,
       parcelaId: groups.parcelaId,
@@ -217,16 +314,11 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
         eq(groups.plantacionId, plantacionId),
         // Sin filtro por pendingSync del grupo: el upload de fotos debe funcionar sin importar el estado de sync, incluso con árboles de RPCs fallidos.
         isNotNull(trees.fotoUrl),
-        eq(trees.fotoSynced, false)
+        eq(trees.fotoSynced, false),
+        gruposQueSube(subidor),
       )
     );
-  return rows.filter(r => isLocalUri(r.fotoUrl)) as {
-    id: string;
-    fotoUrl: string;
-    grupoId: string;
-    plantacionId: string;
-    parcelaId: string | null;
-  }[];
+  return rows.filter(r => isLocalUri(r.fotoUrl)) as ArbolConFotoPendiente[];
 }
 
 /** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */
@@ -237,21 +329,6 @@ export async function getLocalPhotoUrisForPlantation(plantacionId: string): Prom
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(and(eq(groups.plantacionId, plantacionId), sqlIsLocalUri(trees.fotoUrl)));
   return rows.map((r) => r.fotoUrl).filter(isLocalUri);
-}
-
-/** Marks a tree's photo as synced (uploaded to Supabase Storage). */
-export async function markPhotoSynced(treeId: string): Promise<void> {
-  await db.update(trees)
-    .set({ fotoSynced: true })
-    .where(eq(trees.id, treeId));
-}
-
-/** Limpia el marcador de conflicto N/N (especie server vs local detectada en pull); aplica tanto al aceptar la resolución del server como al mantener la local. */
-export async function clearTreeConflict(treeId: string): Promise<void> {
-  await db.update(trees)
-    .set({ conflictEspecieId: null, conflictEspecieNombre: null })
-    .where(eq(trees.id, treeId));
-  notifyDataChanged();
 }
 
 /**
@@ -274,6 +351,7 @@ export async function deleteTreeAndRecalculate(
   }
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
   const [arbol] = await db.select({ fotoUrl: trees.fotoUrl }).from(trees).where(eq(trees.id, treeId));
+  const archivosDeConflictos = await archivosDeConflictosDeArbol(treeId);
 
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.id, treeId));
@@ -292,8 +370,9 @@ export async function deleteTreeAndRecalculate(
         .set({ posicion: newPos, subId: newSubId })
         .where(eq(trees.id, tree.id));
     }
+    await quitarConflictosDeArbol(tx, treeId);
   });
-  borrarFotoLocal(arbol?.fotoUrl);
+  borrarFotosDelArbol(arbol?.fotoUrl, archivosDeConflictos);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();

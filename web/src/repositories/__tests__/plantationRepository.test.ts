@@ -13,11 +13,15 @@ import {
   desarchivarPlantacion,
   editarPlantacion,
   existePlantacion,
-  MENSAJE_FOTO_SIN_MIGRACION,
-  MENSAJE_GPS_SIN_MIGRACION,
-  MENSAJE_VISIBILIDAD_SIN_MIGRACION,
+  plantacionTrasConflicto,
   type PlantacionInput,
 } from '../plantationRepository';
+import {
+  CodigoPlantacionDuplicadoError,
+  ConflictoDeEdicionError,
+  MENSAJE_CONFLICTO_EDICION,
+  MENSAJE_CONFLICTO_EDICION_PARCIAL,
+} from '../edicionDePlantacion';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -35,12 +39,13 @@ const PERFIL: Perfil = {
 const INPUT_COMPLETO: PlantacionInput = {
   lugar: 'Mendoza',
   periodo: '2025-2026',
+  codigo: 'MD26',
   descripcion: 'Finca norte',
   fechaInicio: '2026-07-01',
   objetivoArboles: 500,
 };
 
-const INPUT_BASE: PlantacionInput = { lugar: 'Mendoza', periodo: '2025-2026' };
+const INPUT_BASE: PlantacionInput = { lugar: 'Mendoza', periodo: '2025-2026', codigo: 'MD26' };
 
 const ERROR_COLUMNA = {
   message: 'column "objetivo_arboles" does not exist',
@@ -67,6 +72,7 @@ describe('crearPlantacion', () => {
     expect(plantacion.payload).toEqual({
       lugar: 'Mendoza',
       periodo: '2025-2026',
+      codigo: 'MD26',
       estado: 'activa',
       organizacion_id: 'org-1',
       creado_por: 'user-1',
@@ -87,6 +93,7 @@ describe('crearPlantacion', () => {
     await crearPlantacion(INPUT_BASE, PERFIL);
 
     expect(Object.keys(consultas[0].payload as object).sort()).toEqual([
+      'codigo',
       'creado_por',
       'estado',
       'lugar',
@@ -137,6 +144,18 @@ describe('crearPlantacion', () => {
     await expect(crearPlantacion(INPUT_BASE, PERFIL)).rejects.toThrow('falló la parcela');
   });
 
+  test('un código repetido en la organización lanza CodigoPlantacionDuplicadoError sin crear la parcela', async () => {
+    const consultas = capturarConsultas(() => ({
+      error: { message: 'duplicate key value', code: '23505' },
+    }));
+
+    const promesa = crearPlantacion(INPUT_BASE, PERFIL);
+
+    await expect(promesa).rejects.toBeInstanceOf(CodigoPlantacionDuplicadoError);
+    await expect(promesa).rejects.toThrow('Ya existe otra plantación con ese código.');
+    expect(consultas).toHaveLength(1);
+  });
+
   test('otros errores del insert no se reintentan y se propagan', async () => {
     const consultas = capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
     await expect(crearPlantacion(INPUT_COMPLETO, PERFIL)).rejects.toThrow('sin permisos');
@@ -144,109 +163,177 @@ describe('crearPlantacion', () => {
   });
 });
 
-describe('editarPlantacion', () => {
-  test('actualiza los campos del form sin tocar estado ni organizacion_id', async () => {
-    const consultas = capturarConsultas(() => ({ data: null }));
-    await editarPlantacion('plant-1', INPUT_COMPLETO);
+const EDICION_OK: RespuestaMock = { data: { success: true } };
 
-    const [update] = consultas;
-    expect(update.operacion).toBe('update');
-    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
-    const payload = update.payload as Record<string, unknown>;
-    expect(payload.lugar).toBe('Mendoza');
-    expect(payload).not.toHaveProperty('estado');
-    expect(payload).not.toHaveProperty('organizacion_id');
-    expect(payload).not.toHaveProperty('creado_por');
+function rpcDeEdicion(consultas: ConsultaCapturada[]) {
+  return consultas.filter((consulta) => consulta.tabla === 'editar_plantacion');
+}
+
+describe('editarPlantacion', () => {
+  test('manda por la RPC solo los campos que cambiaron, con su base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await editarPlantacion('plant-1', { ...INPUT_COMPLETO, objetivoArboles: 700 }, INPUT_COMPLETO);
+
+    expect(consultas).toEqual([
+      expect.objectContaining({
+        tabla: 'editar_plantacion',
+        operacion: 'rpc',
+        payload: {
+          p_id: 'plant-1',
+          p_cambios: { objetivo_arboles: 700 },
+          p_base: { objetivo_arboles: 500 },
+        },
+      }),
+    ]);
   });
 
-  test('ante columna inexistente reintenta el update solo con lugar y período', async () => {
-    const consultas = capturarConsultas((consulta) => {
-      const payload = consulta.payload as Record<string, unknown>;
-      return 'descripcion' in payload ? { error: ERROR_COLUMNA } : { data: null };
-    });
-    await editarPlantacion('plant-1', INPUT_COMPLETO);
+  test('vaciar un opcional lo manda como null', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await editarPlantacion('plant-1', INPUT_BASE, INPUT_COMPLETO);
 
-    expect(consultas).toHaveLength(2);
-    expect(Object.keys(consultas[1].payload as object).sort()).toEqual(['lugar', 'periodo']);
+    expect(consultas[0].payload).toMatchObject({
+      p_cambios: { descripcion: null, fecha_inicio: null, objetivo_arboles: null },
+    });
+  });
+
+  test('sin cambios no llama al server', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await editarPlantacion('plant-1', INPUT_COMPLETO, INPUT_COMPLETO);
+    expect(consultas).toHaveLength(0);
+  });
+
+  test('un conflicto lanza ConflictoDeEdicionError con el valor del server', async () => {
+    capturarConsultas(() => ({
+      data: {
+        success: false,
+        error: 'CONFLICTO_EDICION',
+        aplicados: [],
+        conflictos: [{ campo: 'objetivo_arboles', valor_servidor: 650 }],
+      },
+    }));
+    const promesa = editarPlantacion(
+      'plant-1',
+      { ...INPUT_COMPLETO, objetivoArboles: 700 },
+      INPUT_COMPLETO,
+    );
+
+    await expect(promesa).rejects.toThrow(MENSAJE_CONFLICTO_EDICION);
+    await promesa.catch((error: ConflictoDeEdicionError) => {
+      expect(error.conflictos).toEqual([{ campo: 'objetivo_arboles', valorServidor: 650 }]);
+    });
+  });
+
+  test('si además se guardó otro campo, el aviso lo dice', async () => {
+    capturarConsultas(() => ({
+      data: {
+        success: false,
+        error: 'CONFLICTO_EDICION',
+        aplicados: ['lugar'],
+        conflictos: [{ campo: 'objetivo_arboles', valor_servidor: 650 }],
+      },
+    }));
+    await expect(
+      editarPlantacion(
+        'plant-1',
+        { ...INPUT_COMPLETO, lugar: 'Otro', objetivoArboles: 700 },
+        INPUT_COMPLETO,
+      ),
+    ).rejects.toThrow(MENSAJE_CONFLICTO_EDICION_PARCIAL);
+  });
+
+  test.each([
+    ['NOT_AUTHORIZED', /no tiene permisos/],
+    ['PLANTACION_FINALIZADA', /finalizada/],
+    ['PLANTACION_ARCHIVADA', /desarchivala/],
+    ['PLANTACION_INEXISTENTE', /ya no existe/],
+    ['CODIGO_DUPLICADO', /Ya existe otra plantación con ese código/],
+    ['OTRO', /No se pudo guardar/],
+  ])('el rechazo %s dice qué pasó', async (codigo, mensaje) => {
+    capturarConsultas(() => ({ data: { success: false, error: codigo } }));
+    await expect(
+      editarPlantacion('plant-1', { ...INPUT_COMPLETO, lugar: 'Otro' }, INPUT_COMPLETO),
+    ).rejects.toThrow(mensaje);
+  });
+
+  test('un error de PostgREST conserva su mensaje', async () => {
+    capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
+    await expect(
+      editarPlantacion('plant-1', { ...INPUT_COMPLETO, lugar: 'Otro' }, INPUT_COMPLETO),
+    ).rejects.toThrow('sin permisos');
+  });
+
+  test('cambiar el código lo manda con su base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await editarPlantacion('plant-1', { ...INPUT_BASE, codigo: 'MD26-B' }, INPUT_BASE);
+
+    expect(consultas[0].payload).toMatchObject({
+      p_cambios: { codigo: 'MD26-B' },
+      p_base: { codigo: 'MD26' },
+    });
+  });
+
+  test('CODIGO_DUPLICADO lanza CodigoPlantacionDuplicadoError', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'CODIGO_DUPLICADO' } }));
+    await expect(
+      editarPlantacion('plant-1', { ...INPUT_BASE, codigo: 'OTRA' }, INPUT_BASE),
+    ).rejects.toBeInstanceOf(CodigoPlantacionDuplicadoError);
+  });
+});
+
+describe('plantacionTrasConflicto', () => {
+  test('toma el valor del server donde chocó y lo enviado donde no', () => {
+    const conflicto = new ConflictoDeEdicionError([
+      { campo: 'objetivo_arboles', valorServidor: 650 },
+      { campo: 'descripcion', valorServidor: null },
+    ]);
+    expect(plantacionTrasConflicto(INPUT_COMPLETO, conflicto)).toEqual({
+      ...INPUT_COMPLETO,
+      objetivoArboles: 650,
+      descripcion: undefined,
+    });
   });
 });
 
 describe('actualizarFotoEnTodos', () => {
-  test('actualiza photo_capture_all_trees de la plantación', async () => {
-    const consultas = capturarConsultas(() => ({ data: null }));
+  test('manda el valor nuevo con el opuesto como base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
     await actualizarFotoEnTodos('plant-1', true);
 
-    const [update] = consultas;
-    expect(update.tabla).toBe('plantations');
-    expect(update.operacion).toBe('update');
-    expect(update.payload).toEqual({ photo_capture_all_trees: true });
-    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
-  });
-
-  test('columna inexistente (035 sin aplicar) lanza el mensaje de migración', async () => {
-    capturarConsultas(() => ({
-      error: {
-        message: 'column "photo_capture_all_trees" does not exist',
-        code: PG_ERROR.UNDEFINED_COLUMN,
-      },
-    }));
-    await expect(actualizarFotoEnTodos('plant-1', true)).rejects.toThrow(
-      MENSAJE_FOTO_SIN_MIGRACION,
-    );
+    expect(rpcDeEdicion(consultas)[0].payload).toEqual({
+      p_id: 'plant-1',
+      p_cambios: { photo_capture_all_trees: true },
+      p_base: { photo_capture_all_trees: false },
+    });
   });
 });
 
 describe('actualizarConfigGps', () => {
-  test('actualiza frecuencia y obligatoriedad de la plantación', async () => {
-    const consultas = capturarConsultas(() => ({ data: null }));
-    await actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: false });
+  test('manda frecuencia y obligatoriedad que cambiaron, con la config anterior como base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await actualizarConfigGps(
+      'plant-1',
+      { frecuencia: 5, obligatoria: false },
+      { frecuencia: 10, obligatoria: false },
+    );
 
-    const [update] = consultas;
-    expect(update.tabla).toBe('plantations');
-    expect(update.operacion).toBe('update');
-    expect(update.payload).toEqual({ gps_capture_frequency: 5, gps_capture_required: false });
-    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
-  });
-
-  test('columna inexistente (023 sin aplicar) lanza el mensaje de migración', async () => {
-    capturarConsultas(() => ({
-      error: {
-        message: 'column "gps_capture_frequency" does not exist',
-        code: PG_ERROR.UNDEFINED_COLUMN,
-      },
-    }));
-    await expect(
-      actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),
-    ).rejects.toThrow(MENSAJE_GPS_SIN_MIGRACION);
-  });
-
-  test('otros errores propagan el mensaje original', async () => {
-    capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
-    await expect(
-      actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),
-    ).rejects.toThrow('sin permisos');
+    expect(rpcDeEdicion(consultas)[0].payload).toEqual({
+      p_id: 'plant-1',
+      p_cambios: { gps_capture_frequency: 5 },
+      p_base: { gps_capture_frequency: 10 },
+    });
   });
 });
 
 describe('actualizarVisibilidad', () => {
-  test('actualiza visible_in_app de la plantación', async () => {
-    const consultas = capturarConsultas(() => ({ data: null }));
+  test('manda el valor nuevo con el opuesto como base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
     await actualizarVisibilidad('plant-1', false);
 
-    const [update] = consultas;
-    expect(update.tabla).toBe('plantations');
-    expect(update.operacion).toBe('update');
-    expect(update.payload).toEqual({ visible_in_app: false });
-    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
-  });
-
-  test('columna inexistente (024 sin aplicar) lanza el mensaje de migración', async () => {
-    capturarConsultas(() => ({
-      error: { message: 'column "visible_in_app" does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
-    }));
-    await expect(actualizarVisibilidad('plant-1', false)).rejects.toThrow(
-      MENSAJE_VISIBILIDAD_SIN_MIGRACION,
-    );
+    expect(rpcDeEdicion(consultas)[0].payload).toEqual({
+      p_id: 'plant-1',
+      p_cambios: { visible_in_app: false },
+      p_base: { visible_in_app: true },
+    });
   });
 });
 

@@ -5,7 +5,8 @@ import { useCurrentUserId } from './useCurrentUserId';
 
 /**
  * Returns species for a plantation, ordered by user's custom order if set,
- * otherwise by admin's orden_visual from plantation_species.
+ * otherwise alphabetically by name (#635). Species the custom order doesn't know
+ * yet go last, alphabetically.
  *
  * Also provides a refresh function to re-fetch after reorder.
  */
@@ -25,8 +26,8 @@ export function usePlantationSpecies(plantacionId: string) {
       if (userOrder.length > 0) {
         const orderMap = new Map(userOrder.map((o) => [o.especieId, o.ordenVisual]));
         const sorted = [...adminSpecies].sort((a, b) => {
-          const oa = orderMap.get(a.especieId) ?? a.ordenVisual;
-          const ob = orderMap.get(b.especieId) ?? b.ordenVisual;
+          const oa = orderMap.get(a.especieId) ?? Number.MAX_SAFE_INTEGER;
+          const ob = orderMap.get(b.especieId) ?? Number.MAX_SAFE_INTEGER;
           return oa - ob;
         });
         setSpecies(sorted);

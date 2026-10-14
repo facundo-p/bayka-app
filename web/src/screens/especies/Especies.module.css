@@ -1,9 +1,6 @@
 /* ─── Celdas de la tabla ─────────────────────────────────────────────── */
 
 .codigoCelda {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
   white-space: nowrap;
 }
 
@@ -13,12 +10,23 @@
   color: var(--color-text-faint);
 }
 
+/* Nombre de una especie científica en su propio listado: itálica, sin atenuar. */
+.nombreCientifico {
+  font-style: italic;
+}
+
 /* Fila sin uso (0 plantaciones y 0 árboles): texto atenuado. */
 .filaSinUso {
   color: var(--color-text-muted);
 }
 
 /* ─── Panel lateral ──────────────────────────────────────────────────── */
+
+/* Ícono del encabezado de los dos paneles. */
+.marcaPanel {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
 
 /* Chip con el código actual de la especie, junto al título. */
 .chipCodigo {
@@ -34,12 +42,35 @@
   composes: formCompacto from '../../components/Formulario.module.css';
 }
 
-.campoCodigo {
+/* Calificado por elemento: suelto empata con `FormField.control` y la fuente
+   dependería del orden de carga del CSS (#814). */
+input.campoCodigo {
   font-family: var(--font-mono);
 }
 
-.campoCientifico {
-  font-style: italic;
+/* Tipo y subtipo en un renglón: el tipo fijo ocupa lo que mide su texto. */
+.clasificacion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2xl);
+}
+
+.campoClasificacion {
+  composes: field from '../../components/FormField.module.css';
+}
+
+/* El rótulo de los labels del panel: `.formCompacto label` no alcanza a un span. */
+.etiquetaCampo {
+  composes: overline from '../../theme/utilidades.module.css';
+}
+
+/* Alineado con el control de al lado, que mide como un input. */
+.tipoFijo {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-input);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
 }
 
 .advertencia {
@@ -77,4 +108,48 @@
   font-size: var(--text-kpi-sm);
   line-height: var(--line-height-tight);
   color: var(--color-text-heading);
+}
+
+/* ─── Panel de especie científica ────────────────────────────────────── */
+
+/* Sin especies agrupadas: explica cómo se vincula una. */
+.textoBloque {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.listaAgrupadas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agrupada {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.codigoAgrupada {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.ayuda {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }

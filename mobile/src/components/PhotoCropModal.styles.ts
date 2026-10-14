@@ -2,17 +2,13 @@ import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export const HANDLE_SIZE = 28;
+export const CROP_ICON_SIZE = { close: 26, action: 20 } as const;
 
 export const photoCropModalStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.overlayDark },
   closeBtn: { position: 'absolute', left: spacing.xxl, padding: spacing.md, zIndex: 10 },
   stage: { flex: 1 },
-  dim: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.55)' },
-  frame: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
+  image: { position: 'absolute' },
   handle: {
     position: 'absolute',
     width: HANDLE_SIZE * 2,

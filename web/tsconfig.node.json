@@ -12,5 +12,12 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "vite.demo.config.ts", "constantesBuild.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.demo.config.ts",
+    "constantesBuild.ts",
+    "pluginReact.ts",
+    "pluginClaveImagenPdf.ts",
+    "pluginClaveImagenPdf.test.ts"
+  ]
 }

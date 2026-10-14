@@ -12,6 +12,7 @@ jest.mock('../../src/repositories/EliminadaEnServidorRepository', () => ({
 }));
 
 import { pullFromServer } from '../../src/services/sync/pullService';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../src/repositories/EliminadaEnServidorRepository';
@@ -29,6 +30,7 @@ beforeEach(() => {
     from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([{ pendingSync: false }]) }),
   });
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'u-1' } } } });
+  conUsuarioCacheado('u-1');
 });
 
 describe('pullFromServer — acceso remoto', () => {

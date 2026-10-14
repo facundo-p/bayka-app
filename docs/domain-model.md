@@ -119,7 +119,15 @@ El email y la contraseña viven en Supabase Auth (`auth.users`); `profiles.email
 es una copia denormalizada que un trigger mantiene sincronizada (migración 026)
 para que la web pueda listarlo con anon key. Al crear un auth user (dashboard o
 invitación), el trigger `handle_new_user` crea el profile automáticamente con
-defaults seguros (rol `tecnico`, organización Bayka).
+defaults seguros: rol `tecnico` y **sin organización** (#607). La pertenencia
+se otorga en el alta administrada: `admin-users` asigna rol y organización
+(la del superadmin que invita) después de invitar. Un profile sin organización
+no lee nada de ninguna y la web y la app lo muestran como sin acceso.
+
+A diferencia del resto del modelo, `profiles` se lee por organización y no por
+membresía: todo usuario activo, técnico incluido, ve nombre, email y rol de los
+demás usuarios de su organización. Es a propósito
+([decisión](decisiones/directorio-de-usuarios.md)).
 
 `activo` implementa la baja reversible: desactivar un usuario marca
 `activo = false` y lo banea en Auth (vía la edge function `admin-users`), sin
@@ -143,8 +151,9 @@ registró algo:
     un check garantiza que un eliminado nunca esté activo.
 
 Un perfil inactivo no pasa ningún permiso por rol ni por membresía aunque
-conserve un access token vigente: `is_admin()`, `is_superadmin()` e
-`is_plantation_member()` exigen `activo`. Las filas de `plantation_users` no se
+conserve un access token vigente: `is_admin()`, `is_superadmin()`,
+`is_plantation_member()` y `mis_plantaciones()` (la lectura de grupos y árboles)
+exigen `activo`. Las filas de `plantation_users` no se
 borran, así que reactivarlo le devuelve el acceso tal cual estaba.
 
 ### Relaciones
@@ -160,7 +169,7 @@ N:M plantaciones (como técnico asignado)
 
 # 4. Especie
 
-Representa un tipo de árbol.
+Representa un tipo de planta: por ahora, un árbol o un arbusto.
 
 Las especies son **globales al sistema**.
 
@@ -174,9 +183,20 @@ No se pueden modificar desde la aplicación en la Fase 1.
 id
 codigo
 nombre
-nombre_cientifico (opcional)
+especie_cientifica_id (opcional)
+nombre_cientifico (copia del nombre de la especie científica)
+tipo (por ahora solo flora)
+subtipo (árbol o arbusto; las especies sin clasificar quedan como árbol)
 fecha_creacion
 ```
+
+Tipo y subtipo son fijos en el código: los valores válidos están en
+`contracts/tipos-especie.json` (#752). El subtipo es solo un dato: no cambia
+conteos ni textos.
+
+El nombre científico se elige de la lista de especies científicas (#753);
+`nombre_cientifico` lo mantiene un trigger para que mobile siga leyéndolo sin
+cambios.
 
 Ejemplo:
 
@@ -193,6 +213,21 @@ N:M plantaciones
 ```
 
 Una plantación define qué especies están disponibles en su interfaz de registro.
+
+### Especie científica
+
+Agrupa los nombres comunes regionales de una misma especie botánica (#753): por
+ejemplo, «Prosopis alba» agrupa a Algarrobo blanco y a sus otros nombres
+locales. Es global, opcional para cada especie y la administran los admins
+desde la pestaña Científicas de Especies.
+
+```
+id
+nombre (único sin distinguir mayúsculas; se guarda sin espacios de más)
+```
+
+Renombrarla cambia el nombre científico de todas sus especies. No se puede
+eliminar mientras agrupe alguna.
 
 ---
 
@@ -225,10 +260,21 @@ visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
 archivada_en / archivada_por (null si no está archivada; migración 038)
+ultima_edicion (quién y cuándo cambió cada campo editable; migración 057)
 ```
 
-Los campos opcionales, la visibilidad y la foto en todos los botones se
-gestionan desde la web de gestión (migraciones 024 y 035).
+Descripción, fecha de inicio, objetivo, visibilidad, foto en todos los botones
+y GPS se editan desde la web de gestión y, desde #633, también en el formulario
+de plantación de mobile (admin y superadmin), incluso offline. Superficie y
+ubicación no se editan en ninguna de las dos.
+
+Desde #634 las dos editan por la RPC `editar_plantacion`, campo por campo: cada
+cambio lleva el valor que el usuario vio, y si alguien cambió ese campo desde
+otro lado mientras tanto no se aplica y vuelve como conflicto. La web avisa y
+recarga; mobile deja el valor de la web y ofrece elegir en "Resolver cambios".
+El UPDATE directo solo toca `estado`, y solo pasa de `activa` a `finalizada`
+(finalizar); los campos editables se cambian únicamente por la RPC (063, #649).
+Reabrir, archivar y eliminar van por sus RPC.
 
 ### Estados posibles
 
@@ -265,12 +311,43 @@ cuando la plantación vuelve a ser escribible.
 
 Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
 responde `42501` sin motivo. La app lo traduce con el estado local de la
-plantación; si está activa, queda como `PERMISSION`.
+plantación; si está activa, queda como `PERMISSION`. Editar y tombstonear una
+parcela es de admin y superadmin (056, #640): el técnico sube solo altas, con
+`ON CONFLICT DO NOTHING`. El push pide la representación: si vuelve vacía, el
+server ya tenía la parcela e ignoró la edición; se loguea, se marca subida y el
+pull siguiente trae la versión del server. Dejarla pendiente la trabaría para
+siempre, porque DO NOTHING nunca la aplica y el pull saltea lo pendiente. Antes
+de subirla, la parcela que creó sí la edita y la borra (#654): la marca local
+`alta_pendiente_de` guarda quién la creó en el dispositivo hasta que el push o
+el pull confirman que el server la tiene; editada sube igual como alta, y
+borrada por el técnico se va del dispositivo sin tombstone (previa
+confirmación). El admin la borra siempre con tombstone, por si el alta ya había
+llegado sin confirmarse. El rol cacheado que usa el
+cliente para esta decisión se refresca en cada arranque online: un cambio de
+rol tarda hasta ese refresh en aplicarse en el celular, aunque el server ya lo
+exige siempre.
 
 Las asignaciones de técnicos (`plantation_users`) usan otro gate,
 `plantacion_admite_asignaciones`: exigen que la plantación exista y no esté
 archivada, pero una finalizada las admite, porque son control de acceso y no
 datos de campo (#522).
+
+Un técnico sube grupos nuevos solo a su nombre; admin y superadmin suben
+también el de otro, con su creador real, como el grupo que un técnico dejó sin
+subir en un celular compartido (074, #798). Si no, o si el grupo llega sin
+`usuario_creador`, `sync_subgroup` responde `PERMISSION`.
+
+En un grupo que ya existe y creó otro usuario solo escriben admin y superadmin
+(072, #768): `sync_subgroup` responde `PERMISSION`, y las policies de `trees`,
+`quitar_fotos_arboles`, `sincronizar_borrados` (073, #796) y las de
+`tree-photos` (por el árbol del nombre del archivo) lo rechazan. En una
+plantación escribible, `quitar_fotos_arboles` y `sincronizar_borrados` saltean
+el id ajeno sin devolverlo como rechazado, para que no quede pendiente en el
+teléfono. Un técnico escribe solo en sus grupos. En la app, el admin
+edita foto y GPS y resuelve N/N de un grupo ajeno, pero no borra árboles, no
+cambia la especie de uno identificado ni renombra, elimina o reactiva el grupo;
+un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un
+admin y el técnico editan el mismo grupo, gana la última sincronización (#795).
 
 ### Eliminada
 
@@ -313,7 +390,16 @@ los grupos de árboles (ver # 8. Parcela y # 9. Grupo).
 
 Define qué especies aparecen en la botonera de registro.
 
-También define el orden de los botones.
+Los botones se ordenan alfabéticamente por nombre; cada técnico puede tener su
+propio orden. `orden_visual` lo mantiene el servidor con ese mismo criterio,
+para los APKs que todavía ordenan por esa columna (#635).
+
+`lugar_color` es el lugar fijo de la especie en la paleta de colores de la
+plantación: la web la pinta con `paleta[lugar % 12]` en el dashboard, el mapa,
+Datos, el KML, la ficha y el informe (#845). Al habilitarla, el servidor le
+asigna el menor lugar libre de la plantación; quitarla lo libera. Habilitar o
+quitar otra especie no le cambia el color. N/N no ocupa lugar (va en ámbar).
+Mobile no lo usa.
 
 ### Atributos
 
@@ -321,6 +407,7 @@ También define el orden de los botones.
 plantacion_id
 especie_id
 orden_visual
+lugar_color
 ```
 
 ### Relaciones
@@ -363,6 +450,12 @@ del rol global. Lo que distingue es el origen de la fila:
 Por PostgREST, un admin solo asigna o quita filas `tecnico`, en plantaciones de su
 organización y con usuarios de su organización (#543). Las filas `admin` las
 mantienen solo los triggers.
+
+Desde la app, asignar funciona sin conexión (#636): el teléfono lo aplica en el
+momento y lo sube en el próximo sync por `aplicar_cambios_tecnicos`, que es aditivo
+(no pisa lo que la web asignó en el medio). Un técnico dado de baja, un usuario
+que no es técnico o uno de otra organización se rechaza solo y se quita del
+teléfono. Quitar sigue requiriendo conexión.
 
 ---
 
@@ -511,8 +604,6 @@ especie_id
 posicion
 foto_url (opcional)
 sub_id
-plantacion_id (ver # 18. ID Parcial de Plantación)
-global_id (ver # 19. ID Global Bayka)
 usuario_registro
 fecha_creacion
 ```
@@ -573,6 +664,28 @@ Especie: ANC
 
 El SubID sigue a los códigos: cambiar el código de la parcela o del grupo reescribe
 el SubID de sus árboles, en el dispositivo y en el servidor (#623, #626).
+
+### Cambio de especie (#679)
+
+La especie de un árbol ya cargado se puede cambiar por otra habilitada en la
+plantación (nunca a N/N), y el SubID se rearma con el código nuevo:
+
+```
+app: quien registró el árbol, con el grupo activo; con el grupo finalizado
+     ofrece reabrirlo y cambiar en un paso
+web: admin con la plantación activa; superadmin también con la finalizada;
+     en una archivada, nadie
+```
+
+Cada cambio viaja con la **especie base**, la que el cliente vio en el servidor
+(`trees.especie_base_id` en el dispositivo). Si el servidor ya tiene otra, no la
+pisa:
+
+```
+web (RPC cambiar_especie_arbol): rechaza con CONFLICTO_EDICION y muestra la vigente
+sync del celular: gana la del servidor y el celular la adopta; si también la
+  había cambiado, la sync avisa cuántos árboles fueron
+```
 
 ---
 
@@ -652,13 +765,14 @@ Una plantación puede finalizarse cuando:
 todos los grupos están sincronizados
 ```
 
-Luego se generan los IDs finales (de plantación y global).
+Finalizada, la app ofrece exportarla.
 
 ---
 
 # 18. ID Parcial de Plantación
 
-Secuencial dentro de la plantación.
+Número del árbol dentro de la plantación, desde 1. No se guarda: web y app lo
+calculan al exportar, por alta del grupo y posición del árbol (#822).
 
 Ejemplo:
 
@@ -671,19 +785,12 @@ Ejemplo:
 
 ---
 
-# 19. ID Global de Organización
+# 19. ID Global (dado de baja)
 
-Secuencial entre todas las plantaciones.
-
-El administrador define un valor inicial.
-
-Ejemplo:
-
-```
-Seed inicial = 10456
-```
-
-Los IDs incrementan desde ese valor.
+Era un número secuencial entre todas las plantaciones. Se sacó de la app y de
+las exportaciones en #822, sin reemplazo: identifica al árbol su ID
+(`<SubID>-<código de plantación>`). La base dejó de guardarlo, junto con el ID
+Parcial, en #859.
 
 ---
 

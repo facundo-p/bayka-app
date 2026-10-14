@@ -56,6 +56,9 @@ PostgREST wraps every postgres error en un objeto con shape estable
    - Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
    - Otro caso → `UNKNOWN`, con `code: message` crudo en `detail`.
 
+En el alta de una plantación creada offline, el `PERMISSION` se reporta como
+`SIN_PERMISO_CREAR` (#638): el usuario ya no puede crear plantaciones.
+
 `uploadSyncableParcelas` reinterpreta el `PERMISSION` con el estado local de la
 plantación: archivada → `PLANTACION_ARCHIVADA`, finalizada →
 `PLANTACION_FINALIZADA` (#511). RLS no distingue esos casos de la falta de

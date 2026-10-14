@@ -9,6 +9,7 @@ export const treeListModalStyles = StyleSheet.create({
     padding: spacing.xxl, backgroundColor: colors.surface,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl },
   title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
   listContent: { padding: spacing.xl, gap: spacing.sm },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing['6xl'], fontSize: fontSize.lg, fontFamily: fonts.regular },

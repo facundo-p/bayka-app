@@ -96,12 +96,15 @@ jest.mock('../../src/supabase/client', () => {
         return {
           select() { return makeQueryBuilder(table); },
           eq(col: string, value: any) { return makeQueryBuilder(table).eq(col, value); },
-          upsert(row: any) {
+          // `ignoreDuplicates` = ON CONFLICT DO NOTHING: `.select` devuelve [] si ya existía.
+          upsert(row: any, opts?: { ignoreDuplicates?: boolean }) {
             mockCallOrder.push({ table, op: 'upsert' });
             const conflict = checkConflicts(table, row);
-            if (conflict) return Promise.resolve({ data: null, error: conflict });
-            mockServerState[table].set(row.id, { ...row });
-            return Promise.resolve({ data: row, error: null });
+            const ignorada = !conflict && !!opts?.ignoreDuplicates && mockServerState[table].has(row.id);
+            if (!conflict && !ignorada) mockServerState[table].set(row.id, { ...row });
+            const respuesta = conflict ? { data: null, error: conflict } : { data: row, error: null };
+            const representacion = conflict ? respuesta : { data: ignorada ? [] : [{ id: row.id }], error: null };
+            return Object.assign(Promise.resolve(respuesta), { select: () => Promise.resolve(representacion) });
           },
           insert(row: any) {
             mockCallOrder.push({ table, op: 'insert' });
@@ -157,7 +160,9 @@ import {
   uploadSyncableGroups,
   classifyParcelaRpcResult,
 } from '../../src/services/sync/pushService';
-import { findByPlantacion } from '../../src/repositories/ParcelaRepository';
+import { findByPlantacion, findById, createParcela, updateParcela } from '../../src/repositories/ParcelaRepository';
+import { conRolCacheado, conUsuarioCacheado } from '../helpers/rolCacheado';
+import { syncLog } from '../../src/utils/syncLogger';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -203,6 +208,7 @@ async function insertLocalParcela(p: Partial<typeof parcelas.$inferInsert> & { p
     createdAt: p.createdAt ?? now,
     updatedAt: p.updatedAt ?? now,
     deletedAt: p.deletedAt ?? null,
+    altaPendienteDe: p.altaPendienteDe ?? null,
   });
   return id;
 }
@@ -552,7 +558,7 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
       { id: 'sp-kok', nombre: 'Recuperada', codigo: 'recuperada:sp-kok', nombreCientifico: null, createdAt: now },
     ]);
     const arbol = (id: string, groupId: string, especieId: string, posicion: number, subId: string) => ({
-      id, groupId, especieId, posicion, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      id, groupId, especieId, posicion, subId, fotoUrl: null,
       usuarioRegistro: 'user-tecnico-1', createdAt: now,
     });
     await mockTestDb.insert(trees).values([
@@ -603,7 +609,7 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
       { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
     ]);
     const arbol = (id: string, groupId: string, subId: string) => ({
-      id, groupId, especieId: 'sp-euc', posicion: 1, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      id, groupId, especieId: 'sp-euc', posicion: 1, subId, fotoUrl: null,
       usuarioRegistro: 'user-tecnico-1', createdAt: now,
     });
     await mockTestDb.insert(trees).values([arbol('a1', 'g-limpio', 'P1L1EUC1'), arbol('b1', 'g-pendiente', 'P1L2EUC1')]);
@@ -761,3 +767,98 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(row.pendingSync).toBe(true); // still pending
   });
 });
+
+describe('Alta de parcela sin subir (#654)', () => {
+  const TECNICO = 'user-tecnico-1';
+
+  test('el push confirmado la marca como subida', async () => {
+    const pid = await seedLocalPlantation();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', altaPendienteDe: TECNICO });
+
+    const [resultado] = await uploadSyncableParcelas(pid);
+
+    expect(resultado.success).toBe(true);
+    expect((await findById(id))!.altaPendienteDe).toBeNull();
+  });
+
+  test('un push rechazado la deja como alta sin subir, para que el técnico la corrija', async () => {
+    const pid = await seedLocalPlantation();
+    insertServerParcela({ id: 'srv-existing', plantation_id: pid, codigo: 'LP1', nombre: 'Existente' });
+    conflictRules.push({ table: 'parcelas', matchCols: ['plantation_id', 'codigo'], errorCols: ['plantation_id', 'codigo'] });
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', nombre: 'Mía', altaPendienteDe: TECNICO });
+
+    await uploadSyncableParcelas(pid);
+
+    expect((await findById(id))!.altaPendienteDe).toBe(TECNICO);
+  });
+
+  test('el pull la confirma si el server ya la tiene, sin pisar la edición pendiente', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', nombre: 'Editada', altaPendienteDe: TECNICO });
+    insertServerParcela({
+      id, plantation_id: pid, codigo: 'LP1', nombre: 'Original', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+
+    await pullFromServer(pid);
+
+    expect(await findById(id)).toMatchObject({ nombre: 'Editada', pendingSync: true, altaPendienteDe: null });
+  });
+
+  test('el pull no toca un alta que el server no tiene', async () => {
+    const pid = await seedLocalPlantation();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', altaPendienteDe: TECNICO });
+
+    await pullFromServer(pid);
+
+    expect((await findById(id))!.altaPendienteDe).toBe(TECNICO);
+  });
+
+  test('técnico: crea, corrige antes de subir, sube la versión corregida y después ya no edita', async () => {
+    conRolCacheado('tecnico', TECNICO);
+    const pid = await seedLocalPlantation();
+    const creada = await createParcela({ plantacionId: pid, nombre: 'Lote 1', codigo: 'LTE' });
+    if (!creada.success) throw new Error('seed failed');
+
+    expect(await updateParcela(creada.id, { nombre: 'Lote 1', codigo: 'LT1' })).toEqual({ success: true });
+    await uploadSyncableParcelas(pid);
+
+    expect(serverState.parcelas.get(creada.id)).toMatchObject({ codigo: 'LT1' });
+    expect(await updateParcela(creada.id, { nombre: 'Otro', codigo: 'LT1' }))
+      .toEqual({ success: false, error: 'sin_permiso' });
+  });
+
+  test('técnico: una edición que el server ignora (DO NOTHING) se loguea y el pull trae la del server', async () => {
+    conRolCacheado('tecnico', TECNICO);
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    insertServerParcela({
+      id: 'parc-vieja', plantation_id: pid, codigo: 'LP1', nombre: 'Del server', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+    await insertLocalParcela({ id: 'parc-vieja', plantacionId: pid, codigo: 'LP1', nombre: 'Editada offline' });
+
+    const [resultado] = await uploadSyncableParcelas(pid);
+
+    expect(resultado.success).toBe(true);
+    expect(serverState.parcelas.get('parc-vieja')).toMatchObject({ nombre: 'Del server' });
+    expect(syncLog.info).toHaveBeenCalledWith(expect.stringContaining('se descarta la edición local'));
+    await pullFromServer(pid);
+    expect(await findById('parc-vieja')).toMatchObject({ nombre: 'Del server', pendingSync: false });
+  });
+
+  test('técnico: un alta nueva no se loguea como ignorada', async () => {
+    conRolCacheado('tecnico', TECNICO);
+    const pid = await seedLocalPlantation();
+    await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', altaPendienteDe: TECNICO });
+    (syncLog.info as jest.Mock).mockClear();
+
+    await uploadSyncableParcelas(pid);
+
+    expect(syncLog.info).not.toHaveBeenCalledWith(expect.stringContaining('se descarta la edición local'));
+  });
+});
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

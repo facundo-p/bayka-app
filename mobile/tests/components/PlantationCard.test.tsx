@@ -33,12 +33,16 @@ jest.mock('../../src/theme', () => ({
     borderMuted: '#CBD5E1',
     stateEliminada: '#DC2626',
     dangerBg: '#FEF2F2',
+    conflictoBg: '#FEF2F2',
+    conflictoBorder: '#F2A7A7',
+    conflictoText: '#991B1B',
   },
-  spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
+  spacing: { xxs: 2, xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
   fontSize: { xs: 10, sm: 12, base: 15, xl: 16, xxl: 18, title: 20 },
   fonts: { regular: 'System', bold: 'System', semiBold: 'System', medium: 'System', heading: 'System' },
-  iconSizes: { badge: 12 },
+  iconSizes: { badge: 12, stat: 14 },
+  hitSlops: { chip: 12 },
   chipSizes: { sm: { paddingVertical: 4, paddingHorizontal: 8 } },
 }));
 
@@ -72,7 +76,7 @@ describe('PlantationCard sidebar strip', () => {
 
     // #94: el botón Editar de la card fue reemplazado por Sync.
     expect(getByLabelText('Sincronizar plantación')).toBeTruthy();
-    expect(queryByLabelText('Editar lugar y periodo')).toBeNull();
+    expect(queryByLabelText('Editar plantación')).toBeNull();
     expect(getByLabelText('Acciones de plantación')).toBeTruthy();
     expect(getByLabelText('Eliminar plantación del dispositivo')).toBeTruthy();
   });
@@ -179,5 +183,76 @@ describe('PlantationCard eliminada en el servidor (#478)', () => {
   it('sin la marca no hay badge', () => {
     const { queryByText } = render(<PlantationCard {...makeProps()} />);
     expect(queryByText('Eliminada en el servidor')).toBeNull();
+  });
+
+  it('con cambios por resolver muestra la marca y tocarla abre la pantalla, sin abrir la plantación', () => {
+    const onResolverCambios = jest.fn();
+    const props = makeProps({ onResolverCambios });
+    const { getByLabelText } = render(<PlantationCard {...props} />);
+
+    fireEvent.press(getByLabelText('Resolver cambios'), { stopPropagation: jest.fn() });
+
+    expect(onResolverCambios).toHaveBeenCalled();
+    expect(props.onPress).not.toHaveBeenCalled();
+  });
+
+  it('sin cambios por resolver no hay marca', () => {
+    const { queryByLabelText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByLabelText('Resolver cambios')).toBeNull();
+  });
+});
+
+describe('PlantationCard con pendientes varados (#638)', () => {
+  const aviso = { titulo: '3 cambios no se pudieron subir', motivo: 'La plantación está finalizada.' };
+
+  it('muestra el aviso con el motivo y "Descartar" no abre la plantación', () => {
+    const onDescartar = jest.fn();
+    const props = makeProps({ pendientesVarados: { ...aviso, onDescartar } });
+    const { getByText, getByLabelText } = render(<PlantationCard {...props} />);
+
+    expect(getByText(aviso.titulo)).toBeTruthy();
+    expect(getByText(aviso.motivo)).toBeTruthy();
+    fireEvent.press(getByLabelText('Descartar cambios sin subir'), { stopPropagation: jest.fn() });
+
+    expect(onDescartar).toHaveBeenCalled();
+    expect(props.onPress).not.toHaveBeenCalled();
+  });
+
+  it('con el aviso, los grupos pendientes no figuran como listos para sincronizar', () => {
+    const { queryByText } = render(<PlantationCard {...makeProps({ pendientesVarados: { ...aviso, onDescartar: jest.fn() } })} />);
+    expect(queryByText(/listos? para sincronizar/)).toBeNull();
+  });
+
+  it('sin varados no hay aviso', () => {
+    const { queryByTestId, getByText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByTestId('pendientes-varados-aviso')).toBeNull();
+    expect(getByText(/listos para sincronizar/)).toBeTruthy();
+  });
+});
+
+describe('PlantationCard parcelas inline: long-press por parcela (#654)', () => {
+  const parcela = (id: string, nombre: string) => ({
+    id, plantacionId: 'p-1', nombre, codigo: id.toUpperCase(), descripcion: null, deletedAt: null,
+    altaPendienteDe: null, createdAt: '2026-01-01', updatedAt: '2026-01-01', pendingSync: false,
+    pendingSyncBelow: false, gruposCount: 0, treesCount: 0, nnCount: 0,
+  });
+  const PROPIA = parcela('pa', 'Propia');
+  const AJENA = parcela('pb', 'Ajena');
+
+  it('solo entrega el long-press a las parcelas editables', () => {
+    const onParcelaLongPress = jest.fn();
+    const { getByText } = render(
+      <PlantationCard
+        {...makeProps({
+          expanded: true, onToggleExpanded: jest.fn(), parcelas: [PROPIA, AJENA], parcelasCount: 2,
+          onParcelaLongPress, parcelaEditable: (p) => p.id === PROPIA.id,
+        })}
+      />
+    );
+
+    fireEvent(getByText('Ajena'), 'longPress');
+    expect(onParcelaLongPress).not.toHaveBeenCalled();
+    fireEvent(getByText('Propia'), 'longPress');
+    expect(onParcelaLongPress).toHaveBeenCalledWith(PROPIA);
   });
 });

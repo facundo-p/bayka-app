@@ -1,15 +1,15 @@
 /**
  * ExportService — genera CSV/Excel/KML de datos de plantación y los comparte vía share sheet nativo.
- * Orden de columnas: ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie.
+ * Orden de columnas: ID Árbol, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie.
  */
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/exportQueries';
 import { pullSpeciesFromServer } from './sync/catalogoDeEspecies';
 import { syncLog } from '../utils/syncLogger';
 import { buildKml } from './kml/kmlGenerator';
-import { NN_SPECIES_LABEL } from '../utils/speciesHelpers';
+import { NN_SPECIES_LABEL } from '../constants/especies';
 
 // BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y rompe acentos/ñ;
 // el .xlsx no lo necesita (ya embebe la codificación).
@@ -42,7 +42,7 @@ function writeCsvWithBom(file: File, csvBody: string): void {
 // ─── Header constant ─────────────────────────────────────────────────────────
 
 export const CSV_HEADER =
-  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
+  'ID Árbol,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ function csvField(value: string | number | null | undefined): string {
  */
 function rowToCSV(r: ExportRow): string {
   return [
-    csvField(r.globalId),
+    csvField(r.idArbol),
     csvField(r.idParcial),
     csvField(r.lugar),
     csvField(r.plantacionLugar),
@@ -76,7 +76,7 @@ function rowToCSV(r: ExportRow): string {
 /** Igual a rowToCSV pero como objeto, para SheetJS. */
 export function rowToExcel(r: ExportRow) {
   return {
-    'ID Global': r.globalId,
+    'ID Árbol': r.idArbol,
     'ID Parcial': r.idParcial,
     'Zona': r.lugar,
     'Plantación': r.plantacionLugar,

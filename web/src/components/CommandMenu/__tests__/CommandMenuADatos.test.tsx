@@ -4,6 +4,7 @@ import { PERFIL_SUPERADMIN, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { capturarConsultas } from '../../../test/capturarConsultas';
 import { renderRutasEn } from '../../../test/renderConRutas';
+import { filaArbol, filaGrupo, filaParcela, filaPlantacion } from '../../../test/fabricas';
 
 vi.mock('../../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../../test/supabaseMock');
@@ -13,55 +14,50 @@ vi.mock('../../../lib/supabase', async () => {
 /** Del resultado a la tabla: monta el detalle y la sección antes de llegar a la fila. */
 const ESPERA_RUTA_MS = 5000;
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
+  codigo: 'LM26',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
   visible_in_app: true,
-};
+});
 
 /** Cada fila lleva las columnas de la búsqueda y las del listado de su sección:
  *  el mock responde lo mismo a las dos consultas. */
 const FILA_PARCELA = {
-  id: 'parc-1',
-  nombre: 'Norte',
-  codigo: 'P1',
-  descripcion: null,
-  created_at: '2026-04-01T00:00:00Z',
+  ...filaParcela({
+    id: 'parc-1',
+    nombre: 'Norte',
+    codigo: 'P1',
+    created_at: '2026-04-01T00:00:00Z',
+  }),
   plantation_id: 'plant-1',
   plantations: { lugar: 'La Maluka' },
 };
 
 const FILA_GRUPO = {
-  id: 'gr-1',
-  nombre: 'Línea 1',
-  codigo: 'L1',
-  tipo: 'linea',
-  estado: 'activa',
-  parcela_id: 'parc-1',
+  ...filaGrupo({
+    id: 'gr-1',
+    nombre: 'Línea 1',
+    codigo: 'L1',
+    parcela_id: 'parc-1',
+    created_at: '2026-04-01T00:00:00Z',
+    parcelas: { codigo: 'P1' },
+  }),
   plantation_id: 'plant-1',
-  created_at: '2026-04-01T00:00:00Z',
-  parcelas: { codigo: 'P1' },
 };
 
-const FILA_ARBOL = {
-  id: 'tree-1',
+/** Una fila más por sección: la búsqueda que trae el resultado la tiene que dejar afuera. */
+const OTRA_PARCELA = { ...FILA_PARCELA, id: 'parc-2', nombre: 'Sur', codigo: 'P2' };
+const OTRO_GRUPO = { ...FILA_GRUPO, id: 'gr-2', nombre: 'Línea 2', codigo: 'L2' };
+
+const FILA_ARBOL = filaArbol({
   sub_id: 'PAL23ANC12',
-  posicion: 1,
-  group_id: 'gr-1',
-  species_id: null,
-  species: null,
-  foto_url: null,
-  usuario_registro: null,
   created_at: '2026-04-02T00:00:00Z',
-  latitude: null,
-  longitude: null,
-  gps_accuracy: null,
-  gps_captured_at: null,
-  groups: { codigo: 'L1', parcela_id: 'parc-1', plantation_id: 'plant-1' },
-};
+  groups: { plantations: { codigo: 'LM26' } },
+});
 
 let consultas: ConsultaCapturada[];
 
@@ -84,9 +80,9 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
     case 'plantations':
       return resolverPlantations(consulta);
     case 'parcelas':
-      return { data: [FILA_PARCELA] };
+      return { data: [FILA_PARCELA, OTRA_PARCELA] };
     case 'groups':
-      return consulta.opciones?.head ? { count: 1 } : { data: [FILA_GRUPO] };
+      return consulta.opciones?.head ? { count: 2 } : { data: [FILA_GRUPO, OTRO_GRUPO] };
     case 'trees':
       return resolverTrees(consulta);
     default:
@@ -115,22 +111,48 @@ async function esperarFila(celda: string) {
   return screen.findByRole('cell', { name: celda }, { timeout: ESPERA_RUTA_MS });
 }
 
-test.each([
-  { tipo: 'parcela', texto: 'Norte', resultado: /P1 · Norte/, seccion: 'Parcelas', celda: 'Norte' },
-  { tipo: 'grupo', texto: 'Línea', resultado: /L1 · Línea 1/, seccion: 'Grupos', celda: 'Línea 1' },
-])('un resultado de $tipo abre la sección $seccion de Datos', async (caso) => {
-  await elegirResultado(caso.texto, caso.resultado);
+const CASOS_CODIGO = [
+  {
+    tipo: 'parcela',
+    texto: 'Norte',
+    resultado: /P1 · Norte/,
+    seccion: 'Parcelas',
+    celda: 'Norte',
+    codigo: 'P1',
+    otra: 'Sur',
+  },
+  {
+    tipo: 'grupo',
+    texto: 'Línea',
+    resultado: /L1 · Línea 1/,
+    seccion: 'Grupos',
+    celda: 'Línea 1',
+    codigo: 'L1',
+    otra: 'Línea 2',
+  },
+];
 
-  expect(await esperarFila(caso.celda)).toBeInTheDocument();
-  expect(screen.getByRole('radio', { name: caso.seccion })).toHaveAttribute('aria-checked', 'true');
-});
+test.each(CASOS_CODIGO)(
+  'un resultado de $tipo abre $seccion con su código en el buscador',
+  async (caso) => {
+    await elegirResultado(caso.texto, caso.resultado);
+
+    expect(await esperarFila(caso.celda)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: caso.seccion })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByLabelText('Buscar por código o nombre')).toHaveValue(caso.codigo);
+    expect(screen.queryByRole('cell', { name: caso.otra })).not.toBeInTheDocument();
+  },
+);
 
 test('un resultado de árbol abre Árboles con su SubID en el buscador', async () => {
   await elegirResultado('PAL23', /PAL23ANC12/);
 
-  expect(await esperarFila('PAL23ANC12')).toBeInTheDocument();
+  expect(await esperarFila('PAL23ANC12-LM26')).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Árboles' })).toHaveAttribute('aria-checked', 'true');
-  expect(screen.getByLabelText('Buscar por ID o SubID')).toHaveValue('PAL23ANC12');
+  expect(screen.getByLabelText('Buscar por SubID o ID Árbol')).toHaveValue('PAL23ANC12');
   const listado = consultas.filter(
     (consulta) => consulta.tabla === 'trees' && Boolean(consulta.columnas?.startsWith('*')),
   );

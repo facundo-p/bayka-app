@@ -3,6 +3,7 @@
  * el export: para migrar a íconos por especie (KMZ con PNGs empaquetados) solo
  * se cambia este módulo (el <Style> pasaría de color a <Icon><href> propio).
  */
+import { aSlug } from '../../utils/aSlug';
 
 /** Colores KML en formato aabbggrr (alpha-blue-green-red), opacos. */
 const KML_COLOR_PALETTE = [
@@ -39,13 +40,7 @@ function hashToPaletteIndex(styleId: string): number {
  *  por eso el color se deriva del slug —no del nombre crudo— para que NUNCA
  *  queden dos <Style> con el mismo id y distinto color. */
 export function getSpeciesStyleId(especieNombre: string): string {
-  const slug = especieNombre
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `especie-${slug || 'sin-nombre'}`;
+  return `especie-${aSlug(especieNombre) || 'sin-nombre'}`;
 }
 
 /** Bloques <Style> compartidos: uno por styleId (no por nombre ni por
