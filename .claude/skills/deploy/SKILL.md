@@ -256,8 +256,10 @@ git log --merges --first-parent --pretty='%h %s' $RANGE
 git log --no-merges --pretty='%h|%s' $RANGE -- web/ shared/
 git log --no-merges --pretty='%h|%s' $RANGE -- mobile/ shared/
 git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile' ':(exclude)shared'
-# Edge functions que cambian (van al checklist post-merge):
-git diff --name-only $RANGE -- supabase/functions | cut -d/ -f3 | sort -u | grep -v README
+# Edge functions que cambian, separadas por espacio, para el <functions> del
+# checklist post-merge (solo carpetas; _shared no se deploya):
+git diff --name-only $RANGE -- supabase/functions \
+  | awk -F/ 'NF > 3 && $3 !~ /^_/ { print $3 }' | sort -u | tr '\n' ' '
 # Breaking changes declarados en el body:
 git log --no-merges --pretty='%h %s%n%b--END--' $RANGE | grep -B3 'BREAKING CHANGE' || true
 ```
@@ -375,7 +377,9 @@ Facu):
 - [ ] Si el release cambia `supabase/functions/**`: deployar a prod las
       functions cambiadas apenas termina el push. Ningún workflow las deploya, y
       una function vieja contra el schema nuevo falla (o al revés, si va antes
-      del push). Desde el checkout principal, con main actualizado:
+      del push). `<functions>` es la lista del paso 1. Desde la raíz del
+      checkout principal, con main actualizado (deploya el código de esa
+      carpeta):
 
       ```sh
       npx --yes supabase@2.116.0 functions deploy <functions> \
