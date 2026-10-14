@@ -8,8 +8,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
-## En pruebas · actualizado el 13 de octubre de 2026
-<!-- sincronizado-hasta: 10207f2 #913 -->
+## Web 1.5.0 · Mobile 1.4.0 · 14 de octubre de 2026
 
 ### Web
 
@@ -17,7 +16,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
   formar el ID de sus árboles. Se ve en el listado y en el detalle, junto al
   período, y solo se cambia mientras la plantación está activa. Las
-  plantaciones que ya existían recibieron el suyo. <!-- #691 #699 #764 -->
+  plantaciones que ya existían recibieron el suyo.
   - En la web de pruebas, entrá a Plantaciones → "Nueva plantación" y escribí
     "ab 12-x" en Código.
   - Creala y después intentá crear otra con el mismo código.
@@ -28,7 +27,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   código de la plantación (por ejemplo, LP1L23BANC12-SS26-1). En Datos →
   Árboles reemplaza a la columna SubID y titula el detalle del árbol, y podés
   pegarlo entero en la búsqueda global o en el buscador de Árboles para
-  encontrar ese árbol. <!-- #699 #717 #787 -->
+  encontrar ese árbol.
   - En la web de pruebas, abrí una plantación → Datos → Árboles y copiá el ID
     de un árbol.
   - Pegalo en la búsqueda (Ctrl/⌘ K) y después en "Buscar SubID…".
@@ -39,7 +38,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   IDs»: el Excel y el CSV se descargan desde cualquier plantación, activa o
   finalizada. Su primera columna es el ID Árbol, que reemplaza al ID Global, y
   el ID Parcial se numera al exportar. En el KML cada punto se llama con el ID
-  Árbol, no con el nombre de la especie. <!-- #703 #721 #856 -->
+  Árbol, no con el nombre de la especie.
   - En la web de pruebas, abrí una plantación activa → Exportar → "Exportar
     Excel" y después "Descargar KML".
   - Abrí el Excel y cargá el KML en Google Earth.
@@ -50,7 +49,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   o un grupo en la búsqueda global abre su sección con el código ya buscado,
   así ves la fila que elegiste. Parcelas y Grupos suman su propio buscador por
   código o nombre, y los grupos de la búsqueda global muestran de qué
-  plantación son. <!-- #688 #722 -->
+  plantación son.
   - En la web de pruebas, abrí la búsqueda (Ctrl/⌘ K) y escribí el código de
     un grupo que exista en más de una plantación (por ejemplo, L1).
   - Elegí uno de los grupos.
@@ -60,7 +59,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Cambiá la especie de un árbol desde la web.** En el detalle de un árbol, el
   bloque Especie suma «Cambiar»: elegís otra especie de la plantación y el ID
   del árbol toma su código. Si alguien la cambió desde otro lado mientras
-  tanto, te avisa y muestra la que quedó. <!-- #731 -->
+  tanto, te avisa y muestra la que quedó.
   - En la web de pruebas, como administrador, abrí una plantación activa →
     Datos y tocá un árbol.
   - En Especie tocá «Cambiar», elegí otra especie y guardá.
@@ -70,7 +69,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Clasificá las especies en árbol o arbusto.** Cada especie tiene tipo, por
   ahora Flora, y subtipo: Árbol o Arbusto. Las que ya existían quedan como
   Árbol. El listado de Especies suma la columna Subtipo y un filtro por
-  subtipo. <!-- #775 -->
+  subtipo.
   - En la web de pruebas, entrá a Especies y abrí una especie.
   - Elegí «Arbusto» en Subtipo, guardá y filtrá por «Subtipo: arbusto».
   - Esperá ver: la especie aparece en el filtro con subtipo Arbusto, las demás
@@ -80,7 +79,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   agrupa. Ahí se crean, se renombran y se eliminan, la búsqueda (Ctrl/⌘ K) las
   encuentra, y en cada especie el nombre científico se elige de esa lista en
   vez de escribirse a mano. Los que ya estaban cargados aparecen vinculados a
-  sus especies. <!-- #776 -->
+  sus especies.
   - En la web de pruebas, entrá a Especies → Científicas y creá «Prosopis
     alba».
   - En Comunes abrí una especie, elegile «Prosopis alba» y guardá. Después
@@ -92,7 +91,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   alguien cambió el mismo dato desde otra pestaña o desde la app mientras
   editabas, la web te avisa, guarda el resto y te muestra el valor actual. Vale
   para el formulario de la plantación y para la configuración de GPS,
-  visibilidad y foto. <!-- #648 -->
+  visibilidad y foto.
   - En la web de pruebas, abrí la misma plantación en dos pestañas y en las
     dos tocá Editar.
   - En una cambiá el objetivo y guardá; en la otra cambiá el objetivo y la
@@ -101,14 +100,14 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     el valor de la primera pestaña y la descripción guardada.
 - **Vaciar un dato opcional de la plantación ahora se guarda.** Borrar la
   descripción, la fecha de inicio o el objetivo desde Editar deja el campo
-  vacío; antes volvía el valor anterior. <!-- #648 -->
+  vacío; antes volvía el valor anterior.
   - En la web de pruebas, abrí una plantación con descripción → Editar.
   - Borrá la descripción, guardá y recargá la página.
   - Esperá ver: la plantación queda sin descripción.
 - **Especies por nombre y sin pisar los cambios de la app.** La configuración
   de especies muestra el catálogo en orden alfabético, el mismo de la botonera
   de la app, y cada cambio toca solo la especie que marcaste o desmarcaste: ya
-  no deshace lo que un celular cambió en otras. <!-- #650 #642 -->
+  no deshace lo que un celular cambió en otras.
   - En la web de pruebas, abrí una plantación → Configuración → Especies.
   - Con la app Bayka TEST en modo avión, quitá una especie sin árboles de esa
     plantación; en la web habilitá otra distinta y después sincronizá la app.
@@ -116,7 +115,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     ordenan por nombre", y los dos cambios en la web y en la app.
 - **Editar una plantación finalizada es solo del superadmin.** Un administrador
   ve «Editar» deshabilitado en una plantación finalizada, con el motivo, en vez
-  de cargar cambios que no se guardaban. <!-- #742 -->
+  de cargar cambios que no se guardaban.
   - En la web de pruebas, como administrador, abrí una plantación finalizada.
   - Pasá el mouse por el lápiz de Editar.
   - Esperá ver: el botón deshabilitado con «Solo el superadmin edita una
@@ -125,7 +124,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   Descargar debajo de la foto y en la foto ampliada; el archivo lleva la
   plantación y el SubID en el nombre. Un administrador también elimina la
   foto desde ahí, después de confirmar; en una plantación archivada no se
-  puede. <!-- #726 #907 -->
+  puede.
   - En la web de pruebas, como administrador, abrí una plantación → Datos →
     Árboles, filtrá «Con foto» y tocá un árbol.
   - Tocá «Descargar foto»; después ampliá la foto, tocá «Eliminar foto» y
@@ -138,7 +137,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   en dos cuadrados grandes, con el árbol resaltado. Junto a la foto van la
   especie, el ID Árbol, la fecha de registro y el técnico; junto al mapa, la
   parcela, el grupo, la posición y el GPS. Si el árbol no tiene foto o punto
-  GPS, la ficha lo dice en su lugar. <!-- #778 #835 #856 #868 #886 #904 -->
+  GPS, la ficha lo dice en su lugar.
   - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
     árbol con foto y GPS.
   - Tocá «Descargar ficha PDF», al pie del detalle; repetí con un árbol sin
@@ -156,7 +155,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   entran, cuántos tienen foto y cuántas hojas y cuánto peso esperar; mientras
   genera muestra el avance y lo podés cancelar. Los nombres largos salen
   enteros, en varios renglones, y el archivo lleva los filtros en el nombre.
-  <!-- #870 #874 #779 #787 #879 #881 #886 #894 #901 #904 -->
+ 
   - En la web de pruebas, abrí una plantación con fotos → Datos → Árboles, sin
     filtros, y tocá «Reporte PDF».
   - Elegí «Con fotos» y tocá «Generar PDF». Después filtrá por una parcela y
@@ -172,7 +171,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   de puntos GPS. Debajo del título van el lugar y el período, y el mapa
   muestra solo los puntos, sin códigos ni leyenda: el color de cada especie
   se lee en la distribución. La web recuerda lo que elegiste para la próxima
-  vez. <!-- #780 #784 #837 #869 #886 #890 #904 #906 -->
+  vez.
   - En la web de pruebas, abrí una plantación con árboles y objetivo de
     árboles → Exportar → «Informe PDF».
   - Marcá las cuatro opciones, tocá «Generar informe» y volvé a abrir el
@@ -186,7 +185,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   el mapa del informe muestran los puntos sobre la imagen satelital, como el
   mapa de la web, con la atribución de Esri al pie de la hoja. Si la imagen no
   se puede cargar, el mapa sale liso y el PDF se genera igual.
-  <!-- #781 #785 -->
+ 
   - En la web de pruebas, descargá la ficha PDF de un árbol con GPS.
   - Repetila con server.arcgisonline.com bloqueado en las herramientas de
     desarrollo del navegador.
@@ -196,7 +195,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **La web abre más rápido las plantaciones grandes.** El listado de
   plantaciones, el dashboard y la pestaña Datos ya no descargan todos los
   árboles para contarlos, y el mapa se carga recién cuando hay puntos para
-  mostrar. <!-- #758 #761 -->
+  mostrar.
   - En la web de pruebas, abrí la plantación con más árboles.
   - Mirá el Dashboard, con su mapa, y después la pestaña Datos.
   - Esperá ver: los dos cargan casi enseguida, el mapa muestra los árboles y
@@ -206,7 +205,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   Puntos GPS y Fotos reemplazan a Usuarios y Visible, y dos filtros nuevos
   muestran qué ve cada técnico: «Visible por» elige un técnico asignado y
   «Visibles» separa las plantaciones que se ven en la app de las ocultas.
-  <!-- #838 -->
+ 
   - En la web de pruebas, entrá a Plantaciones y tocá «Filtros».
   - Elegí un técnico en «Visible por» y después «Visibles: sí».
   - Esperá ver: las columnas Puntos GPS y Fotos después de Árboles, sin
@@ -218,7 +217,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   esa especie, y se combina con la parcela elegida; «Ver todos» suelta los
   dos. Tocar un punto del mapa muestra el ID del árbol, su especie y su
   parcela. Bajo «Con GPS» y «Con foto», el resumen suma cuántos puntos y fotos
-  hay, y el mapa deja de repetir la lista de especies. <!-- #842 #841 -->
+  hay, y el mapa deja de repetir la lista de especies.
   - En la web de pruebas, abrí una plantación con árboles → Dashboard.
   - Tocá una especie en «Por especie», después una parcela de la tira y
     después un punto del mapa.
@@ -231,7 +230,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   foto la abre entera, y las coordenadas se copian o se abren en Google Maps.
   Una foto que todavía no se sincronizó dice «Foto sin subir» en vez de
   «Sin foto», y un árbol N/N avisa «Falta identificar la especie» y ofrece
-  «Identificar» a quien puede cambiarla. <!-- #843 -->
+  «Identificar» a quien puede cambiarla.
   - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
     árbol con foto y GPS.
   - Tocá la foto, cerrala con Escape y tocá «Google Maps».
@@ -243,7 +242,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   y el botón muestra cuántos hay puestos. El buscador y el orden quedan a la
   vista, y «Limpiar» no los borra. Así la barra entra en un renglón en una
   notebook. En el teléfono, el buscador de Datos queda fuera de la hoja y los
-  filtros de Árboles se apilan a lo ancho. <!-- #854 #813 -->
+  filtros de Árboles se apilan a lo ancho.
   - En la web de pruebas, entrá a Plantaciones y tocá «Filtros».
   - Cambiá el Estado, escribí en el buscador y tocá «Limpiar».
   - Esperá ver: el listado cambia al toque, el botón muestra «1», y «Limpiar»
@@ -253,7 +252,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   les cambia el color a las demás. Cada una se ve igual en el dashboard, el
   mapa, Datos, el KML y los PDF. El catálogo de Especies deja de mostrar un
   punto de color, que no correspondía a ninguna plantación.
-  <!-- #839 #855 #865 -->
+ 
   - En la web de pruebas, abrí una plantación con varias especies →
     Dashboard y anotá el color de cada una.
   - En Configuración → Especies habilitá una especie nueva; volvé al
@@ -264,7 +263,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   Especies y Usuarios, tocar una fila abre el detalle en una hoja que sube
   desde abajo, en vez de dejarlo al final de la tabla. Al cerrarla volvés al
   mismo lugar de la lista, y mientras hay una hoja o la búsqueda abierta, la
-  lista de atrás no se mueve. <!-- #853 #867 -->
+  lista de atrás no se mueve.
   - En la web de pruebas, desde el teléfono, abrí una plantación → Datos →
     Árboles, bajá hasta la mitad de la lista y tocá una fila.
   - Arrastrá sobre la zona oscura y después cerrá la hoja con la X.
@@ -272,21 +271,21 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     lista no se mueve al arrastrar, y al cerrar seguís en la misma fila.
 - **En el teléfono, el nombre de la plantación se lee entero.** Las pestañas
   Dashboard, Datos y Configuración bajan a su propio renglón en vez de
-  aplastar el nombre y las etiquetas de estado. <!-- #852 -->
+  aplastar el nombre y las etiquetas de estado.
   - En la web de pruebas, desde el teléfono, abrí una plantación archivada.
   - Pasá por Dashboard, Datos y Configuración.
   - Esperá ver: arriba el nombre completo y las dos etiquetas de estado
     enteras, y abajo las pestañas, sin tapar nada.
 - **Los mapas ya no abren en cuadros grises.** El mapa del dashboard y el del
   detalle del árbol se acercan solo hasta donde el satélite tiene imagen.
-  <!-- #840 -->
+ 
   - En la web de pruebas, abrí el Dashboard de una plantación con GPS y tocá
     cada parcela de la tira.
   - En Datos → Árboles, abrí un árbol con GPS.
   - Esperá ver: los dos mapas con imagen satelital, sin cuadros grises.
 - **Los textos secundarios se leen mejor.** Los rótulos en mayúsculas, los
   datos secundarios y los textos de las listas vacías pasan a un gris más
-  oscuro, legible sobre todos los fondos de la web. <!-- #851 -->
+  oscuro, legible sobre todos los fondos de la web.
   - En la web de pruebas, entrá a Plantaciones y después a Usuarios.
   - Abrí el detalle de un árbol sin foto en Datos → Árboles.
   - Esperá ver: los encabezados de las columnas, «Organización» y «Temporada
@@ -296,7 +295,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   Tab y se abren con Enter o Espacio. Al cerrar un detalle, un menú o un
   diálogo abierto desde un menú, el foco vuelve a donde estabas, y Escape en
   la búsqueda (Ctrl/⌘ K) cierra solo la búsqueda, no el detalle de al lado.
-  <!-- #866 #873 #867 -->
+ 
   - En la web de pruebas, entrá a Especies, hacé clic en el buscador y apretá
     Tab hasta llegar a la primera fila.
   - Apretá Enter y después Escape; en una plantación activa, abrí «⋯ Más
@@ -305,13 +304,22 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     cerrarlo, el borde de vuelta en la misma fila; después de Cancelar, el
     foco en «⋯».
 
+- **Las novedades, separadas en Web y App.** La pantalla de novedades muestra
+  cada versión en dos columnas, una con lo nuevo de la web y otra con lo de la
+  app, así encontrás rápido lo que te toca.
+  - En la web de pruebas, abrí el menú de tu usuario y entrá a Novedades.
+  - Mirá la pantalla en una ventana ancha y después en una angosta o en el
+    teléfono.
+  - Esperá ver: cada versión con las columnas Web y App una al lado de la otra,
+    que en la ventana angosta pasan a ir una debajo de la otra.
+
 ### App
 
 - **Todos los datos de la plantación, desde la app.** Al crear o editar una
   plantación cargás lugar, periodo, fecha de inicio, objetivo de árboles,
   descripción, GPS obligatorio y su frecuencia, foto en todos los botones y si
   la ven los técnicos. La fecha se elige con el calendario del celular. Se
-  guarda sin señal y sube al sincronizar. <!-- #645 #677 -->
+  guarda sin señal y sube al sincronizar.
   - En la app Bayka TEST, como administrador y en modo avión, creá una
     plantación completando todos los campos.
   - Sincronizá; después, desde su engranaje → "Editar plantación", cambiá el
@@ -322,7 +330,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Te avisa si ya hay una plantación con el mismo lugar y periodo.** Mientras
   escribís, el formulario compara con las plantaciones del celular sin
   distinguir mayúsculas; al subirla, con las de toda la organización. El aviso
-  no frena la creación. <!-- #645 #656 -->
+  no frena la creación.
   - En la app Bayka TEST, creá una plantación con el lugar y el periodo de una
     que ya tenés en el celular, escritos con otras mayúsculas.
   - Con señal, creá otra igual a una plantación de la web de pruebas que el
@@ -334,7 +342,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   plantación en el celular cargás su código, en mayúsculas y hasta 8
   caracteres, y la app te avisa si otra plantación ya lo usa. Si la creaste
   sin conexión y al sincronizar resulta repetido, la tarjeta te avisa que no
-  se pudo subir hasta que lo cambies. <!-- #703 #764 -->
+  se pudo subir hasta que lo cambies.
   - En la web de pruebas, creá una plantación con el código PRUEBA1.
   - En la app Bayka TEST, en modo avión, creá una plantación con ese mismo
     código; después sacá el modo avión y sincronizá.
@@ -349,7 +357,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   la distancia entre los dos puntos, y si el tuyo ya no se puede aplicar, por
   qué. Te avisan el resumen de la sincronización, la tarjeta de la plantación y
   el grupo, que no termina de sincronizarse hasta que elijas.
-  <!-- #648 #805 #807 #808 #815 -->
+ 
   - En la app Bayka TEST, como administrador y en modo avión, cambiá el
     objetivo de una plantación y la especie de un árbol ya sincronizado de un
     grupo que cargaste.
@@ -364,7 +372,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   guardan en el celular y suben al sincronizar, sin pisar lo que se cambió
   desde la web en otras especies. Si quitaste una especie que ya tenía árboles
   cargados desde otro celular, el resumen de la sincronización te avisa y la
-  especie vuelve a la botonera. <!-- #650 -->
+  especie vuelve a la botonera.
   - En la app Bayka TEST, en modo avión, habilitá una especie y quitá otra sin
     árboles en una plantación ya sincronizada; en la web de pruebas habilitá
     o quitá una especie distinta de la misma plantación.
@@ -374,7 +382,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Las especies del celular quedan al día con la web.** Una especie que se
   quita desde la web deja de aparecer en la botonera al sincronizar, y una
   especie que ya tiene árboles no se puede destildar en la configuración de la
-  app. <!-- #642 #650 -->
+  app.
   - En la web de pruebas, quitá una especie sin árboles de una plantación que
     tengas descargada en la app Bayka TEST, y sincronizá la app.
   - Abrí "Configurar especies" de una plantación con árboles.
@@ -382,7 +390,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     árboles muestran el candado y no se pueden destildar.
 - **Asigná técnicos sin señal.** "Asignar técnicos" funciona en modo avión con
   la lista de técnicos de la última sincronización, y la asignación sube al
-  sincronizar. Quitar a un técnico sigue pidiendo conexión. <!-- #651 -->
+  sincronizar. Quitar a un técnico sigue pidiendo conexión.
   - En la app Bayka TEST, como administrador, sincronizá una vez con señal.
   - En modo avión, abrí el engranaje de una plantación → "Asignar técnicos",
     asigná uno, guardá y volvé a abrir la pantalla.
@@ -391,7 +399,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     internet"; al sincronizar, el técnico ve la plantación.
 - **Reabrí una plantación finalizada desde la app.** Un superadmin ya no
   necesita la web: el engranaje de una finalizada ofrece "Reabrir plantación",
-  con la misma confirmación que la web. Requiere conexión. <!-- #644 -->
+  con la misma confirmación que la web. Requiere conexión.
   - En la app Bayka TEST, como superadmin, abrí el engranaje de una plantación
     finalizada → "Reabrir plantación" y confirmá.
   - Repetí en modo avión con otra plantación finalizada.
@@ -402,7 +410,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   finalizó, se archivó o se eliminó en el servidor, o perdiste el permiso, su
   tarjeta dice cuántos cambios quedaron sin subir y por qué. Si la reabren o
   te devuelven el permiso, suben solos; si no, "Descartar" te dice qué se
-  pierde antes de borrarlos. <!-- #653 -->
+  pierde antes de borrarlos.
   - En la app Bayka TEST, cargá un grupo sin señal en una plantación,
     archivala o finalizala desde la web de pruebas y sincronizá la app.
   - Desarchivala o reabrila desde la web y volvé a sincronizar; después repetí
@@ -413,7 +421,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Las parcelas ya sincronizadas las edita y borra un administrador.** El
   técnico sigue creando parcelas y puede corregir o borrar las que creó en su
   celular mientras no se sincronizaron; borrar una parcela sin sincronizar
-  pide confirmación porque no queda copia en el servidor. <!-- #643 #657 -->
+  pide confirmación porque no queda copia en el servidor.
   - En la app Bayka TEST, como técnico y en modo avión, creá una parcela,
     mantenela presionada, cambiale el nombre y guardá.
   - Sincronizá y volvé a mantenerla presionada.
@@ -425,7 +433,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   y recaptura el punto GPS desde el detalle del árbol o el visor. Eliminar
   árboles, cambiar la especie y renombrar, eliminar o reactivar el grupo siguen
   siendo de quien lo cargó. Un técnico solo cambia sus grupos: ve los N/N de
-  los demás, pero no los resuelve. <!-- #797 -->
+  los demás, pero no los resuelve.
   - En la app Bayka TEST, como administrador, abrí un grupo que haya cargado un
     técnico y tocá un árbol.
   - Tocá «Cambiar foto», sacá una foto y sincronizá.
@@ -435,7 +443,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   un grupo que cargaste, «Cambiar especie» abre un buscador por nombre común o
   científico. En un grupo finalizado te ofrece reabrirlo y cambiar en un solo
   paso. Si también la cambiaron desde la web, al sincronizar elegís cuál
-  queda. <!-- #731 #807 #808 -->
+  queda.
   - En la app Bayka TEST, abrí un grupo activo que hayas cargado → «Ver todos
     los árboles» → tocá un árbol.
   - Tocá «Cambiar especie», elegí otra y sincronizá.
@@ -444,7 +452,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Cada árbol muestra su ID en la app.** El detalle de un árbol muestra el ID
   completo, con el código de la plantación al final. Como ese ID se arma con
   los códigos de la parcela y del grupo, al cambiar uno de esos códigos la app
-  te avisa antes cuántos árboles cambian de ID. <!-- #703 -->
+  te avisa antes cuántos árboles cambian de ID.
   - En la app Bayka TEST, sincronizá, abrí una plantación con árboles y tocá
     un árbol de un grupo.
   - Volvé, mantené apretado ese grupo, cambiale el código y guardá.
@@ -456,7 +464,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   gestión». El CSV y el Excel llevan el ID Árbol como primera columna, en vez
   del ID Global, y el ID Parcial numerado igual que en la web; en el KML cada
   punto se llama con el ID Árbol y el SubID pasa a la descripción.
-  <!-- #703 #721 #856 -->
+ 
   - En la app Bayka TEST, como administrador, tocá el engranaje de una
     plantación finalizada y exportá el CSV y el KML.
   - Exportá el CSV de la misma plantación, ya sincronizada, desde la web de
@@ -468,7 +476,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   N/N, una especie con foto, o agregar o reemplazar la foto de un árbol abre la
   cámara, y la galería se elige con el botón «Galería» que está adentro. Si la
   foto es opcional, «Sin foto» registra el árbol sin foto; sin permiso de
-  cámara podés elegir de la galería. <!-- #772 #660 -->
+  cámara podés elegir de la galería.
   - En la app Bayka TEST, entrá a un grupo activo y tocá N/N.
   - Tocá «Galería», elegí una foto y en el recorte tocá «Reintentar».
   - Esperá ver: la cámara sin menú previo, la foto de la galería pasa por el
@@ -476,7 +484,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     registra nada.
 - **Con «Foto en todos los botones», la foto de las especies es opcional.**
   Cada especie sigue abriendo la cámara, pero «Sin foto» registra el árbol
-  igual. N/N sigue pidiendo foto. <!-- #909 -->
+  igual. N/N sigue pidiendo foto.
   - En la app Bayka TEST, en una plantación con «Foto en todos los botones»
     activado, entrá a un grupo activo y tocá una especie.
   - En la cámara tocá «Sin foto»; después tocá N/N y «Cancelar».
@@ -487,7 +495,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   sacás la foto: podés alejarte para fotografiarlo con perspectiva. Si al
   tocar el GPS todavía no tenía el punto, la cámara muestra «Tomando punto
   GPS…» hasta que llega, y el botón de GPS del árbol dice «Capturando»
-  mientras tanto. <!-- #911 #913 -->
+  mientras tanto.
   - En la app Bayka TEST, en una plantación con GPS en todos los árboles y
     «Foto en todos los botones», tocá una especie parado junto al árbol.
   - Alejate unos metros, sacá la foto y abrí ese árbol en la web de pruebas.
@@ -498,7 +506,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   afuera oscurecido y el recorte arranca en ese mismo cuadrado: lo movés o lo
   agrandás y sigue cuadrado. Las fotos de la galería pasan por el mismo
   recorte, en vez del recorte del teléfono. Las fotos que ya estaban no
-  cambian. <!-- #836 -->
+  cambian.
   - En la app Bayka TEST, entrá a un grupo activo y tocá N/N.
   - Sacá la foto, arrastrá una esquina del recorte y guardá; repetí eligiendo
     una foto con «Galería».
@@ -506,7 +514,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     se sale de la foto, y la foto cuadrada en el detalle del árbol.
 - **Fotografiá el árbol seleccionado sin salir de la botonera.** Un botón de
   cámara junto al engranaje le saca la foto al árbol elegido en la tira. Si ya
-  tiene foto, primero te avisa que la vas a reemplazar. <!-- #773 -->
+  tiene foto, primero te avisa que la vas a reemplazar.
   - En la app Bayka TEST, en un grupo activo registrá dos árboles sin foto y
     tocá el primero en la tira.
   - Tocá el botón de cámara y sacá la foto; después tocalo de nuevo.
@@ -518,7 +526,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   si la actual todavía no se subió, que no se puede deshacer. Desde el detalle
   del árbol, «Ver actual» te muestra la foto antes de decidir. Quitar una foto
   que todavía no sincronizaste no pregunta y vuelve a la anterior; antes
-  borraba también la que ya estaba en Bayka. <!-- #723 #729 #771 #821 -->
+  borraba también la que ya estaba en Bayka.
   - En la app Bayka TEST, abrí el listado de un grupo y entrá al detalle de un
     árbol con foto ya sincronizada.
   - Tocá «Cambiar foto» → «Ver actual», reemplazala desde la foto ampliada y,
@@ -530,7 +538,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Guardá o compartí la foto de un árbol.** El visor de fotos suma dos
   botones arriba a la derecha: Guardar deja una copia en el álbum «Bayka» de
   la galería y Compartir la manda por la app que elijas. Si la foto está solo
-  en la nube, primero se descarga. <!-- #726 -->
+  en la nube, primero se descarga.
   - En la app Bayka TEST, abrí la foto de un árbol desde el listado de un
     grupo.
   - Tocá Guardar (la flecha hacia abajo) y después Compartir.
@@ -542,7 +550,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   Fotos o en el aviso de sincronizar, es bajar las de los demás. Las que no
   bajaste se ven con una nube y se descargan de a una. Reemplaza al «Incluir
   fotos» del aviso de sincronizar: si lo tenías apagado, sigue apagado.
-  <!-- #700 -->
+ 
   - En la app Bayka TEST, apagá «Descargar fotos de otros celulares» en
     Ajustes → Fotos.
   - Sincronizá una plantación con fotos sacadas en otro celular y abrí el
@@ -552,7 +560,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Liberá espacio en el celular.** En Ajustes → Fotos, «Liberar espacio»
   borra del celular las fotos que ya están en la nube, sin quitarlas de Bayka
   ni de los demás celulares. Antes de confirmar te dice cuántas fotos y cuánto
-  espacio libera; las fotos sin subir se conservan. <!-- #700 -->
+  espacio libera; las fotos sin subir se conservan.
   - En la app Bayka TEST, con fotos ya sincronizadas, sacá una foto nueva sin
     sincronizar y entrá a Ajustes → Fotos.
   - Tocá «Liberar espacio · N fotos, X MB» y confirmá.
@@ -561,7 +569,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     el celular y en la web no falta ninguna.
 - **Sabé cuánto pesan las fotos antes de descargar una plantación.** En el
   catálogo, cada plantación muestra el peso de sus fotos y «Incluir fotos»
-  suma el total de las que seleccionaste. <!-- #765 -->
+  suma el total de las que seleccionaste.
   - En la app Bayka TEST, abrí el catálogo de plantaciones.
   - Seleccioná una o dos plantaciones con fotos.
   - Esperá ver: en cada tarjeta, junto a grupos y árboles, el peso de las
@@ -571,7 +579,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   catálogo ves las plantaciones nuevas sin reiniciar la app, y deslizando
   hacia abajo lo actualizás a mano sin perder lo que tenías seleccionado. Si
   te quedás sin conexión, sigue mostrando la última lista con un aviso.
-  <!-- #718 #758 -->
+ 
   - En la app Bayka TEST, entrá al catálogo (el botón de descarga de
     Plantaciones) y volvé.
   - Creá en la web de pruebas una plantación asignada a tu usuario y volvé a
@@ -586,7 +594,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   arriba el código o el nombre y agrandar o achicar la letra de cada uno, con
   vista previa. Se aplica al instante, también en la resolución de N/N, queda
   guardado para tu usuario en este celular y «Restablecer el diseño original»
-  lo deshace. <!-- #770 -->
+  lo deshace.
   - En la app Bayka TEST, entrá a un grupo activo y tocá el engranaje.
   - En «Tamaño de la botonera» elegí «Nombre arriba» y subí la letra del
     nombre.
@@ -595,7 +603,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Ordená los árboles de un grupo del último al primero.** El listado de
   árboles de un grupo suma un botón que alterna entre 1→N y N→1, así lo último
   que registraste queda arriba. La app recuerda tu elección para todos los
-  grupos, aunque la cierres. <!-- #725 -->
+  grupos, aunque la cierres.
   - En la app Bayka TEST, abrí un grupo con varios árboles → "Ver todos los
     árboles".
   - Tocá el botón «1→N» de arriba, salí, entrá a otro grupo y después cerrá y
@@ -604,14 +612,14 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     finalizados, y la tira deslizable de árboles conserva su orden.
 - **Editar un grupo se ve como los demás formularios.** "Editar grupo" se abre
   en pantalla completa, igual que "Nuevo grupo", y el botón Guardar queda
-  siempre a la vista, arriba del teclado. <!-- #716 -->
+  siempre a la vista, arriba del teclado.
   - En la app Bayka TEST, abrí una parcela y mantené presionado un grupo.
   - Tocá el nombre para que se abra el teclado.
   - Esperá ver: "Editar grupo" en pantalla completa, con Cancelar y Guardar
     visibles arriba del teclado.
 - **El visor de fotos ya no queda tapado por las barras del teléfono.** La X
   y los botones Reemplazar y Eliminar foto respetan la barra de estado y la de
-  navegación. <!-- #719 -->
+  navegación.
   - En la app Bayka TEST, en un teléfono con muesca o navegación por gestos,
     abrí la foto de un árbol desde el listado de un grupo.
   - Mirá los bordes de arriba y de abajo.
@@ -619,7 +627,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     encima de la barra de gestos.
 - **Sin permiso de edición, el visor de fotos no ofrece cambiarla.** Un técnico
   en un grupo de otro, o cualquiera en una plantación finalizada o archivada,
-  ve la foto sin Reemplazar ni Eliminar foto. <!-- #769 #797 -->
+  ve la foto sin Reemplazar ni Eliminar foto.
   - En la app Bayka TEST, como técnico, abrí un grupo de otro técnico.
   - Tocá el ícono de foto de un árbol.
   - Esperá ver: la foto, con Guardar y Compartir arriba, y sin Reemplazar ni
@@ -627,7 +635,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Los cambios de foto y GPS de otro celular llegan al tuyo.** Si alguien
   reemplaza la foto de un árbol o recaptura su punto GPS en otro celular, al
   sincronizar el tuyo toma la foto y el punto nuevos; antes podía seguir
-  mostrando los anteriores. <!-- #807 -->
+  mostrando los anteriores.
   - En la app Bayka TEST, en dos celulares, sincronizá la misma plantación.
   - En uno, reemplazá la foto de un árbol y recapturá su punto GPS;
     sincronizá.
@@ -638,7 +646,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   tu nombre y ves tu propio perfil. Al volver la señal, la app te pide iniciar
   sesión con conexión antes de sincronizar, así nada se sube a nombre de otro.
   Después de actualizar, cada cuenta tiene que entrar una vez con conexión para
-  poder volver a entrar sin conexión. <!-- #662 #669 #695 -->
+  poder volver a entrar sin conexión.
   - En la app Bayka TEST, con conexión, entrá con una cuenta A y cerrá sesión;
     repetí con una cuenta B.
   - En modo avión, entrá con A, creá un grupo y abrí Perfil.
@@ -652,7 +660,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   responder al iniciar sesión, la app termina de entrar cuando contesta y esa
   cuenta queda lista para entrar sin conexión. Y sincronizar con señal floja
   avisa que no se pudo conectar, en vez de pedirte que inicies sesión de
-  nuevo. <!-- #670 #675 #669 -->
+  nuevo.
   - En la app Bayka TEST, conectate a un wifi sin salida a internet (por
     ejemplo, el hotspot de otro celular sin datos).
   - Iniciá sesión con una cuenta que ya usaste en este celular.
@@ -660,7 +668,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     servidor.
 - **Al volver la señal, la app actualiza tu cuenta.** Si abriste la app sin
   conexión, cuando se conecta actualiza tu rol y, si un administrador desactivó
-  tu cuenta, cierra la sesión, sin que tengas que reiniciarla. <!-- #670 -->
+  tu cuenta, cierra la sesión, sin que tengas que reiniciarla.
   - En la app Bayka TEST, con la sesión iniciada, cerrá la app, poné el celular
     en modo avión y volvé a abrirla.
   - En la web de pruebas, desactivá esa cuenta; después sacá el modo avión en

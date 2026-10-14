@@ -9,10 +9,9 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
-## Sin publicar
-<!-- sincronizado-hasta: 10207f2 #913 -->
+## 2026-10-14 · web 1.5.0 · mobile 1.4.0
 
-### Web
+### Web 1.5.0
 
 #### Agregado
 - Código de plantación: campo "Código *" en `PlantacionFormModal` (mayúsculas sin espacios al tipear, `maxLength` 8, formato de `contracts/codigo-plantacion.json`, deshabilitado fuera de activa con `codigoEsEditable`), `CodigoPlantacionDuplicadoError` desde 23505 al crear y `CODIGO_DUPLICADO` al editar, columna Código en el listado y el código en la línea de metadatos del detalle (#699, #764)
@@ -28,6 +27,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - Imagen satelital de Esri en el minimapa de la ficha y el mapa del informe: `lib/capaSatelite.ts` compartido con `MapaPuntosLeaflet`; zoom más alto que entre en 36 tiles (`TOPE_TILES`), un zoom menos donde el `tilemap` no tiene imagen (hasta tres), 6 descargas a la vez, espera de 8 s con cortacircuito de 60 s y caché de sesión de 1000 tiles; si algo falla, mapa liso. «*» bajo el mapa (`LlamadaSatelite`) y «* Imágenes © Esri, Maxar» como `notaAlPie` de `Hoja`, solo en las hojas con satélite (#781, #785)
 - Filtro por especie en el dashboard y popup del árbol en el mapa: `useFiltrosDashboard` (`{ parcelaId, especieCodigo }`) reemplaza a `useFiltroParcela` y `calcularDashboard(fuente, filtros)` cruza parcela y especie («Por especie» se calcula solo con la parcela y la tira solo con la especie); las filas de `SpeciesDistribution` son `<button aria-pressed>`, el recuadro azul muestra un chip por filtro y «Ver todos» suelta los dos; un solo popup controlado (`PuntosConPopup`, `PopupArbol` + `fichaDePunto`) con ID Árbol, especie y parcela, y `CapaPuntos` con `memo` para no redibujar los puntos (#842)
 - Filas de las tablas con teclado: las que tienen `onRowClick` llevan `tabIndex={0}` y abren con Enter o Espacio solo con el foco en la fila (`activaComoBoton`, `TECLA.espacio`), con anillo `:focus-visible` y `scroll-padding-top` (`--alto-encabezado-tabla`) para que el encabezado sticky no tape lo enfocado; al cerrar el detalle el foco vuelve a la fila (#866, #853)
+- Novedades en dos columnas, Web y App: cada versión de `NOVEDADES.md` agrupa sus ítems bajo `### Web` / `### App` (también las ya publicadas), `parsearNovedades` devuelve `general`, `web` y `app` con `PLATAFORMA` as const, y la pantalla las muestra lado a lado desde 1200 px y apiladas debajo, con la cantidad en cada encabezado (#919)
 
 #### Cambiado
 - Excel y CSV: `ID Árbol` reemplaza a `ID Global` como primera columna (`contracts/export-columns.json`) y el `ID Parcial` se numera al exportar sobre la plantación entera con `numerarPorIdParcial` (`shared/idParcial.ts`); se van «Generar IDs» (`GenerarIdsModal`, `idsQueries`, `idsPendientes`) y las planillas quedan habilitadas en cualquier plantación; el KML nombra cada placemark con el ID Árbol y describe SubID y especie, en vez de nombre y código de la especie (#703, #721, #856)
@@ -53,7 +53,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - El mapa del dashboard y el del detalle encuadran al zoom más cercano con imagen satelital (`AjustarVista` con `zoomConImagen`, tope 17 si el chequeo falla o tarda más de 3 s, y re-encuadre solo si cambian los bordes); el chequeo, la fuente de tiles y las direcciones XYZ pasan de `pdf/` a `lib/mapa/` (#840)
 - `MenuDesplegable` devuelve el foco al disparador al elegir un ítem o cerrar con Escape, así un `Modal` abierto desde el menú lo devuelve ahí al cerrarse (#873)
 
-### Mobile
+### Mobile 1.4.0 (versionCode 5)
 
 #### Agregado
 - Formulario de plantación completo y offline (`PlantationFormModal` sobre `EntityFormModal`): fecha de inicio, objetivo, descripción, foto en todos y visible para técnicos, además de lugar, periodo y GPS; drizzle 0024 suma esas columnas y sus snapshots `*_server`, `utils/camposDePlantacion.ts` centraliza campo, columna y snapshot para pull, descarga y push, foto y visibilidad dejan de ser "server gana" (`webManagedFlags`) y la acción del sheet pasa a "Editar plantación"; la fecha de inicio usa `CampoFecha` sobre `DateTimePickerAndroid` (`@react-native-community/datetimepicker`, módulo nativo: no sale por OTA) con conversión local en `fechaDeCalendario` (#645, #677)
@@ -152,6 +152,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - Auditoría responsive (`npm run audit:responsive`): ancho 390, filas `dashboard-archivada`, `panel-filtros` y `panel-usuarios`, y X cuenta un diálogo que se sale de costado, con sus casos en `--autotest` (#852, #854)
 - El test de ⌘K sin plantaciones espera el estado vacío en vez del disparador y deja de fallar de forma intermitente (#811)
 - `TreeRegistrationScreen` baja de 400 a 189 líneas: diálogos, visor y botonera pasan a `useAccionesDeGrupo`, `useFotoDelVisor`, `useAccionesDeArbol`, `useTreeRegistrationScreen`, `TreeActionBar`, `BotoneraDeEspecies` y `ViewAllTreesRow`, con test propio; `removePhoto` usa `quitarFotoDelArbol` (#794, #818)
+- `/deploy` y `/novedades` ubican cada ítem de NOVEDADES por la plataforma donde se nota, y el checklist post-merge de `/deploy` suma el deploy a prod de las edge functions que cambian en el release, después del push (#919, #921)
 
 ## 2026-09-24 · web 1.4.0 · mobile 1.3.0
 
