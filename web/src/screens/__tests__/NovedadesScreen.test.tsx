@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { prepararSesionAdmin } from '../../test/supabaseMock';
 import { esperarMain, renderRutasEn } from '../../test/renderConRutas';
@@ -15,23 +15,27 @@ vi.mock('../../lib/novedades', () => ({
     {
       titulo: 'En pruebas · próxima versión',
       sincronizadoHasta: '5930146 #374',
-      items: [
+      general: [],
+      web: [
         {
           titular: 'Detalle al costado.',
           detalle: 'El árbol se abre sin tapar el listado.',
           pasos: ['Entrá a una plantación.', 'Esperá ver el detalle a la derecha.'],
         },
       ],
+      app: [{ titular: 'Aviso sin señal.', detalle: 'En vez del cargando.' }],
     },
     {
       titulo: 'Web 1.1.0 · 21 de agosto de 2026',
-      items: [
+      general: [{ detalle: 'Mejoras internas y de estabilidad.' }],
+      web: [
         {
           titular: 'Contraseña visible.',
           detalle: 'Ya publicado.',
           pasos: ['Abrí el inicio de sesión.', 'Esperá ver: el botón con forma de ojo.'],
         },
       ],
+      app: [],
     },
   ],
   FIRMA_NOVEDADES: 'v1.1.0 · 5930146 #374',
@@ -53,6 +57,19 @@ test('una tarjeta por entrada, con sus ítems', async () => {
     await main.findByRole('heading', { name: 'Web 1.1.0 · 21 de agosto de 2026' }),
   ).toBeInTheDocument();
   expect(main.getByText(/Contraseña visible\./)).toBeInTheDocument();
+});
+
+test('cada entrada separa sus ítems por plataforma y omite la que no tiene', async () => {
+  renderRutasEn('/novedades');
+
+  const main = await esperarMain();
+  const columnaDe = (titular: string) => within(main.getByText(titular).closest('div')!);
+
+  expect(await main.findAllByRole('heading', { level: 3 })).toHaveLength(3);
+  expect(columnaDe('Detalle al costado.').getByRole('heading', { name: 'Web' })).toBeVisible();
+  expect(columnaDe('Aviso sin señal.').getByRole('heading', { name: 'App' })).toBeVisible();
+  expect(columnaDe('Contraseña visible.').getByRole('heading', { name: 'Web' })).toBeVisible();
+  expect(main.getByText('Mejoras internas y de estabilidad.')).toBeVisible();
 });
 
 test('la sección en pruebas avisa que todavía no está en producción', async () => {

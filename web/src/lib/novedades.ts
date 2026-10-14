@@ -1,9 +1,21 @@
 import novedadesRaw from '../../../NOVEDADES.md?raw';
 import { ES_ENTORNO_DE_PRUEBAS, VERSION_APP } from './entorno';
-import { esEntradaEnPruebas, parsearNovedades, type EntradaNovedades } from './parsearNovedades';
+import {
+  esEntradaEnPruebas,
+  parsearNovedades,
+  type EntradaNovedades,
+  type ItemNovedad,
+} from './parsearNovedades';
+
+const quitarPasos = (items: ItemNovedad[]) => items.map((item) => ({ ...item, pasos: undefined }));
 
 function sinPasos(entrada: EntradaNovedades): EntradaNovedades {
-  return { ...entrada, items: entrada.items.map((item) => ({ ...item, pasos: undefined })) };
+  return {
+    ...entrada,
+    general: quitarPasos(entrada.general),
+    web: quitarPasos(entrada.web),
+    app: quitarPasos(entrada.app),
+  };
 }
 
 /**

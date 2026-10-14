@@ -65,22 +65,37 @@ Release notes comerciales para usuarios y clientes: solo lo que el usuario nota
 `#N`, sin jerga interna (staging, RLS, back-merge, …), en voseo.
 
 ```markdown
-## Web X.Y.Z · <D de mes de AAAA>
+## Web X.Y.Z · Mobile A.B.C · <D de mes de AAAA>
+
+### Web
 
 - **<Titular corto.>** <Qué puede hacer o qué mejora ve el usuario.>
-  - <Dónde, en la web o en la app, y qué hacer.>
+  - En la web de pruebas, <dónde y qué hacer.>
+  - Esperá ver: <lo que confirma que funciona.>
+
+### App
+
+- **<Titular corto.>** <Lo que nota en la app.>
+  - En la app Bayka TEST, <dónde y qué hacer.>
   - Esperá ver: <lo que confirma que funciona.>
 ```
 
 - H2 solo con las apps que participan, `·` como separador; mismo sufijo ` (2)`
   si hay dos releases el mismo día.
+- **Plataformas (#918)**: cada ítem va bajo `### Web` o `### App`, exactos y en
+  ese orden; el que no tiene ítems se omite. La web los muestra en dos
+  columnas. Es por dónde lo nota el usuario, no por dónde está el código: un
+  cambio en `shared/` o en la DB va donde se ve. Un ítem que se nota en **las
+  dos** se duplica, una copia por sección, cada una con su detalle y los pasos
+  de su entorno.
 - Los sub-bullets son los pasos que nacieron en la sección pendiente (abajo) y
   sobreviven a la conversión tal cual (#580, #582). La web de pruebas los
   muestra plegados bajo "Cómo probarlo" en cada versión; producción ve solo
   titular y detalle.
 - Si nada es visible, un único bullet: `- Mejoras internas y de estabilidad.`
-  Tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
-  versión vacía.
+  Va sin `###` (es de toda la versión; la pantalla lo muestra a lo ancho) y
+  tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
+  versión vacía. Es el único bullet que va fuera de una plataforma.
 
 ### Sección pendiente (staging, #375)
 
@@ -90,10 +105,18 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
 ## En pruebas · actualizado el 13 de octubre de 2026
 <!-- sincronizado-hasta: 5930146 #374 -->
 
+### Web
+
 - **Titular corto.** Qué puede hacer o qué mejora ve el usuario. <!-- #344 #350 -->
   - En la web de pruebas, entrá a Plantaciones y abrí una.
   - Tocá un árbol del listado.
   - Esperá ver: el detalle se abre a la derecha, sin tapar el listado.
+
+### App
+
+- **Titular corto.** Lo que nota en la app. <!-- #351 -->
+  - En la app Bayka TEST, abrí una plantación.
+  - Esperá ver: …
 ```
 
 `CHANGELOG.md`:
@@ -118,7 +141,8 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   **idéntica en los dos archivos**: así se sabe que están sincronizados.
 - **Traza**: cada bullet de NOVEDADES termina en `<!-- #N #M -->` (la web no la
   muestra); cada bullet de CHANGELOG, en `(#N, #M)`. Todo ítem pendiente la
-  tiene: es lo que permite saber qué ítems toca un PR nuevo.
+  tiene: es lo que permite saber qué ítems toca un PR nuevo. Las dos copias de
+  un ítem duplicado llevan la misma traza: un PR que toca una toca las dos.
 - **Pasos**: sub-bullets indentados 2 espacios. El primero dice dónde probar
   (web de pruebas, o app **Bayka TEST**); el último arranca con "Esperá ver:".
   Wrap a 80 columnas con 4 espacios; una línea de continuación nunca empieza
@@ -126,9 +150,11 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
   el entorno de pruebas (#580, #582), así que pueden nombrar la web de pruebas
   y la app Bayka TEST.
 - El título de NOVEDADES empieza con **"En pruebas"**: es contrato con
-  `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
-  sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
-  y además la sección nunca llega a main.
+  `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`, igual que los rótulos
+  `### Web` / `### App` con `PLATAFORMA`. Los `### Web` / `### Mobile` sin
+  versión de CHANGELOG no chocan con `release-tags.yml` (busca `### Web X.Y.Z`
+  exacto) y además la sección nunca llega a main; `release-tags.yml` no lee
+  NOVEDADES.
 - **Fecha** en el título de NOVEDADES: el día, en Argentina, del último commit
   de `/novedades`; todo commit la actualiza. Con ella la web de pruebas muestra
   cuándo se actualizó el listado (#897). Va con el formato de las entradas
@@ -150,8 +176,9 @@ pendiente y el próximo `/novedades` arranca de cero desde `origin/main`:
 - `CHANGELOG.md`: `## Sin publicar` → `## <YYYY-MM-DD> · web X.Y.Z · mobile A.B.C`;
   `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
   Se borran la marca y las apps sin cambios.
-- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`, con
-  la fecha del release. Se borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan tal
+- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · Mobile A.B.C · <D de mes
+  de AAAA>`, solo con las apps que participan y la fecha del release. Se borran la marca y las trazas `<!-- #N -->`; los
+  `### Web` / `### App` quedan como están. **Los pasos se conservan tal
   cual** (#580, #582): en la web de pruebas siguen siendo el "Cómo probarlo" de
   cada versión y en producción no se muestran. No se resumen, no se reescriben
   ni se les quita la mención al entorno. El bullet de "nada visible" pasa al
@@ -165,9 +192,10 @@ Antes de cada commit que toque estos archivos:
 (cd web && npx vitest run src/lib/__tests__/parsearNovedades.test.ts)
 ```
 
-Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, fuera
-de staging ningún ítem con pasos, y la sección en pruebas, si está, una sola y
-arriba de todo. Después de una conversión, además, este sin resultados:
+Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, todo
+ítem con titular bajo `### Web` o `### App`, fuera de staging ningún ítem con
+pasos, y la sección en pruebas, si está, una sola y arriba de todo. Después de
+una conversión, además, este sin resultados:
 
 ```bash
 grep -nE 'sincronizado-hasta|<!-- #|^## (Sin publicar|En pruebas)' NOVEDADES.md CHANGELOG.md
