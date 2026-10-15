@@ -95,9 +95,11 @@ scripts/build-apk.sh test    # o: prod   (equivalentes: npm run apk:test / apk:p
 ```
 
 Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a tarda
-~2-5 min (más la primera vez, con el cache de Gradle frío). Para todas las ABIs
-(distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
-gradlew cubre la race de worklets (ver Troubleshooting).
+~2-5 min (más la primera vez, con el cache de Gradle frío). La APK prod que se
+distribuye también va solo con arm64 (#926): las 4 ABIs la llevan de ~46 a ~110 MB,
+y x86/x86_64 solo sirven en emuladores. `ABIS=all scripts/build-apk.sh <variante>`
+solo si hay que instalarla en un device de 32 bits o un emulador; el retry interno
+de gradlew cubre la race de worklets (ver Troubleshooting).
 
 El script termina imprimiendo package, label, canal de OTA, fingerprint y tamaño **ya verificados**
 (falla si el APK no corresponde a la variante; avisa sin cortar si no puede confirmar
