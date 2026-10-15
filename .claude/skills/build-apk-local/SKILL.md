@@ -95,9 +95,10 @@ scripts/build-apk.sh test    # o: prod   (equivalentes: npm run apk:test / apk:p
 ```
 
 Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a tarda
-~2-5 min (más la primera vez, con el cache de Gradle frío). Para todas las ABIs
-(distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
-gradlew cubre la race de worklets (ver Troubleshooting).
+~2-5 min (más la primera vez, con el cache de Gradle frío). La APK prod que se
+distribuye también va solo con arm64 (#926): las 4 ABIs la llevan de ~46 a ~110 MB,
+y x86/x86_64 solo sirven en emuladores. Usá `ABIS=all scripts/build-apk.sh <variante>`
+solo para instalarla en un device de 32 bits o en un emulador.
 
 El script termina imprimiendo package, label, canal de OTA, fingerprint y tamaño **ya verificados**
 (falla si el APK no corresponde a la variante; avisa sin cortar si no puede confirmar
@@ -114,8 +115,8 @@ el canal). Instalar: `adb install -r mobile/<artefacto>`.
   `adb uninstall com.bayka.app` (o `com.bayka.app.test`) primero (borra data local).
 - **Deep links:** ambas variantes registran el scheme `bayka`; con las dos instaladas
   Android pregunta con cuál abrir. Esperado y aceptado (#253).
-- **ABIs:** el APK single-ABI solo corre en devices arm64 (todo teléfono moderno).
-  `ABIS=all` solo para armeabi-v7a viejos o emuladores x86_64.
+- **ABIs:** el APK single-ABI solo corre en devices arm64 (todo teléfono moderno);
+  en uno de 32 bits Android rechaza instalarlo. Cuándo usar `ABIS=all`: §2.
 
 ## Troubleshooting
 
@@ -137,5 +138,6 @@ vía `scripts/build-apk.sh <variante>` — regenera el prebuild y valida el badg
 ### EAS como alternativa (nube o `--local`)
 Perfiles en `mobile/eas.json`: `preview`/`production` (prod) y `test` (staging, con
 `APP_VARIANT=test`). `npx eas-cli build -p android --profile test` da un APK firmado
-con la release key y multi-ABI — mejor para distribución. El modo `--local` sufre la
+con la release key, pero multi-ABI (pesa más, ver §2) y no se instala encima de uno
+firmado con el debug keystore (ver §3, Signing). El modo `--local` sufre la
 race de worklets (single ephemeral multi-ABI pass); preferir el script de arriba.
