@@ -174,4 +174,14 @@ npx --yes supabase@2.116.0 projects api-keys --project-ref <ref> -o json \
 ```
 
 Si el proyecto rota la key legacy, hay que volver a cargar los dos secrets. Una
-`sb_secret_…` no sirve: no es un JWT y la función la rechaza.
+`sb_secret_…` no sirve: no es un JWT y el gateway la rechaza con 401.
+
+Después de cada deploy, un JWT con `role: service_role` y firma inventada tiene
+que dar 401 `Invalid JWT` del gateway. Si llega a la función, el deploy quedó sin
+`verify_jwt` y cualquiera puede disparar el borrado:
+
+```bash
+P=$(printf '{"role":"service_role","exp":9999999999}' | base64 | tr '+/' '-_' | tr -d '=')
+curl -s -w ' %{http_code}\n' -X POST "https://<ref>.supabase.co/functions/v1/admin-plantaciones" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.$P.x" -d '{"accion":"limpiarFotosQuitadas"}'
+```

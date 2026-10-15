@@ -27,14 +27,9 @@ export const LIMITE_FOTOS_QUITADAS = 1000;
 export const LIMITE_FOTOS_HUERFANAS = 1000;
 
 /** Claim `role` del JWT de la service role key. */
-export const ROL_SERVICE_ROLE = 'service_role';
+const ROL_SERVICE_ROLE = 'service_role';
 
-/**
- * Claim `role` del payload, sin verificar la firma: la verifica el gateway porque la
- * function se deploya con `verify_jwt` (supabase/config.toml). Comparar el token
- * contra `SUPABASE_SERVICE_ROLE_KEY` no coincide en proyectos con las API keys
- * nuevas, ni con la service_role legacy (#924).
- */
+/** Claim `role` del payload, sin verificar la firma: la verifica el gateway (`verify_jwt`, #924). */
 export function rolDelJwt(jwt: string): string | null {
   const payload = jwt.split('.')[1];
   if (!payload) return null;

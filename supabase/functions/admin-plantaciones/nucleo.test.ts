@@ -207,6 +207,19 @@ describe('limpiarFotosQuitadas', () => {
     expect(deps.borrarArchivos).not.toHaveBeenCalled();
   });
 
+  test('con el chequeo real: acepta el JWT de service_role y rechaza el de anon', async () => {
+    const deps = { ...crearDeps(), esServiceRole: esJwtDeServiceRole };
+    const conAnon = await manejarAdminPlantaciones(jwtCon({ role: 'anon' }), PEDIDO, deps);
+    expect(conAnon.status).toBe(403);
+    expect(deps.borrarArchivos).not.toHaveBeenCalled();
+    const conServiceRole = await manejarAdminPlantaciones(
+      jwtCon({ role: 'service_role' }),
+      PEDIDO,
+      deps,
+    );
+    expect(conServiceRole.status).toBe(200);
+  });
+
   test('borra solo los paths registrados y los marca', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
