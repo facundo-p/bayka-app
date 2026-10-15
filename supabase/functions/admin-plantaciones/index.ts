@@ -2,8 +2,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   MENSAJES,
+  esJwtDeServiceRole,
   manejarAdminPlantaciones,
-  secretosIguales,
   type Deps,
   type EntradaStorage,
   type FotoQuitada,
@@ -109,7 +109,7 @@ const deps: Deps = {
     lanzarSiError('fotosPendientes', error);
     return (data ?? []).map((fila) => fila.id as string);
   },
-  esServiceRole: (jwt) => secretosIguales(jwt, SERVICE_ROLE_KEY),
+  esServiceRole: esJwtDeServiceRole,
   fotosQuitadasPorLimpiar: async (limite): Promise<FotoQuitada[]> => {
     const { data, error } = await admin.rpc('fotos_quitadas_por_limpiar', { p_limite: limite });
     lanzarSiError('fotosQuitadasPorLimpiar', error);

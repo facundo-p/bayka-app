@@ -26,20 +26,24 @@ export const LIMITE_FOTOS_QUITADAS = 1000;
 /** Tope aparte para las huérfanas: un atraso de quitadas no las frena. */
 export const LIMITE_FOTOS_HUERFANAS = 1000;
 
-/**
- * Compara un token contra un secreto en tiempo que depende solo del largo del secreto,
- * para no filtrar por timing cuántos bytes coinciden. Sin secreto configurado no acepta nada.
- */
-export function secretosIguales(recibido: string, esperado: string): boolean {
-  if (!esperado) return false;
-  const codificador = new TextEncoder();
-  const bytesRecibidos = codificador.encode(recibido);
-  const bytesEsperados = codificador.encode(esperado);
-  let diferencia = bytesRecibidos.length ^ bytesEsperados.length;
-  for (let i = 0; i < bytesEsperados.length; i++) {
-    diferencia |= (bytesRecibidos[i] ?? 0) ^ bytesEsperados[i];
+/** Claim `role` del JWT de la service role key. */
+const ROL_SERVICE_ROLE = 'service_role';
+
+/** Claim `role` del payload, sin verificar la firma: la verifica el gateway (`verify_jwt`, #924). */
+export function rolDelJwt(jwt: string): string | null {
+  const payload = jwt.split('.')[1];
+  if (!payload) return null;
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const claims = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')));
+    return typeof claims?.role === 'string' ? claims.role : null;
+  } catch {
+    return null;
   }
-  return diferencia === 0;
+}
+
+export function esJwtDeServiceRole(jwt: string): boolean {
+  return rolDelJwt(jwt) === ROL_SERVICE_ROLE;
 }
 
 /** Las fotos viven en `plantations/{id}/parcelas/{parcela}/trees/{arbol}.jpg`. */
@@ -95,7 +99,7 @@ export type Deps = {
   marcarFotosLimpias: (plantacionId: string) => Promise<void>;
   /** Ids de `plantaciones_eliminadas` de la organización con `fotos_limpias = false`. */
   fotosPendientes: (organizacionId: string, plantacionId?: string) => Promise<string[]>;
-  /** true si el token es la service role key del proyecto. */
+  /** true si el token, ya verificado por el gateway, es de la service role. */
   esServiceRole: (jwt: string) => boolean;
   /** RPC `fotos_quitadas_por_limpiar`: ya excluye los paths que un árbol volvió a usar. */
   fotosQuitadasPorLimpiar: (limite: number) => Promise<FotoQuitada[]>;
