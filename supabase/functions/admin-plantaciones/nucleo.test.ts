@@ -4,8 +4,9 @@ import {
   LIMITE_FOTOS_QUITADAS,
   MENSAJES,
   TAMANO_TANDA_FOTOS,
+  esJwtDeServiceRole,
   manejarAdminPlantaciones,
-  secretosIguales,
+  rolDelJwt,
   type Deps,
   type EntradaStorage,
   type PerfilDb,
@@ -206,6 +207,19 @@ describe('limpiarFotosQuitadas', () => {
     expect(deps.borrarArchivos).not.toHaveBeenCalled();
   });
 
+  test('con el chequeo real: acepta el JWT de service_role y rechaza el de anon', async () => {
+    const deps = { ...crearDeps(), esServiceRole: esJwtDeServiceRole };
+    const conAnon = await manejarAdminPlantaciones(jwtCon({ role: 'anon' }), PEDIDO, deps);
+    expect(conAnon.status).toBe(403);
+    expect(deps.borrarArchivos).not.toHaveBeenCalled();
+    const conServiceRole = await manejarAdminPlantaciones(
+      jwtCon({ role: 'service_role' }),
+      PEDIDO,
+      deps,
+    );
+    expect(conServiceRole.status).toBe(200);
+  });
+
   test('borra solo los paths registrados y los marca', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
@@ -289,21 +303,37 @@ describe('limpiarFotosQuitadas', () => {
   });
 });
 
-describe('secretosIguales', () => {
-  test('acepta el mismo secreto', () => {
-    expect(secretosIguales(SERVICE_KEY, SERVICE_KEY)).toBe(true);
+/** JWT sin firma válida: el test solo ejercita la lectura del payload. */
+function jwtCon(claims: Record<string, unknown>): string {
+  const parte = (objeto: object) => Buffer.from(JSON.stringify(objeto)).toString('base64url');
+  return `${parte({ alg: 'HS256', typ: 'JWT' })}.${parte(claims)}.firma`;
+}
+
+describe('esJwtDeServiceRole', () => {
+  test('acepta un JWT con role service_role', () => {
+    expect(esJwtDeServiceRole(jwtCon({ iss: 'supabase', role: 'service_role' }))).toBe(true);
+  });
+
+  test('lee payloads con caracteres base64url y sin padding', () => {
+    // «ñ¿?» en el payload fuerza `-`/`_` en base64url.
+    const jwt = jwtCon({ role: 'service_role', ref: 'ñ¿?>>>' });
+    expect(jwt.split('.')[1]).toMatch(/[-_]/);
+    expect(esJwtDeServiceRole(jwt)).toBe(true);
   });
 
   test.each([
-    ['otro valor del mismo largo', 'service-role-kez'],
-    ['un prefijo', 'service-role'],
-    ['un secreto más largo', `${SERVICE_KEY}x`],
+    ['la anon key', jwtCon({ role: 'anon' })],
+    ['un usuario logueado', jwtCon({ role: 'authenticated', sub: 'u1' })],
+    ['un JWT sin role', jwtCon({ sub: 'u1' })],
+    ['un role que no es texto', jwtCon({ role: ['service_role'] })],
+    ['una secret key nueva', 'sb_secret_abc123'],
+    ['un payload que no es JSON', 'a.bm8tZXMtanNvbg.c'],
     ['vacío', ''],
-  ])('rechaza %s', (_caso, recibido) => {
-    expect(secretosIguales(recibido, SERVICE_KEY)).toBe(false);
+  ])('rechaza %s', (_caso, jwt) => {
+    expect(esJwtDeServiceRole(jwt)).toBe(false);
   });
 
-  test('sin secreto configurado no acepta nada, ni siquiera un token vacío', () => {
-    expect(secretosIguales('', '')).toBe(false);
+  test('rolDelJwt devuelve null si no hay payload', () => {
+    expect(rolDelJwt('sin-puntos')).toBeNull();
   });
 });
