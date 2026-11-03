@@ -83,8 +83,11 @@ nueva la agrega acá.
   viejos ni `sync_subgroup`):
   - `descripcion text` — notas libres.
   - `fecha_inicio date` — inicio real de la plantación (`periodo` es etiqueta).
-  - `superficie_ha numeric` — superficie en hectáreas.
-  - `ubicacion_lat` / `ubicacion_lng double precision` — centroide aproximado.
+  - ~~`superficie_ha numeric` — superficie en hectáreas.~~ No está en la base:
+    salió de la 024 antes de aplicarla, cuando el rediseño del formulario (#196)
+    dejó de pedirla.
+  - ~~`ubicacion_lat` / `ubicacion_lng double precision` — centroide
+    aproximado.~~ Ídem.
   - `objetivo_arboles integer` — meta de árboles para seguimiento en dashboard.
   - `visible_in_app boolean NOT NULL DEFAULT true` — ver A19.
 - **A19 — `visible_in_app`** controla si la plantación aparece en la Bayka App
