@@ -1,10 +1,9 @@
-/** pendingSyncQueries — agregadores de pending_sync para el OrangeDot (groups, N/N bloqueados, fotos de árbol, parcelas). */
+/** pendingSyncQueries — agregadores de pending_sync para el OrangeDot (groups, fotos de árbol, parcelas). */
 import { db } from '../database/client';
 import { groups, trees, parcelas, plantations } from '../database/schema';
 import { eq, count, and, isNotNull, sql, type SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { sqlIsLocalUri } from '../utils/photoUri';
-import { ESTADO_GRUPO } from '../constants/estados';
 import { gruposQueSube } from '../repositories/subidor';
 
 /** Quién está logueado. Los grupos y sus fotos cuentan si su sync los sube (#768). */
@@ -40,17 +39,6 @@ export function countPendingGroups(opts: PendingCountQueryOpts) {
   const conditions = [
     eq(groups.pendingSync, true),
     deLaPlantacionOGlobal(groups.plantacionId, opts.plantacionId),
-    deQuienSube(opts),
-  ];
-  return db.select({ cnt: count() }).from(groups).where(and(...conditions));
-}
-
-export function countNNBlockedGroups(opts: PendingCountQueryOpts) {
-  if (!opts.plantacionId) return Promise.resolve([{ cnt: 0 }]);
-  const conditions = [
-    eq(groups.plantacionId, opts.plantacionId),
-    eq(groups.estado, ESTADO_GRUPO.finalizada),
-    sql`EXISTS (SELECT 1 FROM trees WHERE trees.group_id = ${groups.id} AND trees.especie_id IS NULL)`,
     deQuienSube(opts),
   ];
   return db.select({ cnt: count() }).from(groups).where(and(...conditions));

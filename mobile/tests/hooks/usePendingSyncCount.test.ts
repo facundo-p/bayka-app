@@ -1,7 +1,7 @@
 /**
  * Tests de usePendingSyncCount — mock-based (mismo patrón que useParcelas.test).
  * Issue #71: pendingCount debe incluir fotos pendientes.
- * Orden fijo de useLiveData en el hook: 1. grupos pendientes 2. bloqueados N/N 3. fotos 4. parcelas.
+ * Orden fijo de useLiveData en el hook: 1. grupos pendientes 2. fotos 3. parcelas.
  */
 
 const mockUseLiveData = jest.fn();
@@ -17,23 +17,20 @@ jest.mock('../../src/hooks/useQuienSube', () => ({
 }));
 
 const mockCountPendingGroups = jest.fn();
-const mockCountNNBlockedGroups = jest.fn();
 const mockCountPendingTreePhotos = jest.fn();
 const mockCountPendingParcelas = jest.fn();
 
 jest.mock('../../src/queries/pendingSyncQueries', () => ({
   countPendingGroups: (opts: unknown) => mockCountPendingGroups(opts),
-  countNNBlockedGroups: (opts: unknown) => mockCountNNBlockedGroups(opts),
   countPendingTreePhotos: (opts: unknown) => mockCountPendingTreePhotos(opts),
   countPendingParcelas: (opts: unknown) => mockCountPendingParcelas(opts),
 }));
 
 import { usePendingSyncCount } from '../../src/hooks/usePendingSyncCount';
 
-function mockLiveDataSequence(counts: { grupos: number; nn: number; fotos: number; parcelas: number }) {
+function mockLiveDataSequence(counts: { grupos: number; fotos: number; parcelas: number }) {
   mockUseLiveData
     .mockReturnValueOnce({ data: [{ cnt: counts.grupos }] })
-    .mockReturnValueOnce({ data: [{ cnt: counts.nn }] })
     .mockReturnValueOnce({ data: [{ cnt: counts.fotos }] })
     .mockReturnValueOnce({ data: [{ cnt: counts.parcelas }] });
 }
@@ -44,7 +41,7 @@ beforeEach(() => {
 
 describe('usePendingSyncCount', () => {
   test('pendingCount suma grupos + parcelas + fotos (issue #71)', () => {
-    mockLiveDataSequence({ grupos: 2, nn: 0, fotos: 5, parcelas: 1 });
+    mockLiveDataSequence({ grupos: 2, fotos: 5, parcelas: 1 });
 
     const result = usePendingSyncCount();
 
@@ -55,20 +52,11 @@ describe('usePendingSyncCount', () => {
   });
 
   test('solo fotos pendientes también enciende el contador', () => {
-    mockLiveDataSequence({ grupos: 0, nn: 0, fotos: 3, parcelas: 0 });
+    mockLiveDataSequence({ grupos: 0, fotos: 3, parcelas: 0 });
 
     const result = usePendingSyncCount();
 
     expect(result.pendingCount).toBe(3);
-  });
-
-  test('syncableCount excluye fotos y parcelas (solo grupos menos N/N)', () => {
-    mockLiveDataSequence({ grupos: 4, nn: 1, fotos: 9, parcelas: 2 });
-
-    const result = usePendingSyncCount();
-
-    expect(result.syncableCount).toBe(3);
-    expect(result.blockedByNN).toBe(1);
   });
 
   test('sin data todavía, todos los contadores en 0', () => {
@@ -77,7 +65,7 @@ describe('usePendingSyncCount', () => {
     const result = usePendingSyncCount();
 
     expect(result.pendingCount).toBe(0);
-    expect(result.syncableCount).toBe(0);
+    expect(result.pendingGroupsCount).toBe(0);
   });
 
   test('los fetchers invocan las queries con plantacionId y quién sube', async () => {
@@ -90,7 +78,6 @@ describe('usePendingSyncCount', () => {
 
     const quien = { plantacionId: 'plant-1', userId: 'user-1', esAdmin: false };
     expect(mockCountPendingGroups).toHaveBeenCalledWith(quien);
-    expect(mockCountNNBlockedGroups).toHaveBeenCalledWith(quien);
     expect(mockCountPendingTreePhotos).toHaveBeenCalledWith(quien);
     expect(mockCountPendingParcelas).toHaveBeenCalledWith({ plantacionId: 'plant-1' });
   });

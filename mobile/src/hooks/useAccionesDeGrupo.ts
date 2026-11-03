@@ -13,11 +13,13 @@ type Grupo = Pick<UseTreeRegistrationResult,
 
 const plural = (n: number, sufijo: string) => (n > 1 ? sufijo : '');
 
-function textoFinalizarGrupo(unresolvedNN: number): string {
-  const nnWarn = unresolvedNN > 0
-    ? ` Hay ${unresolvedNN} árbol${plural(unresolvedNN, 'es')} N/N sin resolver.\n      (deberan resolverse antes de sincronizar).`
+// El sync sube los N/N con especie NULL; se resuelven después.
+function textoFinalizarGrupo(n: number): string {
+  const nnAviso = n > 0
+    ? `\n\nHay ${n} árbol${plural(n, 'es')} N/N sin resolver. `
+      + `Se sube${plural(n, 'n')} igual y se puede${plural(n, 'n')} resolver después.`
     : '';
-  return `Confirmar finalización? \n      ${nnWarn}`;
+  return `¿Confirmar finalización?${nnAviso}`;
 }
 
 function textoEliminarGrupo(totalCount: number): string {

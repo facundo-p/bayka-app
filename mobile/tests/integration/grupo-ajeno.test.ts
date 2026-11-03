@@ -7,11 +7,10 @@ import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas, sembrarEspecieD
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree } from '../helpers/factories';
 import { conRolCacheado } from '../helpers/rolCacheado';
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
-import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../../src/constants/estados';
+import { ESTADO_PLANTACION } from '../../src/constants/estados';
 import { puedeEditarArbolesDe } from '../../src/repositories/edicionDeArboles';
 import {
   countPendingGroups,
-  countNNBlockedGroups,
   countPendingTreePhotos,
   countPendingGroupsByPlantation,
   countPendingTreePhotosByPlantation,
@@ -110,12 +109,5 @@ describe('conteos de pendientes según quién sube', () => {
     expect(await countPendingTreePhotos(quien)).toEqual([{ cnt: 1 }]);
     expect(await countPendingGroupsByPlantation(quien)).toEqual([{ plantacionId: PLANT, cnt: 1 }]);
     expect(await countPendingTreePhotosByPlantation(quien)).toEqual([{ plantacionId: PLANT, cnt: 1 }]);
-  });
-
-  it('un N/N de un grupo ajeno bloquea al admin, no a otro técnico', async () => {
-    await mockTestDb.update(groups).set({ estado: ESTADO_GRUPO.finalizada });
-    await mockTestDb.insert(trees).values(createTestTree({ groupId: GRUPO, especieId: null, posicion: 2, subId: 'LA-NN-2' }));
-    expect(await countNNBlockedGroups({ plantacionId: PLANT, userId: ADMIN, esAdmin: true })).toEqual([{ cnt: 1 }]);
-    expect(await countNNBlockedGroups({ plantacionId: PLANT, userId: OTRO_TECNICO, esAdmin: false })).toEqual([{ cnt: 0 }]);
   });
 });
