@@ -16,8 +16,9 @@ coherente con la arquitectura existente y se lista acá.
 3. Se **extrae** el banner a un componente compartido `NNResolutionBanner`
    (zero-duplication) y se **elimina** de la vista de grupos de parcela
    (`PlantationDetailHeader`).
-4. Se conserva el aviso de "grupos finalizados con N/N pendientes"
-   (`blockedByNN`) junto al banner, ahora en la pantalla de parcelas.
+4. El aviso de "grupos finalizados con N/N pendientes" (`blockedByNN`) se
+   conservó junto al banner, en la pantalla de parcelas. Se quitó en #929,
+   cuando el N/N dejó de bloquear el sync.
 
 ## Issue #154 — Headers
 

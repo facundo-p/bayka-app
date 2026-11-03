@@ -15,7 +15,6 @@ import ParcelaFormModal from '../components/ParcelaFormModal';
 import NNResolutionBanner from '../components/NNResolutionBanner';
 import { useParcelas } from '../hooks/useParcelas';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
-import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
 import { usePuedeEditarParcela } from '../hooks/usePuedeEditarParcela';
@@ -65,7 +64,6 @@ export default function ParcelasScreen() {
   const pid = plantacionId ?? '';
   const { parcelas } = useParcelas(pid);
   const { plantationRows, plantacionEditable, isArchivada, isEliminada, totalNN } = usePlantationDetail(pid);
-  const { blockedByNN } = usePendingSyncCount(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
   // Finalizada, archivada o eliminada: tampoco se editan ni se borran sus parcelas,
   // que el push sube como tombstone (#469, #477, #478).
@@ -118,7 +116,7 @@ export default function ParcelasScreen() {
           ) : undefined
         }
       />
-      <NNResolutionBanner totalNN={totalNN} blockedByNN={blockedByNN} onResolve={openNNResolution} />
+      <NNResolutionBanner totalNN={totalNN} onResolve={openNNResolution} />
       {parcelas.length === 0 ? (
         <EmptyState onCreate={plantacionEditable ? openCreate : null} motivo={motivoDeSoloLectura(isEliminada, isArchivada)} />
       ) : (

@@ -17,7 +17,5 @@ export const nnResolutionBannerStyles = StyleSheet.create({
     borderColor: colors.secondaryBorder,
   },
   bannerPressed: { opacity: 0.8 },
-  content: { flex: 1 },
-  text: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.secondary },
-  blockedText: { fontSize: fontSize.sm, color: colors.secondary, fontFamily: fonts.medium },
+  text: { flex: 1, fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.secondary },
 });

@@ -40,20 +40,22 @@ describe('useAccionesDeGrupo', () => {
       const { acciones, g, aviso, boton } = setup();
       acciones.handleFinalizar();
       expect(aviso().title).toBe('Finalizar grupo');
-      expect(aviso().message).toBe('Confirmar finalización? \n      ');
+      expect(aviso().message).toBe('¿Confirmar finalización?');
       boton('Finalizar').onPress();
       expect(g.executeFinalize).toHaveBeenCalled();
     });
 
-    it('con N/N sin resolver: lo advierte, en singular y en plural', () => {
+    it('con N/N sin resolver: avisa que se suben igual, en singular y en plural', () => {
       const uno = setup({ unresolvedNN: 1 });
       uno.acciones.handleFinalizar();
       expect(uno.aviso().message).toBe(
-        'Confirmar finalización? \n       Hay 1 árbol N/N sin resolver.\n      (deberan resolverse antes de sincronizar).',
+        '¿Confirmar finalización?\n\nHay 1 árbol N/N sin resolver. Se sube igual y se puede resolver después.',
       );
       const dos = setup({ unresolvedNN: 2 });
       dos.acciones.handleFinalizar();
-      expect(dos.aviso().message).toContain('Hay 2 árboles N/N sin resolver.');
+      expect(dos.aviso().message).toBe(
+        '¿Confirmar finalización?\n\nHay 2 árboles N/N sin resolver. Se suben igual y se pueden resolver después.',
+      );
     });
 
     it('solo lectura: no hace nada', () => {

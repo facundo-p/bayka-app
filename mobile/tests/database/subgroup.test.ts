@@ -185,7 +185,7 @@ describe('GroupRepository', () => {
     });
 
     it('allows finalization even with unresolved N/N trees', async () => {
-      // N/N sin resolver bloquea el sync, no la finalización.
+      // N/N sin resolver no bloquea la finalización ni el sync.
       const result = await finalizeGroup('subgroup-1');
 
       expect(result.success).toBe(true);
