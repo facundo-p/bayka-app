@@ -253,8 +253,6 @@ fecha_creacion
 creado_por
 descripcion (opcional)
 fecha_inicio (opcional)
-superficie_ha (opcional)
-ubicacion_lat / ubicacion_lng (opcional, centroide aproximado)
 objetivo_arboles (opcional, meta para dashboard)
 visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
@@ -265,8 +263,7 @@ ultima_edicion (quién y cuándo cambió cada campo editable; migración 057)
 
 Descripción, fecha de inicio, objetivo, visibilidad, foto en todos los botones
 y GPS se editan desde la web de gestión y, desde #633, también en el formulario
-de plantación de mobile (admin y superadmin), incluso offline. Superficie y
-ubicación no se editan en ninguna de las dos.
+de plantación de mobile (admin y superadmin), incluso offline.
 
 Desde #634 las dos editan por la RPC `editar_plantacion`, campo por campo: cada
 cambio lleva el valor que el usuario vio, y si alguien cambió ese campo desde
@@ -701,8 +698,13 @@ Reglas:
 
 ```
 foto obligatoria
-no puede sincronizarse hasta resolverse
+sincroniza sin resolver: en el servidor queda con species_id = NULL
+se resuelve después, aunque el grupo ya esté sincronizado
 ```
+
+En la app lo resuelve el admin en cualquier grupo y el técnico solo en los
+suyos (#768), con la plantación activa y sin archivar. En la web sigue las
+reglas del cambio de especie (#679).
 
 ---
 
@@ -739,8 +741,9 @@ se suben las fotos
 
 ```
 estado = finalizada
-no existen árboles NN
 ```
+
+Los N/N sin resolver no bloquean la sincronización.
 
 ---
 
@@ -804,8 +807,8 @@ Grupo.codigo único dentro de una parcela (puede repetirse entre parcelas)
 Combinación (codigo_parcela + codigo_grupo) única dentro de una plantación
 Árbol.posicion única dentro de un grupo
 Grupo sincronizado no puede editarse
-NN requiere foto
-Grupo con NN no puede sincronizar
+N/N requiere foto
+N/N sin resolver sincroniza igual (species_id = NULL)
 ```
 
 ---
