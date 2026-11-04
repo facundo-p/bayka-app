@@ -302,6 +302,9 @@ finalizada  → solo superadmin
 activa      → los permisos normales de cada tabla
 ```
 
+Quitar fotos es la excepción: en una finalizada también puede un admin (082,
+#903).
+
 Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
 (archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
 cuando la plantación vuelve a ser escribible.
@@ -343,8 +346,11 @@ el id ajeno sin devolverlo como rechazado, para que no quede pendiente en el
 teléfono. Un técnico escribe solo en sus grupos. En la app, el admin
 edita foto y GPS y resuelve N/N de un grupo ajeno, pero no borra árboles, no
 cambia la especie de uno identificado ni renombra, elimina o reactiva el grupo;
-un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un
-admin y el técnico editan el mismo grupo, gana la última sincronización (#795).
+un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos.
+
+Si dos cambian el mismo dato, el servidor no pisa el que ya tiene: el celular
+que sincroniza después adopta el del servidor y guarda el suyo como conflicto
+para que la persona elija (075, #795).
 
 ### Eliminada
 
@@ -681,7 +687,7 @@ pisa:
 ```
 web (RPC cambiar_especie_arbol): rechaza con CONFLICTO_EDICION y muestra la vigente
 sync del celular: gana la del servidor y el celular la adopta; si también la
-  había cambiado, la sync avisa cuántos árboles fueron
+  había cambiado, guarda la suya como conflicto para que la persona elija (#795)
 ```
 
 ---
@@ -740,33 +746,49 @@ se suben las fotos
 ### Condiciones para sincronizar
 
 ```
-estado = finalizada
+tiene cambios sin subir (pendingSync)
 ```
 
-Los N/N sin resolver no bloquean la sincronización.
+Sube activo o finalizado, y sincronizar no le cambia el estado (#60). El técnico
+sube solo sus grupos; admin y superadmin, también los ajenos (#798). Los N/N sin
+resolver no bloquean la sincronización.
 
 ---
 
-# 16. Inmutabilidad de datos sincronizados
+# 16. Cambios después de sincronizar
 
-Una vez sincronizado un Grupo:
+Sincronizar no congela el grupo. Ya subido, todavía cambian:
 
 ```
-no puede editarse
-no pueden modificarse sus árboles
+app: su creador, y admin o superadmin aunque el grupo sea ajeno (#768),
+     editan foto y GPS y resuelven N/N (# 13)
+     lo demás (especie, renombrar, sumar o borrar árboles) es de su creador
+     con el grupo activo: si está finalizado, lo reactiva y lo vuelve a
+     sincronizar
+web: admin o superadmin cambia la especie (# 12, Cambio de especie) y quita
+     la foto de un árbol (#903)
 ```
 
-Esto garantiza consistencia del dataset final.
+Qué admite cada estado de la plantación está en # 5, Quién puede escribir. Un
+cambio no pisa otro hecho mientras tanto: la web lo rechaza y el celular lo
+guarda como conflicto (#679, #795).
 
 ---
 
 # 17. Finalización de plantación
 
-Una plantación puede finalizarse cuando:
+La finaliza un admin o superadmin desde la app, con conexión, cuando:
 
 ```
-todos los grupos están sincronizados
+hay al menos un grupo
+todos los grupos están finalizados y sincronizados
+no quedan N/N sin resolver
+no queda nada sin subir en ese celular: grupos, parcelas, fotos, borrados,
+  altas y bajas de especies habilitadas y técnicos asignados
 ```
+
+Lo exige la app (`checkFinalizationGate`), no el servidor. La web no finaliza:
+solo el superadmin reabre una finalizada (#470).
 
 Finalizada, la app ofrece exportarla.
 
@@ -806,7 +828,7 @@ Parcela.codigo único dentro de una plantación
 Grupo.codigo único dentro de una parcela (puede repetirse entre parcelas)
 Combinación (codigo_parcela + codigo_grupo) única dentro de una plantación
 Árbol.posicion única dentro de un grupo
-Grupo sincronizado no puede editarse
+Sincronizar un grupo no pisa un dato que cambió en el servidor (ver # 16)
 N/N requiere foto
 N/N sin resolver sincroniza igual (species_id = NULL)
 ```

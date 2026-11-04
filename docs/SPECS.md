@@ -226,12 +226,14 @@ Los Grupos se sincronizan completos para evitar inconsistencias parciales.
 
 ---
 
-### Datos sincronizados son inmutables
+### Sincronizar no congela el Grupo
 
-Una vez sincronizado un Grupo:
-
-- no puede editarse
-- no puede modificarse
+Ya sincronizado, en la app su creador y los admins siguen corrigiendo foto, GPS y
+N/N, y en la web un admin cambia la especie y quita fotos. Lo demás (también la
+especie, en la app) lo hace su creador con el grupo activo: si está finalizado,
+lo reactiva y lo vuelve a sincronizar. Un cambio no pisa otro hecho mientras
+tanto: la web lo rechaza y el celular lo guarda como conflicto para que la
+persona elija.
 
 ---
 
@@ -502,7 +504,7 @@ Se destinará un botón extra en la botonera de carga a este fin
 Reglas:
 
 - la foto es **obligatoria**
-- el registro debe resolverse (identificar la especie) antes de sincronizar
+- sincroniza sin resolver; la especie se identifica después (ver # 4.11)
 
 ---
 
@@ -520,9 +522,10 @@ Pasar al siguiente NN
 ```
 Al finalizar, click en Guardar
 
-Un Grupo **puede sincronizarse aunque tenga N/N sin resolver**: así otro usuario
-(admin o técnico) puede descargarlos y resolverlos. Tener todos los N/N resueltos
-es requisito de la **finalización de la plantación** (ver # 4.16), no del sync.
+Un Grupo **puede sincronizarse aunque tenga N/N sin resolver**: así un admin
+puede descargarlos y resolverlos; el técnico resuelve solo los de sus grupos.
+Tener todos los N/N resueltos es requisito de la **finalización de la
+plantación** (ver # 4.16), no del sync.
 
 ---
 
@@ -550,7 +553,7 @@ Luego de revertir:
 
 Esto recalcula las posiciones.
 
-Solo se permite antes de sincronizar.
+Solo lo hace el creador del grupo, con el grupo activo.
 
 ---
 
@@ -611,14 +614,14 @@ Especies disponibles en la botonera
 ```
 
 Esto permite ver registros cargados por otros técnicos.
-Cualquier usuario (admin o técnico) puede descargar árboles N/N subidos por otro
-usuario y resolverlos él mismo.
+Un admin puede descargar los N/N que subió otro usuario y resolverlos; el
+técnico resuelve solo los de sus grupos.
 
 ---
 
 # 4.16 Finalización de Plantación
 
-Los administradores finalizan la plantación cuando todos los Grupos están sincronizados, y todos los N/N resueltos.
+Los administradores finalizan la plantación desde la app cuando todos los Grupos están finalizados y sincronizados, todos los N/N resueltos y no queda nada sin subir en su celular. La web no finaliza: solo el superadmin la reabre.
 
 Con la plantación finalizada, la app ofrece las exportaciones.
 
@@ -711,8 +714,8 @@ Múltiples técnicos pueden trabajar simultáneamente en una plantación.
 
 Cada técnico registra Grupos distintos.
 
-Los Grupos sincronizados quedan bloqueados para edición. El admin o el creador
-del Grupo puede reactivarlo explícitamente si necesita corregirlo.
+Sincronizar no bloquea un Grupo. Si está finalizado, su creador lo reactiva para
+corregirlo.
 
 ---
 

@@ -1,12 +1,12 @@
 ---
 name: brand-audit
-description: Audit and enforce Bayka brand identity — fonts (Poppins, Linux Biolinum, monospace for IDs), logo usage, and brand colors from bayka.com.ar. Use when reviewing UI code, creating new screens, or checking brand compliance.
+description: Audit and enforce Bayka brand identity — fonts (Poppins, Linux Biolinum, monospace for IDs), logo usage, and brand colors (navy and olive green). Use when reviewing UI code, creating new screens, or checking brand compliance.
 argument-hint: "[file-or-directory]"
 ---
 
 # Bayka Brand Identity Standard
 
-This skill defines the official brand identity for the Bayka apps, derived from [bayka.com.ar](https://bayka.com.ar/).
+This skill defines the brand identity of the Bayka apps.
 
 ## Fonts
 
@@ -42,30 +42,34 @@ Mobile loads them with `useFonts` in `mobile/app/_layout.tsx`: Poppins from `@ex
 
 ## Logo
 
-Two versions available in `mobile/assets/`:
+Two versions, the same files in `mobile/assets/` and `web/public/`:
 
 | File | Description | Use when |
 |------|-------------|----------|
-| `logo-bayka.png` | Dark blue (#1b3a5c) carpincho silhouette + "BAYKA" text | Light backgrounds (login, splash, headers) |
+| `logo-bayka.png` | Dark blue (≈`#16395F`) carpincho silhouette + "BAYKA" text, white background | Light backgrounds (login, splash, headers) |
 | `logo-bayka-white.png` | White version, transparent background | Dark backgrounds (dark headers, overlays) |
 
 ### Logo rules
 
-- Always use `require('../assets/logo-bayka.png')` — never hotlink to the website.
+- Mobile: `require` the file from `mobile/assets/` (`require('../../assets/logo-bayka.png')` from `src/screens/`).
+- Web: `<img src="/logo-bayka.png">`, served from `web/public/`; the PDFs take it from `web/src/pdf/plantilla/recursosNavegador.ts`.
+- Never hotlink to the website.
 - Maintain aspect ratio (`resizeMode: 'contain'`).
 - Minimum clear space around the logo: 16px.
 - Never distort, recolor, or add effects to the logo.
 
-## Brand colors (from bayka.com.ar)
+## Brand colors
 
-The website defines these brand colors:
+Both apps share the same brand palette:
 
-| Token | Hex | Role |
-|-------|-----|------|
-| Primary blue | `#0d6efd` | Web primary — NOT used in mobile app |
-| Secondary blue | `#0654c4` | Web secondary — NOT used in mobile app |
+| Role | Hex | Mobile (`colors` in `mobile/src/theme.ts`) | Web (`web/src/theme/theme.css`) |
+|------|-----|--------------------------------------------|---------------------------------|
+| Primary — navy | `#0A3760` | `colors.primary`, `headerBg` | `--color-primary`, `--color-text-heading` |
+| Secondary — olive green | `#99B95B` | `colors.secondary`, `plantation` | `--color-secondary` |
 
-The mobile app uses its own green-based palette defined in `src/theme.ts > colors`. The web blues are documented here for reference only — do not introduce them into the mobile app.
+The tints are each app's own (`primaryBg`, `plantationDark`… in mobile; `--color-primary-bg`, `--color-plantation-dark`… in web) and same-named ones may differ in value. Use the tokens, never the hex.
+
+The bayka.com.ar site uses other blues (`#0d6efd`, `#0654c4`). They are not part of the apps' palette — do not introduce them.
 
 ## Audit procedure
 
